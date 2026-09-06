@@ -85,11 +85,16 @@ export function hasActionlint(probe = probeActionlint) {
  * It is optional in the same way shellcheck is: the gate must stay runnable on
  * a machine that does not have it, and CI installs it.
  */
+export function runActionlint(files, exec = execFileSync) {
+    exec("actionlint", files, { stdio: "inherit" });
+}
+
 export async function checkWorkflows(options = {}) {
     // The probe is a parameter so that the decision to run actionlint can
     // be tested, not only the two answers it leads to.
     const available = options.available ?? hasActionlint(options.probe);
     const found = options.files ?? await workflowFiles();
+    const run = options.run ?? runActionlint;
 
     assertWorkflowsFound(found);
 
@@ -103,12 +108,10 @@ export async function checkWorkflows(options = {}) {
         return `${found.length} workflows (actionlint not installed, skipped)`;
     }
 
-    // A non-zero exit throws, which fails the gate.
-    execFileSync(
-        "actionlint",
-        found.map((file) => path.join(root, WORKFLOW_ROOT, file)),
-        { stdio: "inherit" }
-    );
+    // A non-zero exit throws, which fails the gate. Injected like the probe,
+    // so the branch can be exercised on a machine that does not have
+    // actionlint — which every Linux runner in this repository is.
+    run(found.map((file) => path.join(root, WORKFLOW_ROOT, file)));
 
     return `${found.length} workflows, actionlint passed`;
 }

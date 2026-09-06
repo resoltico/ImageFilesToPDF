@@ -36,10 +36,44 @@ test("actionlint availability is reported either way", async () => {
 });
 
 test("the check reports what it did, installed or not", async () => {
+    // The runner is injected rather than invoked: actionlint is not present
+    // on every machine that runs this gate, and a test that needs it would
+    // pass on a developer's Mac and fail on a Linux runner.
     const { checkWorkflows } = await loadWorkflowRules();
+    const linted = [];
 
-    assert.match(await checkWorkflows({ available: false }), /workflows \(actionlint not installed, skipped\)/u);
-    assert.match(await checkWorkflows({ available: true }), /workflows, actionlint passed/u);
+    assert.match(
+        await checkWorkflows({ available: false }),
+        /workflows \(actionlint not installed, skipped\)/u
+    );
+    assert.match(
+        await checkWorkflows({
+            available: true,
+            run: (files) => linted.push(...files)
+        }),
+        /workflows, actionlint passed/u
+    );
+    assert.ok(linted.length > 0, "actionlint must be given the workflows");
+});
+
+test("actionlint is given every workflow, by absolute path", async () => {
+    // A relative path would resolve against the process's directory rather
+    // than the repository, and actionlint would report on nothing.
+    const { checkWorkflows } = await loadWorkflowRules();
+    const linted = [];
+
+    await checkWorkflows({
+        available: true,
+        files: ["quality.yml", "release.yml"],
+        read: () => Promise.resolve(""),
+        run: (files) => linted.push(...files)
+    });
+
+    assert.equal(linted.length, 2);
+
+    for (const file of linted) {
+        assert.match(file, /^\/.*\.github\/workflows\/\w+\.yml$/u, file);
+    }
 });
 
 test("only workflow files are selected, in a stable order", async () => {
@@ -59,4 +93,17 @@ test("an empty workflow directory fails the check", async () => {
 
     await assert.rejects(() => checkWorkflows({ available: false, files: [] }), /no workflows found/u);
     assert.match(await checkWorkflows({ available: false, files: ["quality.yml"] }), /1 workflows/u);
+});
+
+test("actionlint is invoked by name, with the workflows and inherited output", async () => {
+    // The default runner takes its exec so this can be asserted anywhere,
+    // not only on a machine that has actionlint installed.
+    const { runActionlint } = await loadWorkflowRules();
+    const calls = [];
+
+    runActionlint(["/a/quality.yml"], (...args) => calls.push(args));
+
+    assert.deepEqual(calls, [
+        ["actionlint", ["/a/quality.yml"], { stdio: "inherit" }]
+    ]);
 });

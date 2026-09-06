@@ -35,12 +35,19 @@ test("a real source file passes the file rules", async () => {
 });
 
 test("shell scripts are checked whether or not shellcheck is present", async () => {
+    // Asks the machine rather than assuming it. Forcing the installed branch
+    // passes on a developer's Mac and fails on a runner that does not have
+    // shellcheck, which is every Linux runner here.
     const { checkShellScripts, hasShellcheck } =
         await import("../../tools/lint/shell-rules.mjs");
+    const installed = hasShellcheck();
 
-    assert.equal(typeof hasShellcheck(), "boolean");
+    assert.equal(typeof installed, "boolean");
     assert.match(await checkShellScripts(false), /shellcheck not installed, skipped/u);
-    assert.match(await checkShellScripts(true), /shellcheck passed/u);
+    assert.match(
+        await checkShellScripts(installed),
+        installed ? /shellcheck passed/u : /not installed, skipped/u
+    );
 });
 
 test("a rule list that has been emptied is itself an error", async () => {

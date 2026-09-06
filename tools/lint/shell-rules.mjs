@@ -61,9 +61,14 @@ export function hasShellcheck(probe = probeShellcheck) {
     }
 }
 
+export function runShellcheck(paths, exec = execFileSync) {
+    exec("shellcheck", ["--severity=warning", ...paths], { stdio: "inherit" });
+}
+
 export async function checkShellScripts(
     available = hasShellcheck(),
-    directory = SHELL_ROOT
+    directory = SHELL_ROOT,
+    run = runShellcheck
 ) {
     const scripts = await shellScripts(directory);
 
@@ -75,12 +80,9 @@ export async function checkShellScripts(
         return `${scripts.length} scripts (shellcheck not installed, skipped)`;
     }
 
-    // A non-zero exit throws, which fails the gate.
-    execFileSync(
-        "shellcheck",
-        ["--severity=warning", ...scripts.map((script) => path.resolve(root, script))],
-        { stdio: "inherit" }
-    );
+    // A non-zero exit throws, which fails the gate. Injected so the branch
+    // can be exercised where shellcheck is not installed.
+    run(scripts.map((script) => path.resolve(root, script)));
 
     return `${scripts.length} scripts, shellcheck passed`;
 }
