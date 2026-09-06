@@ -46,7 +46,7 @@ test("the manifest is in sha256sum format", async () => {
     const digest = digestOf("content");
 
     assert.match(digest, /^[0-9a-f]{64}$/u);
-    assert.equal(renderManifest(digest), `${digest}  Image Files to PDF.jxa\n`);
+    assert.equal(renderManifest(digest), `${digest}  Image-Files-to-PDF.jxa\n`);
 });
 
 test("a bundle without a top-level run() is refused", async () => {
@@ -99,5 +99,20 @@ test("the banner carries the licence and the address of the source", async () =>
     assert.ok(
         release.includes(`SPDX-License-Identifier: ${packageJson.license}`),
         "the licence, as an identifier a machine can read"
+    );
+});
+
+test("the artifact's name survives being uploaded as a release asset", async () => {
+    // GitHub replaces spaces with dots when an asset is uploaded, so a file
+    // named with them arrives as something the manifest beside it does not
+    // name -- and neither the checksum nor the documented verify command
+    // works. This shipped once.
+    const { artifactName, renderManifest } = await loadRelease();
+
+    assert.doesNotMatch(artifactName, /\s/u, "no spaces");
+    assert.match(artifactName, /^[\w.-]+\.jxa$/u, "nothing a URL would escape");
+    assert.ok(
+        renderManifest("d").endsWith(`  ${artifactName}\n`),
+        "the manifest names the file that is uploaded"
     );
 });

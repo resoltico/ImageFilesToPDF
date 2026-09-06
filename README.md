@@ -35,7 +35,7 @@ brew install vips pdfcpu
 3. Configure it to receive **Files** from Finder.
 4. Add **Run JavaScript for Mac Automation**.
 5. Delete the example code.
-6. Paste all of `dist/Image Files to PDF.jxa`.
+6. Paste all of `dist/Image-Files-to-PDF.jxa`.
 7. Save the shortcut as **Image Files to PDF**.
 
 The script uses files supplied by Shortcuts. If it receives no explicit input,
@@ -170,7 +170,7 @@ Every file a release offers — the artifact, the checksum manifest and
 this repository's release workflow built it from a specific commit:
 
 ```sh
-gh attestation verify "Image Files to PDF.jxa" --repo resoltico/ImageFilesToPDF
+gh attestation verify "Image-Files-to-PDF.jxa" --repo resoltico/ImageFilesToPDF
 shasum --check SHA256SUMS
 ```
 

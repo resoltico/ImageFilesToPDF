@@ -72,7 +72,7 @@ jobs:
         with:
           name: release-dist
           path: |
-            dist/Image Files to PDF.jxa
+            dist/Image-Files-to-PDF.jxa
             dist/SHA256SUMS
           if-no-files-found: error
 
@@ -113,7 +113,7 @@ jobs:
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: |
-            dist/Image Files to PDF.jxa
+            dist/Image-Files-to-PDF.jxa
             dist/SHA256SUMS
             INSTALL.txt
       # Verified here rather than trusted: an attestation that does not verify
@@ -121,7 +121,7 @@ jobs:
       # check. Before the release exists, so a failure publishes nothing.
       - name: Verify the attestation before publishing
         run: |
-          for subject in "dist/Image Files to PDF.jxa" dist/SHA256SUMS INSTALL.txt; do
+          for subject in "dist/Image-Files-to-PDF.jxa" dist/SHA256SUMS INSTALL.txt; do
             gh attestation verify "$subject" --repo "$GITHUB_REPOSITORY"
           done
       # A tag can be moved after it is pushed. This proves the tag still
@@ -153,7 +153,7 @@ jobs:
       - name: Create the release
         run: |
           gh release create "$RELEASE_TAG" \
-            "dist/Image Files to PDF.jxa" \
+            "dist/Image-Files-to-PDF.jxa" \
             dist/SHA256SUMS \
             INSTALL.txt \
             --repo "$GITHUB_REPOSITORY" \

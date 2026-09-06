@@ -7,7 +7,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-SCRIPT="$ROOT/dist/Image Files to PDF.jxa"
+SCRIPT="$ROOT/dist/Image-Files-to-PDF.jxa"
 WORK=$(mktemp -d -t ImageFilesToPDF-integration)
 trap 'rm -rf "$WORK"' EXIT
 

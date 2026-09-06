@@ -10,7 +10,7 @@ Verifying what you downloaded
 Every file in the release is signed with a GitHub build attestation. With the
 GitHub CLI installed, from the folder you downloaded them into:
 
-    gh attestation verify "Image Files to PDF.jxa" \
+    gh attestation verify "Image-Files-to-PDF.jxa" \
         --repo resoltico/ImageFilesToPDF
     shasum --check SHA256SUMS
 
@@ -42,6 +42,6 @@ Install the Quick Action
 8. Delete the example code in that action.
 9. Paste the complete contents of:
 
-       dist/Image Files to PDF.jxa
+       dist/Image-Files-to-PDF.jxa
 
 10. Save the shortcut as "Image Files to PDF".

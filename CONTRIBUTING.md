@@ -70,7 +70,7 @@ Each module has its own test file under `tests/unit/core/` or
 
 ## The released artifact
 
-Do not edit it. `dist/Image Files to PDF.jxa` is generated from the modules
+Do not edit it. `dist/Image-Files-to-PDF.jxa` is generated from the modules
 under `src/` by `tools/bundle.mjs`, which concatenates the module bodies with
 their `require`, `module.exports` and strict directive removed. Everything then
 shares one script scope and `run` stays top level, where `osascript` finds it.

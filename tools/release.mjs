@@ -32,7 +32,12 @@ import { root } from "./repository.mjs";
 export const MINIMUM_MACOS = "12.3";
 export const ECMASCRIPT_TARGET = 2022;
 
-const artifactName = "Image Files to PDF.jxa";
+/*
+ * No spaces: GitHub replaces them with dots when a release asset is uploaded,
+ * so a file named with them arrives under a different name than the manifest
+ * beside it gives, and neither the checksum nor the documented command works.
+ */
+export const artifactName = "Image-Files-to-PDF.jxa";
 export const artifactPath = path.join(root, "dist", artifactName);
 export const manifestPath = path.join(root, "dist", "SHA256SUMS");
 
