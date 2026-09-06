@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # The workflow pins actions to commit SHAs, which is the right thing to do
+  # but means nothing updates them on its own. Dependabot rewrites the pin and
+  # its version comment together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies
+
+  # There are no runtime or development dependencies today. This entry exists
+  # so that the day one is added, it is watched from the start.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: deps
+    labels:
+      - dependencies

@@ -1,0 +1,8 @@
+# Project toolchain. Node 26 is the baseline; the code targets it directly
+# with no backwards-compatibility shims for earlier releases.
+#
+# .node-version carries the same pin for tools that read it (CI's setup-node
+# reads it via node-version-file), so the version is declared in one place
+# conceptually and mirrored here for mise.
+[tools]
+node = "26.8.1"

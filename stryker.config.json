@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "packageManager": "npm",
+  "_comment_testRunner": "The tap runner executes each test file directly (node <file>), which keeps it in the same process as Stryker coverage hook. Running them via `node --test` forks a child per file, the hook records nothing, and every mutant reports NoCoverage.",
+  "testRunner": "tap",
+  "coverageAnalysis": "perTest",
+  "_comment_mutate": "Only code that tests/unit can meaningfully kill. tests/repo is excluded from the runner because it reads the real source tree, which a mutation sandbox deliberately alters, so anything mutated here must have a unit-level test.",
+  "mutate": [
+    "src/**/*.js",
+    "tools/lint/**/*.mjs",
+    "tools/bundle.mjs"
+  ],
+  "reporters": [
+    "html",
+    "json",
+    "clear-text",
+    "progress"
+  ],
+  "htmlReporter": {
+    "fileName": "reports/mutation/index.html"
+  },
+  "jsonReporter": {
+    "fileName": "reports/mutation/report.json"
+  },
+  "clearTextReporter": {
+    "maxTestsToLog": 0
+  },
+  "_comment_incremental": "Incremental mode is off: a full run takes about half a minute with per-test analysis, so the complexity and the risk of a stale incremental report are not worth it.",
+  "thresholds": {
+    "high": 98,
+    "low": 94,
+    "break": 92
+  },
+  "tempDirName": ".stryker-tmp",
+  "timeoutMS": 20000,
+  "_comment_thresholds": "Measured 95.0-95.1% on 2026-09-05. break sits a few points below so an ordinary change cannot fail on noise, while a real drop in test strength does; the score varies a little because a timed-out mutant counts as killed. Ratchet it up as the score improves.",
+  "tap": {
+    "nodeArgs": [
+      "--test-reporter=tap"
+    ],
+    "testFiles": [
+      "tests/unit/**/*.test.cjs"
+    ]
+  }
+}

@@ -1,0 +1,116 @@
+"use strict";
+
+const { normalizeInvocationInput, decodeFileUrl } = require("../core/invocation.js");
+const { isSupportedImage, basename } = require("../core/paths.js");
+const { sortImageRecords } = require("../core/ordering.js");
+const { isRegularFile, readTextFile } = require("./shell.js");
+
+/*
+ * Resolution of whatever Shortcuts, Finder, or a headless caller supplies
+ * into an ordered list of image files.
+ */
+
+const HEADLESS_MINIMUM_ARGUMENTS = 3;
+const HEADLESS_FIRST_IMAGE_INDEX = 2;
+
+/*
+ * A selected item may arrive as a POSIX path, as an object that stringifies
+ * to one, which is what Shortcuts hands over, or as a file URL, which is what
+ * a Finder selection gives.
+ *
+ * Path() is deliberately not consulted, having been measured rather than
+ * assumed. It resolves against the process's working directory and always
+ * returns an absolute path, so Path("not-a-path") becomes
+ * "/wherever/not-a-path": a path that looks resolved and is not, which
+ * defeats the check below instead of helping it. Path("") is worse — it
+ * raises an ObjC exception that no JavaScript try/catch can intercept, and
+ * takes the whole action down with no dialog and no message.
+ */
+function pathCandidates(item) {
+    const candidates = [];
+
+    for (const produce of [
+        () => String(item),
+        () => String(item.url())
+    ]) {
+        try {
+            candidates.push(produce());
+        } catch {
+            candidates.push("");
+        }
+    }
+
+    return candidates;
+}
+
+/*
+ * Returns "" when the item is not a path at all. Shortcuts appends a
+ * parameters object to the input of every Quick Action, so an item that is
+ * not a file is an ordinary occurrence rather than a failure, and must not
+ * end a run that has perfectly good images alongside it.
+ */
+function inputItemToPosixPath(item) {
+    for (const value of pathCandidates(item)) {
+        if (/^file:\/\//iu.test(value)) {
+            return decodeFileUrl(value);
+        }
+
+        if (value.charAt(0) === "/") {
+            return value;
+        }
+    }
+
+    return "";
+}
+
+function finderSelection() {
+    return Application("Finder").selection();
+}
+
+function collectImageFiles(app, inputItems) {
+    const items = inputItems.length > 0 ? inputItems : finderSelection();
+    const records = [];
+
+    for (const item of items) {
+        const path = inputItemToPosixPath(item);
+
+        if (path && isSupportedImage(path) && isRegularFile(app, path)) {
+            records.push({ path, originalName: basename(path) });
+        }
+    }
+
+    return sortImageRecords(records);
+}
+
+function collectInvocation(app, input, headless) {
+    const items = normalizeInvocationInput(input);
+
+    if (!headless) {
+        // Settings come from dialogs, but only after the cheap checks have
+        // passed and there is actually something to convert.
+        return { settings: null, timestamp: "", inputItems: items };
+    }
+
+    if (items.length < HEADLESS_MINIMUM_ARGUMENTS) {
+        throw new Error(
+            "Headless usage: --headless /path/to/config.json /path/to/image ..."
+        );
+    }
+
+    const configuration = JSON.parse(readTextFile(app, String(items[1])));
+
+    return {
+        settings: configuration,
+        timestamp: configuration.timestamp
+            ? String(configuration.timestamp)
+            : "",
+        inputItems: items.slice(HEADLESS_FIRST_IMAGE_INDEX)
+    };
+}
+
+module.exports = {
+    inputItemToPosixPath,
+    finderSelection,
+    collectImageFiles,
+    collectInvocation
+};

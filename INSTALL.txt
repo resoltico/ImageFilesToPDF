@@ -1,0 +1,33 @@
+IMAGE FILES TO PDF 1.0.0 - SHORTCUTS INSTALLATION
+
+Requirements
+============
+
+macOS 12.3 or later.
+
+The Shortcuts app is macOS 12 and later; 12.3 is the point at which its
+JavaScript engine supports everything this action uses.
+
+Runtime tools
+=============
+
+Open Terminal and run:
+
+    brew install vips pdfcpu
+
+Install the Quick Action
+========================
+
+1. Open the Shortcuts app.
+2. Create a new shortcut.
+3. Open the shortcut details.
+4. Enable "Use as Quick Action".
+5. Enable Finder.
+6. Configure the shortcut to receive Files from Finder.
+7. Add "Run JavaScript for Mac Automation".
+8. Delete the example code in that action.
+9. Paste the complete contents of:
+
+       dist/Image Files to PDF.jxa
+
+10. Save the shortcut as "Image Files to PDF".

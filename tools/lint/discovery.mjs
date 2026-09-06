@@ -1,0 +1,61 @@
+import { readdir } from "node:fs/promises";
+import path from "node:path";
+import { moduleOrder, root } from "../release.mjs";
+
+const SOURCE_EXTENSIONS = /\.(?:js|mjs|cjs)$/u;
+const SKIPPED = new Set(["node_modules", "dist", ".git"]);
+
+/*
+ * What counts as a source file, and what is not ours to lint. Both are pure so
+ * the decisions can be asserted directly rather than inferred from a walk.
+ */
+export function isSourceFile(name) {
+    return SOURCE_EXTENSIONS.test(name);
+}
+
+export function isSkipped(name) {
+    return SKIPPED.has(name);
+}
+
+function keep(entry) {
+    return !isSkipped(entry.name);
+}
+
+/*
+ * The base directory is a parameter so the walk can be driven against a
+ * fixture tree and shown to behave, rather than only observed passing against
+ * a repository that already happens to be in order.
+ */
+export async function walk(directory, base = root) {
+    const entries = await readdir(path.join(base, directory), {
+        withFileTypes: true
+    });
+    const found = [];
+
+    for (const entry of entries.filter(keep)) {
+        const relative = `${directory}/${entry.name}`;
+
+        found.push(entry.isDirectory()
+            ? await walk(relative, base)
+            : isSourceFile(entry.name) && [relative]);
+    }
+
+    return found.flat().filter(Boolean).sort();
+}
+
+/*
+ * Every file the gate is responsible for.
+ *
+ * Discovered rather than listed, and recursive, so a new module or a new
+ * subdirectory cannot quietly escape the checks. Root-level configuration is
+ * included explicitly: it is source too, and it was previously the one file
+ * the size limit could not see.
+ */
+export async function lintableFiles() {
+    return [
+        ...moduleOrder,
+        ...await walk("tools"),
+        ...await walk("tests"),
+        "eslint.config.mjs"
+    ];
+}

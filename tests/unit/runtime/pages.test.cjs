@@ -1,0 +1,147 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const test = require("node:test");
+const { preparePage, preparePages } = require("../../../src/runtime/pages.js");
+const { calculatePageGeometry } = require("../../../src/core/geometry.js");
+const { createFakeApp, failing } = require("./fake-app.cjs");
+const { createFakeHost } = require("./fake-host.cjs");
+
+const geometry = calculatePageGeometry({
+    paperSize: "A4",
+    orientation: "Portrait",
+    dpi: 72,
+    quality: 85,
+    mode: "Single PDF",
+    background: "#FFFFFF"
+});
+
+function makeJob(app) {
+    return {
+        app,
+        geometry,
+        settings: { quality: 85, background: "#FFFFFF" },
+        workspace: "/tmp/ImageFilesToPDF.X",
+        tools: { vips: "/v/vips", vipsheader: "/v/vipsheader", pdfcpu: "/v/pdfcpu" }
+    };
+}
+
+test("an opaque image skips the flatten stage", () => {
+    const app = createFakeApp([["'bands'", "3"]]);
+    const pagePath = preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0);
+
+    assert.equal(pagePath, "/tmp/ImageFilesToPDF.X/000001-page.jpg");
+    assert.equal(app.commands.filter((command) => command.includes("'flatten'")).length, 0);
+    assert.equal(app.commands.filter((command) => command.includes("'thumbnail'")).length, 1);
+    assert.equal(app.commands.filter((command) => command.includes("'gravity'")).length, 1);
+});
+
+test("an image with alpha is flattened onto the background first", () => {
+    const app = createFakeApp([["'bands'", "4"]]);
+
+    preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0);
+
+    const flatten = app.commands.find((command) => command.includes("'flatten'"));
+
+    assert.ok(flatten, "expected a flatten stage");
+    assert.match(flatten, /--background=255/u);
+    // gravity must then read the flattened file, not the prepared one.
+    assert.match(
+        app.commands.find((command) => command.includes("'gravity'")),
+        /000001-flattened\.v/u
+    );
+});
+
+test("the thumbnail stage is ICC aware and never upscales", () => {
+    const app = createFakeApp([["'bands'", "3"]]);
+
+    preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0);
+
+    const thumbnail = app.commands.find((command) => command.includes("'thumbnail'"));
+
+    assert.match(thumbnail, /--export-profile=srgb/u);
+    assert.match(thumbnail, /--size=down/u);
+});
+
+test("intermediates are removed even when a stage fails", () => {
+    const app = createFakeApp([
+        ["'bands'", "3"],
+        ["'gravity'", failing("vips died")]
+    ]);
+
+    assert.throws(
+        () => preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0),
+        /laying out the page/u
+    );
+
+    const removals = app.commands.filter((command) => command.startsWith("'/bin/rm'"));
+
+    assert.equal(removals.length, 2, "prepared and flattened must both be removed");
+});
+
+test("a stage that reports success but writes nothing is detected", () => {
+    // vips exiting zero without producing its output is precisely what
+    // verifyFileWritten exists to catch.
+    for (const [stage, label] of [
+        ["'thumbnail'", "prepared image"],
+        ["'gravity'", "prepared page image"]
+    ]) {
+        const app = createFakeHost({
+            files: ["/a/x.png"],
+            failures: [[stage, ""]]
+        });
+
+        assert.throws(
+            () => preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0),
+            new RegExp(`${label} was not written or is empty`, "u"),
+            `${stage} producing nothing must be caught`
+        );
+    }
+});
+
+test("preparePages numbers the pages in order", () => {
+    const app = createFakeApp([["'bands'", "3"]]);
+    const files = ["a.png", "b.png", "c.png"].map((name) => ({ path: `/a/${name}`, originalName: name }));
+
+    assert.deepEqual(preparePages(makeJob(app), files), [
+        "/tmp/ImageFilesToPDF.X/000001-page.jpg",
+        "/tmp/ImageFilesToPDF.X/000002-page.jpg",
+        "/tmp/ImageFilesToPDF.X/000003-page.jpg"
+    ]);
+});
+
+
+test("a multi-page image is refused before any page is prepared", () => {
+    // The refusal lives in preparePage, and nothing here proved it was still
+    // wired in: removing the call would silently restore the old behaviour of
+    // taking page one and dropping the rest.
+    const app = createFakeApp([["'n-pages'", "3\n"]]);
+
+    assert.throws(
+        () => preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0),
+        /contains 3 pages/u
+    );
+    assert.equal(
+        app.commands.filter((command) => command.includes("thumbnail")).length,
+        0,
+        "nothing may be converted before the page count is known"
+    );
+});
+
+test("each stage names itself when it fails", () => {
+    // The description is the only thing telling a person which stage broke.
+    const stages = [
+        ["'thumbnail'", /preparing the image/u],
+        ["'flatten'", /flattening the image/u]
+    ];
+
+    for (const [needle, expected] of stages) {
+        const app = createFakeApp([
+            ["'n-pages'", "1\n"],
+            ["'bands'", "4\n"],
+            [needle, failing("broke")]
+        ]);
+
+        assert.throws(() => preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0), expected);
+    }
+});

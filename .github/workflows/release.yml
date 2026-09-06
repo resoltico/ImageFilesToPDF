@@ -1,0 +1,146 @@
+name: Release
+
+# Tags only. There is no workflow_dispatch: every step below is about a
+# specific version, and a manual run from a branch has no tag to check.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    name: Qualify the tagged source
+    runs-on: macos-15
+    timeout-minutes: 40
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: brew install vips pdfcpu qpdf poppler libtiff shellcheck actionlint
+      - run: npm ci --ignore-scripts
+      # The tag is a claim about which version is shipping, and it is the one
+      # claim the repository cannot contradict on its own.
+      - run: node tools/check-tag.mjs "$RELEASE_TAG"
+      # Verifies the committed artifact against src/ rather than rebuilding
+      # it, so a stale dist/ fails here instead of shipping.
+      - run: npm run quality
+      - run: npm run test:integration:macos
+
+  build:
+    name: Build the artifact on CI
+    needs: qualify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node tools/check-tag.mjs "$RELEASE_TAG"
+      # Prove the committed artifact matches src/ before touching it, because
+      # building first would make that comparison vacuous.
+      - run: npm run check-dist
+      - run: npm run build
+      # The build is a deterministic concatenation, so rebuilding on a clean
+      # runner must reproduce the committed bytes exactly. This is what makes
+      # the attestation below worth having: what is signed is both built here
+      # and identical to what was reviewed in the repository.
+      - name: Require the build to be reproducible
+        run: git diff --exit-code -- dist/
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-dist
+          path: |
+            dist/Image Files to PDF.jxa
+            dist/SHA256SUMS
+          if-no-files-found: error
+
+  publish:
+    name: Attest and publish
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-dist
+          path: dist
+      # The artifact travelled through the runner's storage, so its checksums
+      # are checked again on arrival rather than trusted. The manifest names
+      # its files without a directory, so it verifies from beside them.
+      - name: Reverify the downloaded artifact
+        working-directory: dist
+        run: shasum --check SHA256SUMS
+      # Attesting the manifest attests everything it lists, which is the
+      # artifact and the manifest's own agreement with it.
+      - name: Attest the artifact
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: dist/SHA256SUMS
+      # A tag can be moved after it is pushed. This proves the tag still
+      # resolves to the commit this run was started for, and --verify-tag
+      # makes the release itself refuse a tag that has since changed.
+      - name: Require the tag to still point at this commit
+        run: |
+          object_sha=$(gh api \
+            "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
+            --jq '.object.sha')
+          object_type=$(gh api \
+            "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
+            --jq '.object.type')
+          if [ "$object_type" = "tag" ]; then
+            object_sha=$(gh api \
+              "repos/$GITHUB_REPOSITORY/git/tags/$object_sha" --jq '.object.sha')
+          fi
+          if [ "$object_sha" != "$GITHUB_SHA" ]; then
+            echo "tag $RELEASE_TAG no longer points at $GITHUB_SHA" >&2
+            exit 1
+          fi
+      # The notes come from CHANGELOG.md, which the gate already keeps in
+      # agreement with the version, rather than from a second file that would
+      # have to be kept in agreement with the CHANGELOG.
+      - name: Extract the release notes
+        run: >-
+          node tools/release-notes.mjs "$RELEASE_TAG"
+          > "$RUNNER_TEMP/release-notes.md"
+      - name: Create the release
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "dist/Image Files to PDF.jxa" \
+            dist/SHA256SUMS \
+            INSTALL.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Image Files to PDF ${RELEASE_TAG#v}" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"

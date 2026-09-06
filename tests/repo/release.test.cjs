@@ -1,0 +1,63 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const test = require("node:test");
+
+const loadRelease = () => import("../../tools/release.mjs");
+
+test("the release renders a banner, a strict directive and every module", async () => {
+    const { renderRelease, moduleOrder } = await loadRelease();
+    const release = await renderRelease();
+
+    assert.match(release, /^\/\*\n \* Image Files to PDF \d+\.\d+\.\d+\n/u);
+    assert.match(release, /Requires macOS \d+\.\d+ or later/u);
+    assert.match(release, /Generated file\./u);
+    assert.ok(release.includes('"use strict";'));
+
+    for (const relativePath of moduleOrder) {
+        assert.ok(
+            release.includes(`/* ===== ${relativePath} ===== */`),
+            `${relativePath} must appear in the bundle`
+        );
+    }
+});
+
+test("the release carries no module syntax and declares run()", async () => {
+    const { renderRelease } = await loadRelease();
+    const release = await renderRelease();
+
+    assert.ok(!/\brequire\s*\(/u.test(release), "no require survived");
+    assert.ok(!/\bmodule\.exports\b/u.test(release), "no export survived");
+    assert.match(release, /^function run\(input, parameters\) \{$/mu);
+});
+
+test("rendering is deterministic", async () => {
+    const { renderRelease, digestOf } = await loadRelease();
+
+    assert.equal(digestOf(await renderRelease()), digestOf(await renderRelease()));
+});
+
+test("the manifest is in sha256sum format", async () => {
+    const { digestOf, renderManifest } = await loadRelease();
+    const digest = digestOf("content");
+
+    assert.match(digest, /^[0-9a-f]{64}$/u);
+    assert.equal(renderManifest(digest), `${digest}  Image Files to PDF.jxa\n`);
+});
+
+test("a bundle without a top-level run() is refused", async () => {
+    const { assertEntryPoint } = await loadRelease();
+
+    assert.doesNotThrow(() => assertEntryPoint(new Map([["run", "src/runtime/main.js"]])));
+    assert.throws(
+        () => assertEntryPoint(new Map([["execute", "src/runtime/main.js"]])),
+        /declares no top-level run\(\); osascript needs it/u
+    );
+});
+
+test("the declared floor is a real macOS version and ECMAScript year", async () => {
+    const { MINIMUM_MACOS, ECMASCRIPT_TARGET } = await loadRelease();
+
+    assert.match(MINIMUM_MACOS, /^\d+(?:\.\d+)?$/u);
+    assert.ok(ECMASCRIPT_TARGET >= 2015 && ECMASCRIPT_TARGET <= 2030);
+});

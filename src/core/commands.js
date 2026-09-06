@@ -1,0 +1,132 @@
+"use strict";
+
+const { fixed2, parseInteger } = require("./numbers.js");
+const {
+    MINIMUM_QUALITY,
+    MAXIMUM_QUALITY,
+    backgroundDefinition
+} = require("./settings.js");
+
+/*
+ * Construction of the exact argument vectors handed to vips and pdfcpu.
+ *
+ * These are pure so that every flag the tools receive is asserted in unit
+ * tests rather than discovered at runtime.
+ */
+
+const GREY_ALPHA_BANDS = 2;
+const RGB_ALPHA_BANDS = 4;
+
+/*
+ * Resize and colour-convert in one stage.
+ *
+ * --export-profile=srgb performs a real ICC transform when the source carries
+ * an embedded profile, so Display P3 screenshots and Adobe RGB photographs
+ * keep their appearance. A separate "colourspace srgb" stage ignores embedded
+ * profiles and silently shifts those colours.
+ *
+ * --size=down never enlarges: a small image is centred at its native size
+ * rather than upscaled to fill the page with invented pixels.
+ */
+function buildThumbnailArgv(vipsPath, inputPath, outputPath, geometry) {
+    return [
+        vipsPath,
+        "thumbnail",
+        inputPath,
+        outputPath,
+        String(geometry.widthPixels),
+        `--height=${geometry.heightPixels}`,
+        "--size=down",
+        "--export-profile=srgb"
+    ];
+}
+
+/*
+ * Single-page formats have no n-pages field at all, so its absence means one
+ * page. TIFF, HEIC and AVIF can carry more.
+ */
+function buildPageCountArgv(vipsheaderPath, imagePath) {
+    return [vipsheaderPath, "-f", "n-pages", imagePath];
+}
+
+function buildFlattenArgv(vipsPath, inputPath, outputPath, background) {
+    return [
+        vipsPath,
+        "flatten",
+        inputPath,
+        outputPath,
+        `--background=${backgroundDefinition(background).vipsVector}`
+    ];
+}
+
+function buildGravityArgv(vipsPath, inputPath, outputPath, options) {
+    const { geometry, quality, background } = options;
+    const validQuality = parseInteger(
+        quality,
+        MINIMUM_QUALITY,
+        MAXIMUM_QUALITY,
+        "Quality"
+    );
+
+    return [
+        vipsPath,
+        "gravity",
+        inputPath,
+        `${outputPath}[Q=${validQuality},keep=none]`,
+        "centre",
+        String(geometry.widthPixels),
+        String(geometry.heightPixels),
+        "--extend=background",
+        `--background=${backgroundDefinition(background).vipsVector}`
+    ];
+}
+
+function buildPdfcpuImportArgv(pdfcpuPath, outputPath, pagePaths, geometry) {
+    if (!pagePaths || pagePaths.length === 0) {
+        throw new Error("At least one prepared page is required.");
+    }
+
+    const description = [
+        `dim:${fixed2(geometry.widthPoints)} ${fixed2(geometry.heightPoints)}`,
+        "pos:c",
+        "sc:1 rel"
+    ].join(", ");
+
+    return [pdfcpuPath, "import", "--", description, outputPath].concat(
+        pagePaths
+    );
+}
+
+/*
+ * pdfcpu parses flags with pflag, where a single dash introduces a cluster of
+ * short flags: "-mode strict" is read as "-m ode", and "strict" is then taken
+ * for a filename. The long form must also use "=", because "--mode strict" is
+ * rejected as an unknown flag.
+ */
+function buildPdfcpuValidateArgv(pdfcpuPath, outputPath) {
+    return [pdfcpuPath, "validate", "--mode=strict", outputPath];
+}
+
+/*
+ * After the thumbnail stage every image is sRGB, so an even band count means
+ * an alpha channel is present. The JPEG page saver cannot represent alpha, so
+ * those must be flattened onto the chosen background first.
+ *
+ * This deliberately ignores the file extension: what matters is what the
+ * decoded image actually holds.
+ */
+function hasAlphaBand(bandCount) {
+    const bands = Number(bandCount);
+
+    return bands === GREY_ALPHA_BANDS || bands >= RGB_ALPHA_BANDS;
+}
+
+module.exports = {
+    buildThumbnailArgv,
+    buildPageCountArgv,
+    buildFlattenArgv,
+    buildGravityArgv,
+    buildPdfcpuImportArgv,
+    buildPdfcpuValidateArgv,
+    hasAlphaBand
+};
