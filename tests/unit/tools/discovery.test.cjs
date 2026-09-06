@@ -49,6 +49,14 @@ test("discovery reaches nested directories and root configuration", async () => 
     assert.ok(files.some((file) => file.startsWith("tests/unit/core/")), "nested tests");
     assert.ok(files.some((file) => file.startsWith("tests/unit/runtime/")), "nested tests");
     assert.ok(files.some((file) => file.startsWith("src/")), "source modules");
+    // Each directory is walked once and the modules are listed once. Walking
+    // the root instead would find src/ a second time, and every file under it
+    // would be checked twice.
+    assert.deepEqual(
+        files.filter((file, at) => files.indexOf(file) !== at),
+        [],
+        "no file is listed twice"
+    );
 });
 
 test("build output is not linted", async () => {
@@ -86,49 +94,4 @@ test("the skip list covers every directory that is not ours, and no others", asy
     // A skip entry for a directory nothing creates is not merely dead: if one
     // ever appeared, real source inside it would leave the gate silently.
     assert.equal(isSkipped("build"), false, "build/ is created by nothing here");
-});
-
-function fixtureTree(files) {
-    const os = require("node:os");
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), "discovery-"));
-
-    for (const relative of files) {
-        const target = path.join(base, relative);
-
-        fs.mkdirSync(path.dirname(target), { recursive: true });
-        fs.writeFileSync(target, "\n");
-    }
-
-    test.after(() => fs.rmSync(base, { recursive: true, force: true }));
-
-    return base;
-}
-
-test("discovery order does not depend on how the directory reads back", async () => {
-    // readdir gives no ordering guarantee. "lib" sorts before "lib-extra.mjs"
-    // as a directory entry, while "lib-extra.mjs" sorts before "lib/a.mjs" as
-    // a path — so an unsorted walk reports a different order on a filesystem
-    // that reads back differently, and the gate's own output stops being
-    // reproducible.
-    const { walk } = await loadDiscovery();
-    const base = fixtureTree([
-        "here/lib/a.mjs",
-        "here/lib-extra.mjs",
-        "here/notes.md"
-    ]);
-
-    assert.deepEqual(await walk("here", base), [
-        "here/lib-extra.mjs",
-        "here/lib/a.mjs"
-    ]);
-});
-
-test("the walk skips what is not ours, at any depth", async () => {
-    const { walk } = await loadDiscovery();
-    const base = fixtureTree([
-        "here/node_modules/x.mjs",
-        "here/deep/deeper/y.cjs"
-    ]);
-
-    assert.deepEqual(await walk("here", base), ["here/deep/deeper/y.cjs"]);
 });

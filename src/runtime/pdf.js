@@ -62,13 +62,21 @@ function createCombinedPdf(job, imageFiles) {
         outputNameForCombined(job.timestamp)
     );
 
+    // Removed only while it is still disposable. Once createAndValidatePdf
+    // returns, the staged file is a finished PDF and publication owns it.
+    let validated = false;
+
     try {
         createAndValidatePdf(job, stagedPath, preparePages(job, imageFiles));
+        validated = true;
         publishPdf(job.app, stagedPath, finalPath);
 
         return { outputs: [finalPath], failures: [] };
     } catch (error) {
-        removeFile(job.app, stagedPath);
+        if (!validated) {
+            removeFile(job.app, stagedPath);
+        }
+
         throw error;
     }
 }
@@ -78,23 +86,34 @@ function createCombinedPdf(job, imageFiles) {
  * run continues.
  */
 function createSeparatePdf(job, imageFile, index) {
-    const { finalPath, stagedPath } = resolveOutputPaths(
-        job,
-        dirname(imageFile.path),
-        outputNameForSeparate(imageFile, job.timestamp)
-    );
+    // Naming is inside the boundary: resolving an output path can fail, and
+    // outside the try that failure escapes the per-image result and abandons
+    // the rest of the batch.
+    let stagedPath = "";
+    let validated = false;
 
     try {
+        const { finalPath, stagedPath: staged } = resolveOutputPaths(
+            job,
+            dirname(imageFile.path),
+            outputNameForSeparate(imageFile, job.timestamp)
+        );
+
+        stagedPath = staged;
+
         withImageName(imageFile, () => {
             createAndValidatePdf(job, stagedPath, [
                 preparePage(job, imageFile, index)
             ]);
+            validated = true;
             publishPdf(job.app, stagedPath, finalPath);
         });
 
         return { output: finalPath, failure: "" };
     } catch (error) {
-        removeFile(job.app, stagedPath);
+        if (!validated) {
+            removeFile(job.app, stagedPath);
+        }
 
         return { output: "", failure: errorMessage(error) };
     }

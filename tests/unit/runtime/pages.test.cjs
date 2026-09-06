@@ -3,28 +3,9 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { preparePage, preparePages } = require("../../../src/runtime/pages.js");
-const { calculatePageGeometry } = require("../../../src/core/geometry.js");
 const { createFakeApp, failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
-
-const geometry = calculatePageGeometry({
-    paperSize: "A4",
-    orientation: "Portrait",
-    dpi: 72,
-    quality: 85,
-    mode: "Single PDF",
-    background: "#FFFFFF"
-});
-
-function makeJob(app) {
-    return {
-        app,
-        geometry,
-        settings: { quality: 85, background: "#FFFFFF" },
-        workspace: "/tmp/ImageFilesToPDF.X",
-        tools: { vips: "/v/vips", vipsheader: "/v/vipsheader", pdfcpu: "/v/pdfcpu" }
-    };
-}
+const { makeJob } = require("./fake-job.cjs");
 
 test("an opaque image skips the flatten stage", () => {
     const app = createFakeApp([["'bands'", "3"]]);
@@ -52,7 +33,7 @@ test("an image with alpha is flattened onto the background first", () => {
     );
 });
 
-test("the thumbnail stage is ICC aware and never upscales", () => {
+test("the thumbnail stage is ICC aware and sized to the placement", () => {
     const app = createFakeApp([["'bands'", "3"]]);
 
     preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0);
@@ -60,7 +41,10 @@ test("the thumbnail stage is ICC aware and never upscales", () => {
     const thumbnail = app.commands.find((command) => command.includes("'thumbnail'"));
 
     assert.match(thumbnail, /--export-profile=srgb/u);
-    assert.match(thumbnail, /--size=down/u);
+    // The size is the placement, computed from the source dimensions, so no
+    // fitting flag is passed: --size=down here would refuse the enlargement
+    // that keeps the picture the same physical size at every resolution.
+    assert.ok(!/--size=/u.test(thumbnail), thumbnail);
 });
 
 test("intermediates are removed even when a stage fails", () => {
@@ -84,10 +68,12 @@ test("a stage that reports success but writes nothing is detected", () => {
     // verifyFileWritten exists to catch.
     for (const [stage, label] of [
         ["'thumbnail'", "prepared image"],
+        ["'flatten'", "flattened image"],
         ["'gravity'", "prepared page image"]
     ]) {
         const app = createFakeHost({
             files: ["/a/x.png"],
+            bands: 4,
             failures: [[stage, ""]]
         });
 

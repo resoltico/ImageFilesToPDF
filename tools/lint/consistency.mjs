@@ -113,9 +113,36 @@ export async function checkReleaseTag(tag, read = readFromDisk) {
  * second copy of the same prose is a second thing to keep in agreement, and
  * this repository has been bitten by exactly that before.
  */
+/*
+ * The one address the artifact carries out of this repository.
+ *
+ * The banner is generated from package.json, so it cannot drift on its own --
+ * but the documents a user reads state the same address in prose, and a stale
+ * URL in the file someone follows is worse than none. package.json declares it
+ * in two forms as npm requires, and both are compared here in the plain one.
+ */
+const PROJECT_URL =
+    /(?<value>https:\/\/github\.com\/[\w.-]+\/[\w.-]+)/u;
+
+const asBrowsableUrl = (declared) => String(declared)
+    .replace(/^git\+/u, "")
+    .replace(/\.git$/u, "");
+
+export async function checkRepositoryUrl(read = readFromDisk) {
+    const packageJson = JSON.parse(await read("package.json"));
+
+    return assertAll("repository URLs", [
+        ["package.json homepage", packageJson.homepage],
+        ["package.json repository", asBrowsableUrl(packageJson.repository.url)],
+        extract(await read("README.md"), PROJECT_URL, "README.md"),
+        extract(await read("INSTALL.txt"), PROJECT_URL, "INSTALL.txt")
+    ]);
+}
+
 export async function checkConsistency(read = readFromDisk) {
     const version = await checkVersion(read);
     const node = await checkNodeVersion(read);
+    const url = await checkRepositoryUrl(read);
 
-    return `version ${version}, node ${node}`;
+    return `version ${version}, node ${node}, ${url}`;
 }

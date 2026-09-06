@@ -76,62 +76,43 @@ test("a file over the size limit is rejected", async () => {
     );
 });
 
-test("a production module may not name an executable directly", async () => {
-    // The action's external surface is written down in one module. Naming a
-    // binary anywhere else means the surface has to be reassembled by reading
-    // five files, which is how it drifted out of anyone's view before.
-    const { checkContent } = await loadRules();
+test("the file that is parsed is the file that is read", async () => {
+    // Two paths built separately could diverge, and the gate would then be
+    // parsing one file and applying its structural rules to another.
+    const { checkSourceFile } = await loadRules();
+    const parsed = [];
 
-    assert.throws(
-        () => checkContent("src/runtime/pages.js", 'runArgv(a, ["/bin/cp", x]);\n'),
-        /names \/bin\/cp directly; every executable belongs in/u
+    await checkSourceFile(
+        "src/core/paths.js",
+        (...args) => parsed.push(args),
+        (absolute, encoding) => {
+            assert.equal(absolute, parsed[0][1][1], "the same path, both times");
+            assert.equal(encoding, "utf8", "text, not bytes");
+
+            return Promise.resolve("const value = 1;\n");
+        }
     );
-    assert.throws(
-        () => checkContent(
-            "src/core/commands.js",
-            'const tool = "/opt/homebrew/bin/ghostscript";\n'
+
+    assert.equal(parsed.length, 1);
+    assert.match(parsed[0][1][1], /\/src\/core\/paths\.js$/u);
+    // Inherited, so a syntax error is printed where the person running the
+    // gate can read it; the running Node, so the parse is the one that counts.
+    assert.deepEqual(parsed[0], [
+        process.execPath,
+        ["--check", parsed[0][1][1]],
+        { stdio: "inherit" }
+    ]);
+});
+
+test("the structural rules are applied to what was read", async () => {
+    const { checkSourceFile } = await loadRules();
+
+    await assert.rejects(
+        () => checkSourceFile(
+            "src/core/paths.js",
+            () => undefined,
+            () => Promise.resolve('const tool = "/bin/cp";\n')
         ),
-        /ghostscript/u
-    );
-});
-
-test("the module that owns them may name them, and tests may too", async () => {
-    const { checkContent } = await loadRules();
-
-    assert.doesNotThrow(
-        () => checkContent("src/core/executables.js", 'const MV = "/bin/mv";\n')
-    );
-    // A fixture path in a test is an assertion, not an invocation.
-    assert.doesNotThrow(
-        () => checkContent(
-            "tests/unit/core/commands.test.cjs",
-            'buildArgv("/opt/homebrew/bin/vips");\n'
-        )
-    );
-});
-
-test("every executable named in a file is reported, not just the first", async () => {
-    const { executablePathsIn } = await loadRules();
-
-    assert.deepEqual(
-        executablePathsIn('["/bin/mv", "/usr/bin/stat", "/bin/mv"]'),
-        ["/bin/mv", "/usr/bin/stat"]
-    );
-    assert.deepEqual(executablePathsIn("no paths here"), []);
-    // A path that is not an executable location is not one of these.
-    assert.deepEqual(executablePathsIn('"/Users/someone/photo.png"'), []);
-});
-
-test("a production module with no executable in it passes", async () => {
-    // Without this, the rule could reject every file under src/ and the other
-    // tests would still pass: each of them either expects a rejection or
-    // takes the early return for a path outside src/.
-    const { checkContent } = await loadRules();
-
-    assert.doesNotThrow(
-        () => checkContent("src/runtime/pages.js", "const value = 1;\n")
-    );
-    assert.doesNotThrow(
-        () => checkContent("src/core/geometry.js", 'const label = "output";\n')
+        /names \/bin\/cp directly/u
     );
 });

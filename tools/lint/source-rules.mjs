@@ -114,10 +114,19 @@ export function checkContent(relativePath, content) {
     checkSize(relativePath, content);
 }
 
-export async function checkSourceFile(relativePath) {
+/*
+ * Parsed by the same Node that will parse it in anger, then read as text for
+ * the structural rules. Both halves address the same file: checking one path
+ * and reading another would pass a file nobody looked at.
+ */
+export async function checkSourceFile(
+    relativePath,
+    exec = execFileSync,
+    read = readFile
+) {
     const absolute = path.join(root, relativePath);
 
-    execFileSync(process.execPath, ["--check", absolute], { stdio: "inherit" });
+    exec(process.execPath, ["--check", absolute], { stdio: "inherit" });
 
-    checkContent(relativePath, await readFile(absolute, "utf8"));
+    checkContent(relativePath, await read(absolute, "utf8"));
 }

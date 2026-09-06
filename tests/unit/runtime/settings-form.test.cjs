@@ -45,6 +45,14 @@ test("the form's answers become the settings", () => {
         /Choose how the pages are built/u,
         "the first form has nothing to complain about yet"
     );
+
+    // The first form opens on the defaults rather than on nothing: an empty
+    // row has no selection to answer with and nothing to leave alone.
+    assert.deepEqual(
+        present.seen[0].rows.map((row) => [row.key, row.value, row.invalid]),
+        Object.entries(defaultAnswers())
+            .map(([key, value]) => [key, value, false])
+    );
 });
 
 test("a bad answer redisplays the form with the problem and the rest intact", () => {
@@ -81,13 +89,19 @@ test("without AppKit the stepwise dialogs still collect the settings", () => {
     // The fallback exists because the form displaying is a fact about this
     // macOS, not a promise about the next one.
     const host = createFakeHost({});
+    const attempts = [];
     const refuse = () => {
+        attempts.push("presented");
+
         throw new Error("the form must not be reached without a bridge");
     };
     const settings = collectSettings(host, null, refuse);
 
     assert.equal(settings.paperSize, "A4");
     assert.ok(host.listPrompts.length > 0, "the dialogs must have been used");
+    // Not attempted and then recovered from: without AppKit there is nothing
+    // to present to, and trying is how a run dies in a way no one can see.
+    assert.deepEqual(attempts, []);
 });
 
 test("a form that cannot present falls back rather than failing the run", () => {

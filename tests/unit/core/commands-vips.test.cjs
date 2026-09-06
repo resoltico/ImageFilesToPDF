@@ -24,7 +24,7 @@ test("the thumbnail stage is ICC aware and never upscales", () => {
         "/opt/homebrew/bin/vips",
         "/tmp/in file.png",
         "/tmp/stage.v",
-        geometry
+        { widthPixels: 1240, heightPixels: 827 }
     );
 
     assert.deepEqual(argv, [
@@ -32,22 +32,27 @@ test("the thumbnail stage is ICC aware and never upscales", () => {
         "thumbnail",
         "/tmp/in file.png",
         "/tmp/stage.v",
-        "2480",
-        "--height=3508",
-        "--size=down",
+        "1240",
+        "--height=827",
         "--export-profile=srgb"
     ]);
 });
 
-test("the thumbnail stage carries both regression guards", () => {
-    const argv = buildThumbnailArgv("vips", "a.png", "b.v", geometry);
+test("the thumbnail stage is sized to the placement, not the sheet", () => {
+    // Sizing to the sheet is what made the resolution setting move the
+    // picture. The target is the placement, which is already capped at the
+    // image's natural size, so no fitting flag is needed or wanted here.
+    const argv = buildThumbnailArgv("vips", "a.png", "b.v", {
+        widthPixels: 300,
+        heightPixels: 200
+    });
 
     // Without --export-profile, embedded ICC profiles are ignored and
     // Display P3 or Adobe RGB sources shift colour.
     assert.ok(argv.includes("--export-profile=srgb"));
-    // With --size=both, an image smaller than the page is upscaled to fill it.
-    assert.ok(!argv.includes("--size=both"));
-    assert.ok(argv.includes("--size=down"));
+    assert.ok(argv.includes("300"));
+    assert.ok(argv.includes("--height=200"));
+    assert.ok(!argv.some((argument) => argument.startsWith("--size=")));
 });
 
 test("flatten composites onto the chosen background", () => {

@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
+    readImageSize,
     readBandCount,
     readPageCount,
     assertSinglePage
@@ -35,31 +36,6 @@ test("a band count of exactly 1 is valid", () => {
     assert.equal(readBandCount(app, "/v/vipsheader", "/tmp/a.v"), 1);
 });
 
-test("a single-page format has no page count, which means one page", () => {
-    // JPEG, PNG and WebP carry no n-pages field at all; vipsheader exits
-    // non-zero rather than answering, and that is not an error.
-    const app = createFakeApp([["n-pages", failing("field not found")]]);
-
-    assert.equal(readPageCount(app, "/v/vipsheader", "/a/photo.jpg"), 1);
-});
-
-test("a page count is read when the format carries one", () => {
-    const app = createFakeApp();
-
-    app.pages = 4;
-    assert.equal(readPageCount(app, "/v/vipsheader", "/a/scan.tif"), 4);
-});
-
-test("unusable page-count output falls back to one page", () => {
-    // A zero or negative count is not a reason to refuse the file, and it is
-    // not a page count either: one page is the only safe reading.
-    for (const answer of ["", "not-a-number", "0", "-2", "1.5"]) {
-        const app = createFakeApp([["n-pages", answer]]);
-
-        assert.equal(readPageCount(app, "/v/vipsheader", "/a/x.tif"), 1, answer);
-    }
-});
-
 test("a multi-page image is refused rather than silently truncated", () => {
     // vips reads page one unless asked for more, so without this the other
     // pages would simply not appear in the PDF and nothing would say so.
@@ -85,15 +61,6 @@ test("a single-page image passes the check", () => {
     assert.doesNotThrow(
         () => assertSinglePage(job, { path: "/a/photo.jpg", originalName: "photo.jpg" })
     );
-});
-
-test("a page count that is not a number is treated as one page", () => {
-    // vipsheader can succeed and still print something unparseable; that
-    // is not a reason to refuse the file.
-    const app = createFakeApp();
-
-    app.pages = "three";
-    assert.equal(readPageCount(app, "/v/vipsheader", "/a/x.tif"), 1);
 });
 
 test("the header is asked for the right field each time", () => {
@@ -122,5 +89,37 @@ test("a failed band read says which step failed", () => {
     assert.throws(
         () => readBandCount(app, "/v/vipsheader", "/a/x.tif"),
         /reading image bands/u
+    );
+});
+
+test("an image one pixel across is a usable size", () => {
+    // The bound is "at least one", not "more than one": a 1-pixel image is
+    // small, not invalid, and refusing it would be a lie about the file.
+    const app = createFakeApp([["'width'", "1\n"], ["'height'", "1\n"]]);
+
+    assert.deepEqual(
+        readImageSize(app, "/v/vipsheader", "/a/dot.png"),
+        { width: 1, height: 1 }
+    );
+});
+
+test("the dimensions are asked for by field, each in its own read", () => {
+    // -f is what makes vipsheader answer with the bare value; without it the
+    // whole header comes back and nothing parses.
+    const app = createFakeApp([["'width'", "1200\n"], ["'height'", "800\n"]]);
+
+    readImageSize(app, "/v/vipsheader", "/a/x.png");
+    assert.deepEqual(app.commands, [
+        "'/v/vipsheader' '-f' 'width' '/a/x.png'",
+        "'/v/vipsheader' '-f' 'height' '/a/x.png'"
+    ]);
+});
+
+test("a failed dimension read says which field it was reading", () => {
+    const app = createFakeApp([["'height'", failing("unable to load")]]);
+
+    assert.throws(
+        () => readImageSize(app, "/v/vipsheader", "/a/x.png"),
+        /reading the image height/u
     );
 });

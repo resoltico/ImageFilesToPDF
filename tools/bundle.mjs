@@ -9,13 +9,31 @@
  * where osascript can find it.
  */
 import path from "node:path";
+import { parseScript } from "./javascript.mjs";
+import { exciseRanges } from "./excise.mjs";
+import { moduleSyntaxIn, declaredNames } from "./commonjs.mjs";
 
-const REQUIRE_PATTERN =
-    /^const \{[\s\S]*?\} = require\("(?<target>[^"]+)"\);\n/gmu;
-const EXPORTS_PATTERN = /\nmodule\.exports = \{[\s\S]*?\};\n?$/u;
-const USE_STRICT_PATTERN = /^"use strict";\n+/u;
-const TOP_LEVEL_DECLARATION =
-    /^(?:function|const|let|var)\s+(?<name>[A-Za-z_$][\w$]*)/gmu;
+/*
+ * The comment that says which source module the code below came from.
+ *
+ * Produced here and named here, so the strip step can be told exactly which
+ * comments to keep rather than recognising them by their shape. A shape has to
+ * be described twice and can be changed on one side only; the text itself
+ * cannot.
+ */
+function sectionTextFor(relativePath) {
+    return ` ===== ${relativePath} ===== `;
+}
+
+export function sectionMarkerFor(relativePath) {
+    return `/*${sectionTextFor(relativePath)}*/`;
+}
+
+// What a parser reports as the body of that comment, which is how the strip
+// step is told to keep it.
+export function markerTextsFor(relativePaths) {
+    return new Set(relativePaths.map(sectionTextFor));
+}
 
 function assertBundled(relativePath, requires, seenModules, root) {
     for (const target of requires) {
@@ -50,21 +68,17 @@ function assertStripped(relativePath, body) {
     }
 }
 
-export function stripModuleSyntax(source, relativePath, seenModules, root) {
-    const requires = [];
-    const withoutRequires = source.replace(
-        REQUIRE_PATTERN,
-        (...args) => {
-            requires.push(args.at(-1).target);
-
-            return "";
-        }
+/*
+ * The module's own code: its requires, its exports and its strict directive
+ * removed, and nothing else touched.
+ */
+export function stripModuleSyntax(source, relativePath, bundle) {
+    const { requires, removed } = moduleSyntaxIn(
+        parseScript(source, bundle.ecmaVersion)
     );
-    const body = withoutRequires
-        .replace(USE_STRICT_PATTERN, "")
-        .replace(EXPORTS_PATTERN, "");
+    const body = exciseRanges(source, removed);
 
-    assertBundled(relativePath, requires, seenModules, root);
+    assertBundled(relativePath, requires, bundle.seenModules, bundle.root);
     assertStripped(relativePath, body);
 
     return body.trim();
@@ -74,10 +88,10 @@ export function stripModuleSyntax(source, relativePath, seenModules, root) {
  * The bundle shares one scope, so two modules declaring the same top-level
  * name would silently collide or fail to parse.
  */
-export function recordDeclarations(body, relativePath, declarations) {
-    for (const match of body.matchAll(TOP_LEVEL_DECLARATION)) {
-        const { name } = match.groups;
+export function recordDeclarations(body, relativePath, declarations, ecmaVersion) {
+    const names = parseScript(body, ecmaVersion).body.flatMap(declaredNames);
 
+    for (const name of names) {
         if (declarations.has(name)) {
             throw new Error(
                 `duplicate top-level declaration "${name}" in ` +

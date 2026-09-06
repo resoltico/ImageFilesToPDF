@@ -1,13 +1,12 @@
 "use strict";
 
 const { normalizeInvocationInput, decodeFileUrl } = require("../core/invocation.js");
-const { isSupportedImage, basename } = require("../core/paths.js");
-const { sortImageRecords } = require("../core/ordering.js");
-const { isRegularFile, readTextFile } = require("./shell.js");
+const { readTextFile } = require("./shell.js");
 
 /*
- * Resolution of whatever Shortcuts, Finder, or a headless caller supplies
- * into an ordered list of image files.
+ * Resolving whatever Shortcuts, Finder, or a headless caller supplies into
+ * items this action can look at. Deciding which of them it will convert is
+ * admission.js.
  */
 
 const HEADLESS_MINIMUM_ARGUMENTS = 3;
@@ -67,21 +66,6 @@ function finderSelection() {
     return Application("Finder").selection();
 }
 
-function collectImageFiles(app, inputItems) {
-    const items = inputItems.length > 0 ? inputItems : finderSelection();
-    const records = [];
-
-    for (const item of items) {
-        const path = inputItemToPosixPath(item);
-
-        if (path && isSupportedImage(path) && isRegularFile(app, path)) {
-            records.push({ path, originalName: basename(path) });
-        }
-    }
-
-    return sortImageRecords(records);
-}
-
 function collectInvocation(app, input, headless) {
     const items = normalizeInvocationInput(input);
 
@@ -111,6 +95,5 @@ function collectInvocation(app, input, headless) {
 module.exports = {
     inputItemToPosixPath,
     finderSelection,
-    collectImageFiles,
     collectInvocation
 };

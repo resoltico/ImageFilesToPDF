@@ -63,8 +63,8 @@ async function workflowFiles() {
     return selectWorkflows(await readdir(path.join(root, WORKFLOW_ROOT)));
 }
 
-function probeActionlint() {
-    execFileSync("actionlint", ["--version"], { stdio: "ignore" });
+export function probeActionlint(exec = execFileSync) {
+    exec("actionlint", ["--version"], { stdio: "ignore" });
 }
 
 export function hasActionlint(probe = probeActionlint) {
@@ -85,6 +85,14 @@ export function hasActionlint(probe = probeActionlint) {
  * It is optional in the same way shellcheck is: the gate must stay runnable on
  * a machine that does not have it, and CI installs it.
  */
+/*
+ * Workflows live in one place and are text, not bytes: read as a Buffer the
+ * pinning patterns would match nothing and every workflow would look clean.
+ */
+export function readWorkflow(file, read = readFile) {
+    return read(path.join(root, WORKFLOW_ROOT, file), "utf8");
+}
+
 export function runActionlint(files, exec = execFileSync) {
     exec("actionlint", files, { stdio: "inherit" });
 }
@@ -98,10 +106,10 @@ export async function checkWorkflows(options = {}) {
 
     assertWorkflowsFound(found);
 
+    const read = options.read ?? readWorkflow;
+
     await Promise.all(found.map(async (file) => {
-        assertPinned(file, options.read
-            ? await options.read(file)
-            : await readFile(path.join(root, WORKFLOW_ROOT, file), "utf8"));
+        assertPinned(file, await read(file));
     }));
 
     if (!available) {

@@ -8,7 +8,12 @@
   "mutate": [
     "src/**/*.js",
     "tools/lint/**/*.mjs",
-    "tools/bundle.mjs"
+    "tools/bundle.mjs",
+    "tools/banner.mjs",
+    "tools/strip-comments.mjs",
+    "tools/javascript.mjs",
+    "tools/excise.mjs",
+    "tools/commonjs.mjs"
   ],
   "reporters": [
     "html",
@@ -27,13 +32,13 @@
   },
   "_comment_incremental": "Incremental mode is off: a full run takes about half a minute with per-test analysis, so the complexity and the risk of a stale incremental report are not worth it.",
   "thresholds": {
-    "high": 98,
-    "low": 94,
-    "break": 92
+    "high": 99,
+    "low": 97,
+    "break": 96
   },
   "tempDirName": ".stryker-tmp",
   "timeoutMS": 20000,
-  "_comment_thresholds": "Measured 95.0-95.1% on 2026-09-05. break sits a few points below so an ordinary change cannot fail on noise, while a real drop in test strength does; the score varies a little because a timed-out mutant counts as killed. Ratchet it up as the score improves.",
+  "_comment_thresholds": "Measured 97.8-98.0% on 2026-09-06. break sits a couple of points below so an ordinary change cannot fail on noise, while a real drop in test strength does; the score varies a little because a timed-out mutant counts as killed. Ratchet it up as the score improves.",
   "tap": {
     "nodeArgs": [
       "--test-reporter=tap"

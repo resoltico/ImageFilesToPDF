@@ -102,12 +102,25 @@ jobs:
       - name: Reverify the downloaded artifact
         working-directory: dist
         run: shasum --check SHA256SUMS
-      # Attesting the manifest attests everything it lists, which is the
-      # artifact and the manifest's own agreement with it.
+      # Every file this release offers, each one a subject in its own right.
+      # Attesting the manifest alone would cover what the manifest lists --
+      # the artifact -- and leave the manifest and the instructions uncovered,
+      # while all three are things a person downloads and acts on.
       - name: Attest the artifact
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-checksums: dist/SHA256SUMS
+          subject-path: |
+            dist/Image Files to PDF.jxa
+            dist/SHA256SUMS
+            INSTALL.txt
+      # Verified here rather than trusted: an attestation that does not verify
+      # is worth less than none, because it is the thing a user is told to
+      # check. Before the release exists, so a failure publishes nothing.
+      - name: Verify the attestation before publishing
+        run: |
+          for subject in "dist/Image Files to PDF.jxa" dist/SHA256SUMS INSTALL.txt; do
+            gh attestation verify "$subject" --repo "$GITHUB_REPOSITORY"
+          done
       # A tag can be moved after it is pushed. This proves the tag still
       # resolves to the commit this run was started for, and --verify-tag
       # makes the release itself refuse a tag that has since changed.

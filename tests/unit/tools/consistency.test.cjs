@@ -72,10 +72,13 @@ test("each file that states the Node version is compared", async () => {
         )));
 });
 
-test("checkConsistency summarises both facts", async () => {
+test("checkConsistency summarises every fact it agreed", async () => {
     const { checkConsistency } = await loadConsistency();
 
-    assert.equal(await checkConsistency(fakeRepo()), "version 1.2.3, node 26.8.1");
+    assert.equal(
+        await checkConsistency(fakeRepo()),
+        "version 1.2.3, node 26.8.1, https://github.com/someone/Project"
+    );
 });
 
 test("a file that no longer states the fact is an error", async () => {
@@ -99,8 +102,13 @@ test("a file the gate depends on going missing is explained, not thrown raw", as
     await assert.rejects(
         () => readFromDisk("INSTALL.md"),
         (error) => {
-            assert.match(error.message, /INSTALL\.md is missing/u);
-            assert.match(error.message, /consistency\.mjs/u);
+            // Whole: the point is to say what to do next, and the last
+            // clause is the reason the file is not simply renamed.
+            assert.equal(error.message,
+                "INSTALL.md is missing, and the gate checks it for the " +
+                "version or the Node pin. If it was renamed, update " +
+                "tools/lint/consistency.mjs as well; INSTALL.txt in " +
+                "particular is deliberately plain text.");
             assert.ok(!/ENOENT/u.test(error.message));
 
             return true;

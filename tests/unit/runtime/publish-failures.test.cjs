@@ -72,14 +72,21 @@ test("when both ways are refused, the error says what each said", () => {
     });
 });
 
-test("a failed publication leaves no partial behind", () => {
+test("a failed publication keeps the finished PDF and says where", () => {
+    // It has been imported and validated by this point. Deleting it destroys
+    // completed work over a failure that has nothing to do with its contents.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
         failures: refusing("/bin/mv", "/bin/cp")
     });
 
-    assert.throws(() => publishPdf(host, "/a/p.pdf", "/a/out.pdf"));
-    assert.ok(!host.files.has("/a/p.pdf"), "the partial must be removed");
+    assert.throws(() => publishPdf(host, "/a/p.pdf", "/a/out.pdf"), (error) => {
+        assert.match(error.message, /The finished PDF has been kept here:/u);
+        assert.match(error.message, /\/a\/p\.pdf/u);
+
+        return true;
+    });
+    assert.ok(host.files.has("/a/p.pdf"), "the finished PDF must survive");
 });
 
 test("a published file that is empty is still a failure", () => {

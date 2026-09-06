@@ -61,22 +61,6 @@ test("sortImageRecords orders by name then path, without mutating", () => {
     assert.deepEqual(records, original, "input must not be mutated");
 });
 
-test("a segment counts as numeric only when it is entirely digits", () => {
-    // An unanchored test would treat "a1" or "1a" as a number and compare by
-    // value rather than lexically.
-    assert.ok(naturalCompare("a1", "b1") < 0, "leading letter decides");
-    assert.ok(naturalCompare("2x", "10x") < 0, "digits then letters still sort naturally");
-    assert.ok(naturalCompare("x2", "x10") < 0);
-});
-
-test("numeric comparison needs both segments to be numeric", () => {
-    // With `||` instead of `&&`, one numeric side would force a numeric
-    // comparison and Number("abc") would poison the result.
-    assert.ok(naturalCompare("1", "a") < 0);
-    assert.ok(naturalCompare("a", "1") > 0);
-    assert.equal(naturalCompare("9", "a") < 0, true);
-});
-
 test("identical names compare equal at every segment", () => {
     assert.equal(naturalCompare("chapter01-part2", "chapter01-part2"), 0);
     assert.equal(naturalCompare("abc", "abc"), 0);

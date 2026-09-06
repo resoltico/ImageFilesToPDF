@@ -8,6 +8,8 @@ The production artifact is one generated JavaScript for Automation (JXA) file
 that is pasted into Shortcuts. Node.js is a development-only tool. It is not
 used by the Quick Action.
 
+Source, releases and build attestation: https://github.com/resoltico/ImageFilesToPDF
+
 ## Requirements
 
 **macOS 12.3 or later.**
@@ -83,7 +85,7 @@ inside `ShortcutsMacHelper` showed a real `NSAlert` with an accessory view
 presenting and being answered, without raising the process activation policy
 and so without a Dock icon appearing mid-action.
 
-That is a fact about the macOS 27.0, not a promise about the next one, so the
+That is a fact about macOS 15.7, not a promise about the next one, so the
 stepwise dialogs remain as a live fallback. If AppKit cannot be reached, or
 the form cannot be presented, the action asks the same six questions one at a
 time and works exactly as before.
@@ -111,8 +113,9 @@ called.
 
 For every source image, the runtime:
 
-1. fits the image proportionally within the selected page and converts it to
-   sRGB in a single `vips thumbnail` stage;
+1. reads the source's pixel dimensions, works out where it sits on the page,
+   and fits it to that placement while converting to sRGB, in a single
+   `vips thumbnail` stage;
 2. flattens an alpha channel onto the chosen background when the decoded image
    has one;
 3. centres the image on an exact page-sized canvas and saves a
@@ -135,9 +138,16 @@ embedded profile and silently shifts those colours — a pure red reproduces as
 
 ### Scaling
 
-The resize stage passes `--size=down`, so an image smaller than the page is
-centred at its native size rather than being upscaled to fill the page.
+Where an image sits on the page is decided in points, from the image's own
+pixel dimensions, before any raster exists: one source pixel is one point, and
+that natural size is scaled down to fit the page and never enlarged beyond it.
 Upscaling invents pixels, and produces a blurry page and a much larger file.
+
+Deciding it from the pixel canvas instead makes the resolution setting move the
+picture. The same photograph covered 102 mm across at 300 DPI and 51 mm at 600,
+because a higher resolution made the page a larger number of pixels while the
+image stayed the same number of pixels. Measured after the change, one image
+covers 210.3 × 140.4 mm at 150, 300 and 600 DPI alike.
 
 ### Page size
 
@@ -148,8 +158,25 @@ derived from them, so the published size never drifts with the DPI setting.
 ## Knowing which build is installed
 
 A Shortcut holds a pasted copy of the artifact, which cannot be checked against
-`dist/SHA256SUMS`. The completion dialog therefore ends with the version, so
-what is actually running can always be identified.
+`dist/SHA256SUMS`. Two things identify it anyway: the completion dialog ends
+with the version, and the pasted text opens with a header naming the version,
+the repository it was built from, and the licence. Comments are stripped from
+the artifact on build, so that header is the one thing in it that is prose.
+
+## Verifying a download
+
+Every file a release offers — the artifact, the checksum manifest and
+`INSTALL.txt` — is signed with a GitHub build attestation, which records that
+this repository's release workflow built it from a specific commit:
+
+```sh
+gh attestation verify "Image Files to PDF.jxa" --repo resoltico/ImageFilesToPDF
+shasum --check SHA256SUMS
+```
+
+The artifact is rebuilt on a clean runner during the release and required to
+reproduce the committed bytes exactly, so what is signed is both built by CI
+and identical to what is in the repository.
 
 ## Working on it
 
@@ -162,5 +189,6 @@ npm run release
 ```
 
 The released artifact has no dependencies of its own beyond `vips` and
-`pdfcpu`. ESLint and Stryker are development dependencies, pinned to exact
-versions, and neither reaches the artifact.
+`pdfcpu`. ESLint, Stryker and acorn — which the build uses to find what it
+removes — are development dependencies, pinned to exact versions, and none of
+them reaches the artifact.

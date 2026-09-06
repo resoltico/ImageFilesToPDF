@@ -43,6 +43,92 @@ once, a tool present but too old for `--mode=strict` or `--export-profile`, a
 probe that cannot run at all, and a machine without Homebrew. The tests also
 assert that no dialog is shown before the checks complete.
 
+## What the artifact says about itself
+
+The artifact leaves this repository: it is pasted into a Shortcuts action and
+travels with whoever exports that. Its header is therefore the only place it
+can state what it is, whose it is, and where it came from — and the build is
+attested on GitHub, which is not checkable by someone holding a file that does
+not name its repository.
+
+Nothing in the header is typed twice. The version and URL come from
+`package.json`, the copyright line from `LICENSE`, and the macOS floor from
+`tools/release.mjs`. The URL is stated in four places — both npm forms, the
+README and INSTALL.txt — and the gate refuses them if they disagree, because a
+stale address in the file a user follows is worse than no address.
+
+Verified to fail: a README naming a different repository, and a `LICENSE` that
+no longer carries a copyright line to quote.
+
+## Comments in the artifact
+
+Comments are removed on build, which takes the artifact from about 90 KB to
+about 57 KB. What a user pastes into Shortcuts has an unknown ceiling, and the
+explanations live in the sources the header points at.
+
+The parser decides what a comment is. A regex cannot: a double slash inside a
+string, or a slash-star inside a character class, is not a comment, and a
+stripper that takes one for a comment produces a file that still parses and
+behaves differently — on someone else's Mac, inside Shortcuts, where nothing
+can be attached to it.
+
+The same reasoning applies to the assembly itself. A module's `require` lines,
+its `module.exports` and its strict directive are found in the syntax tree,
+not by matching lines, so what the build recognises does not depend on how the
+sources happen to be formatted — an indented require, an export that is not
+the last thing in the file, two spaces after `function`. Only the destructured
+form of a require is removed: the bundle shares one scope, so
+`const { a } = require("./b.js")` needs no binding at all, while
+`const b = require("./b.js")` would bind to an exports object that does not
+exist once the modules are concatenated. Anything else mentioning `require` or
+`module.exports` is left where it is and refused by name.
+
+Every acorn call lives in `tools/javascript.mjs`, the CommonJS shapes in
+`tools/commonjs.mjs`, and the removal itself in `tools/excise.mjs`, which both
+the comment strip and the bundler use. The ECMAScript version is passed in from
+the floor rather than copied beside it.
+
+What goes is removed by byte range, so every surviving byte is exactly what the
+bundler emitted. A minifier reprints from a syntax tree instead, renormalising
+quotes and parentheses; the executables check greps the artifact for its
+binaries by their quoted form, so that is not a free change.
+
+A removed comment takes the whitespace in front of it, and, when it had the
+line to itself, the rest of that line. Nothing reads a line it does not already
+own: the whitespace around a comment is outside every literal by construction,
+whereas collapsing runs of blank lines afterwards reads every line in the file
+— including the ones inside a multi-line template literal, where a blank line
+is a character of somebody's output. Blank lines the sources wrote survive
+exactly as written, which is why a comment's former position shows as one.
+
+The comments that survive are **named, not recognised**. The build hands the
+strip step the exact text of the comments it generated, so the side that writes
+them is the side that decides what is kept — a shape has to be described twice
+and can be changed on one side alone. The marker itself is declared once, in
+`tools/bundle.mjs`, and both the render and the keep-set are derived from it.
+
+The build then asserts that the stripped text has the same token sequence as
+the text it came from. Two texts with the same tokens differ only in what the
+parser discards, so this is program equivalence rather than a spot check, and
+it runs during the build: a stripped artifact that is not the same program
+cannot reach the disk.
+
+`check-dist` is unaffected. It proves the artifact is exactly what the build
+produces from `src/`, and stripping is part of that build.
+
+A repository-level test asserts the whole property against the real render:
+every comment in the built artifact is the banner or exactly one marker per
+bundled module, in bundle order, and nothing a source file wrote. It is
+independent of the marker's format, so changing that format on one side alone
+fails rather than silently shipping an artifact with no markers.
+
+Verified to fail: a stripper that drops a token, adds one, or changes one; a
+comment opener inside a string, a character class or a template literal; a
+comment that only resembles a section marker; a marker format changed on the
+producing side alone; the keep-set stopping being honoured; a comment's leading
+or trailing gap being left behind; code following a block comment with no space
+between them; and the verification itself not being reached.
+
 ## The action's external surface
 
 Every binary the action runs is named in `src/core/executables.js` and nowhere
@@ -75,6 +161,50 @@ dead: in the discovery walk, source inside it would leave the gate silently.
 Verified to fail: `dist`, `dist/` or `/dist` in the ignore file, and any of
 the generated directories missing from it.
 
+## The documents
+
+The prose was the one part of this repository nothing read, and `npm run lint`
+found `CONTRIBUTING.md` carrying its own opening spliced into the middle of a
+sentence. A script had put it there: in a JavaScript replacement string a
+dollar followed by a backtick means "everything before the match", so writing a
+backtick-dollar-backtick into a file through `String.replace` inserts the
+file's own prefix. Nobody noticed, because prose is read in pieces.
+
+Only what a machine can be sure of is checked. Every Markdown document must
+have exactly one top-level heading and open with it, and no section may repeat
+in the same place — which is the shape that kind of damage takes. A heading is
+compared with the headings it sits under, not on its own: a Keep a Changelog
+file repeats "### Fixed" under every release that fixed something, and a rule
+that refused the second release is a rule somebody weakens under pressure.
+
+The documents are found by the same walk that finds the source, which skips
+what the toolchain generates — `.stryker-tmp` holds a copy of this whole
+repository, and a walk that descended into it would check the sandbox's files
+as though they were the repository's own. INSTALL.txt and LICENSE are held to
+the hygiene rules too: the first ships in the release and the second is quoted
+into the artifact's header, so a splice into either would be as invisible as
+the one that started this. A repository with no documents fails rather than
+passing vacuously, and two broken documents always report the same one first.
+
+A path a document names in backticks must exist. These documents name modules
+constantly — which rule lives where, which module owns the executables, where
+the bundler is — and this repository moves modules; a reference that no longer
+resolves sends a reader to something that is not there while the prose still
+reads perfectly. A fraction is not a path, and an ellipsis means the prose is
+describing a shape rather than naming a file.
+
+Verified to fail: the actual damage, reproduced; a second title; a section
+before the title; a section repeated under the same parent; a Markdown file
+with no headings at all; trailing whitespace, a carriage return, a missing
+final newline; and a reference to a file that is not there. Verified to pass:
+prose that mentions a hash, the same subheading under two different releases,
+and a plain-text document that underlines its headings instead.
+
+What is not checked is whether the prose is true. That is read, and this round
+of reading found the artifact documented as passing a vips flag it no longer
+passes, a macOS version that was never right, and a dependency list missing an
+entry.
+
 ## Workflows
 
 The workflows are the one part of this project that has never executed, so a
@@ -85,6 +215,11 @@ gate stays runnable without it, and CI installs it.
 
 Verified to fail: a runner label typo (`ubuntu-latests`) is rejected.
 
+Nothing interpolates `${{ }}` into a `run:` block. Values that come from the
+event — the tag above all — reach the shell through `env:` and are read as
+shell variables, so a name chosen by whoever pushed cannot become part of the
+script.
+
 Every `uses:` must also be pinned to a full commit SHA. A tag is a moveable
 label — whoever owns an action repository can point `v4` at different code
 tomorrow, and it would run with whatever permissions the job holds. Dependabot
@@ -94,6 +229,25 @@ be made to collide.
 Verified to fail: `actions/checkout@v4`, `@main`, a bare name, and a
 seven-character SHA are each rejected; a local `./.github/actions/...` action
 is exempt, because it moves with this repository.
+
+## What a release proves
+
+The tagged source is qualified on macOS — the full gate and the integration
+suite — before anything is built. The artifact is then built again on a clean
+runner and `git diff --exit-code` requires it to reproduce the committed bytes
+exactly. That is what makes the attestation worth having: what is signed was
+both built by CI and is identical to what was reviewed in the repository.
+
+Every file the release offers is an attested subject: the artifact, the
+checksum manifest and INSTALL.txt. Attesting only the manifest would cover what
+the manifest lists and leave the manifest and the instructions uncovered, and
+all three are things a person downloads and acts on.
+
+The attestation is then verified in the same job, before the release is
+created. An attestation that does not verify is worth less than none, because
+it is the thing a user is told to check — and failing here publishes nothing.
+The tag is also re-resolved at that point, because a tag can be moved after it
+is pushed.
 
 ## Language target
 
@@ -118,7 +272,7 @@ the artifact banner and the gate's output.
 
 ## Coverage
 
-The figure covers all 18 production modules. Node's coverage reports only the
+The figure covers all 38 production modules. Node's coverage reports only the
 files a test loads, so a module with no test is not reported as 0% — it is
 absent, and the total looks perfect while ignoring it. The thresholds are
 meaningless unless every module is loaded by something.
@@ -175,18 +329,43 @@ Mutating code whose only tests are excluded produces mutants that cannot be
 killed by construction, which quietly depresses the score and hides the real
 weaknesses.
 
-The break threshold is 92, set below the measured score so ordinary changes
+The break threshold is 96, set below the measured score so ordinary changes
 cannot fail CI on noise while a genuine drop still does. The score itself
 moves by a tenth or two between runs, because a mutant that times out counts
 as killed and the timeout is a wall clock; the run reports the current figure
 and `stryker.config.json` records what it was when the threshold was last
 raised.
 
-The modules that score lowest are those whose file-reading wrappers are
-exercised only by `tests/repo` and so cannot be killed by the mutation runner.
-The shape to copy is a module that takes its world by parameter: it can be
-driven against a fixture and proven to fail, not merely observed passing.
-Raising the floor as the rest improve is tracked work, not a setting to relax.
+Nothing under `mutate` reports `NoCoverage`. A module that reaches the
+filesystem or another process takes that world by parameter — the tool probes,
+the file readers, the artifact render — so what a wrapper asks for can be
+asserted against a fixture instead of being observed passing on a machine that
+happens to have the tool.
+
+### Survivors
+
+The mutants that remain alive are equivalent: they describe a program that
+cannot behave differently from this one. They fall into four groups.
+
+- A description passed to a command whose failure is deliberately swallowed —
+  `removeFile`, `setAside`, the environment probe. The message is
+  constructed and discarded, so its text cannot be observed.
+- A defensive conversion that the surrounding code already tolerates:
+  `String(x).trim()` before `parseInt`, which skips whitespace itself.
+- A guard that duplicates one further along, so removing it leaves the same
+  answer — `index >= 0` before a `slice` that already returns the whole
+  string for `-1`, or `items.length > 0` before comparing `items[0]` to a
+  flag it can never equal.
+- An anchor or quantifier that only matters for input the gate refuses: a
+  `"use strict"` that is not the first line, a file with no final newline,
+  two spaces after `function`.
+
+These were each tested rather than assumed. The ordering comparator's six were
+settled by running the mutated comparator against the real one over every pair
+of strings up to three characters from a nine-symbol alphabet: five agree on
+all 672,400 pairs. The sixth did not — splitting a name into single characters
+rather than runs reorders `photo1.jpg` against `photo .jpg` — and that one is
+now a test.
 
 ### Runner
 
@@ -210,6 +389,18 @@ than passing quietly.
 The gate's own modules are tested, and each guard is asserted to *reject* what
 it exists to reject — not merely to be present. A guard that stops rejecting
 still reports success, so being present is not evidence of anything.
+
+The rejection message is asserted whole rather than sampled. Half a message
+still matches a substring, and the half that goes missing is the half that
+says what to do about it.
+
+What the gate runs is asserted too, against an injected runner: the
+availability probes ask `shellcheck --version` and `actionlint --version`,
+the syntax check runs the executing Node with `--check` and inherited output
+so a parse error is printed rather than swallowed, and every file the gate
+reads it reads as UTF-8 text. A probe that ran something else would answer a
+different question, and the gate would skip or attempt a tool on the strength
+of it.
 
 `tools/lint/language-target.mjs` additionally refuses to run at all with an
 empty rule list, for the same reason.

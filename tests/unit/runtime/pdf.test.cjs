@@ -6,29 +6,9 @@ const {
     createCombinedPdf,
     createSeparatePdfs
 } = require("../../../src/runtime/pdf.js");
-const { calculatePageGeometry } = require("../../../src/core/geometry.js");
 const { failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
-
-const geometry = calculatePageGeometry({
-    paperSize: "A4",
-    orientation: "Portrait",
-    dpi: 72,
-    quality: 85,
-    mode: "Single PDF",
-    background: "#FFFFFF"
-});
-
-function makeJob(app) {
-    return {
-        app,
-        geometry,
-        settings: { quality: 85, background: "#FFFFFF" },
-        timestamp: "20260904_010203",
-        workspace: "/tmp/ImageFilesToPDF.X",
-        tools: { vips: "/v/vips", vipsheader: "/v/vipsheader", pdfcpu: "/v/pdfcpu" }
-    };
-}
+const { makeJob } = require("./fake-job.cjs");
 
 const images = [{ path: "/a/x.png", originalName: "x.png" }];
 

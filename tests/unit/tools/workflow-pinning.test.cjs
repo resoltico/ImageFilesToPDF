@@ -66,8 +66,7 @@ test("the failure names the file and every loose action", async () => {
         () => assertPinned("release.yml", "- uses: a/b@v1\n- uses: c/d@main\n"),
         (error) => {
             assert.match(error.message, /release\.yml/u);
-            assert.match(error.message, /a\/b@v1/u);
-            assert.match(error.message, /c\/d@main/u);
+            assert.match(error.message, /a\/b@v1, c\/d@main/u, "separated");
 
             return true;
         }
@@ -78,4 +77,16 @@ test("a fully pinned workflow raises nothing", async () => {
     const { assertPinned } = await load();
 
     assert.doesNotThrow(() => assertPinned("quality.yml", `- uses: ${PINNED}\n`));
+});
+
+test("a workflow is read as text, from where workflows live", async () => {
+    // As bytes, every pinning pattern matches nothing and each workflow looks
+    // perfectly pinned.
+    const { readWorkflow } = await load();
+    const calls = [];
+
+    await readWorkflow("quality.yml", (...args) => calls.push(args));
+    assert.equal(calls.length, 1);
+    assert.match(calls[0][0], /\.github\/workflows\/quality\.yml$/u);
+    assert.equal(calls[0][1], "utf8");
 });

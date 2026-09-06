@@ -79,11 +79,49 @@ test("a suite that needs a formula nobody installs fails the gate", async () => 
                 error.message,
                 /requires tools the documented install does not provide/u
             );
-            // Named once each, however many commands come from them.
-            assert.match(error.message, /libtiff/u);
-            assert.match(error.message, /poppler/u);
+            // Named once each, however many commands come from them, and as
+            // a list: "libtiffpoppler" is a formula that does not exist.
+            assert.match(error.message, /provide: libtiff, poppler$/u);
 
             return true;
         }
+    );
+});
+
+test("the report reads in a fixed order, not in the order files arrive", async () => {
+    // The sources are read concurrently, so without an ordering the same
+    // disagreement is reported differently from one run to the next, and a
+    // change in the message stops meaning a change in the files. Here the
+    // prose arrives first and still comes last.
+    const { checkToolchain } = await load();
+    const read = (file) => (file.endsWith("CONTRIBUTING.md")
+        ? Promise.resolve("brew install vips\n")
+        : Promise.resolve().then(() => "brew install libtiff\n"));
+
+    await assert.rejects(() => checkToolchain(read), (error) => {
+        assert.equal(error.message, [
+            "install commands disagree between files:",
+            "  .github/workflows/quality.yml (1): libtiff",
+            "  .github/workflows/release.yml (1): libtiff",
+            "  CONTRIBUTING.md (1): vips"
+        ].join("\n"));
+
+        return true;
+    });
+});
+
+test("whitespace in the sources is not read as an extra tool", async () => {
+    // Both halves are prose in Markdown and YAML, where a stray double space
+    // survives review; counted as a formula it would be a formula nobody has
+    // mapped, and the gate would fail on the reader's spacing.
+    const { checkToolchain } = await load();
+
+    assert.equal(
+        await checkToolchain((file) => Promise.resolve(
+            file.endsWith("fixtures.sh")
+                ? "    for tool in  vips   tiffcp ; do\n"
+                : "brew install  vips   libtiff\n"
+        )),
+        2
     );
 });

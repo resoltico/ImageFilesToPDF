@@ -28,15 +28,20 @@ const RGB_ALPHA_BANDS = 4;
  * --size=down never enlarges: a small image is centred at its native size
  * rather than upscaled to fill the page with invented pixels.
  */
-function buildThumbnailArgv(vipsPath, inputPath, outputPath, geometry) {
+/*
+ * Sized to the placement rather than to the sheet, and without --size=down.
+ * The placement is already capped at the image's natural size, so refusing to
+ * enlarge here would only reintroduce the dependence on resolution that the
+ * placement exists to remove.
+ */
+function buildThumbnailArgv(vipsPath, inputPath, outputPath, placement) {
     return [
         vipsPath,
         "thumbnail",
         inputPath,
         outputPath,
-        String(geometry.widthPixels),
-        `--height=${geometry.heightPixels}`,
-        "--size=down",
+        String(placement.widthPixels),
+        `--height=${placement.heightPixels}`,
         "--export-profile=srgb"
     ];
 }

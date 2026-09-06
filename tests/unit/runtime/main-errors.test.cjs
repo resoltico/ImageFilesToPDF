@@ -5,6 +5,7 @@ const test = require("node:test");
 const { run } = require("../../../src/runtime/main.js");
 const { createFakeHost } = require("./fake-host.cjs");
 const { failing } = require("./fake-app.cjs");
+const { commandOf } = require("../../../src/core/errors.js");
 
 const CONFIG = JSON.stringify({
     paperSize: "A4",
@@ -62,10 +63,19 @@ test("run reports a failure through a dialog when interactive", () => {
 });
 
 test("run rethrows in headless mode instead of showing a dialog", () => {
+    // The files were asked for and could not be read, which is a rejection
+    // rather than an empty selection — and saying so is the point: "no images
+    // selected" to someone who selected several is how a rejection vanishes.
     const host = headlessHost({ files: [] });
 
     globalThis.Application.currentApplication = () => host;
-    assert.throws(() => run(ARGS, undefined), /No image files were supplied/u);
+
+    assert.throws(() => run(ARGS, undefined), (error) => {
+        assert.match(error.message, /Nothing to convert/u);
+        assert.match(error.message, /not a readable file/u);
+
+        return true;
+    });
 });
 
 test("run stays silent when the user cancels", () => {
@@ -97,4 +107,21 @@ test("a genuine failure does raise a dialog, unlike a cancellation", () => {
     assert.deepEqual(run(["/a/x.png"], undefined), []);
     assert.equal(host.dialogs.length, 1);
     assert.match(host.dialogs[0].message, /the tool exploded/u);
+});
+
+test("a headless failure carries the command that caused it", () => {
+    // osascript prints the error and nothing else, so the command has to
+    // travel inside it. Dropping the cause leaves a sentence with no evidence.
+    const host = headlessHost({
+        failures: [["'thumbnail'", failing("vips: unable to load")]]
+    });
+
+    globalThis.Application.currentApplication = () => host;
+
+    assert.throws(() => run(ARGS, undefined), (error) => {
+        assert.match(commandOf(error), /thumbnail/u, "the command survives");
+        assert.match(error.message, /x\.png/u, "and so does the image's name");
+
+        return true;
+    });
 });

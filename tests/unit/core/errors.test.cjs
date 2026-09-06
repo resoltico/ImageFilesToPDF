@@ -98,3 +98,26 @@ test("the elision is set off from the command, not run into it", () => {
     assert.equal(parts.length, 3);
     assert.equal(parts[1], "...[command truncated]...");
 });
+
+test("the failing command survives being wrapped in context", () => {
+    // Only the innermost error carries the command, and every layer that adds
+    // context wraps it as a cause. Reading the outermost error alone finds
+    // nothing, and the one detail worth having in a log is the one that goes
+    // missing.
+    const inner = Object.assign(new Error("VipsForeignLoad: broken"), {
+        command: "'/v/vips' 'thumbnail' '/a/x.jpg'"
+    });
+    const wrapped = new Error(`photo.jpg: ${inner.message}`, { cause: inner });
+    const twice = new Error(`converting: ${wrapped.message}`, { cause: wrapped });
+
+    for (const error of [inner, wrapped, twice]) {
+        assert.match(describeForLog(error), /Command:\n'\/v\/vips' 'thumbnail'/u);
+    }
+});
+
+test("an error carrying no command anywhere reports only its message", () => {
+    const plain = new Error("something went wrong");
+
+    assert.equal(describeForLog(plain), "something went wrong");
+    assert.equal(describeForLog(new Error("outer", { cause: plain })), "outer");
+});

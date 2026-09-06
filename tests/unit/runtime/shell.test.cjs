@@ -71,6 +71,17 @@ test("readTextFile reads through the shell", () => {
     assert.match(app.commands[0], /'\/bin\/cat' '\/tmp\/config\.json'/u);
 });
 
+test("a configuration that cannot be read says that is what failed", () => {
+    // Every other read in the run is an image; without the label this failure
+    // is indistinguishable from one.
+    const app = createFakeApp([["/bin/cat", failing("Permission denied")]]);
+
+    assert.throws(
+        () => readTextFile(app, "/tmp/config.json"),
+        /reading headless configuration/u
+    );
+});
+
 test("the file predicates report true when test succeeds", () => {
     const app = createFakeApp();
 
@@ -109,4 +120,11 @@ test("removeFile ignores an absent path and a failing removal", () => {
     const failingApp = createFakeApp([["/bin/rm", failing("busy")]]);
 
     assert.doesNotThrow(() => removeFile(failingApp, "/tmp/x"));
+
+    // -f is not decoration: this is called on paths that may never have been
+    // created, and without it rm treats every one of those as an error.
+    const app = createFakeApp();
+
+    removeFile(app, "/tmp/x");
+    assert.deepEqual(app.commands, ["'/bin/rm' '-f' '/tmp/x'"]);
 });

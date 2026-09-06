@@ -1,9 +1,14 @@
 {
   "name": "image-files-to-pdf-macos",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Source, build, QA, and release scaffolding for a vips + pdfcpu macOS Finder Quick Action",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/resoltico/ImageFilesToPDF.git"
+  },
+  "homepage": "https://github.com/resoltico/ImageFilesToPDF",
   "author": "Ervins Strauhmanis",
   "engines": {
     "node": ">=26.8.1"
@@ -25,6 +30,7 @@
     "@eslint/js": "10.0.1",
     "@stryker-mutator/core": "10.0.0",
     "@stryker-mutator/tap-runner": "10.0.0",
+    "acorn": "8.18.0",
     "eslint": "10.9.1"
   },
   "overrides": {

@@ -47,8 +47,8 @@ export async function checkScript(relative) {
     checkSize(relative, await readFile(absolute, "utf8"));
 }
 
-function probeShellcheck() {
-    execFileSync("shellcheck", ["--version"], { stdio: "ignore" });
+export function probeShellcheck(exec = execFileSync) {
+    exec("shellcheck", ["--version"], { stdio: "ignore" });
 }
 
 export function hasShellcheck(probe = probeShellcheck) {

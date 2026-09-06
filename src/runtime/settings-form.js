@@ -1,6 +1,6 @@
 "use strict";
 
-const { defaultAnswers, formSpec } = require("../core/form.js");
+const { formSpec } = require("../core/form.js");
 const { readAnswers } = require("../core/form-answers.js");
 const { isUserCancelled } = require("../core/errors.js");
 const { presentForm } = require("./appkit.js");
@@ -57,7 +57,10 @@ function formRound(bridge, present, state) {
  * correcting a mistyped DPI does not mean answering the other five again.
  */
 function collectViaForm(bridge, present) {
-    let state = { answers: defaultAnswers(), problems: [] };
+    // Nothing answered and nothing wrong yet. What that shows is formSpec's
+    // to say: stating the defaults again here would be a second copy of them,
+    // free to drift from the first.
+    let state = {};
 
     for (;;) {
         const round = formRound(bridge, present, state);

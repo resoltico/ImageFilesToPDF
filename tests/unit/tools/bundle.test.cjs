@@ -10,7 +10,16 @@ const test = require("node:test");
  * directly rather than only through the macOS integration run.
  */
 const loadBundle = () => import("../../../tools/bundle.mjs");
+const ES = 2022;
 const ROOT = "/repo";
+
+// The bundle a module is being assembled into: what is already in it, where
+// the repository root is, and the ECMAScript the sources are parsed as.
+const into = (seenModules = new Set()) => ({
+    seenModules,
+    root: ROOT,
+    ecmaVersion: ES
+});
 
 test("require and export lines are stripped, leaving the body", async () => {
     const { stripModuleSyntax } = await loadBundle();
@@ -29,8 +38,7 @@ test("require and export lines are stripped, leaving the body", async () => {
     const body = stripModuleSyntax(
         source,
         "src/core/x.js",
-        new Set(["src/core/other.js"]),
-        ROOT
+        into(new Set(["src/core/other.js"]))
     );
 
     assert.equal(body, "function thing() {\n    return a;\n}");
@@ -53,7 +61,7 @@ test("a multi-line require is stripped too", async () => {
     ].join("\n");
 
     assert.equal(
-        stripModuleSyntax(source, "src/core/x.js", new Set(["src/core/other.js"]), ROOT),
+        stripModuleSyntax(source, "src/core/x.js", into(new Set(["src/core/other.js"]))),
         "const value = 1;"
     );
 });
@@ -63,7 +71,7 @@ test("a dependency not yet bundled is rejected", async () => {
     const source = 'const { a } = require("./later.js");\n\nmodule.exports = { a };\n';
 
     assert.throws(
-        () => stripModuleSyntax(source, "src/core/x.js", new Set(), ROOT),
+        () => stripModuleSyntax(source, "src/core/x.js", into()),
         /requires \.\/later\.js, which is not bundled before it/u
     );
 });
@@ -72,11 +80,11 @@ test("an unrecognised require or export is not silently shipped", async () => {
     const { stripModuleSyntax } = await loadBundle();
 
     assert.throws(
-        () => stripModuleSyntax('const a = require("./x.js");\n', "src/core/x.js", new Set(), ROOT),
+        () => stripModuleSyntax('const a = require("./x.js");\n', "src/core/x.js", into()),
         /unrecognised require survived bundling/u
     );
     assert.throws(
-        () => stripModuleSyntax("module.exports.thing = 1;\n", "src/core/x.js", new Set(), ROOT),
+        () => stripModuleSyntax("module.exports.thing = 1;\n", "src/core/x.js", into()),
         /unrecognised export survived bundling/u
     );
 });
@@ -89,7 +97,8 @@ test("duplicate top-level names across modules are rejected", async () => {
 
     assert.throws(
         () => recordDeclarations("const shared = 1;", "src/core/b.js", declarations),
-        /duplicate top-level declaration "shared" in src\/core\/b\.js and src\/core\/a\.js/u
+        new RegExp('duplicate top-level declaration "shared" in ' +
+            "src/core/b\\.js and src/core/a\\.js; the bundle shares one scope", "u")
     );
 });
 

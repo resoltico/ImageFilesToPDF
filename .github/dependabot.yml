@@ -12,8 +12,10 @@ updates:
     labels:
       - dependencies
 
-  # There are no runtime or development dependencies today. This entry exists
-  # so that the day one is added, it is watched from the start.
+  # The artifact has no runtime dependencies -- it is one file that shells out
+  # to vips and pdfcpu -- so everything here is a build or gate tool: eslint,
+  # stryker and acorn. A change to any of them changes what the gate accepts or
+  # what the build emits, which is worth a pull request rather than a surprise.
   - package-ecosystem: npm
     directory: /
     schedule:

@@ -5,7 +5,7 @@ const test = require("node:test");
 const {
     completionMessage,
     showCompletion
-} = require("../../../src/runtime/dialogs.js");
+} = require("../../../src/runtime/completion.js");
 const { createFakeApp } = require("./fake-app.cjs");
 const { VERSION } = require("../../../src/core/version.js");
 
@@ -133,6 +133,10 @@ test("the separate and failure wordings are pinned too", () => {
         "Created: 1 PDF",
         "Failed: 1",
         "Elapsed: 1 second(s)",
+        "",
+        // Where the PDFs that were made actually went, which a failed run
+        // used not to say at all.
+        "In: /a/",
         "",
         "b.png: broke",
         "",

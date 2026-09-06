@@ -10,7 +10,16 @@ const test = require("node:test");
  * directly rather than only through the macOS integration run.
  */
 const loadBundle = () => import("../../../tools/bundle.mjs");
+const ES = 2022;
 const ROOT = "/repo";
+
+// The bundle a module is being assembled into: what is already in it, where
+// the repository root is, and the ECMAScript the sources are parsed as.
+const into = (seenModules = new Set()) => ({
+    seenModules,
+    root: ROOT,
+    ecmaVersion: ES
+});
 
 test("a require written with a space is still a require", async () => {
     // `require ("./a.js")` is valid JavaScript. A guard anchored to
@@ -22,8 +31,7 @@ test("a require written with a space is still a require", async () => {
         () => stripModuleSyntax(
             '"use strict";\n\nconst x = require ("./a.js");\n',
             "a.js",
-            new Set(),
-            ROOT
+            into()
         ),
         /an unrecognised require survived bundling/u
     );
@@ -36,8 +44,7 @@ test("the directive and the blank line after it both go", async () => {
     const body = stripModuleSyntax(
         '"use strict";\n\n\nconst value = 1;\n',
         "a.js",
-        new Set(),
-        ROOT
+        into()
     );
 
     assert.equal(body, "const value = 1;");
@@ -49,8 +56,7 @@ test("a use-strict inside a string is not a directive", async () => {
     const body = stripModuleSyntax(
         '"use strict";\n\nconst marker = \'"use strict";\';\n',
         "a.js",
-        new Set(),
-        ROOT
+        into()
     );
 
     assert.ok(body.includes('\'"use strict";\''), body);

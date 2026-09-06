@@ -12,6 +12,7 @@ import { checkLanguageTarget } from "./lint/language-target.mjs";
 import { checkConsistency } from "./lint/consistency.mjs";
 import { checkToolchain } from "./lint/toolchain.mjs";
 import { checkIgnores } from "./lint/ignore-rules.mjs";
+import { checkDocumentReferences } from "./lint/document-references.mjs";
 
 const files = await lintableFiles();
 
@@ -27,8 +28,9 @@ const languageTarget = await checkLanguageTarget();
 const consistency = await checkConsistency();
 const formulae = await checkToolchain();
 const ignored = await checkIgnores();
+const documents = await checkDocumentReferences();
 
 console.log(
     `syntax and static policy checks passed for ${files.length} files ` +
-    `(shell: ${shellStatus}; ${workflowStatus}; language target: ${languageTarget}; ${consistency}, ${formulae} formulae, ${ignored} ignore rules)`
+    `(shell: ${shellStatus}; ${workflowStatus}; language target: ${languageTarget}; ${consistency}, ${formulae} formulae, ${ignored} ignore rules, ${documents} documents)`
 );

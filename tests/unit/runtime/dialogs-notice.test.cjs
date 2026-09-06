@@ -12,9 +12,9 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     completionMessage,
-    promptInteger,
     showCompletion
-} = require("../../../src/runtime/dialogs.js");
+} = require("../../../src/runtime/completion.js");
+const { promptInteger } = require("../../../src/runtime/dialogs.js");
 const { RESOLUTION } = require("../../../src/core/choices.js");
 const { createFakeApp } = require("./fake-app.cjs");
 

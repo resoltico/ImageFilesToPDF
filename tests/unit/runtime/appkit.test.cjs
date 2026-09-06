@@ -103,3 +103,27 @@ test("edited values come back out, not the values that went in", () => {
 
     assert.equal(outcome.answers.paperSize, "US Letter");
 });
+
+test("the watchdog is disarmed when the form closes", () => {
+    // A pending abort outlives the modal it was armed for. Left armed, a form
+    // answered quickly leaves an abort due two minutes later, which dismisses
+    // whatever modal is open then — the redisplayed form after a correction,
+    // or the next run's form.
+    const { bridge } = present([CREATE]);
+
+    assert.equal(bridge.state.watchdogs.length, 1, "armed once");
+    assert.equal(bridge.state.disarmed.length, 1, "and disarmed once");
+    assert.equal(bridge.state.disarmed[0].selector, "sel:abortModal");
+});
+
+test("the watchdog is disarmed however the form ends", () => {
+    for (const response of [CANCEL, ABORT]) {
+        const { bridge } = present([response]);
+
+        assert.equal(
+            bridge.state.disarmed.length,
+            1,
+            `a form ending with ${response} must still disarm`
+        );
+    }
+});

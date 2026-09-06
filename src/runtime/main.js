@@ -10,11 +10,11 @@ const {
 const { isHeadlessInput } = require("../core/invocation.js");
 const { normalizeSettings } = require("../core/settings.js");
 const { makeTimestamp } = require("../core/naming.js");
-const { supportedFormatList } = require("../core/paths.js");
 const { checkTools } = require("./preflight.js");
-const { showCompletion } = require("./dialogs.js");
+const { reportNoImages, reportResult } = require("./reporting.js");
 const { collectSettings } = require("./settings-form.js");
-const { collectImageFiles, collectInvocation } = require("./input.js");
+const { collectInvocation } = require("./input.js");
+const { collectImageFiles } = require("./admission.js");
 const { createJob, runJob } = require("./job.js");
 
 /*
@@ -24,31 +24,6 @@ const { createJob, runJob } = require("./job.js");
  * a caller sees a non-zero exit; interactively they become a dialog.
  */
 
-function reportNoImages(app, headless) {
-    if (headless) {
-        throw new Error(
-            `No image files were supplied. Supported: ${supportedFormatList()}.`
-        );
-    }
-
-    app.displayDialog(
-        "No images selected.\n\nSelect one or more image files in Finder, " +
-        `then run the action again.\n\nSupported: ${supportedFormatList()}.`,
-        { withTitle: APP_NAME, buttons: ["OK"], defaultButton: "OK" }
-    );
-
-    return [];
-}
-
-function reportResult(app, job, result, options) {
-    if (options.headless) {
-        return JSON.stringify(result);
-    }
-
-    showCompletion(app, job.settings.mode, result, options.pageCount);
-
-    return result.outputs;
-}
 
 /*
  * Nothing is asked of the user until everything that can be checked cheaply
@@ -63,32 +38,38 @@ function prepare(app, input, headless) {
     return {
         tools,
         invocation,
-        imageFiles: collectImageFiles(app, invocation.inputItems)
+        selection: collectImageFiles(app, invocation.inputItems)
     };
+}
+
+function prepareJob(app, invocation, tools) {
+    return createJob(
+        app,
+        normalizeSettings(invocation.settings ?? collectSettings(app)),
+        invocation.timestamp || makeTimestamp(new Date()),
+        tools
+    );
 }
 
 function execute(app, input, headless) {
     const startedAt = new Date();
-    const { tools, invocation, imageFiles } = prepare(app, input, headless);
+    const { tools, invocation, selection } = prepare(app, input, headless);
+    const { images, rejected } = selection;
 
-    if (imageFiles.length === 0) {
-        return reportNoImages(app, headless);
+    if (images.length === 0) {
+        return reportNoImages(app, headless, rejected);
     }
 
-    const settings = normalizeSettings(
-        invocation.settings ?? collectSettings(app)
-    );
-    const job = createJob(
-        app,
-        settings,
-        invocation.timestamp || makeTimestamp(new Date()),
-        tools
-    );
-    const result = runJob(job, imageFiles);
+    const job = prepareJob(app, invocation, tools);
+    const result = runJob(job, images);
 
     result.elapsed = formatDuration(new Date() - startedAt);
+    // Carried into the report: a file that was asked for and not converted is
+    // part of the outcome, not something to leave out of it. Kept as entries
+    // rather than sentences, so a headless caller can read the reason.
+    result.rejected = rejected;
 
-    return reportResult(app, job, result, { headless, pageCount: imageFiles.length });
+    return reportResult(app, job, result, { headless, pageCount: images.length });
 }
 
 // osascript calls run with this exact two-argument signature; the second

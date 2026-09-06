@@ -14,8 +14,20 @@ const loadTarget = () => import("../../../tools/lint/language-target.mjs");
 test("code within the target passes", async () => {
     const { checkFeatures } = await loadTarget();
 
-    assert.doesNotThrow(
-        () => checkFeatures("const a = records.slice().sort();\nObject.hasOwn(x, 'y');")
+    assert.equal(
+        checkFeatures("const a = records.slice().sort();\nObject.hasOwn(x, 'y');"),
+        "ES2022, macOS 12.3+",
+        "and says what it held the code to"
+    );
+});
+
+test("each rejected feature is on its own line", async () => {
+    // Run together, two findings read as one feature with a mangled name.
+    const { checkFeatures } = await loadTarget();
+
+    assert.throws(
+        () => checkFeatures("a.toSorted();\nObject.groupBy(b, c);"),
+        /toSorted\( requires [^\n]+\n {2}Object\.groupBy\(/u
     );
 });
 
@@ -66,8 +78,14 @@ test("the rejection names the version and the alternative", async () => {
 });
 
 test("an emptied denylist is itself an error", async () => {
+    // A check with nothing to look for passes everything, which is
+    // indistinguishable from a check that works and worse than no check.
     const { findLateFeatures } = await loadTarget();
 
+    assert.throws(
+        () => findLateFeatures("const a = 1;", []),
+        /no features left to reject/u
+    );
     assert.doesNotThrow(() => findLateFeatures("const a = 1;"));
 });
 
@@ -95,4 +113,19 @@ test("each listed feature is genuinely detected", async () => {
             `${token} must be found`
         );
     }
+});
+
+test("the artifact is what is checked, not the sources it came from", async () => {
+    // A module can be within the target while the render is not: the bundler
+    // is what produces the file a Mac will run.
+    const { checkLanguageTarget } = await loadTarget();
+
+    assert.equal(
+        await checkLanguageTarget(() => Promise.resolve("const a = 1;\n")),
+        "ES2022, macOS 12.3+"
+    );
+    await assert.rejects(
+        () => checkLanguageTarget(() => Promise.resolve("a.toSorted();\n")),
+        /uses features newer than macOS/u
+    );
 });

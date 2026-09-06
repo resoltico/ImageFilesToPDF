@@ -1,4 +1,18 @@
-IMAGE FILES TO PDF 1.0.0 - SHORTCUTS INSTALLATION
+IMAGE FILES TO PDF 1.1.0 - SHORTCUTS INSTALLATION
+
+Source, releases and build attestation:
+
+    https://github.com/resoltico/ImageFilesToPDF
+
+Verifying what you downloaded
+=============================
+
+Every file in the release is signed with a GitHub build attestation. With the
+GitHub CLI installed, from the folder you downloaded them into:
+
+    gh attestation verify "Image Files to PDF.jxa" \
+        --repo resoltico/ImageFilesToPDF
+    shasum --check SHA256SUMS
 
 Requirements
 ============

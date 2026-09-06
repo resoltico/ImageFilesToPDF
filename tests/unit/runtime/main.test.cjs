@@ -85,12 +85,12 @@ test("a headless run cleans up its workspace", () => {
     );
 });
 
-test("a headless run with no usable images throws", () => {
+test("a headless run whose files cannot be read says which", () => {
     const host = headlessHost({ files: [] });
 
     assert.throws(
         () => execute(host, ["--", "--headless", "/tmp/c.json", "/a/x.png"], true),
-        /No image files were supplied/u
+        /Nothing to convert/u
     );
 });
 

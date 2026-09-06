@@ -68,16 +68,34 @@ function readControls(bridge, spec, controls) {
     return answers;
 }
 
+function abortSelector(bridge) {
+    return bridge.ns.NSSelectorFromString("abortModal");
+}
+
 /*
  * The watchdog runs in NSModalPanelRunLoopMode because the default mode does
  * not tick while a modal loop owns the thread.
  */
 function armWatchdog(bridge, application) {
     application.performSelectorWithObjectAfterDelayInModes(
-        bridge.ns.NSSelectorFromString("abortModal"),
+        abortSelector(bridge),
         null,
         WATCHDOG_SECONDS,
         bridge.ns([bridge.ns.NSModalPanelRunLoopMode])
+    );
+}
+
+/*
+ * Disarmed as soon as the form closes. A pending abort outlives the modal it
+ * was armed for: a form answered in ten seconds leaves an abort due at two
+ * minutes, which then dismisses whatever modal happens to be open — the
+ * redisplayed form after a correction, or the next run's form entirely.
+ */
+function disarmWatchdog(bridge, application) {
+    bridge.ns.NSObject.cancelPreviousPerformRequestsWithTargetSelectorObject(
+        application,
+        abortSelector(bridge),
+        null
     );
 }
 
@@ -90,6 +108,8 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
     armWatchdog(bridge, application);
 
     const response = Number(alert.runModal);
+
+    disarmWatchdog(bridge, application);
 
     if (response === RESPONSE_ABORT) {
         return null;

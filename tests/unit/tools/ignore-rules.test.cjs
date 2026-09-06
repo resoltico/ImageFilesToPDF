@@ -57,6 +57,18 @@ test("everything the toolchain generates must be covered", async () => {
             `${missing} must be required`
         );
     }
+
+    // Whole, and as a list: the sentence has to say who writes these files,
+    // and two of them are two names rather than one run together.
+    assert.throws(() => checkIgnoreRules([]), (error) => {
+        assert.equal(
+            error.message,
+            "the toolchain writes these into the working tree and the ignore " +
+            `file does not cover them: ${COVERED.join(", ")}`
+        );
+
+        return true;
+    });
 });
 
 test("dist must never be ignored, however it is spelled", async () => {
@@ -67,7 +79,14 @@ test("dist must never be ignored, however it is spelled", async () => {
     for (const pattern of ["dist", "dist/", "/dist"]) {
         assert.throws(
             () => checkIgnoreRules([...COVERED, pattern]),
-            /committed on purpose and must not be ignored/u,
+            (error) => {
+                assert.equal(error.message, "dist/ is committed on purpose " +
+                    "and must not be ignored; ignoring it would stop the " +
+                    "released artifact updating while every other check " +
+                    "kept passing");
+
+                return true;
+            },
             `${pattern} must be refused`
         );
     }

@@ -50,13 +50,39 @@ function summarizeCommand(command) {
     ].join("\n\n");
 }
 
+// Deep enough for the wrapping this code does, and bounded so a cause that
+// refers back to itself cannot spin.
+const MAXIMUM_CAUSE_DEPTH = 8;
+
+/*
+ * The failing command, wherever it is in the chain.
+ *
+ * Only the innermost error carries it, and every layer that adds context
+ * wraps that error as a cause. Reading the outermost error alone therefore
+ * finds nothing, and the one detail worth having in a log is the one that
+ * disappears.
+ */
+function commandOf(error) {
+    let current = error;
+
+    for (let depth = 0; current && depth < MAXIMUM_CAUSE_DEPTH; depth += 1) {
+        if (current.command) {
+            return String(current.command);
+        }
+
+        current = current.cause;
+    }
+
+    return "";
+}
+
 /*
  * The command that failed is invaluable in a log and noise in a dialog: a
  * person who right-clicked in Finder is not going to debug an argv, and it
  * buries the one line that matters underneath it.
  */
 function describeForLog(error) {
-    const command = error && error.command;
+    const command = commandOf(error);
 
     return command
         ? `${errorMessage(error)}\n\nCommand:\n${command}`
@@ -65,6 +91,7 @@ function describeForLog(error) {
 
 module.exports = {
     errorMessage,
+    commandOf,
     isUserCancelled,
     summarizeCommand,
     describeForLog

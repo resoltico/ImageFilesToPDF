@@ -11,6 +11,7 @@
  */
 
 const { createFilesystem } = require("./fake-filesystem.cjs");
+const { headerField } = require("./fake-vipsheader.cjs");
 
 const WORKSPACE = "/var/folders/xx/T/ImageFilesToPDF.Fake01";
 
@@ -37,7 +38,9 @@ function parseArgv(command) {
 function dispatch(fs, argv, command, host) {
     const [tool, ...rest] = argv;
     const handlers = {
-        "/usr/bin/mktemp": () => WORKSPACE,
+        // mktemp terminates its answer with a newline, as the real one does:
+        // a caller that does not trim ends up with a path containing one.
+        "/usr/bin/mktemp": () => `${WORKSPACE}\n`,
         "/usr/bin/printenv": () => {
             throw new Error("unset");
         },
@@ -53,9 +56,7 @@ function dispatch(fs, argv, command, host) {
     }
 
     if (command.includes("vipsheader")) {
-        return command.includes("n-pages")
-            ? String(host.pages ?? 1)
-            : String(host.bands);
+        return headerField(host, command);
     }
 
     return fs.produce(argv, command);

@@ -7,7 +7,9 @@ const {
     buildFlattenArgv,
     buildGravityArgv
 } = require("../core/commands.js");
+const { calculatePlacement } = require("../core/geometry.js");
 const {
+    readImageSize,
     readBandCount,
     assertSinglePage,
     hasAlphaBand
@@ -30,13 +32,18 @@ const PAGE_INDEX_WIDTH = 6;
  * it saves an intermediate write and read of a full-page uncompressed image.
  */
 function resizeToPage(job, imageFile, preparedPath) {
+    const placement = calculatePlacement(
+        job.geometry,
+        readImageSize(job.app, job.tools.vipsheader, imageFile.path)
+    );
+
     runArgv(
         job.app,
         buildThumbnailArgv(
             job.tools.vips,
             imageFile.path,
             preparedPath,
-            job.geometry
+            placement
         ),
         "preparing the image"
     );

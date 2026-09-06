@@ -1,12 +1,11 @@
 "use strict";
 
 /*
- * The interactive front end: settings collection and the completion report.
+ * The interactive front end: collecting the settings. What the run reports
+ * afterwards is completion.js.
  */
 
-const { APP_NAME, VERSION } = require("../core/version.js");
-const { plural } = require("../core/numbers.js");
-const { dirname } = require("../core/paths.js");
+const { APP_NAME } = require("../core/version.js");
 const {
     PAPER_SIZE,
     ORIENTATION,
@@ -18,7 +17,6 @@ const {
     defaultLabelOf,
     valueOfLabel
 } = require("../core/choices.js");
-const MAXIMUM_SHOWN_FAILURES = 12;
 
 /*
  * Presents the labels and returns the value behind the one chosen, so the
@@ -77,66 +75,8 @@ function collectDialogSettings(app) {
     };
 }
 
-function describeFailures(failures) {
-    const shown = failures.slice(0, MAXIMUM_SHOWN_FAILURES);
-
-    if (failures.length > shown.length) {
-        shown.push(`...and ${failures.length - shown.length} more failure(s).`);
-    }
-
-    return shown.join("\n");
-}
-
-function versionLine() {
-    return `\n${APP_NAME} ${VERSION}`;
-}
-
-/*
- * Every completion says the same three things in the same order: what was
- * produced, where it went, and how long it took. Producing files without
- * saying where they are is the one thing this dialog exists to prevent.
- */
-function completionMessage(mode, result, pageCount) {
-    if (result.failures.length > 0) {
-        return [
-            `Finished with errors.\n`,
-            `Created: ${plural(result.outputs.length, "PDF")}`,
-            `Failed: ${result.failures.length}`,
-            `Elapsed: ${result.elapsed}\n`,
-            describeFailures(result.failures),
-            versionLine()
-        ].join("\n");
-    }
-
-    if (mode === "single") {
-        return [
-            `Created one PDF from ${plural(pageCount, "image")}.\n`,
-            result.outputs[0],
-            `\nElapsed: ${result.elapsed}`,
-            versionLine()
-        ].join("\n");
-    }
-
-    return [
-        `Created ${plural(result.outputs.length, "PDF")}.\n`,
-        dirname(result.outputs[0]),
-        `\nElapsed: ${result.elapsed}`,
-        versionLine()
-    ].join("\n");
-}
-
-function showCompletion(app, mode, result, pageCount) {
-    app.displayDialog(completionMessage(mode, result, pageCount), {
-        withTitle: APP_NAME,
-        buttons: ["OK"],
-        defaultButton: "OK"
-    });
-}
-
 module.exports = {
     chooseRequired,
     promptInteger,
-    collectDialogSettings,
-    completionMessage,
-    showCompletion
+    collectDialogSettings
 };

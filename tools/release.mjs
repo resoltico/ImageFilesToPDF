@@ -7,7 +7,14 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { stripModuleSyntax, recordDeclarations } from "./bundle.mjs";
+import {
+    stripModuleSyntax,
+    recordDeclarations,
+    sectionMarkerFor,
+    markerTextsFor
+} from "./bundle.mjs";
+import { renderBanner, readMetadata } from "./banner.mjs";
+import { stripComments } from "./strip-comments.mjs";
 
 export const root = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -64,32 +71,37 @@ export const moduleOrder = [
     "src/runtime/appkit-form.js",
     "src/runtime/appkit.js",
     "src/runtime/dialogs.js",
+    "src/runtime/completion.js",
     "src/runtime/settings-form.js",
     "src/runtime/input.js",
+    "src/runtime/admission.js",
+    "src/runtime/receipt.js",
+    "src/runtime/reporting.js",
     "src/runtime/source-image.js",
     "src/runtime/pages.js",
+    "src/runtime/rescue.js",
     "src/runtime/publish.js",
     "src/runtime/pdf.js",
     "src/runtime/job.js",
     "src/runtime/main.js"
 ];
 
-async function readVersion() {
-    const packageJson = JSON.parse(
-        await readFile(path.join(root, "package.json"), "utf8")
-    );
-
-    return packageJson.version;
+async function readRepositoryFile(relative) {
+    return await readFile(path.join(root, relative), "utf8");
 }
 
 async function renderSection(relativePath, seenModules, declarations) {
     const source = await readFile(path.join(root, relativePath), "utf8");
-    const body = stripModuleSyntax(source, relativePath, seenModules, root);
+    const body = stripModuleSyntax(source, relativePath, {
+        seenModules,
+        root,
+        ecmaVersion: ECMASCRIPT_TARGET
+    });
 
-    recordDeclarations(body, relativePath, declarations);
+    recordDeclarations(body, relativePath, declarations, ECMASCRIPT_TARGET);
     seenModules.add(relativePath);
 
-    return `/* ===== ${relativePath} ===== */\n\n${body}`;
+    return `${sectionMarkerFor(relativePath)}\n\n${body}`;
 }
 
 /*
@@ -105,16 +117,9 @@ export function assertEntryPoint(declarations) {
 }
 
 export async function renderRelease() {
-    const version = await readVersion();
-    const banner = `/*
- * Image Files to PDF ${version}
- *
- * Generated file. Edit the sources and rebuild; changes made to this copy are
- * overwritten and are not covered by any test.
- *
- * Requires macOS ${MINIMUM_MACOS} or later, and the command-line tools:
- *     brew install vips pdfcpu
- */`;
+    const banner = renderBanner(
+        await readMetadata(readRepositoryFile, MINIMUM_MACOS)
+    );
     const seenModules = new Set();
     const declarations = new Map();
     const sections = [];
@@ -127,7 +132,10 @@ export async function renderRelease() {
 
     assertEntryPoint(declarations);
 
-    return `${banner}\n\n"use strict";\n\n${sections.join("\n\n")}\n`;
+    return stripComments(
+        `${banner}\n\n"use strict";\n\n${sections.join("\n\n")}\n`,
+        { ecmaVersion: ECMASCRIPT_TARGET, kept: markerTextsFor(moduleOrder) }
+    );
 }
 
 export function digestOf(release) {

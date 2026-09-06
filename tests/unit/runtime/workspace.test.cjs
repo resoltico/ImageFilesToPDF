@@ -7,7 +7,7 @@ const {
     removeWorkspace,
     nonce
 } = require("../../../src/runtime/workspace.js");
-const { createFakeApp } = require("./fake-app.cjs");
+const { createFakeApp, failing } = require("./fake-app.cjs");
 
 const GOOD = "/var/folders/xx/T/ImageFilesToPDF.AbC123";
 
@@ -82,4 +82,15 @@ test("createWorkspace applies the same anchoring", () => {
     const app = createFakeApp([["mktemp", `${GOOD}/deeper`]]);
 
     assert.throws(() => createWorkspace(app), /unexpected workspace path/u);
+});
+
+test("a workspace that cannot be made says what was being attempted", () => {
+    // This one is fatal and reaches the user: mktemp's own message says the
+    // template failed, without saying what the template was for.
+    const app = createFakeApp([["mktemp", failing("no space left on device")]]);
+
+    assert.throws(
+        () => createWorkspace(app),
+        /creating temporary workspace/u
+    );
 });

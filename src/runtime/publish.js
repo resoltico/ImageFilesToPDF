@@ -1,6 +1,7 @@
 "use strict";
 
 const { CP, MV, STAT } = require("../core/executables.js");
+const { setAside } = require("./rescue.js");
 const { errorMessage } = require("../core/errors.js");
 const {
     runArgv,
@@ -85,10 +86,11 @@ function copyInto(app, from, to) {
     return { published: true };
 }
 
-function describeFailure(attempts) {
+function describeFailure(attempts, recovered) {
     return [
         "The PDF could not be published without overwriting another file.",
-        ...attempts.map((attempt) => attempt.reason)
+        ...attempts.map((attempt) => attempt.reason),
+        `The finished PDF has been kept here:\n\n${recovered}`
     ].join("\n\n");
 }
 
@@ -106,9 +108,7 @@ function publishPdf(app, stagedPath, finalPath) {
     }
 
     if (!attempts.at(-1).published) {
-        removeFile(app, stagedPath);
-
-        throw new Error(describeFailure(attempts));
+        throw new Error(describeFailure(attempts, setAside(app, stagedPath)));
     }
 
     verifyFileWritten(app, finalPath, "output PDF");

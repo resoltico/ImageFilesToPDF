@@ -26,6 +26,14 @@ test("finding no workflows is an error, not a pass", async () => {
     assert.doesNotThrow(() => assertWorkflowsFound(["quality.yml"]));
 });
 
+test("the probe asks actionlint itself, and asks it nothing else", async () => {
+    const { probeActionlint } = await loadWorkflowRules();
+    const calls = [];
+
+    probeActionlint((...args) => calls.push(args));
+    assert.deepEqual(calls, [["actionlint", ["--version"], { stdio: "ignore" }]]);
+});
+
 test("actionlint availability is reported either way", async () => {
     const { hasActionlint } = await loadWorkflowRules();
 

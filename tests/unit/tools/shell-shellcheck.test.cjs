@@ -76,6 +76,16 @@ test("shellcheck findings fail the gate when it is installed", async () => {
     );
 });
 
+test("the probe asks shellcheck itself, and asks it nothing else", async () => {
+    // A probe that ran the wrong binary would answer a different question,
+    // and the gate would skip or attempt shellcheck on the strength of it.
+    const { probeShellcheck } = await load();
+    const calls = [];
+
+    probeShellcheck((...args) => calls.push(args));
+    assert.deepEqual(calls, [["shellcheck", ["--version"], { stdio: "ignore" }]]);
+});
+
 test("a missing shellcheck is reported as absent, not as success", async () => {
     const { hasShellcheck } = await load();
 

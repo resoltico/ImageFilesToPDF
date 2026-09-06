@@ -13,11 +13,19 @@
  * the empty string, which is what a successful silent command produces.
  */
 /*
- * vipsheader answers two different questions, so a matcher keyed on the tool
- * name alone would answer both with the band count. The preflight probes name
+ * vipsheader answers several different questions, so a matcher keyed on the
+ * tool name alone would answer them all with the band count. The preflight probes name
  * a file that cannot exist and expect an answer about the file.
  */
 function cannedAnswer(app, command) {
+    if (command.includes("'width'")) {
+        return String(app.width ?? 600);
+    }
+
+    if (command.includes("'height'")) {
+        return String(app.height ?? 400);
+    }
+
     if (command.includes("n-pages")) {
         return String(app.pages ?? 1);
     }

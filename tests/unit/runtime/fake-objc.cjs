@@ -76,7 +76,16 @@ function installClasses(ns, state, application) {
             strokeRect: (rect) => state.strokes.push(rect)
         },
         NSAlert: { alloc: { get init() { return makeAlert(state); } } },
-        NSApplication: { sharedApplication: application }
+        NSApplication: { sharedApplication: application },
+        NSObject: {
+            cancelPreviousPerformRequestsWithTargetSelectorObject(
+                target,
+                selector,
+                argument
+            ) {
+                state.disarmed.push({ target, selector, argument });
+            }
+        }
     });
 }
 
@@ -86,6 +95,7 @@ function createFakeObjC(settings = {}) {
         alerts: [],
         watchdogs: [],
         currentImage: null,
+        disarmed: [],
         fills: [],
         strokes: [],
         colours: []

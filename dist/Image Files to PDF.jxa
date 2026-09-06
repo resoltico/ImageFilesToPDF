@@ -1,8 +1,13 @@
 /*
- * Image Files to PDF 1.0.0
+ * Image Files to PDF 1.1.0
+ * https://github.com/resoltico/ImageFilesToPDF
+ *
+ * Copyright (c) 2026 Ervins Strauhmanis
+ * SPDX-License-Identifier: MIT
  *
  * Generated file. Edit the sources and rebuild; changes made to this copy are
- * overwritten and are not covered by any test.
+ * overwritten and are not covered by any test. Comments are stripped on build:
+ * the sources they came from are at the address above.
  *
  * Requires macOS 12.3 or later, and the command-line tools:
  *     brew install vips pdfcpu
@@ -12,32 +17,11 @@
 
 /* ===== src/core/version.js ===== */
 
-/*
- * The released version, shown to the user on completion.
- *
- * A pasted Shortcut cannot be checked against dist/SHA256SUMS, so this is the
- * only way to tell which build is actually installed. It is declared here
- * rather than injected by the bundler so that src/ stays the source of truth;
- * tools/lint/consistency.mjs asserts it agrees with package.json.
- */
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 
 /* ===== src/core/executables.js ===== */
 
-/*
- * Every binary this action runs, and the only place any of them is named.
- *
- * The external surface of the artifact is two things: the system tools below,
- * at absolute paths because a PATH lookup is neither needed nor trustworthy
- * for them, and vips, vipsheader and pdfcpu, which are located at run time and
- * named by TOOL_NAMES in src/runtime/tools.js.
- *
- * Collected here so that surface is a file you can read rather than a fact you
- * have to reassemble from five modules. Adding a binary is then a visible edit
- * to a list, which is the honest form of the boundary a policy check over the
- * built artifact was trying to approximate by pattern-matching strings.
- */
 
 const CAT = "/bin/cat";
 const CP = "/bin/cp";
@@ -52,9 +36,6 @@ const EXECUTABLES = [CAT, CP, MV, RM, TEST, MKTEMP, PRINTENV, STAT];
 
 /* ===== src/core/numbers.js ===== */
 
-/*
- * Numeric parsing and formatting shared across the planner.
- */
 
 const DECIMAL_PLACES = 2;
 const MILLISECONDS_PER_SECOND = 1000;
@@ -77,10 +58,6 @@ function parseInteger(value, minimum, maximum, label) {
     return numeric;
 }
 
-/*
- * Two decimal places with insignificant trailing zeros removed, which is the
- * form pdfcpu expects for page dimensions.
- */
 function fixed2(value) {
     return Number(value).toFixed(DECIMAL_PLACES).replace(/0+$/u, "").replace(/\.$/u, "");
 }
@@ -95,9 +72,6 @@ function zeroPad(value, width) {
     return text;
 }
 
-/*
- * "1 PDF" / "2 PDFs", rather than the "(s)" that stands in for it.
- */
 function plural(count, singular, pluralForm) {
     return `${count} ${count === 1 ? singular : pluralForm ?? `${singular}s`}`;
 }
@@ -116,10 +90,6 @@ function formatDuration(milliseconds) {
 
 /* ===== src/core/errors.js ===== */
 
-/*
- * Error classification. The runtime distinguishes a deliberate cancellation,
- * which must stay silent, from a genuine failure, which must be reported.
- */
 
 const CANCEL_ERROR_NUMBER = -128;
 const MAX_COMMAND_LENGTH = 4000;
@@ -148,10 +118,6 @@ function isUserCancelled(error) {
     );
 }
 
-/*
- * A failing command is shown to the user in a dialog. A long argument list
- * would make that dialog unreadable, so the middle is elided.
- */
 function summarizeCommand(command) {
     const text = String(command);
 
@@ -166,13 +132,24 @@ function summarizeCommand(command) {
     ].join("\n\n");
 }
 
-/*
- * The command that failed is invaluable in a log and noise in a dialog: a
- * person who right-clicked in Finder is not going to debug an argv, and it
- * buries the one line that matters underneath it.
- */
+const MAXIMUM_CAUSE_DEPTH = 8;
+
+function commandOf(error) {
+    let current = error;
+
+    for (let depth = 0; current && depth < MAXIMUM_CAUSE_DEPTH; depth += 1) {
+        if (current.command) {
+            return String(current.command);
+        }
+
+        current = current.cause;
+    }
+
+    return "";
+}
+
 function describeForLog(error) {
-    const command = error && error.command;
+    const command = commandOf(error);
 
     return command
         ? `${errorMessage(error)}\n\nCommand:\n${command}`
@@ -181,19 +158,10 @@ function describeForLog(error) {
 
 /* ===== src/core/shell.js ===== */
 
-/*
- * POSIX shell quoting.
- *
- * Every argument is wrapped in single quotes with embedded single quotes
- * escaped, which is the one form that survives arbitrary filenames: no
- * expansion, no word splitting, no glob.
- */
 
 function shellQuote(value) {
     const text = String(value);
 
-    // NUL is exactly what this guard rejects; argv cannot carry it.
-    // eslint-disable-next-line no-control-regex
     if (/\x00/u.test(text)) {
         throw new Error("Shell arguments cannot contain NUL bytes.");
     }
@@ -207,26 +175,7 @@ function shellJoin(argumentsList) {
 
 /* ===== src/core/paths.js ===== */
 
-/*
- * Path string manipulation.
- *
- * These operate on POSIX path strings rather than touching the filesystem, so
- * they stay pure and testable.
- */
 
-/*
- * The formats vips reads that behave like a photograph: one still image, of
- * known orientation, that belongs on a page.
- *
- * Deliberately excluded, though vips can read them: GIF and animated WebP
- * (only the first frame would be taken), SVG (vector, and --size=down would
- * leave an icon-sized file as a stamp on the page), PDF (rasterising page one
- * of a PDF to make a PDF), and camera RAW (slow, huge, and users expect
- * processing rather than conversion).
- *
- * The pattern and the list shown to the user are both derived from this table,
- * so a dialog cannot promise a format the filter would reject.
- */
 const SUPPORTED_FORMATS = [
     { name: "JPEG", extensions: ["jpg", "jpeg"] },
     { name: "PNG", extensions: ["png"] },
@@ -249,11 +198,6 @@ function isSupportedImage(path) {
     return SUPPORTED_PATTERN.test(String(path));
 }
 
-/*
- * "JPEG, PNG, HEIC, TIFF, WebP or AVIF". Worth spelling out to the user,
- * because the action refuses things people reasonably try, such as GIF and
- * PDF, and "no images selected" alone would not explain why.
- */
 function supportedFormatList() {
     const names = SUPPORTED_FORMATS.map((format) => format.name);
 
@@ -281,15 +225,8 @@ function fileStem(filename) {
     return index > 0 ? value.slice(0, index) : value;
 }
 
-/*
- * Reduces a name to something safe to create on disk while preserving
- * Unicode. Separators and control characters become underscores; the result
- * never starts or ends with whitespace, a dot, or an underscore.
- */
 function sanitizeFilename(filename) {
     const safe = String(filename)
-        // Control characters are matched on purpose: they must not reach a filename.
-        // eslint-disable-next-line no-control-regex
         .replace(/[\x00-\x1f\x7f/:]/gu, "_")
         .replace(/_+/gu, "_")
         .replace(/^\.+|\.+$/gu, "")
@@ -300,9 +237,6 @@ function sanitizeFilename(filename) {
 
 /* ===== src/core/ordering.js ===== */
 
-/*
- * Natural ordering, so that page2 sorts before page10.
- */
 
 const EQUAL = 0;
 const LEFT_FIRST = -1;
@@ -316,10 +250,6 @@ function isNumeric(part) {
     return /^\d+$/u.test(part);
 }
 
-/*
- * Compares one segment pair. Returns EQUAL when the caller should move on to
- * the next segment.
- */
 function comparePart(leftPart, rightPart) {
     if (leftPart === undefined) {
         return LEFT_FIRST;
@@ -336,7 +266,6 @@ function comparePart(leftPart, rightPart) {
     if (isNumeric(leftPart) && isNumeric(rightPart)) {
         const difference = Number(leftPart) - Number(rightPart);
 
-        // Equal value, different zero padding: the narrower one sorts first.
         return difference === EQUAL
             ? leftPart.length - rightPart.length
             : difference;
@@ -361,10 +290,6 @@ function naturalCompare(left, right) {
     return EQUAL;
 }
 
-/*
- * Sorts by display name, falling back to full path so that identically named
- * files from different folders keep a stable, reproducible order.
- */
 function sortImageRecords(records) {
     return records.slice().sort((left, right) => {
         const comparison = naturalCompare(left.originalName, right.originalName);
@@ -377,37 +302,10 @@ function sortImageRecords(records) {
 
 /* ===== src/core/invocation.js ===== */
 
-/*
- * Invocation parsing.
- *
- * osascript forwards its own "--" argument separator into run(), so the
- * script's first argument is "--" rather than the caller's first real
- * argument. Dropping leading separators makes both of these equivalent, which
- * is what lets the integration suite run unattended:
- *
- *     osascript -l JavaScript script.jxa -- --headless config.json image
- *     osascript -l JavaScript script.jxa    --headless config.json image
- */
 
 const HEADLESS_FLAG = "--headless";
 const ARGUMENT_SEPARATOR = "--";
 
-/*
- * Shortcuts does not hand over a flat list. A Quick Action on a Finder
- * selection arrives as [[file, file, ...], parameters]: the selection nested
- * one level, followed by an object that is not a file at all.
- *
- * Flattened, because String() on an array of paths produces a comma-joined
- * string that still begins with "/" and still ends in ".jpg", so it survives
- * both the path check and the extension check and only fails at "no such
- * file". One image happened to work -- a single-element array stringifies to
- * just its element -- which is what made this look like a multi-image bug
- * rather than a shape the code never anticipated.
- *
- * The trailing parameters object needs no special case: it resolves to
- * nothing that looks like an image and is dropped by the same filter that
- * drops a selected text file.
- */
 function normalizeInvocationInput(input) {
     if (input === undefined || input === null) {
         return [];
@@ -428,9 +326,6 @@ function isHeadlessInput(input) {
     return items.length > 0 && String(items[0]) === HEADLESS_FLAG;
 }
 
-/*
- * Finder hands over file URLs rather than POSIX paths.
- */
 function decodeFileUrl(value) {
     const stripped = String(value)
         .replace(/^file:\/\/localhost/iu, "")
@@ -445,27 +340,11 @@ function decodeFileUrl(value) {
 
 /* ===== src/core/settings.js ===== */
 
-/*
- * The user-selectable settings, and validation of whatever arrives from the
- * dialogs or from a headless configuration file.
- *
- * Page sizes are defined in PostScript points, the unit PDF itself uses, so a
- * page is exactly A4 or exactly US Letter. Deriving points from rounded inch
- * dimensions instead leaves the published page a fraction of a point away from
- * the real paper size, and readers stop recognising it.
- *
- * A4 is 210 x 297 mm exactly: 210 / 25.4 * 72 = 595.2756 pt.
- */
 const PAGE_DEFINITIONS = {
     A4: { widthPoints: 595.2756, heightPoints: 841.8898 },
     Letter: { widthPoints: 612, heightPoints: 792 }
 };
 
-/*
- * Backgrounds are keyed by hex, so every value is the same kind of thing. The
- * vips vector is a single number for greys and a triple for colours, which is
- * what vips itself expects.
- */
 const BACKGROUND_DEFINITIONS = {
     "#FFFFFF": { vipsVector: "255" },
     "#000000": { vipsVector: "0" },
@@ -482,20 +361,6 @@ const MODE_MAP = {
 
 const MINIMUM_DPI = 72;
 
-/*
- * pdfcpu refuses to import an image above 100 megapixels, and a page rendered
- * at N DPI is exactly that: an image. The ceiling is therefore not a matter of
- * taste but of arithmetic, and it belongs to whichever paper size is largest.
- *
- * Measured before it was derived: A4 at 1200 DPI is 9924 x 14028 = 139.2 MP,
- * and every such run failed with "image pixel count 139201551 exceeds limit
- * 104857600". Testing either side of the computed bound then agreed with it
- * exactly — A4 succeeds at 1041 and fails at 1042, Letter succeeds at 1058
- * and fails at 1059.
- *
- * Derived rather than written down as 1041, so that adding a paper size
- * cannot quietly reintroduce a maximum the pipeline will not accept.
- */
 const PDFCPU_PIXEL_LIMIT = 104857600;
 const POINTS_PER_INCH = 72;
 
@@ -572,10 +437,6 @@ function normalizeSettings(settings) {
 
 /* ===== src/core/geometry.js ===== */
 
-/*
- * The page keeps its exact point dimensions at every DPI; only the pixel
- * canvas scales. That way the published PDF is always precisely A4 or Letter.
- */
 function calculatePageGeometry(settings) {
     const normalized = normalizeSettings(settings);
     const definition = PAGE_DEFINITIONS[normalized.paperSize];
@@ -596,27 +457,29 @@ function calculatePageGeometry(settings) {
     };
 }
 
+function calculatePlacement(geometry, source) {
+    const scale = Math.min(
+        1,
+        geometry.widthPoints / source.width,
+        geometry.heightPoints / source.height
+    );
+    const widthPoints = source.width * scale;
+    const heightPoints = source.height * scale;
+    const toPixels = (points) => Math.max(
+        1,
+        Math.round(points / POINTS_PER_INCH * geometry.dpi)
+    );
+
+    return {
+        widthPoints,
+        heightPoints,
+        widthPixels: toPixels(widthPoints),
+        heightPixels: toPixels(heightPoints)
+    };
+}
+
 /* ===== src/core/choices.js ===== */
 
-/*
- * What the settings dialogs say, and what each answer means.
- *
- * The label a person reads is kept separate from the value the pipeline uses,
- * so wording can be improved without changing the stored settings. "Letter" is
- * shown as "US Letter" because that is what macOS itself calls it, and because
- * "Letter" alone is an English word rather than an obviously named paper size.
- *
- * Ranges are interpolated from the bounds that validate them, so a prompt
- * cannot promise a range the validator does not accept.
- *
- * Each control carries two names. `prompt` is the whole question a stepwise
- * dialog asks, where it is the only text on screen. `label` sits beside a
- * control in the form, where a question would be too long: measured, the
- * quality prompt renders 230 points wide against a 175 point label column,
- * and was clipped mid-range to "JPEG quality (1-100, 90-95" — an unclosed
- * parenthesis that read as a typo. The bounds moved to `hint`, which is
- * shown beside the field rather than inside its name.
- */
 
 const PAPER_SIZE = {
     prompt: "Paper size:",
@@ -696,18 +559,6 @@ function valueOfLabel(control, label) {
 
 /* ===== src/core/form.js ===== */
 
-/*
- * The settings form, described as data.
- *
- * Everything about the form that can be decided without AppKit is decided
- * here: which rows exist, what they are called, what may be chosen, what the
- * answers mean, and which answers are refused. The runtime layer then only
- * has to turn this description into widgets, which is the part that cannot be
- * tested headlessly.
- *
- * The same controls back the stepwise dialogs, so the two front ends cannot
- * offer different options or accept different values.
- */
 
 const HEX_COLOUR = /^#(?<red>[\dA-F]{2})(?<green>[\dA-F]{2})(?<blue>[\dA-F]{2})$/u;
 const HEX_RADIX = 16;
@@ -727,12 +578,6 @@ const NUMBER_ROWS = [
     { key: "quality", control: QUALITY }
 ];
 
-/*
- * Parsed here rather than in the widget layer, so that turning "#204486" into
- * a colour is covered by tests like everything else. A value that is not a
- * hex colour simply has no swatch, which is how the non-colour controls get
- * the same row shape.
- */
 function swatchOf(value) {
     const match = HEX_COLOUR.exec(String(value));
 
@@ -790,12 +635,6 @@ function formRows(answers, invalid) {
     return [...choices, ...numbers];
 }
 
-/*
- * Previous answers are carried back in, so a form redisplayed after a bad
- * entry does not discard the five fields that were fine. The problems are
- * both listed above the form and used to mark the rows they name: reading
- * which field is wrong and seeing it should not be different jobs.
- */
 function formSpec(answers = defaultAnswers(), problems = []) {
     return {
         title: APP_NAME,
@@ -809,18 +648,6 @@ function formSpec(answers = defaultAnswers(), problems = []) {
 
 /* ===== src/core/form-answers.js ===== */
 
-/*
- * Turning what the form came back with into settings, or into a list of what
- * is wrong with it.
- *
- * A problem carries the key of the row it belongs to, not just a sentence.
- * Listing the sentences above the form tells a person what is wrong; the key
- * is what lets the form also show them where.
- *
- * Separate from form.js because describing a form and validating one are
- * different jobs, and because both files would otherwise exceed the size the
- * gate allows.
- */
 
 function readChoice(settings, problems, { key, control }, answers) {
     try {
@@ -850,10 +677,6 @@ function readNumber(settings, problems, { key, control }, answers) {
     settings[key] = value;
 }
 
-/*
- * Every problem at once. A form that reports the first bad field, and only
- * then the second, is the stepwise dialogs again with extra steps.
- */
 function readAnswers(answers) {
     const settings = {};
     const problems = [];
@@ -871,9 +694,6 @@ function readAnswers(answers) {
 
 /* ===== src/core/naming.js ===== */
 
-/*
- * Output filename construction and collision avoidance.
- */
 
 const TIMESTAMP_FIELD_WIDTH = 2;
 const FIRST_SUFFIX = 2;
@@ -901,10 +721,6 @@ function outputNameForSeparate(record, timestamp) {
     return `${sanitizeFilename(fileStem(record.originalName))}_${timestamp}.pdf`;
 }
 
-/*
- * Never overwrite: append _2, _3 and so on until the path is free. The caller
- * supplies the existence predicate so this stays pure.
- */
 function nextUniquePath(initialPath, exists) {
     if (!exists(initialPath)) {
         return initialPath;
@@ -927,60 +743,28 @@ function nextUniquePath(initialPath, exists) {
     throw new Error("Could not create a unique output filename.");
 }
 
-/*
- * Where the PDF is built before it is published.
- *
- * Inside the workspace rather than beside the images, which was measured
- * rather than chosen for tidiness: a Shortcuts helper could neither rename
- * nor even read a file pdfcpu had created in the user's Downloads folder,
- * while a file the shell itself created there could be renamed freely and
- * copying into that folder from the workspace was allowed throughout.
- * Nothing is written into the output folder now except the finished PDF.
- */
 function stagedPdfPath(workspace, token) {
     return `${workspace}/staged-${sanitizeFilename(String(token))}.pdf`;
 }
 
 /* ===== src/core/commands.js ===== */
 
-/*
- * Construction of the exact argument vectors handed to vips and pdfcpu.
- *
- * These are pure so that every flag the tools receive is asserted in unit
- * tests rather than discovered at runtime.
- */
 
 const GREY_ALPHA_BANDS = 2;
 const RGB_ALPHA_BANDS = 4;
 
-/*
- * Resize and colour-convert in one stage.
- *
- * --export-profile=srgb performs a real ICC transform when the source carries
- * an embedded profile, so Display P3 screenshots and Adobe RGB photographs
- * keep their appearance. A separate "colourspace srgb" stage ignores embedded
- * profiles and silently shifts those colours.
- *
- * --size=down never enlarges: a small image is centred at its native size
- * rather than upscaled to fill the page with invented pixels.
- */
-function buildThumbnailArgv(vipsPath, inputPath, outputPath, geometry) {
+function buildThumbnailArgv(vipsPath, inputPath, outputPath, placement) {
     return [
         vipsPath,
         "thumbnail",
         inputPath,
         outputPath,
-        String(geometry.widthPixels),
-        `--height=${geometry.heightPixels}`,
-        "--size=down",
+        String(placement.widthPixels),
+        `--height=${placement.heightPixels}`,
         "--export-profile=srgb"
     ];
 }
 
-/*
- * Single-page formats have no n-pages field at all, so its absence means one
- * page. TIFF, HEIC and AVIF can carry more.
- */
 function buildPageCountArgv(vipsheaderPath, imagePath) {
     return [vipsheaderPath, "-f", "n-pages", imagePath];
 }
@@ -1033,24 +817,10 @@ function buildPdfcpuImportArgv(pdfcpuPath, outputPath, pagePaths, geometry) {
     );
 }
 
-/*
- * pdfcpu parses flags with pflag, where a single dash introduces a cluster of
- * short flags: "-mode strict" is read as "-m ode", and "strict" is then taken
- * for a filename. The long form must also use "=", because "--mode strict" is
- * rejected as an unknown flag.
- */
 function buildPdfcpuValidateArgv(pdfcpuPath, outputPath) {
     return [pdfcpuPath, "validate", "--mode=strict", outputPath];
 }
 
-/*
- * After the thumbnail stage every image is sRGB, so an even band count means
- * an alpha channel is present. The JPEG page saver cannot represent alpha, so
- * those must be flattened onto the chosen background first.
- *
- * This deliberately ignores the file extension: what matters is what the
- * decoded image actually holds.
- */
 function hasAlphaBand(bandCount) {
     const bands = Number(bandCount);
 
@@ -1059,20 +829,6 @@ function hasAlphaBand(bandCount) {
 
 /* ===== src/core/preflight.js ===== */
 
-/*
- * Capability probes for the external tools.
- *
- * Presence is not enough. pdfcpu changed how it parses flags, so a build that
- * is installed and on PATH can still reject `--mode=strict` and fail every run
- * at validation with a message that points at nothing. A version comparison
- * would be the wrong instrument: `--export-profile` is a backward-compatible
- * alias that newer libvips no longer advertises but still accepts, so the
- * question is whether this build takes the flags we use, not what it is called.
- *
- * Each probe therefore runs the real tool with the real flags against a path
- * that cannot exist. A tool that understands the flags fails on the missing
- * file; one that does not fails on the flag, and says so differently.
- */
 
 const PROBE_IMAGE = "/nonexistent-image-files-to-pdf-preflight.png";
 const PROBE_OUTPUT = "/nonexistent-image-files-to-pdf-preflight.v";
@@ -1096,19 +852,10 @@ function buildPdfcpuProbeArgv(pdfcpuPath) {
     return [pdfcpuPath, "validate", "--mode=strict", PROBE_PDF];
 }
 
-/*
- * vips reports an unrecognised flag as "Unknown option --x" and a missing
- * input as a load failure, so only the former means the build is too old.
- */
 function isVipsUsable(probeOutput) {
     return !/Unknown option/u.test(String(probeOutput));
 }
 
-/*
- * pdfcpu echoes "validating(mode=strict)" once it has understood the flag.
- * The older parser reads `--mode=strict` as a filename and complains that
- * "strict needs extension .pdf" instead.
- */
 function isPdfcpuUsable(probeOutput) {
     return /mode=strict/u.test(String(probeOutput));
 }
@@ -1125,11 +872,6 @@ function describeProblem(problem) {
         `${problem.flags}.`;
 }
 
-/*
- * One message listing everything that is wrong, and one command that fixes it.
- * Reporting only the first problem makes the user install, retry, and discover
- * the next one.
- */
 function describeSetupProblems(problems, hasHomebrew) {
     const remedy = hasHomebrew
         ? `Run this in Terminal:\n\n${INSTALL_COMMAND}`
@@ -1141,12 +883,6 @@ function describeSetupProblems(problems, hasHomebrew) {
 
 /* ===== src/runtime/shell.js ===== */
 
-/*
- * Shell execution and filesystem predicates.
- *
- * Every command is built as an argument vector and quoted here, so no caller
- * ever assembles a command string by concatenation.
- */
 
 function runArgv(app, argumentsList, label) {
     const command = shellJoin(argumentsList);
@@ -1161,8 +897,6 @@ function runArgv(app, argumentsList, label) {
             { cause: error }
         );
 
-        // Carried alongside the message so the presenter can decide: shown in
-        // a log, withheld from a dialog.
         failure.command = summarizeCommand(command);
 
         throw failure;
@@ -1173,11 +907,6 @@ function readTextFile(app, path) {
     return runArgv(app, [CAT, path], "reading headless configuration");
 }
 
-/*
- * A failing test is an answer, not an error. This deliberately does not go
- * through runArgv: that would build a described Error, complete with a
- * summarised command, for every probe that simply returns false.
- */
 function testPath(app, flag, target) {
     try {
         app.doShellScript(shellJoin([TEST, flag, target]));
@@ -1214,21 +943,11 @@ function removeFile(app, path) {
     try {
         runArgv(app, [RM, "-f", path], "removing temporary file");
     } catch {
-        // A temporary file that cannot be removed must not fail the run.
     }
 }
 
 /* ===== src/runtime/tools.js ===== */
 
-/*
- * Discovery of the external command-line tools.
- *
- * Shortcuts runs with a minimal PATH, so the usual install locations are
- * probed directly before falling back to a PATH search.
- *
- * Absence is reported rather than thrown: the preflight collects every problem
- * so the user is told about all of them at once, not the first one.
- */
 
 const TOOL_SEARCH_PATH =
     "/opt/homebrew/bin:/usr/local/bin:/opt/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
@@ -1274,9 +993,6 @@ function candidatePaths(executableName) {
     ];
 }
 
-/*
- * Returns the path to the tool, or an empty string if it cannot be found.
- */
 function findTool(app, executableName) {
     const override = optionalEnvironment(
         app,
@@ -1298,13 +1014,6 @@ function findTool(app, executableName) {
 
 /* ===== src/runtime/workspace.js ===== */
 
-/*
- * Private temporary workspace lifecycle.
- *
- * The path is checked against the expected mktemp shape before anything is
- * removed recursively, so a surprising mktemp result can never turn into an
- * rm -rf of the wrong directory.
- */
 
 const WORKSPACE_PATTERN = /\/ImageFilesToPDF\.[^/]+$/u;
 const NONCE_RANGE = 1000000000;
@@ -1333,7 +1042,6 @@ function removeWorkspace(app, path) {
     try {
         runArgv(app, [RM, "-rf", path], "removing temporary workspace");
     } catch {
-        // Cleanup failure must not mask the original outcome.
     }
 }
 
@@ -1343,19 +1051,7 @@ function nonce() {
 
 /* ===== src/runtime/preflight.js ===== */
 
-/*
- * Everything that can be checked before the user is asked anything.
- *
- * This runs first, so a machine that is missing a tool says so immediately
- * rather than after six dialogs have been answered.
- */
 
-/*
- * The probes are expected to fail: they name a file that cannot exist. The
- * suffix merges stderr and forces a zero exit so the output can be read
- * directly instead of being recovered from a thrown error. It is a fixed
- * string, never anything the user supplied.
- */
 function probe(app, argv) {
     try {
         return app.doShellScript(`${shellJoin(argv)} 2>&1 || true`);
@@ -1406,9 +1102,6 @@ function inspectTool(app, name) {
     return { tool: name, kind: "ok", path: found };
 }
 
-/*
- * Returns the located tools, or throws one message describing every problem.
- */
 function checkTools(app) {
     const results = TOOL_NAMES.map((name) => inspectTool(app, name));
     const problems = results.filter((result) => result.kind !== "ok");
@@ -1428,21 +1121,12 @@ function checkTools(app) {
 
 /* ===== src/runtime/appkit-swatch.js ===== */
 
-/*
- * The colour square shown beside a background option.
- *
- * A name and a hex code ask a person to imagine a colour; a square shows it.
- * The outline is not decoration: white on a white menu is invisible without
- * one, which is exactly the option most people will be choosing.
- */
 
 const SWATCH_SIZE = 12;
 const FULL_ALPHA = 1;
 const COLOUR_MAX = 255;
 const SWATCH_BORDER_ALPHA = 0.3;
 
-// Insetting a one-point stroke by half a point puts it on the pixel grid
-// instead of straddling it, which is what keeps the outline crisp.
 const STROKE_INSET = 0.5;
 const STROKE_TRIM = 1;
 
@@ -1451,13 +1135,6 @@ function makeSwatch(ns, swatch) {
         ns.NSMakeSize(SWATCH_SIZE, SWATCH_SIZE)
     );
 
-    /*
-     * lockFocus, set and unlockFocus are zero-argument ObjC methods, which
-     * JXA invokes on property access: written with parentheses they would
-     * call the result instead. They read as bare expressions to ESLint, and
-     * there is no spelling that both works and satisfies the rule.
-     */
-    /* eslint-disable no-unused-expressions */
     image.lockFocus;
     ns.NSColor.colorWithSRGBRedGreenBlueAlpha(
         swatch.red / COLOUR_MAX,
@@ -1476,40 +1153,19 @@ function makeSwatch(ns, swatch) {
         )
     );
     image.unlockFocus;
-    /* eslint-enable no-unused-expressions */
 
     return image;
 }
 
 /* ===== src/runtime/appkit-widgets.js ===== */
 
-/*
- * The only code in the project that touches AppKit directly.
- *
- * Every function takes the ObjC namespace as its first parameter rather than
- * reaching for the `$` global, which is what lets the composition above be
- * driven by a fake in tests. What a fake cannot prove is that AppKit renders
- * any of it; that was established by running a probe inside the Shortcuts
- * helper, and is why appkit.js keeps the stepwise dialogs as a fallback.
- *
- * Deliberately branchless: anything with a decision in it belongs in
- * src/core/form.js, where it can be tested properly.
- */
 
 const HINT_FONT_SIZE = 11;
 
-// A tint rather than a solid fill, and drawn from the system red so it
-// follows the appearance the alert is rendered in. A fixed pink would be
-// wrong the moment the form appears in dark mode.
 const INVALID_TINT_ALPHA = 0.18;
 
-// NSTextAlignmentRight. On macOS right is 1 and centre is 2, which is the
-// reverse of UIKit, so the constant is named rather than written inline.
 const ALIGN_RIGHT = 1;
 
-// NSLineBreakByTruncatingTail: a label too long for its column ends in an
-// ellipsis instead of being cut mid-word. Clipping is how "JPEG quality
-// (1-100, 90-95" reached a user looking like an unclosed parenthesis.
 const TRUNCATE_TAIL = 4;
 
 
@@ -1527,18 +1183,12 @@ function makeLabel(ns, text, rect) {
     label.bezeled = false;
     label.drawsBackground = false;
     label.selectable = false;
-    // Right against the controls, which is how a macOS form associates a
-    // name with the thing it names.
     label.alignment = ALIGN_RIGHT;
     label.lineBreakMode = TRUNCATE_TAIL;
 
     return label;
 }
 
-/*
- * The bounds a field accepts, shown beside it rather than folded into its
- * name: smaller, secondary, and free to be as long as it needs.
- */
 function makeHint(ns, text, rect) {
     const hint = ns.NSTextField.alloc.initWithFrame(
         ns.NSMakeRect(rect.left, rect.bottom, rect.width, rect.height)
@@ -1585,11 +1235,6 @@ function makeField(ns, text, rect) {
     return field;
 }
 
-/*
- * Shows which control the message above the form is talking about. Applied by
- * the layout, which knows whether a row is in the problem list; this only
- * draws it.
- */
 function markInvalid(ns, control) {
     control.drawsBackground = true;
     control.backgroundColor = ns.NSColor.systemRedColor
@@ -1615,24 +1260,7 @@ function makeAlert(ns, spec) {
 
 /* ===== src/runtime/appkit-form.js ===== */
 
-/*
- * Turning the form description from src/core/form.js into a view.
- *
- * Split from appkit.js so that laying the rows out and presenting the result
- * stay separately readable, and so neither file exceeds the size the gate
- * allows. The widget primitives arrive as a parameter, which is what lets
- * this be tested without AppKit.
- */
 
-/*
- * Three columns: the name of the setting, the control, and — for the two that
- * take a number — the bounds it accepts.
- *
- * Widths were measured rather than guessed. At the 13 point system font the
- * longest label renders 110 points wide and the longest menu item 187, so a
- * number field needs only enough room for four digits and the rest of its
- * column can carry the hint.
- */
 const ROW_HEIGHT = 32;
 const LABEL_WIDTH = 140;
 const CONTROL_WIDTH = 230;
@@ -1643,7 +1271,6 @@ const GAP = 10;
 const HINT_GAP = 8;
 const PADDING = 6;
 
-// Padding sits above and below; a hint is centred against its field.
 const BOTH_EDGES = 2;
 const HALVES = 2;
 
@@ -1679,10 +1306,6 @@ function addChoice(context, row, rect) {
     return popup;
 }
 
-/*
- * The field is only as wide as the number it holds; the space that would have
- * been wasted carries the bounds instead.
- */
 function addNumber(context, row, rect) {
     const { ns, widgets, view } = context;
     const field = widgets.makeField(ns, row.value, {
@@ -1701,7 +1324,6 @@ function addNumber(context, row, rect) {
     view.addSubview(hint);
 
     if (row.invalid) {
-        // The value and the rule it breaks, marked together.
         widgets.markInvalid(ns, field);
         widgets.markHintInvalid(ns, hint);
     }
@@ -1738,7 +1360,6 @@ function buildForm(bridge, spec, widgets) {
 
 /* ===== src/runtime/appkit.js ===== */
 
-// Gathered into one object so a test can substitute the whole widget layer.
 const WIDGETS = {
     makeView,
     makeLabel,
@@ -1751,29 +1372,9 @@ const WIDGETS = {
     makeAlert
 };
 
-/*
- * One window instead of six sequential prompts.
- *
- * The ObjC namespace and the widget primitives are both parameters, so the
- * composition here — which rows become which controls, and what comes back
- * out of them — is unit tested against fakes. Only appkit-widgets.js touches
- * AppKit for real.
- *
- * A form that never appears would leave the user with nothing, so runModal is
- * guarded by an abortModal watchdog and an abort is reported as "could not
- * present" rather than as an answer. The caller then falls back to the
- * stepwise dialogs, which need no AppKit at all.
- */
 
-/*
- * Long enough that nobody filling in six fields is cut off, short enough that
- * a form which never rendered does not look like a hang forever. Reaching it
- * costs one slow run and then the dialogs appear instead.
- */
 const WATCHDOG_SECONDS = 120;
 
-// Measured, not assumed: abortModal yields NSModalResponseAbort, which is
-// -1001. -1000 is NSModalResponseStop and is not what fires here.
 const RESPONSE_ABORT = -1001;
 const FIRST_BUTTON = 1000;
 
@@ -1793,16 +1394,24 @@ function readControls(bridge, spec, controls) {
     return answers;
 }
 
-/*
- * The watchdog runs in NSModalPanelRunLoopMode because the default mode does
- * not tick while a modal loop owns the thread.
- */
+function abortSelector(bridge) {
+    return bridge.ns.NSSelectorFromString("abortModal");
+}
+
 function armWatchdog(bridge, application) {
     application.performSelectorWithObjectAfterDelayInModes(
-        bridge.ns.NSSelectorFromString("abortModal"),
+        abortSelector(bridge),
         null,
         WATCHDOG_SECONDS,
         bridge.ns([bridge.ns.NSModalPanelRunLoopMode])
+    );
+}
+
+function disarmWatchdog(bridge, application) {
+    bridge.ns.NSObject.cancelPreviousPerformRequestsWithTargetSelectorObject(
+        application,
+        abortSelector(bridge),
+        null
     );
 }
 
@@ -1816,6 +1425,8 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
 
     const response = Number(alert.runModal);
 
+    disarmWatchdog(bridge, application);
+
     if (response === RESPONSE_ABORT) {
         return null;
     }
@@ -1827,16 +1438,8 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
 
 /* ===== src/runtime/dialogs.js ===== */
 
-/*
- * The interactive front end: settings collection and the completion report.
- */
 
-const MAXIMUM_SHOWN_FAILURES = 12;
 
-/*
- * Presents the labels and returns the value behind the one chosen, so the
- * wording a person sees is never the thing the pipeline stores.
- */
 function chooseRequired(app, control) {
     const choice = app.chooseFromList(labelsOf(control), {
         withTitle: APP_NAME,
@@ -1890,6 +1493,11 @@ function collectDialogSettings(app) {
     };
 }
 
+/* ===== src/runtime/completion.js ===== */
+
+
+const MAXIMUM_SHOWN_FAILURES = 12;
+
 function describeFailures(failures) {
     const shown = failures.slice(0, MAXIMUM_SHOWN_FAILURES);
 
@@ -1900,42 +1508,68 @@ function describeFailures(failures) {
     return shown.join("\n");
 }
 
+function describeRejections(rejected) {
+    const shown = rejected
+        .slice(0, MAXIMUM_SHOWN_FAILURES)
+        .map((entry) => `${entry.name}: ${entry.reason}`);
+
+    if (rejected.length > shown.length) {
+        shown.push(`...and ${rejected.length - shown.length} more.`);
+    }
+
+    return `Not converted:\n${shown.join("\n")}`;
+}
+
+function describeDestinations(outputs) {
+    const folders = [...new Set(outputs.map((output) => dirname(output)))];
+
+    return folders.length === 1
+        ? folders[0]
+        : `${folders.length} folders:\n${folders.join("\n")}`;
+}
+
 function versionLine() {
     return `\n${APP_NAME} ${VERSION}`;
 }
 
-/*
- * Every completion says the same three things in the same order: what was
- * produced, where it went, and how long it took. Producing files without
- * saying where they are is the one thing this dialog exists to prevent.
- */
 function completionMessage(mode, result, pageCount) {
+    const rejected = result.rejected ?? [];
+    const notConverted = rejected.length > 0
+        ? `\n${describeRejections(rejected)}`
+        : "";
+
     if (result.failures.length > 0) {
         return [
             `Finished with errors.\n`,
             `Created: ${plural(result.outputs.length, "PDF")}`,
-            `Failed: ${result.failures.length}`,
+            `Failed: ${result.failures.length + rejected.length}`,
             `Elapsed: ${result.elapsed}\n`,
+            result.outputs.length > 0
+                ? `In: ${describeDestinations(result.outputs)}\n`
+                : "",
             describeFailures(result.failures),
+            notConverted,
             versionLine()
-        ].join("\n");
+        ].filter(Boolean).join("\n");
     }
 
     if (mode === "single") {
         return [
             `Created one PDF from ${plural(pageCount, "image")}.\n`,
             result.outputs[0],
+            notConverted,
             `\nElapsed: ${result.elapsed}`,
             versionLine()
-        ].join("\n");
+        ].filter(Boolean).join("\n");
     }
 
     return [
         `Created ${plural(result.outputs.length, "PDF")}.\n`,
-        dirname(result.outputs[0]),
+        describeDestinations(result.outputs),
+        notConverted,
         `\nElapsed: ${result.elapsed}`,
         versionLine()
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 }
 
 function showCompletion(app, mode, result, pageCount) {
@@ -1948,15 +1582,6 @@ function showCompletion(app, mode, result, pageCount) {
 
 /* ===== src/runtime/settings-form.js ===== */
 
-/*
- * Which front end asks for the settings.
- *
- * The AppKit form is preferred and the stepwise dialogs are the fallback,
- * rather than the form replacing them. A probe run inside ShortcutsMacHelper
- * showed the form displays there without touching the activation policy, but
- * that is a fact about this macOS, not a guarantee about the next one, and a
- * tool whose interface disappears is worse than one that asks six questions.
- */
 
 function appkitBridge(objc, ns) {
     if (!objc || !ns) {
@@ -1972,10 +1597,6 @@ function appkitBridge(objc, ns) {
     }
 }
 
-/*
- * One pass: present, and report what came back as either unusable, the
- * settings, or the answers to try again with.
- */
 function formRound(bridge, present, state) {
     const outcome = present(bridge, formSpec(state.answers, state.problems));
 
@@ -1994,12 +1615,8 @@ function formRound(bridge, present, state) {
         : { answers: outcome.answers, problems: read.problems };
 }
 
-/*
- * Redisplayed with the previous answers and every problem at once, so
- * correcting a mistyped DPI does not mean answering the other five again.
- */
 function collectViaForm(bridge, present) {
-    let state = { answers: defaultAnswers(), problems: [] };
+    let state = {};
 
     for (;;) {
         const round = formRound(bridge, present, state);
@@ -2016,11 +1633,6 @@ function collectViaForm(bridge, present) {
     }
 }
 
-/*
- * A cancellation is an answer and must be honoured. Anything else the form
- * throws is treated as the form being unusable, because falling back to
- * dialogs that work is better than failing the run over a widget.
- */
 function attemptForm(bridge, present) {
     try {
         return collectViaForm(bridge, present);
@@ -2051,27 +1663,10 @@ function collectSettings(
 
 /* ===== src/runtime/input.js ===== */
 
-/*
- * Resolution of whatever Shortcuts, Finder, or a headless caller supplies
- * into an ordered list of image files.
- */
 
 const HEADLESS_MINIMUM_ARGUMENTS = 3;
 const HEADLESS_FIRST_IMAGE_INDEX = 2;
 
-/*
- * A selected item may arrive as a POSIX path, as an object that stringifies
- * to one, which is what Shortcuts hands over, or as a file URL, which is what
- * a Finder selection gives.
- *
- * Path() is deliberately not consulted, having been measured rather than
- * assumed. It resolves against the process's working directory and always
- * returns an absolute path, so Path("not-a-path") becomes
- * "/wherever/not-a-path": a path that looks resolved and is not, which
- * defeats the check below instead of helping it. Path("") is worse — it
- * raises an ObjC exception that no JavaScript try/catch can intercept, and
- * takes the whole action down with no dialog and no message.
- */
 function pathCandidates(item) {
     const candidates = [];
 
@@ -2089,12 +1684,6 @@ function pathCandidates(item) {
     return candidates;
 }
 
-/*
- * Returns "" when the item is not a path at all. Shortcuts appends a
- * parameters object to the input of every Quick Action, so an item that is
- * not a file is an ordinary occurrence rather than a failure, and must not
- * end a run that has perfectly good images alongside it.
- */
 function inputItemToPosixPath(item) {
     for (const value of pathCandidates(item)) {
         if (/^file:\/\//iu.test(value)) {
@@ -2113,27 +1702,10 @@ function finderSelection() {
     return Application("Finder").selection();
 }
 
-function collectImageFiles(app, inputItems) {
-    const items = inputItems.length > 0 ? inputItems : finderSelection();
-    const records = [];
-
-    for (const item of items) {
-        const path = inputItemToPosixPath(item);
-
-        if (path && isSupportedImage(path) && isRegularFile(app, path)) {
-            records.push({ path, originalName: basename(path) });
-        }
-    }
-
-    return sortImageRecords(records);
-}
-
 function collectInvocation(app, input, headless) {
     const items = normalizeInvocationInput(input);
 
     if (!headless) {
-        // Settings come from dialogs, but only after the cheap checks have
-        // passed and there is actually something to convert.
         return { settings: null, timestamp: "", inputItems: items };
     }
 
@@ -2154,11 +1726,157 @@ function collectInvocation(app, input, headless) {
     };
 }
 
+/* ===== src/runtime/admission.js ===== */
+
+
+function rejectionReason(app, path) {
+    if (!isSupportedImage(path)) {
+        return `not a supported format (${supportedFormatList()})`;
+    }
+
+    return isRegularFile(app, path) ? "" : "not a readable file";
+}
+
+function admit(app, path, images, rejected) {
+    const reason = rejectionReason(app, path);
+
+    if (reason) {
+        rejected.push({ path, name: basename(path), reason });
+    } else {
+        images.push({ path, originalName: basename(path) });
+    }
+}
+
+function collectImageFiles(app, inputItems) {
+    const items = inputItems.length > 0 ? inputItems : finderSelection();
+    const images = [];
+    const rejected = [];
+    const paths = items
+        .map((item) => inputItemToPosixPath(item))
+        .filter(Boolean);
+
+    for (const path of paths) {
+        admit(app, path, images, rejected);
+    }
+
+    return { images: sortImageRecords(images), rejected };
+}
+
+/* ===== src/runtime/receipt.js ===== */
+
+
+const UTF8_ENCODING = 4;
+
+function foundation(objc, ns) {
+    try {
+        objc.import("Foundation");
+
+        return ns ?? null;
+    } catch {
+        return null;
+    }
+}
+
+function writeReceipt(text, ns = foundation(globalThis.ObjC, globalThis.$)) {
+    if (!ns) {
+        return false;
+    }
+
+    ns.NSFileHandle.fileHandleWithStandardOutput.writeData(
+        ns(String(text)).dataUsingEncoding(UTF8_ENCODING)
+    );
+
+    return true;
+}
+
+function isCompleteSuccess(result) {
+    return result.failures.length === 0 && (result.rejected ?? []).length === 0;
+}
+
+function describeIncomplete(result) {
+    const rejected = (result.rejected ?? []).length;
+    const counts = [
+        `${result.outputs.length} produced`,
+        `${result.failures.length} failed`,
+        `${rejected} not converted`
+    ];
+
+    return `The request was not completely honoured: ${counts.join(", ")}.`;
+}
+
+/* ===== src/runtime/reporting.js ===== */
+
+
+function describeNoImages(rejected) {
+    if (rejected.length === 0) {
+        return "No images selected.\n\nSelect one or more image files in " +
+            `Finder, then run the action again.\n\nSupported: ${
+                supportedFormatList()}.`;
+    }
+
+    return `Nothing to convert.\n\n${describeRejections(rejected)}`;
+}
+
+function reportNoImages(app, headless, rejected) {
+    if (headless) {
+        throw new Error(describeNoImages(rejected));
+    }
+
+    app.displayDialog(describeNoImages(rejected), {
+        withTitle: APP_NAME,
+        buttons: ["OK"],
+        defaultButton: "OK"
+    });
+
+    return [];
+}
+
+function reportHeadless(result, write = writeReceipt) {
+    const receipt = JSON.stringify(result);
+
+    if (isCompleteSuccess(result)) {
+        return receipt;
+    }
+
+    write(`${receipt}\n`);
+
+    throw new Error(describeIncomplete(result));
+}
+
+function reportResult(app, job, result, options) {
+    if (options.headless) {
+        return reportHeadless(result);
+    }
+
+    showCompletion(app, job.settings.mode, result, options.pageCount);
+
+    return result.outputs;
+}
+
 /* ===== src/runtime/source-image.js ===== */
 
-/*
- * What can be learned about a source image before it becomes a page.
- */
+
+function readField(app, vipsheaderPath, imagePath, field) {
+    const text = runArgv(
+        app,
+        [vipsheaderPath, "-f", field, imagePath],
+        `reading the image ${field}`
+    );
+    const value = parseInt(String(text).trim(), 10);
+
+    if (!isFinite(value) || value < 1) {
+        throw new Error(`vipsheader returned an invalid ${field}: ${text}`);
+    }
+
+    return value;
+}
+
+function readImageSize(app, vipsheaderPath, imagePath) {
+    return {
+        width: readField(app, vipsheaderPath, imagePath, "width"),
+        height: readField(app, vipsheaderPath, imagePath, "height")
+    };
+}
 
 function readBandCount(app, vipsheaderPath, imagePath) {
     const text = runArgv(
@@ -2175,67 +1893,64 @@ function readBandCount(app, vipsheaderPath, imagePath) {
     return value;
 }
 
-/*
- * The n-pages field is absent for single-page formats such as JPEG and PNG,
- * so a failed read means one page rather than an error.
- */
+const FIELD_ABSENT = /field "n-pages" not found/u;
+
+function countFrom(text) {
+    return /^\d+$/u.test(text) && Number(text) > 0
+        ? { pages: Number(text) }
+        : { unknown: `vipsheader reported the page count as "${text}"` };
+}
+
 function readPageCount(app, vipsheaderPath, imagePath) {
     try {
-        const text = runArgv(
+        return countFrom(String(runArgv(
             app,
             buildPageCountArgv(vipsheaderPath, imagePath),
             "reading the page count"
-        );
-        const value = parseInt(String(text).trim(), 10);
-
-        return isFinite(value) && value > 0 ? value : 1;
-    } catch {
-        return 1;
+        )).trim());
+    } catch (error) {
+        return FIELD_ABSENT.test(errorMessage(error))
+            ? { pages: 1 }
+            : { unknown: errorMessage(error) };
     }
 }
 
-/*
- * A multi-page TIFF, HEIC or AVIF would otherwise contribute only its first
- * page, silently: vips reads page one unless asked for more, and the rest
- * simply would not appear in the PDF. Refusing is the honest answer, because
- * the file can be split and nothing is quietly lost.
- */
 function assertSinglePage(job, imageFile) {
-    const pages = readPageCount(job.app, job.tools.vipsheader, imageFile.path);
+    const count = readPageCount(job.app, job.tools.vipsheader, imageFile.path);
 
-    if (pages > 1) {
+    if (count.unknown) {
         throw new Error(
-            `contains ${pages} pages. Only single-page images are supported; ` +
-            "split the file and run the action on the pages."
+            "could not be checked for multiple pages, which this action " +
+            `refuses to convert:\n\n${count.unknown}`
+        );
+    }
+
+    if (count.pages > 1) {
+        throw new Error(
+            `contains ${count.pages} pages. Only single-page images are ` +
+            "supported; split the file and run the action on the pages."
         );
     }
 }
 
 /* ===== src/runtime/pages.js ===== */
 
-/*
- * Preparation of one source image into one page-sized JPEG.
- *
- * The invariants of a run — the app handle, the located tools, the validated
- * settings, the page geometry and the workspace — travel together as one job
- * object rather than as a long positional argument list.
- */
 
 const PAGE_INDEX_WIDTH = 6;
 
-/*
- * One stage resizes and converts to sRGB. The thumbnail operation applies the
- * embedded ICC profile, which a separate colourspace stage would ignore, and
- * it saves an intermediate write and read of a full-page uncompressed image.
- */
 function resizeToPage(job, imageFile, preparedPath) {
+    const placement = calculatePlacement(
+        job.geometry,
+        readImageSize(job.app, job.tools.vipsheader, imageFile.path)
+    );
+
     runArgv(
         job.app,
         buildThumbnailArgv(
             job.tools.vips,
             imageFile.path,
             preparedPath,
-            job.geometry
+            placement
         ),
         "preparing the image"
     );
@@ -2311,11 +2026,6 @@ function preparePage(job, imageFile, index) {
     }
 }
 
-/*
- * Names the image once. A combined run has no other place to say which one
- * failed, and a separate run does the same at its own boundary, so the name
- * appears exactly once either way.
- */
 function withImageName(imageFile, produce) {
     try {
         return produce();
@@ -2331,29 +2041,29 @@ function preparePages(job, imageFiles) {
         withImageName(imageFile, () => preparePage(job, imageFile, index)));
 }
 
+/* ===== src/runtime/rescue.js ===== */
+
+const RECOVERY_PREFIX = "ImageFilesToPDF-recovered";
+
+function setAside(app, stagedPath) {
+    try {
+        const folder = String(runArgv(
+            app,
+            [MKTEMP, "-d", "-t", RECOVERY_PREFIX],
+            "making a folder for the unpublished PDF"
+        )).trim();
+        const recovered = `${folder}/${basename(stagedPath)}`;
+
+        runArgv(app, [MV, stagedPath, recovered], "setting the PDF aside");
+
+        return recovered;
+    } catch {
+        return stagedPath;
+    }
+}
+
 /* ===== src/runtime/publish.js ===== */
 
-/*
- * Getting a finished PDF out of the workspace and into the output folder.
- *
- * Where the PDF is built matters as much as how it is published, and both
- * were settled by measurement inside a Shortcuts helper. pdfcpu created the
- * file in the user's Downloads folder; afterwards /bin/mv could not rename it
- * and /bin/cp could not even read it, both refused with "Operation not
- * permitted". In the same folder, on the same run, a file the shell itself
- * created could be renamed freely, and copying in from the workspace was
- * allowed. Whatever the sandbox is doing, it is doing it to the file pdfcpu
- * wrote there — so nothing is written there any more except the finished PDF.
- *
- * A rename is still preferred. The workspace and the output folder are
- * normally the same volume, where a rename is atomic and nothing can read a
- * half-written PDF under the final name. The copy is the fallback for when
- * the rename is refused, or when the images live on another volume; because a
- * copy is not atomic it is verified by comparing sizes rather than by the
- * destination merely existing. That is what tells a finished copy from a
- * truncated one, and from `cp -n` silently declining because something else
- * took the name — neither mv -n nor cp -n reports declining, both exit zero.
- */
 
 const SIZE_UNKNOWN = -1;
 
@@ -2372,10 +2082,6 @@ function fileSize(app, path) {
     }
 }
 
-/*
- * mv -n exits zero when it declines, so the partial surviving is the only
- * evidence that nothing moved.
- */
 function renameInto(app, from, to) {
     try {
         runArgv(app, [MV, "-n", from, to], "publishing PDF");
@@ -2409,10 +2115,11 @@ function copyInto(app, from, to) {
     return { published: true };
 }
 
-function describeFailure(attempts) {
+function describeFailure(attempts, recovered) {
     return [
         "The PDF could not be published without overwriting another file.",
-        ...attempts.map((attempt) => attempt.reason)
+        ...attempts.map((attempt) => attempt.reason),
+        `The finished PDF has been kept here:\n\n${recovered}`
     ].join("\n\n");
 }
 
@@ -2430,24 +2137,16 @@ function publishPdf(app, stagedPath, finalPath) {
     }
 
     if (!attempts.at(-1).published) {
-        removeFile(app, stagedPath);
-
-        throw new Error(describeFailure(attempts));
+        throw new Error(describeFailure(attempts, setAside(app, stagedPath)));
     }
 
     verifyFileWritten(app, finalPath, "output PDF");
 
-    // A no-op after a rename; after a copy it clears the source. Removal is
-    // best effort, because a host that refused the rename may refuse this
-    // too, and the user has their PDF either way.
     removeFile(app, stagedPath);
 }
 
 /* ===== src/runtime/pdf.js ===== */
 
-/*
- * PDF creation, validation, and publication.
- */
 
 function createAndValidatePdf(job, stagedPath, pagePaths) {
     removeFile(job.app, stagedPath);
@@ -2485,39 +2184,49 @@ function createCombinedPdf(job, imageFiles) {
         outputNameForCombined(job.timestamp)
     );
 
+    let validated = false;
+
     try {
         createAndValidatePdf(job, stagedPath, preparePages(job, imageFiles));
+        validated = true;
         publishPdf(job.app, stagedPath, finalPath);
 
         return { outputs: [finalPath], failures: [] };
     } catch (error) {
-        removeFile(job.app, stagedPath);
+        if (!validated) {
+            removeFile(job.app, stagedPath);
+        }
+
         throw error;
     }
 }
 
-/*
- * One failing image must not abandon the rest, so each is reported and the
- * run continues.
- */
 function createSeparatePdf(job, imageFile, index) {
-    const { finalPath, stagedPath } = resolveOutputPaths(
-        job,
-        dirname(imageFile.path),
-        outputNameForSeparate(imageFile, job.timestamp)
-    );
+    let stagedPath = "";
+    let validated = false;
 
     try {
+        const { finalPath, stagedPath: staged } = resolveOutputPaths(
+            job,
+            dirname(imageFile.path),
+            outputNameForSeparate(imageFile, job.timestamp)
+        );
+
+        stagedPath = staged;
+
         withImageName(imageFile, () => {
             createAndValidatePdf(job, stagedPath, [
                 preparePage(job, imageFile, index)
             ]);
+            validated = true;
             publishPdf(job.app, stagedPath, finalPath);
         });
 
         return { output: finalPath, failure: "" };
     } catch (error) {
-        removeFile(job.app, stagedPath);
+        if (!validated) {
+            removeFile(job.app, stagedPath);
+        }
 
         return { output: "", failure: errorMessage(error) };
     }
@@ -2542,14 +2251,7 @@ function createSeparatePdfs(job, imageFiles) {
 
 /* ===== src/runtime/job.js ===== */
 
-/*
- * Assembling a run and carrying it out, which is a separate job from deciding
- * what to run and reporting it: main.js does that.
- */
 
-/*
- * The invariants of a run, gathered once and passed as a unit.
- */
 function createJob(app, settings, timestamp, tools) {
     return {
         app,
@@ -2575,45 +2277,8 @@ function runJob(job, imageFiles) {
 
 /* ===== src/runtime/main.js ===== */
 
-/*
- * Entry point and orchestration.
- *
- * Shortcuts calls run(input, parameters). In headless mode errors propagate so
- * a caller sees a non-zero exit; interactively they become a dialog.
- */
 
-function reportNoImages(app, headless) {
-    if (headless) {
-        throw new Error(
-            `No image files were supplied. Supported: ${supportedFormatList()}.`
-        );
-    }
 
-    app.displayDialog(
-        "No images selected.\n\nSelect one or more image files in Finder, " +
-        `then run the action again.\n\nSupported: ${supportedFormatList()}.`,
-        { withTitle: APP_NAME, buttons: ["OK"], defaultButton: "OK" }
-    );
-
-    return [];
-}
-
-function reportResult(app, job, result, options) {
-    if (options.headless) {
-        return JSON.stringify(result);
-    }
-
-    showCompletion(app, job.settings.mode, result, options.pageCount);
-
-    return result.outputs;
-}
-
-/*
- * Nothing is asked of the user until everything that can be checked cheaply
- * has been: the tools must be installed and usable, and there must be images
- * to convert. Asking six questions and then reporting a missing tool wastes
- * every answer.
- */
 function prepare(app, input, headless) {
     const tools = checkTools(app);
     const invocation = collectInvocation(app, input, headless);
@@ -2621,37 +2286,37 @@ function prepare(app, input, headless) {
     return {
         tools,
         invocation,
-        imageFiles: collectImageFiles(app, invocation.inputItems)
+        selection: collectImageFiles(app, invocation.inputItems)
     };
+}
+
+function prepareJob(app, invocation, tools) {
+    return createJob(
+        app,
+        normalizeSettings(invocation.settings ?? collectSettings(app)),
+        invocation.timestamp || makeTimestamp(new Date()),
+        tools
+    );
 }
 
 function execute(app, input, headless) {
     const startedAt = new Date();
-    const { tools, invocation, imageFiles } = prepare(app, input, headless);
+    const { tools, invocation, selection } = prepare(app, input, headless);
+    const { images, rejected } = selection;
 
-    if (imageFiles.length === 0) {
-        return reportNoImages(app, headless);
+    if (images.length === 0) {
+        return reportNoImages(app, headless, rejected);
     }
 
-    const settings = normalizeSettings(
-        invocation.settings ?? collectSettings(app)
-    );
-    const job = createJob(
-        app,
-        settings,
-        invocation.timestamp || makeTimestamp(new Date()),
-        tools
-    );
-    const result = runJob(job, imageFiles);
+    const job = prepareJob(app, invocation, tools);
+    const result = runJob(job, images);
 
     result.elapsed = formatDuration(new Date() - startedAt);
+    result.rejected = rejected;
 
-    return reportResult(app, job, result, { headless, pageCount: imageFiles.length });
+    return reportResult(app, job, result, { headless, pageCount: images.length });
 }
 
-// osascript calls run with this exact two-argument signature; the second
-// parameter is unused here but must remain part of the signature.
-// eslint-disable-next-line no-unused-vars
 function run(input, parameters) {
     const app = Application.currentApplication();
     const headless = isHeadlessInput(input);
@@ -2662,7 +2327,6 @@ function run(input, parameters) {
         return execute(app, input, headless);
     } catch (error) {
         if (headless) {
-            // stderr, where the failing command is worth having.
             throw new Error(describeForLog(error), { cause: error });
         }
 

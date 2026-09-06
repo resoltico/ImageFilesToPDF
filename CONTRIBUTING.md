@@ -55,53 +55,7 @@ so they cannot offer different options or accept different values — there is a
 test asserting exactly that.
 
 `appkit-widgets.js` is the only module that touches AppKit, and it takes the
-ObjC namespace as a parameter rather than reaching for the `# Contributing
-
-## Working on this
-
-```sh
-npm ci
-npm run release
-```
-
-`npm run release` regenerates `dist/` and runs the full gate. `npm run quality`
-runs the gate without regenerating, which is what CI does, so that a stale
-committed artifact fails instead of shipping.
-
-The macOS integration gate needs the real tools and is run separately:
-
-```sh
-brew install vips pdfcpu qpdf poppler libtiff shellcheck actionlint
-npm run test:integration:macos
-```
-
-## What the gate enforces
-
-`QA.md` is the contract. It specifies every check, its threshold, and why the
-guard exists — file size, coverage, ESLint mode, the language target, mutation
-score, and the facts that must agree across files.
-
-This file does not restate those rules, so that there is one place to change
-when they move.
-
-Two things worth knowing before you write code, because they shape where things
-go rather than merely passing or failing:
-
-- **A test belongs in `tests/unit/` if it takes its world by parameter, and in
-  `tests/repo/` if it inspects the real repository.** Only the former is
-  meaningful under mutation, where the tree is deliberately altered.
-- **Rules that are switched off are listed with their reasons** in
-  `tools/eslint/rules.mjs`. Add to that list only with a reason, never in bulk.
-
-## Source layout
-
-`src/` holds small single-purpose CommonJS modules so each can be required and
-unit tested on its own:
-
-- `src/core/` — the portable planner: settings, geometry, paths, naming,
-  ordering, shell quoting, argv construction, invocation parsing, preflight
-  probes, errors.
- global. That is
+ObjC namespace as a parameter rather than reaching for the `$` global. That is
 what lets the form composition be unit tested against a fake. What a fake
 cannot establish is that AppKit renders any of it; that was verified by
 running a probe inside the Shortcuts helper, and is why the fallback exists.
@@ -118,9 +72,23 @@ Each module has its own test file under `tests/unit/core/` or
 
 Do not edit it. `dist/Image Files to PDF.jxa` is generated from the modules
 under `src/` by `tools/bundle.mjs`, which concatenates the module bodies with
-their `require` and `module.exports` lines removed. Everything then shares one
-script scope and `run` stays top level, where `osascript` finds it. The bundler
-fails the build on a duplicate top-level name or an out-of-order dependency.
+their `require`, `module.exports` and strict directive removed. Everything then
+shares one script scope and `run` stays top level, where `osascript` finds it.
+The bundler fails the build on a duplicate top-level name or an out-of-order
+dependency.
+
+Those are found in the syntax tree rather than by matching lines, so what the
+build recognises does not depend on how the sources happen to be formatted. The
+same applies to the comments, which are removed from the artifact — the file is
+pasted into a Shortcuts editor whose size ceiling nobody knows, and the header
+says where the sources are. What is removed is removed by byte range, and the
+build then asserts that what is left has the same token sequence as what it
+started with; a build step that changed the program cannot reach the disk.
+
+The parsing lives in `tools/javascript.mjs`, the CommonJS shapes in
+`tools/commonjs.mjs`, the removal in `tools/excise.mjs`, and the header in
+`tools/banner.mjs`, which quotes the version and URL from `package.json` and
+the copyright line from `LICENSE` so the artifact cannot misstate them.
 
 Edit the sources, run `npm run release`, and commit both.
 
@@ -140,7 +108,8 @@ Three things are checked that a local build cannot check:
 
 - **The tag names the version the repository already agrees on.**
   `tools/check-tag.mjs` compares it against the value the consistency gate
-  derives from all six files, so tagging cannot paper over a disagreement.
+  derives from all six declarations of it, so tagging cannot paper over a
+  disagreement.
 - **The build is reproducible.** CI runs `npm run check-dist` first, so the
   committed artifact is proven to match `src/` while it is still untouched,
   then rebuilds and requires `git diff --exit-code -- dist/` to be clean. What

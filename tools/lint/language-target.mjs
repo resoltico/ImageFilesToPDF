@@ -59,6 +59,6 @@ export function checkFeatures(release) {
     return `ES${ECMASCRIPT_TARGET}, macOS ${MINIMUM_MACOS}+`;
 }
 
-export async function checkLanguageTarget() {
-    return checkFeatures(await renderRelease());
+export async function checkLanguageTarget(render = renderRelease) {
+    return checkFeatures(await render());
 }
