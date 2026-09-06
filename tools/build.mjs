@@ -5,9 +5,9 @@ import {
     digestOf,
     manifestPath,
     renderManifest,
-    renderRelease,
-    root
+    renderRelease
 } from "./release.mjs";
+import { root } from "./repository.mjs";
 
 const release = await renderRelease();
 await mkdir(path.join(root, "dist"), { recursive: true });

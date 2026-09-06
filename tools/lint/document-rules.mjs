@@ -1,6 +1,6 @@
 import { readFromDisk } from "./consistency.mjs";
 import { walk } from "./discovery.mjs";
-import { root } from "../release.mjs";
+import { root } from "../repository.mjs";
 
 /*
  * The documents, which nothing read until one of them was found carrying its

@@ -1,6 +1,7 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { moduleOrder, root } from "../release.mjs";
+import { moduleOrder } from "../release.mjs";
+import { root } from "../repository.mjs";
 
 const SOURCE_EXTENSIONS = /\.(?:js|mjs|cjs)$/u;
 /*

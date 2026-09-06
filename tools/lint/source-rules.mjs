@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { root } from "../release.mjs";
+import { root } from "../repository.mjs";
 
 // This rule exists to find literal control characters, so it must contain them.
 // eslint-disable-next-line no-control-regex

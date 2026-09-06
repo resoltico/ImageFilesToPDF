@@ -6,7 +6,6 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import {
     stripModuleSyntax,
     recordDeclarations,
@@ -15,11 +14,7 @@ import {
 } from "./bundle.mjs";
 import { renderBanner, readMetadata } from "./banner.mjs";
 import { stripComments } from "./strip-comments.mjs";
-
-export const root = path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    ".."
-);
+import { root } from "./repository.mjs";
 
 /*
  * The supported floor.

@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { root } from "../release.mjs";
+import { root } from "../repository.mjs";
 
 const WORKFLOW_ROOT = ".github/workflows";
 const WORKFLOW_EXTENSION = /\.ya?ml$/u;

@@ -1,7 +1,7 @@
 import { access } from "node:fs/promises";
 import path from "node:path";
 import { checkDocuments } from "./document-rules.mjs";
-import { root } from "../release.mjs";
+import { root } from "../repository.mjs";
 
 /*
  * The files the documents point at have to be there.

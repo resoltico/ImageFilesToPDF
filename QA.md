@@ -243,6 +243,14 @@ checksum manifest and INSTALL.txt. Attesting only the manifest would cover what
 the manifest lists and leave the manifest and the instructions uncovered, and
 all three are things a person downloads and acts on.
 
+That job installs nothing. It holds the write and signing permissions, so the
+less code that runs there the better, and all it needs is the release notes out
+of CHANGELOG.md. The property is checked rather than trusted: a test walks the
+import graph of the entry points that job runs and refuses any package outside
+Node's own. It was written down and unchecked once, a refactor gave the builder
+a parser, the notes reached the builder through four modules, and the release
+failed at its last step for a dependency none of it uses.
+
 The attestation is then verified in the same job, before the release is
 created. An attestation that does not verify is worth less than none, because
 it is the thing a user is told to check — and failing here publishes nothing.

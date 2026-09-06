@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { root } from "../release.mjs";
+import { root } from "../repository.mjs";
 
 /*
  * Facts that are stated in more than one file must agree.
