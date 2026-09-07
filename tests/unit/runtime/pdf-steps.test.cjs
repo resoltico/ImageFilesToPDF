@@ -20,7 +20,7 @@ function failureFrom(host) {
 
     assert.equal(failures.length, 1, "exactly one image, so exactly one failure");
 
-    return failures[0];
+    return failures[0].message;
 }
 
 test("a rejected PDF is reported as a validation failure", () => {

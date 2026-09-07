@@ -23,48 +23,6 @@ function readField(app, vipsheaderPath, imagePath, field) {
     return value;
 }
 
-/*
- * Orientations 5 to 8 are the ones that involve a quarter turn, either way and
- * with or without a mirror, and a quarter turn exchanges the sides. One to
- * four leave the sides as they are.
- */
-const UPRIGHT = 1;
-const FIRST_TURNED = 5;
-const LAST_TURNED = 8;
-
-function exchangesSides(orientation) {
-    return orientation >= FIRST_TURNED && orientation <= LAST_TURNED;
-}
-
-function readOrientation(app, vipsheaderPath, imagePath) {
-    try {
-        return readField(app, vipsheaderPath, imagePath, "orientation");
-    } catch {
-        // Most formats carry no orientation at all, which means upright.
-        return UPRIGHT;
-    }
-}
-
-/*
- * The pixel dimensions the image will have once it has been read, which is
- * what decides how large it sits on the page.
- *
- * Not the dimensions stored in the file. vips rotates an image to match its
- * orientation tag as it reads it, while vipsheader reports the width and
- * height as stored -- so a photograph taken in portrait, which a phone stores
- * as landscape with a tag saying to turn it, was measured on its side and
- * placed in a box of the wrong shape. It reached the page at a quarter of the
- * area of the same photograph with its pixels already upright.
- */
-function readImageSize(app, vipsheaderPath, imagePath) {
-    const width = readField(app, vipsheaderPath, imagePath, "width");
-    const height = readField(app, vipsheaderPath, imagePath, "height");
-
-    return exchangesSides(readOrientation(app, vipsheaderPath, imagePath))
-        ? { width: height, height: width }
-        : { width, height };
-}
-
 function readBandCount(app, vipsheaderPath, imagePath) {
     const text = runArgv(
         app,
@@ -109,7 +67,9 @@ function readPageCount(app, vipsheaderPath, imagePath) {
     } catch (error) {
         return FIELD_ABSENT.test(errorMessage(error))
             ? { pages: 1 }
-            : { unknown: errorMessage(error) };
+            // Carried, not flattened: the command that failed is on the error
+            // and the message alone does not have it.
+            : { unknown: errorMessage(error), cause: error };
     }
 }
 
@@ -125,7 +85,8 @@ function assertSinglePage(job, imageFile) {
     if (count.unknown) {
         throw new Error(
             "could not be checked for multiple pages, which this action " +
-            `refuses to convert:\n\n${count.unknown}`
+            `refuses to convert:\n\n${count.unknown}`,
+            { cause: count.cause }
         );
     }
 
@@ -138,7 +99,7 @@ function assertSinglePage(job, imageFile) {
 }
 
 module.exports = {
-    readImageSize,
+    readField,
     readBandCount,
     readPageCount,
     assertSinglePage,

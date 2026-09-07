@@ -26,54 +26,66 @@ function recorder() {
     };
 }
 
-test("each image is announced as it is prepared", () => {
+test("nothing is complete until something has finished", () => {
+    // completedUnitCount holds work that is done. It used to hold the number
+    // of the file about to be started, so a job of one image reported itself
+    // complete before its first inspection had even run.
     const sink = recorder();
-    const progress = createProgress(3, sink);
+    const progress = createProgress({ units: 3, images: 3 }, sink);
 
-    progress.file(1, "one.png");
-    progress.file(2, "two.png");
+    progress.beginning(1, "one.png");
+    progress.finished("Saved");
+    progress.beginning(2, "two.png");
 
     assert.deepEqual(sink.said, [
         "start 3",
-        "Preparing 1 | 1 of 3 — one.png",
-        "Preparing 2 | 2 of 3 — two.png"
+        "Preparing 0 | 1 of 3 — one.png",
+        "Saved 1 | 1 of 3 — one.png",
+        "Preparing 1 | 2 of 3 — two.png"
     ]);
+});
+
+test("the label says which file, the count says how much is done", () => {
+    // Two different things, reported together. The label may say the third of
+    // twenty while two are finished.
+    const sink = recorder();
+    const progress = createProgress({ units: 20, images: 20 }, sink);
+
+    progress.beginning(1, "a.png");
+    progress.finished("Saved");
+    progress.beginning(2, "b.png");
+    progress.finished("Saved");
+    progress.beginning(3, "c.png");
+
+    assert.equal(sink.said.at(-1), "Preparing 2 | 3 of 20 — c.png");
 });
 
 test("the later stages keep the file they are working on", () => {
     const sink = recorder();
-    const progress = createProgress(2, sink);
+    const progress = createProgress({ units: 2, images: 2 }, sink);
 
-    progress.file(2, "last.png");
+    progress.beginning(2, "last.png");
     progress.phase("Creating PDF");
-    progress.phase("Saving PDF");
+    progress.phase("Validating PDF");
 
     assert.deepEqual(sink.said.slice(-2), [
-        "Creating PDF 2 | 2 of 2 — last.png",
-        "Saving PDF 2 | 2 of 2 — last.png"
+        "Creating PDF 0 | 2 of 2 — last.png",
+        "Validating PDF 0 | 2 of 2 — last.png"
     ]);
 });
 
 test("a name that spans lines is kept to one", () => {
     const sink = recorder();
 
-    createProgress(1, sink).file(1, "two\nlines .png");
-
-    assert.deepEqual(sink.said.at(-1), "Preparing 1 | 1 of 1 — two lines .png");
+    createProgress({ units: 1, images: 1 }, sink).beginning(1, "two\nwide\t\tlines .png");
+    assert.deepEqual(sink.said.at(-1), "Preparing 0 | 1 of 1 — two wide lines .png");
 });
 
 test("a stage reached before any file names no file", () => {
     const sink = recorder();
 
-    createProgress(2, sink).phase("Creating PDF");
-    assert.deepEqual(sink.said.at(-1), "Creating PDF 0 | 0 of 2 — ");
-});
-
-test("a run of whitespace in a name becomes one space", () => {
-    const sink = recorder();
-
-    createProgress(1, sink).file(1, "two  wide\t\tgaps.png");
-    assert.deepEqual(sink.said.at(-1), "Preparing 1 | 1 of 1 — two wide gaps.png");
+    createProgress({ units: 2, images: 2 }, sink).phase("Creating PDF");
+    assert.deepEqual(sink.said.at(-1), "Creating PDF 0 | ");
 });
 
 test("a report about the work does not become part of the work", () => {
@@ -85,7 +97,7 @@ test("a report about the work does not become part of the work", () => {
         }
     };
 
-    assert.doesNotThrow(() => createProgress(1, angry).file(1, "x.png"));
+    assert.doesNotThrow(() => createProgress({ units: 1, images: 1 }, angry).beginning(1, "x.png"));
 });
 
 test("a host that will not start is reported to no further", () => {
@@ -96,14 +108,15 @@ test("a host that will not start is reported to no further", () => {
         report: () => undefined
     };
 
-    assert.equal(createProgress(1, refuses), SILENT);
+    assert.equal(createProgress({ units: 1, images: 1 }, refuses), SILENT);
 });
 
 test("with nothing to report to, nothing is reported", () => {
-    assert.equal(createProgress(5, null), SILENT);
+    assert.equal(createProgress({ units: 5, images: 5 }, null), SILENT);
     assert.equal(jxaProgress(null), null, "no Progress on the host");
     assert.doesNotThrow(() => {
-        SILENT.file(1, "x.png");
+        SILENT.beginning(1, "x.png");
+        SILENT.finished("Saved");
         SILENT.phase("Saving PDF");
     });
 });
@@ -113,12 +126,12 @@ test("the host's own object is written to, in its own words", () => {
     const sink = jxaProgress(host);
 
     sink.start(4);
-    sink.report(2, "Preparing", "2 of 4 — x.png");
+    sink.report(2, "Preparing", "3 of 4 — x.png");
 
     assert.deepEqual(host, {
         totalUnitCount: 4,
         completedUnitCount: 2,
         description: "Preparing",
-        additionalDescription: "2 of 4 — x.png"
+        additionalDescription: "3 of 4 — x.png"
     });
 });

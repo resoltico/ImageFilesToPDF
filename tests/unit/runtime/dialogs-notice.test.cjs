@@ -41,7 +41,7 @@ test("each failure keeps its own line", () => {
     // exist, which is worse than reporting only the first.
     const message = completionMessage("separate", {
         outputs: [],
-        failures: ["one.png: broke", "two.png: also broke"],
+        failures: [{ name: "one.png", message: "broke", command: "" }, { name: "two.png", message: "also broke", command: "" }],
         elapsed: "1 second(s)"
     }, 2);
 

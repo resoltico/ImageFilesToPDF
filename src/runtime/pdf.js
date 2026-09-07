@@ -1,6 +1,6 @@
 "use strict";
 
-const { errorMessage } = require("../core/errors.js");
+const { errorMessage, commandOf } = require("../core/errors.js");
 const {
     outputNameForCombined,
     outputNameForSeparate,
@@ -39,6 +39,8 @@ function createCombinedPdf(job, imageFiles) {
 
     try {
         createAndValidatePdf(job, stagedPath, preparePages(job, imageFiles));
+        // Set between the two: from here the staged file is a finished PDF
+        // and publication owns it, so a failure must not delete it.
         validated = true;
         publishPdf(job, stagedPath, finalPath);
 
@@ -50,6 +52,22 @@ function createCombinedPdf(job, imageFiles) {
 
         throw error;
     }
+}
+
+/*
+ * What a failed image is, kept as a record until something displays it.
+ *
+ * The command that failed is carried by the innermost error and reached
+ * through the cause chain. Reducing the failure to its message here threw
+ * that away before the headless receipt -- the one place it is worth having
+ * -- could ever see it.
+ */
+function failureRecord(imageFile, error) {
+    return {
+        name: imageFile.originalName,
+        message: errorMessage(error),
+        command: commandOf(error)
+    };
 }
 
 /*
@@ -80,13 +98,13 @@ function createSeparatePdf(job, imageFile, index) {
             publishPdf(job, stagedPath, finalPath);
         });
 
-        return { output: finalPath, failure: "" };
+        return { output: finalPath, failure: null };
     } catch (error) {
         if (!validated) {
             removeFile(job.app, stagedPath);
         }
 
-        return { output: "", failure: errorMessage(error) };
+        return { output: "", failure: failureRecord(imageFile, error) };
     }
 }
 

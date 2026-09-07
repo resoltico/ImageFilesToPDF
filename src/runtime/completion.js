@@ -15,7 +15,9 @@ const { dirname } = require("../core/paths.js");
 const MAXIMUM_SHOWN_FAILURES = 12;
 
 function describeFailures(failures) {
-    const shown = failures.slice(0, MAXIMUM_SHOWN_FAILURES);
+    const shown = failures
+        .slice(0, MAXIMUM_SHOWN_FAILURES)
+        .map((entry) => `${entry.name}: ${entry.message}`);
 
     if (failures.length > shown.length) {
         shown.push(`...and ${failures.length - shown.length} more failure(s).`);

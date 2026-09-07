@@ -56,3 +56,23 @@ test("run returns the produced paths on the interactive path", () => {
     assert.equal(outputs.length, 1);
     assert.equal(host.includeStandardAdditions, true);
 });
+
+test("an interactive run tells the host how much work there is", () => {
+    // Written to the host's own Progress object. A combined run of one image
+    // has two units of work in it -- the image, and the PDF it becomes -- and
+    // the label beside them still counts images.
+    const host = interactiveHost();
+    const reported = {};
+
+    globalThis.Progress = reported;
+
+    try {
+        execute(host, ["/a/x.png"], false);
+    } finally {
+        delete globalThis.Progress;
+    }
+
+    assert.equal(reported.totalUnitCount, 2);
+    assert.equal(reported.completedUnitCount, 2, "and all of it is finished");
+    assert.match(reported.additionalDescription, /^1 of 1 — x\.png$/u);
+});

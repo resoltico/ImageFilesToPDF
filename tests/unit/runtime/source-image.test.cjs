@@ -4,11 +4,11 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { imageOf } = require("./fake-job.cjs");
 const {
-    readImageSize,
     readBandCount,
     readPageCount,
     assertSinglePage
 } = require("../../../src/runtime/source-image.js");
+const { readImageSize } = require("../../../src/runtime/image-size.js");
 const { createFakeApp, failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
 

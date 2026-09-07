@@ -68,7 +68,7 @@ test("the failure list is truncated at the documented limit", () => {
 
     const overLimit = completionMessage(
         "separate",
-        { outputs: [], failures: [...exactly, "f12: broke"], elapsed: "1 second(s)" },
+        { outputs: [], failures: [...exactly, { name: "f12", message: "broke", command: "" }], elapsed: "1 second(s)" },
         13
     );
 
@@ -123,7 +123,7 @@ test("the separate and failure wordings are pinned too", () => {
 
     const failed = completionMessage(
         "separate",
-        { outputs: ["/a/x.pdf"], failures: ["b.png: broke"], elapsed: "1 second(s)" },
+        { outputs: ["/a/x.pdf"], failures: [{ name: "b.png", message: "broke", command: "" }], elapsed: "1 second(s)" },
         2
     );
 

@@ -46,9 +46,19 @@ it falls back to Finder's current selection.
 Selecting a folder converts the images inside it, through every subfolder.
 Hidden items, application packages, links and files that are not images are
 passed over without comment — a folder of documents does not produce a
-complaint for every document. A folder that cannot be read, or that holds no
-supported images, is reported. Selecting a folder and a file inside it does not
-convert that file twice.
+complaint for every document. A folder that cannot be read is reported by
+name, including a subfolder: the images found elsewhere are still converted,
+and you are told which folder could not be opened rather than left to notice
+that something is missing. A folder that holds no supported images is reported
+too.
+
+Selecting a folder and a file inside it does not convert that file twice, in
+whichever order they are selected — and a file you select by hand is always
+answered, even when its folder is selected too. A hidden photograph you pick
+out yourself is converted, though the walk passes over hidden files it finds
+on its own, and a file that cannot be converted still says so. A package
+selected directly — an application, a photo library — is refused rather than
+opened, so nothing is ever written inside a bundle.
 
 The PDF is written to the folder you selected: one combined PDF inside it, or
 separate PDFs inside it, rather than scattered through the subfolders the
@@ -155,6 +165,15 @@ For every source image, the runtime:
    groups when there are more pages than one command line can carry;
 5. validates the temporary PDF in strict mode;
 6. publishes the PDF without overwriting an existing path.
+
+Publishing is all or nothing. The finished PDF is first moved into the output
+folder under a hidden name of its own — copied instead, and checked, when the
+move is refused or the folder is on another drive — and only then given the
+name you will see, in a single operation that either creates that name or
+leaves it alone. Nothing is ever written to the name of your document, so
+nothing half finished can appear under it, and an existing file is never
+replaced. If it cannot be published at all, the PDF is kept somewhere it will
+survive and the message says where it is.
 
 The source images are never modified. Temporary work is held in a private
 `mktemp` directory and removed on success or failure.

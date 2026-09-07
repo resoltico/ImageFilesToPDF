@@ -10,7 +10,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { readImageSize } = require("../../../src/runtime/source-image.js");
+const { readImageSize } = require("../../../src/runtime/image-size.js");
 const { createFakeApp, failing } = require("./fake-app.cjs");
 
 test("the size read is the size the image will have, not the size stored", () => {
@@ -40,17 +40,37 @@ test("the size read is the size the image will have, not the size stored", () =>
     }
 });
 
-test("a format that carries no orientation is upright", () => {
-    // Most do not, and a missing tag is not a failure to read one.
+test("an image that carries no orientation at all is upright", () => {
+    // A JPEG written without metadata has no orientation field, and this
+    // action writes exactly such files; most PNGs have none either. vipsheader
+    // names the field it could not find, which is what says the image loaded.
     const app = createFakeApp([
         ["'width'", "400\n"],
         ["'height'", "200\n"],
-        ["'orientation'", failing('field "orientation" not found')]
+        ["'orientation'", failing(
+            'vips_image_get: field "orientation" not found'
+        )]
     ]);
 
     assert.deepEqual(
-        readImageSize(app, "/v/vipsheader", "/a/x.png"),
+        readImageSize(app, "/v/vipsheader", "/a/stripped.jpg"),
         { width: 400, height: 200 }
+    );
+});
+
+test("an orientation that could not be read is not assumed upright", () => {
+    // Anything other than the field being absent is a failure to read the
+    // image, and calling it upright would place a turned photograph on its
+    // side and report success.
+    const app = createFakeApp([
+        ["'width'", "400\n"],
+        ["'height'", "200\n"],
+        ["'orientation'", failing("unable to open for read")]
+    ]);
+
+    assert.throws(
+        () => readImageSize(app, "/v/vipsheader", "/a/x.png"),
+        /reading the image orientation/u
     );
 });
 

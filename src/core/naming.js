@@ -1,6 +1,6 @@
 "use strict";
 
-const { zeroPad } = require("./numbers.js");
+const { zeroPad, utf8Length, truncateToBytes } = require("./numbers.js");
 const { fileStem, sanitizeFilename } = require("./paths.js");
 
 /*
@@ -29,8 +29,39 @@ function outputNameForCombined(timestamp) {
     return `output_${timestamp}.pdf`;
 }
 
+/*
+ * What one filename may be, in bytes.
+ *
+ * A path component is 255 bytes on the filesystems macOS puts a Mac's files
+ * on -- HFS Plus documents 255 characters, APFS 255 UTF-8 characters, and
+ * bytes is the bound that satisfies both. Nothing truncates a name that is
+ * over it: the write fails with a complaint about the length, which is a poor
+ * answer to "convert this photograph", and a valid source name can produce
+ * one because the output name is longer than the name it came from.
+ *
+ * The suffix is measured rather than assumed, because a headless caller
+ * supplies its own timestamp. Room is left for the collision suffix as well:
+ * a name that fits only until it needs _2 is a name that fits until the
+ * second run.
+ */
+const FILENAME_BUDGET_BYTES = 255;
+const COLLISION_RESERVE_BYTES = 5;
+
+function boundedStem(stem, suffix) {
+    const budget =
+        FILENAME_BUDGET_BYTES - utf8Length(suffix) - COLLISION_RESERVE_BYTES;
+    const kept = truncateToBytes(stem, Math.max(budget, 0));
+
+    // Cutting can leave the trailing underscore or dot that sanitizing exists
+    // to remove, so what is left goes through it again.
+    return kept === stem ? stem : sanitizeFilename(kept);
+}
+
 function outputNameForSeparate(record, timestamp) {
-    return `${sanitizeFilename(fileStem(record.originalName))}_${timestamp}.pdf`;
+    const suffix = `_${timestamp}.pdf`;
+    const stem = sanitizeFilename(fileStem(record.originalName));
+
+    return `${boundedStem(stem, suffix)}${suffix}`;
 }
 
 /*

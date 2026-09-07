@@ -35,7 +35,7 @@ test("a headless run that lost something fails, and says what", () => {
     assert.throws(
         () => reportResult(app, job, {
             outputs: ["/a/x.pdf"],
-            failures: ["b.png: broke"],
+            failures: [{ name: "b.png", message: "broke", command: "" }],
             rejected: []
         }, { headless: true }),
         (error) => {
@@ -78,7 +78,7 @@ test("the receipt goes out whole, and on its own line", () => {
     // gets: an unterminated line waits for a newline that never comes, and an
     // empty one parses as nothing at all.
     const written = [];
-    const result = { outputs: [], failures: ["a.png: broke"], rejected: [] };
+    const result = { outputs: [], failures: [{ name: "a.png", message: "broke", command: "" }], rejected: [] };
 
     assert.throws(() => reportHeadless(result, (text) => written.push(text)));
     assert.deepEqual(written, [`${JSON.stringify(result)}\n`]);

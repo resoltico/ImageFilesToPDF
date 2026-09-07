@@ -14,7 +14,7 @@ test("a run that produced nothing does not claim a destination", () => {
     // "In: ..." with no outputs would name a folder nothing was written to.
     const message = completionMessage("separate", {
         outputs: [],
-        failures: ["a.png: broke", "b.png: broke"],
+        failures: [{ name: "a.png", message: "broke", command: "" }, { name: "b.png", message: "broke", command: "" }],
         elapsed: "1 second(s)"
     }, 2);
 
@@ -61,7 +61,7 @@ test("failures and rejections are counted together, not separately", () => {
     // Both are files the person asked for and did not get.
     const message = completionMessage("separate", {
         outputs: ["/a/one.pdf"],
-        failures: ["b.png: broke"],
+        failures: [{ name: "b.png", message: "broke", command: "" }],
         rejected: [{ name: "c.gif", reason: "not a supported format" }],
         elapsed: "1 second(s)"
     }, 3);
@@ -105,7 +105,7 @@ test("a rejection list at the limit is not summarised", () => {
     }));
     const message = completionMessage("separate", {
         outputs: [],
-        failures: ["a.png: broke"],
+        failures: [{ name: "a.png", message: "broke", command: "" }],
         rejected,
         elapsed: "1 second(s)"
     }, 1);
@@ -121,7 +121,7 @@ test("a rejection list past the limit says how many were withheld", () => {
     }));
     const message = completionMessage("separate", {
         outputs: [],
-        failures: ["a.png: broke"],
+        failures: [{ name: "a.png", message: "broke", command: "" }],
         rejected,
         elapsed: "1 second(s)"
     }, 1);

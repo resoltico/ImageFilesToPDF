@@ -43,6 +43,7 @@ function dispatch(fs, argv, command, host) {
         "/bin/test": () => fs.test(rest),
         "/bin/mv": () => fs.move(rest),
         "/bin/cp": () => fs.copy(rest),
+        "/bin/ln": () => fs.link(rest),
         "/usr/bin/stat": () => fs.stat(rest),
         "/bin/rm": () => fs.remove(rest)
     };

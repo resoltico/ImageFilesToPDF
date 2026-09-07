@@ -103,3 +103,27 @@ test("a batch that exactly fills the budget is not divided", () => {
 test("no pages is no commands", () => {
     assert.deepEqual(batchPages([], FIXED), []);
 });
+
+test("a batch of non-ASCII paths is measured in bytes, not characters", () => {
+    // The workspace lives wherever TMPDIR points, which is not always ASCII.
+    // Measured in characters, a batch of these was accepted at more than
+    // twice the byte allowance it was supposed to be held to.
+    const wide = Array.from(
+        { length: 400 },
+        (unused, index) => `/tmp/wörk shop 📁/page_${index}.jpg`
+    );
+
+    for (const batch of batchPages(wide, FIXED, 4096)) {
+        assert.ok(
+            commandLengthOf(FIXED.concat(batch)) <= 4096,
+            `a batch of ${batch.length} is too long`
+        );
+    }
+
+    // And the counter really is counting bytes: these paths are wider than
+    // they are long, so a character count would have let twice as many in.
+    assert.ok(
+        commandLengthOf([wide[0]]) > wide[0].length,
+        "measured in bytes, not characters"
+    );
+});

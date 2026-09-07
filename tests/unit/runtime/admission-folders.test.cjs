@@ -100,6 +100,28 @@ test("a folder and a file inside it do not convert it twice", () => {
     ]);
 });
 
+test("a subfolder that could not be read is named, not passed over", () => {
+    // The images elsewhere in the folder are still converted -- and the
+    // report says which folder was closed, which is what lets someone go and
+    // look at its permissions.
+    const tree = treeOf(
+        { "/Trip": ["a.png", "Locked"] },
+        { "/Trip/Locked": "directory" }
+    );
+    const { images, rejected } = collectImageFiles(
+        appWith(["/Trip"]),
+        ["/Trip"],
+        tree
+    );
+
+    assert.deepEqual(images.map((image) => image.path), ["/Trip/a.png"]);
+    assert.deepEqual(rejected, [{
+        path: "/Trip/Locked",
+        name: "Locked",
+        reason: "could not be read"
+    }]);
+});
+
 test("without a tree a folder is refused, not walked", () => {
     // No ObjC bridge: the files that were selected directly are converted as
     // they always were, and the folder is turned away with a reason.

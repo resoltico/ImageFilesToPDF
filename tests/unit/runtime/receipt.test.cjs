@@ -39,7 +39,7 @@ test("a run is complete only when nothing was lost on the way", () => {
         true
     );
     assert.equal(
-        isCompleteSuccess({ outputs: ["/a.pdf"], failures: ["b: broke"], rejected: [] }),
+        isCompleteSuccess({ outputs: ["/a.pdf"], failures: [{ name: "b", message: "broke", command: "" }], rejected: [] }),
         false,
         "a conversion that failed"
     );
@@ -59,7 +59,7 @@ test("a result predating the rejection list is still judged", () => {
 test("the reason names every count, so nothing is implied", () => {
     const reason = describeIncomplete({
         outputs: ["/a.pdf"],
-        failures: ["b.png: broke"],
+        failures: [{ name: "b.png", message: "broke", command: "" }],
         rejected: [{ name: "c.gif" }, { name: "d.gif" }]
     });
 
@@ -107,7 +107,7 @@ test("a working bridge is the namespace it was given", () => {
 test("the reason copes with a result that has no rejection list", () => {
     const reason = describeIncomplete({
         outputs: [],
-        failures: ["a.png: broke"]
+        failures: [{ name: "a.png", message: "broke", command: "" }]
     });
 
     assert.match(reason, /0 not converted/u);
@@ -117,7 +117,7 @@ test("the counts are readable as three, not run together", () => {
     // "1 produced1 failed" is a different number, and it is the one a person
     // reads first.
     assert.equal(
-        describeIncomplete({ outputs: ["/a.pdf"], failures: ["b: broke"], rejected: [] }),
+        describeIncomplete({ outputs: ["/a.pdf"], failures: [{ name: "b", message: "broke", command: "" }], rejected: [] }),
         "The request was not completely honoured: " +
             "1 produced, 1 failed, 0 not converted."
     );

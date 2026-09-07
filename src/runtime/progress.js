@@ -1,5 +1,7 @@
 "use strict";
 
+const { isSeparateMode } = require("../core/settings.js");
+
 /*
  * Saying what the run is doing while it does it.
  *
@@ -26,13 +28,26 @@
  * is known, a host with no Progress to write to.
  */
 const SILENT = Object.freeze({
-    file() {
+    beginning() {
+        return undefined;
+    },
+    finished() {
         return undefined;
     },
     phase() {
         return undefined;
     }
 });
+
+/*
+ * What this run has to finish. Separate mode publishes one PDF per image, so
+ * an image is a unit of work; combined mode prepares every image and then
+ * publishes one PDF, which is a unit of its own -- and counting only the
+ * images made a combined run report more finished work than it had.
+ */
+function unitsOf(settings, images) {
+    return isSeparateMode(settings) ? images : images + 1;
+}
 
 function jxaProgress(host = globalThis.Progress) {
     if (!host) {
@@ -54,38 +69,55 @@ function jxaProgress(host = globalThis.Progress) {
 }
 
 /*
- * The count is of the images that were accepted, not of PDFs written or of
- * work elapsed: it is the only number this action knows in advance.
+ * A unit is a piece of work that has finished, which is what Apple says
+ * completedUnitCount holds. It used to hold the number of the file about to
+ * be worked on, so a job of one image reported itself complete before its
+ * first inspection -- and stayed complete while the PDF was created,
+ * validated and saved.
+ *
+ * Units and images are two counts, not one. A combined run prepares every
+ * image and then publishes one PDF, which is a unit of work of its own:
+ * counting only the images made a one-image job report 2 of 1 when it
+ * finished, and reach 1 of 1 before the PDF had been created at all. The
+ * label counts images, because "2 of 1" in front of a person waiting is
+ * nonsense whatever the counter underneath it means.
  */
-function createProgress(total, sink = jxaProgress()) {
+function createProgress(counts, sink = jxaProgress()) {
+    const { units, images } = counts;
     let done = 0;
-    let name = "";
+    let label = "";
 
     const say = (description) => {
         try {
-            sink.report(done, description, `${done} of ${total} — ${name}`);
+            sink.report(done, description, label);
         } catch {
             // A report about the work must not become part of the work.
         }
     };
 
     try {
-        sink.start(total);
+        sink.start(units);
     } catch {
         // No Progress on this host, or one that will not take a total.
         return SILENT;
     }
 
     return {
-        file(index, originalName) {
-            done = index;
+        beginning(index, originalName) {
             // A name is a line of the description, so it is kept to one.
-            name = String(originalName).replace(/\s+/gu, " ");
+            const name = String(originalName).replace(/\s+/gu, " ");
+
+            label = `${index} of ${images} — ${name}`;
             say("Preparing");
+        },
+
+        finished(description) {
+            done += 1;
+            say(description);
         },
 
         phase: say
     };
 }
 
-module.exports = { createProgress, jxaProgress, SILENT };
+module.exports = { createProgress, jxaProgress, unitsOf, SILENT };

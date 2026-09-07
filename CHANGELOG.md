@@ -8,19 +8,22 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Added
 
-- Selecting a folder converts the images inside it, through every subfolder.
-  Hidden items, application packages, links and files that are not images are
-  passed over without comment; a folder that cannot be read, or that holds no
-  supported images, is reported. Selecting a folder and something inside it
-  does not convert that file twice.
-- The settings window says how many images were found before it asks anything,
-  so choosing Cancel is a decision rather than a guess. Selecting a folder can
-  mean a great many images, and this is the only point between the selection
-  and the work where the run can be called off.
-- The action reports what it is doing as it goes — which file it is preparing,
-  and then creating, validating and saving the PDF. Whether a Shortcut
-  displays this is not something this project has been able to measure; the
-  reporting costs nothing when nothing is listening.
+- Selecting a folder converts the images inside it, through every subfolder,
+  and writes the PDF to the folder you selected. Hidden items, application
+  packages, links and files that are not images are passed over without
+  comment — a folder of documents does not produce a complaint for every
+  document — while anything that could not be read is reported by name, so
+  nothing is left out of the PDF without your knowing. A folder holding no
+  images says so rather than looking like an empty selection; selecting a
+  folder and a file inside it does not convert that file twice; and a package,
+  such as an application or a photo library, is refused rather than opened.
+- The settings window says how many images were found before it asks anything
+  else, so choosing Cancel is a decision rather than a guess. Selecting a
+  folder can mean a great many images, and this is the last point before the
+  work starts.
+- The action reports what it is doing as it goes: which image it is preparing,
+  and then creating, validating and saving the PDF. Whether that is displayed
+  is up to the Shortcut the action runs in.
 
 ### Changed
 
@@ -28,18 +31,33 @@ Notable changes to this project are documented in this file. The format is based
   folder's images stay together and in order instead of interleaving with
   another folder's whenever the names happened to. Within a single folder the
   order is unchanged.
-- A PDF is written to the folder that was selected. Selecting a folder used to
-  put a combined PDF inside whichever subfolder sorted first, and separate PDFs
-  beside each image wherever it was found.
 
 ### Fixed
 
 - A combined PDF of more than about ten thousand images no longer fails with
-  "An error occurred." Every page was named on one command line, and there is
-  a limit to how long one of those can be; the pages are handed over in groups
-  now, and the finished PDF is asked how many pages it ended up with.
-- Selecting a folder is no longer reported as an unsupported image format —
-  and a folder named something.png is no longer reported as unreadable.
+  "An error occurred." Every page had to be named on one command line, and
+  there is a limit to how long one of those can be.
+- A PDF that could not be saved no longer leaves something that looks like it
+  in the output folder. Nothing is written to the name of your document any
+  more: the finished PDF is put into the folder under a hidden name, checked
+  there, and only then given the name you will see, in a single step that
+  either creates that name or leaves it alone. Saving to a folder on another
+  drive used to write your document's name a piece at a time, so an
+  interruption left part of a PDF wearing it. An existing file is never
+  replaced.
+- A PDF is no longer reported as saved when it went somewhere else. A folder
+  sitting where the PDF was to be written was not treated as an obstacle: the
+  PDF was moved inside it and the run reported success. When a finished PDF
+  cannot be published, the message now names where it actually is — it used to
+  name the temporary folder it had been built in, which by then was empty.
+- A file whose name is very long is converted instead of failing. The output
+  name is longer than the name it came from, because it carries the date and
+  time, and a long enough source name pushed it past what the filesystem
+  accepts. It is shortened to fit, with room kept for the numbering that
+  avoids overwriting an earlier PDF.
+- Files whose names are long numbers sort in order. Beyond about sixteen
+  digits two different numbers were read as the same value, so those pages
+  came out in whatever order the files arrived in.
 
 ## [1.1.1] - 2026-09-07
 

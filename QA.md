@@ -160,10 +160,105 @@ The bridge is a parameter, so the walk runs against a fake tree in Node, and
 `tree.js` returns null when there is none — the action still converts the
 files it was given, and a selected folder is refused with a reason.
 
+What was selected is settled before anything is admitted, because two names
+for one thing were two things: every path is standardized and asked what it is
+through the same tree that will do the walking. Asking the shell instead is
+what sent the walk inside an `.app`, which is a directory to `/bin/test`;
+deciding as each item came up is what made the answer depend on the order
+Finder handed the selection over.
+
+Nothing is dropped for where its name sits. A selected folder covering a path
+is not the same as the walk taking it — the walk passes over hidden entries,
+packages and links, and says nothing about files that are not images — so
+dropping an explicit request on that assumption removed it from the run
+entirely: a photograph whose name began with a dot did not appear in the PDF
+and did not appear in the report, and a file that could not be converted
+stopped saying so. What was taken is settled by the walk itself, through one
+ledger of paths.
+
+The order is what makes that work. Folders are walked first and in path order,
+which puts an ancestor before anything inside it — a folder's path is a proper
+prefix of every path beneath it, and a prefix sorts first — so the images in
+an overlap belong to the outermost folder that was selected. Every explicit
+request is then considered against the finished ledger: already in it means it
+was converted, which is neither a rejection nor a second copy.
+
+Two things the walk cannot pass over silently are the folders it could not
+read and the entries it could not get the attributes of. Both might have been
+photographs. A listing can succeed while inspecting what it listed fails, so
+these are separate failures, and each comes back with the images and becomes a
+rejection naming the path — a folder whose photographs were all in a subfolder
+nobody had permission to open used to produce a PDF of whatever else was lying
+around and report that nothing had failed.
+
 Verified to fail: a link with an image's name being taken; a package being
-walked into; a hidden entry being taken; a folder that cannot be read passing
-as empty; a folder holding no images reporting nothing; the same file being
-taken twice when a folder and something inside it are both selected.
+walked into, whether reached through a folder or selected directly; a hidden
+entry being taken; a folder that cannot be read passing as empty; a subfolder
+that cannot be read being passed over; an entry whose attributes cannot be
+read being passed over; a folder holding no images reporting nothing; a folder
+whose images another selection already took being reported as holding none;
+the same file being taken twice when a folder and something inside it are both
+selected, in either order; an explicitly selected hidden image, hidden folder
+or unconvertible file disappearing because its folder was selected too.
+
+## Saving the finished PDF
+
+Publication is one transaction, because a PDF that is half published is worse
+than one that is not published at all: the user is left with a file that
+carries the name of their document and is not it.
+
+The output name is claimed, never written into. Everything before the claim
+happens under a hidden name beside the destination — this attempt's own, so
+removing it afterwards cannot remove anything else — and the claim itself is
+`/bin/ln`, which creates the directory entry in one step and fails if the name
+is already there. Measured: linking onto an occupied name fails with
+`File exists` and leaves the file that is there exactly as it was. So two runs
+cannot both believe they published, and the check this code makes before
+publishing is a courtesy rather than the guarantee.
+
+Renaming straight to the final name is what this replaced, and it is atomic
+only when both ends are on one volume. Across volumes Apple's `mv` copies to
+the pathname it is given: measured on an attached test volume, an interrupted
+move left 3,211,264 bytes of a 1,258,291,200-byte file under exactly the name
+the finished document was to have. Photographs on an external drive are an
+ordinary reason for the two ends to differ.
+
+Getting the PDF into the folder is a rename where the host allows one and a
+copy where it does not, which is what the Shortcuts sandbox permitted when it
+refused the rename. A copy is not atomic, so the result is measured against
+the size taken before the transfer — the source is gone once a rename has
+moved it. Neither `mv -n` nor `cp -n` reports declining, both exit zero and do
+nothing, so what is left under the hidden name afterwards is the evidence that
+the name it was aimed at was taken.
+
+Hard links are not supported everywhere — FAT-formatted drives and some
+network shares refuse them — so the fallback is a rename within one directory,
+which is atomic wherever it works at all. `/bin/ln` also links *into* a
+directory rather than refusing one, so a folder standing at the output path is
+still caught by the check that follows rather than by the claim.
+
+What is at the output path is then checked as a regular file with something in
+it, and only then are the staging file and the workspace file let go: a failed
+check still has a finished PDF to give back. `test -s` alone passes for a
+directory — measured, and it is how a PDF that `mv` had pushed inside a folder
+standing at the output path was reported as published.
+
+Where the finished PDF is, when publication fails, is asked rather than
+assumed: the staging file, then the file inside a folder at the output path,
+in the order the bytes travel. Naming the workspace was wrong as soon as a
+rename had emptied it. When none of them is there, the message says where the
+PDF was headed rather than naming a file that is not.
+
+If removing the staging link is refused, a hidden second name for the
+published PDF stays in the folder. It is a link rather than a copy, so it
+costs no space, and nothing can mistake it for the document.
+
+Verified to fail: a transfer that stops part way leaving an incomplete file at
+the final name; a staged file whose size does not match the source being
+reported as published; a name another run took being overwritten; a PDF pushed
+inside a folder being reported as published; a recovery message naming a file
+that is not there; the staging file being left behind after a failure; a host
+that cannot make links failing to publish at all.
 
 ## How many pages one command can carry
 
@@ -185,6 +280,27 @@ quoted and separated, so a batch adapts to how long the paths turn out to be.
 Chunking introduces a failure a single import did not have — a batch that
 appends nothing while exiting zero — so when the pages went over in more than
 one group, the PDF is asked how many pages it ended up with.
+
+## What a filename may be
+
+A path component is 255 bytes on the filesystems macOS puts a Mac's files on:
+HFS Plus documents 255 characters and APFS 255 UTF-8 characters, so bytes is
+the bound that satisfies both. Nothing truncates a name that goes over it --
+the write fails with a complaint about the length -- and the output name is
+longer than the name it came from, so a valid source name could produce one:
+measured, a 244-character stem produced a 264-character output name.
+
+The stem is cut to fit, in bytes, between characters rather than between
+bytes, and the room reserved is measured rather than assumed: a headless
+caller supplies its own timestamp, and the collision suffix has to fit too, or
+a name fits until the second run of the day. What the cut can leave behind --
+a trailing dot or underscore -- goes back through the same sanitizing that
+exists to remove it.
+
+This is a bound on one component, not on a path. `PATH_MAX` is 1024, and a
+folder path already near it plus any legal name will exceed it; that is stated
+rather than guarded, because the folder is the user's and truncating their
+path is not this action's to do.
 
 ## What must not be ignored
 
@@ -342,7 +458,9 @@ is no, a panel can replace it without touching a single call site.
 
 ## Coverage
 
-The figure covers all 38 production modules. Node's coverage reports only the
+The figure covers every production module — the list in
+`tools/module-order.mjs`, which is what the gate walks, and a file missing
+from it fails discovery. Node's coverage reports only the
 files a test loads, so a module with no test is not reported as 0% — it is
 absent, and the total looks perfect while ignoring it. The thresholds are
 meaningless unless every module is loaded by something.
@@ -422,7 +540,7 @@ happens to have the tool.
 ### Survivors
 
 The mutants that remain alive are equivalent: they describe a program that
-cannot behave differently from this one. They fall into four groups.
+cannot behave differently from this one. They fall into six groups.
 
 - A description passed to a command whose failure is deliberately swallowed —
   `removeFile`, `setAside`, the environment probe. The message is
@@ -438,6 +556,13 @@ cannot behave differently from this one. They fall into four groups.
   after `function`, or `git+` somewhere other than the front of a repository
   URL — GitHub names cannot contain a plus, so npm's prefix is the only one
   there will ever be.
+- A body that is already a no-op. The silent progress sink's three methods
+  exist to be called and do nothing, so emptying them changes nothing; the
+  same goes for a `catch` that returns `false` to a caller that only asks
+  whether the answer is truthy.
+- A field nothing downstream reads: the empty output path returned alongside a
+  failure, where the caller takes one or the other and never both. Settled by
+  running the caller with the mutated field in place.
 
 They are settled by running each mutant against the real function over a
 spread of inputs and looking for a disagreement, not by argument. The ordering
@@ -464,6 +589,27 @@ every page already in it leaves nothing of the budget. The PDF still comes out
 right — every page, in order — but a job of four thousand pages becomes four
 thousand invocations of pdfcpu. The test now says a command carries more than
 one page.
+
+The run after the six-defect audit found eight more of the same kind: the
+catch that turns an unmeasurable file into "unknown" rather than into nothing;
+the two operations that can fail while taking the output name, which have to
+say which one it was; that the staging file is the only copy the run has once
+a rename has emptied the workspace, so removing it on a failure would destroy
+the finished PDF; that the workspace copy goes after a copy-staging too; that
+the leading zeros stripped from a number are the ones at the front and all of
+them; that a run of letters is compared as a word rather than by its length;
+that a text exactly filling its byte budget is kept whole; and that the host
+is told how many units of work a run has. It also found one line of dead
+code -- a ledger entry written after everything that reads it -- which is
+gone.
+
+The run before it found four of the same kind: the first character of each width in the UTF-8 table, where a comparison
+one step out under-counts a byte; the description a finished page reports,
+which is what somebody waiting reads; that a path handed over twice is
+classified once, which is a cost in Foundation calls rather than a wrong
+answer; and that the second of publication's two renames names itself when it
+fails, so a message about the copy cannot be mistaken for one about the
+rename. Each is now a test.
 
 ### Runner
 
@@ -512,7 +658,10 @@ file under `tests/unit/`.
 ## macOS integration gate
 
 `npm run test:integration:macos` requires macOS, `vips`, `pdfcpu`, qpdf, libtiff,
-Poppler, and `osascript`. It exercises:
+Poppler, and `osascript`. It runs three suites: `tests/integration/macos.sh`,
+`tests/integration/selection.sh` and `tests/integration/publication.sh`.
+
+The first exercises:
 
 - actual JXA execution through `osascript`, both with and without the `--`
   argument separator that `osascript` forwards into `run()`;
@@ -541,6 +690,37 @@ Pixel assertions compare against expected values with an explicit tolerance
 rather than matching formatted strings, so a check cannot silently stop
 discriminating.
 
+The second exercises what the action decides to convert, which turns on what
+macOS itself answers and so cannot be settled by a fake:
+
+- a selected folder walked through Foundation, with a subfolder `chmod 000`
+  denies: the images elsewhere are converted, and the receipt names the folder
+  that could not be read;
+- a folder and a photograph inside it, in both orders, converting each
+  photograph exactly once and refusing nothing;
+- a directory named `Photos.app`, which `/bin/test -d` calls a directory and
+  `NSWorkspace` calls a package: refused, with nothing written inside it;
+- a photograph selected by hand alongside its folder, where the walk would
+  pass over it: a hidden image must still reach the PDF.
+
+The third takes the finished PDF from the workspace to the output folder:
+
+- on one volume, where the whole publication is a rename, a claim and a
+  cleanup: the PDF validates, the folder holds no staging file, and the
+  published PDF has one name rather than two;
+- across volumes, on a disk image attached for the test, which is where `mv`
+  copies rather than renames — the case no fake can reach. Skipped, loudly,
+  where a test volume cannot be attached, because that is the machine's
+  decision rather than the code's;
+- an output folder `chmod 555` denies, where every way of getting the PDF in
+  there fails: the message must name a recovery path that exists and holds a
+  PDF that passes strict validation, and nothing may be left at the output
+  path — neither a partial nor the staging file.
+
+One half of the unexaminable-entry case is unit-level only: producing a
+directory that lists but will not let its entries be inspected takes either a
+race or a protected volume, and `chmod` alone denies the listing too.
+
 ## Regression coverage
 
 Each of these shipped once and is now guarded by a test that has been confirmed
@@ -564,6 +744,7 @@ to fail when the fix is reverted:
 | A guard that stops rejecting | gate-module tests + empty-rule-list check |
 | An executable reaching the artifact from outside one module | source rule |
 | An image measured on its side, and placed at a quarter of its area | orientation unit tests + integration |
+| An image written without metadata refused for having no orientation | absent-field unit test + the stripped JPEG in the integration fixtures |
 | A validated PDF deleted with the workspace it was built in | job ownership tests |
 | A file named for cancelling silencing its own failure | typed cancellation |
 | A tool that printed nothing passing as usable | positive capability probe |
@@ -571,6 +752,19 @@ to fail when the fix is reverted:
 | A combined PDF too large for one command line | batching + page-count check |
 | A folder reported as an unsupported image format | admission tests |
 | A folder tree ordered by name, interleaving its folders | ordering tests |
+| A subfolder that could not be read being passed over in silence | expand + admission tests + integration |
+| A folder and a file inside it converting that file twice | selection identity tests + integration |
+| A package selected directly being walked into | selection identity tests + integration |
+| A half-written copy left wearing the finished PDF's name | publication transaction tests |
+| A PDF pushed inside a folder being reported as published | regular-file check + publication tests |
+| A recovery message naming a file that is not there | publication whereabouts tests + integration |
+| An explicit selection disappearing because its folder was selected too | explicit-request tests + integration |
+| An entry whose attributes could not be read being passed over | walk problem tests |
+| A partial PDF under the document's own name, across volumes | claim-not-write protocol + cross-volume integration |
+| Two runs both publishing to one name | exclusive claim tests |
+| A completed count passing the total it was given | progress unit tests |
+| A valid source name producing an output name the filesystem refuses | filename budget tests |
+| Two long numeric filenames sorting as equal | comparator tests |
 | Tests that stop catching bugs | mutation testing with a break threshold |
 
 ## Acceptance boundary

@@ -127,7 +127,16 @@ function normalizeSettings(settings) {
     };
 }
 
+/*
+ * Asked in two places -- which routine makes the PDFs, and how many units of
+ * work the run has -- and they must not be able to disagree about it.
+ */
+function isSeparateMode(settings) {
+    return settings.mode === MODE_MAP["Separate PDFs"];
+}
+
 module.exports = {
+    isSeparateMode,
     PAGE_DEFINITIONS,
     POINTS_PER_INCH,
     PDFCPU_PIXEL_LIMIT,

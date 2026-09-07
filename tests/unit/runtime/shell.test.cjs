@@ -107,7 +107,7 @@ test("verifyFileWritten names what was missing", () => {
 
     assert.throws(
         () => verifyFileWritten(app, "/tmp/page.jpg", "prepared page image"),
-        /prepared page image was not written or is empty/u
+        /prepared page image is not a file with anything in it/u
     );
 });
 
@@ -127,4 +127,22 @@ test("removeFile ignores an absent path and a failing removal", () => {
 
     removeFile(app, "/tmp/x");
     assert.deepEqual(app.commands, ["'/bin/rm' '-f' '/tmp/x'"]);
+});
+
+test("a directory at the output path is not a written file", () => {
+    // test -s alone passes a directory: it is how a PDF that mv moved inside
+    // a directory at the output path was reported as published.
+    const app = createFakeApp();
+    const asked = [];
+
+    app.doShellScript = (command) => {
+        asked.push(command);
+
+        return "";
+    };
+
+    verifyFileWritten(app, "/a/out.pdf", "output PDF");
+    assert.deepEqual(asked, [
+        "'/bin/test' '-f' '/a/out.pdf' '-a' '-s' '/a/out.pdf'"
+    ]);
 });

@@ -95,6 +95,16 @@ test("a file already taken is not taken again", () => {
     );
 });
 
+test("the walk records what it took, so the next folder does not take it again", () => {
+    // One set for the whole run: the folders are walked one after another and
+    // each has to see what the ones before it found.
+    const taken = new Set();
+
+    imagesInFolder(treeOf({ "/t": ["a.png"] }), "/t", taken);
+
+    assert.deepEqual([...taken], ["/t/a.png"]);
+});
+
 test("a dot-prefixed name is hidden, and only at the front", () => {
     assert.equal(isHidden(".DS_Store"), true);
     assert.equal(isHidden("holiday.2024.png"), false);

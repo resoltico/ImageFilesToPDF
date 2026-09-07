@@ -69,9 +69,29 @@ function fileExists(app, path) {
     return testPath(app, "-e", path);
 }
 
+/*
+ * A regular file with something in it. Asked in one call because there are
+ * five of these per image and a second subprocess each would be five
+ * thousand more on a job of a thousand photographs.
+ *
+ * -s alone passes a directory: measured, and it is how a PDF moved inside a
+ * directory that appeared at the output path was reported as published.
+ */
+function isRegularNonEmpty(app, path) {
+    try {
+        app.doShellScript(shellJoin([TEST, "-f", path, "-a", "-s", path]));
+
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 function verifyFileWritten(app, path, label) {
-    if (!testPath(app, "-s", path)) {
-        throw new Error(`${label} was not written or is empty:\n\n${path}`);
+    if (!isRegularNonEmpty(app, path)) {
+        throw new Error(
+            `${label} is not a file with anything in it:\n\n${path}`
+        );
     }
 }
 

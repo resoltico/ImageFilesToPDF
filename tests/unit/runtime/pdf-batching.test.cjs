@@ -84,7 +84,11 @@ test("each stage of building the PDF is announced", () => {
     const job = makeJob(host);
     const said = [];
 
-    job.progress = { file() { return undefined; }, phase: (name) => said.push(name) };
+    job.progress = {
+        beginning() { return undefined; },
+        finished() { return undefined; },
+        phase: (name) => said.push(name)
+    };
     createAndValidatePdf(job, `${job.workspace}/out.pdf`, [`${job.workspace}/p.jpg`]);
 
     assert.deepEqual(said, ["Creating PDF", "Validating PDF"]);

@@ -1,6 +1,7 @@
 "use strict";
 
 const { shellQuote } = require("./shell.js");
+const { utf8Length } = require("./numbers.js");
 
 /*
  * Splitting the pages of one PDF across several imports.
@@ -26,7 +27,7 @@ const COMMAND_BUDGET_BYTES = 131072;
 
 function commandLengthOf(argv) {
     return argv.reduce(
-        (total, argument) => total + shellQuote(argument).length + 1,
+        (total, argument) => total + utf8Length(shellQuote(argument)) + 1,
         0
     );
 }
@@ -37,7 +38,7 @@ function commandLengthOf(argv) {
  * would be refusing the page rather than the command.
  */
 function place(state, page, available) {
-    const cost = shellQuote(page).length + 1;
+    const cost = utf8Length(shellQuote(page)) + 1;
     const batch = state.batches.at(-1);
 
     if (batch.length > 0 && state.length + cost > available) {

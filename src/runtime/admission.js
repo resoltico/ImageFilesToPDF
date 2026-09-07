@@ -3,9 +3,9 @@
 const { basename, dirname } = require("../core/paths.js");
 const { sortImageRecords } = require("../core/ordering.js");
 const { imagesInFolder } = require("./expand.js");
-const { isDirectory } = require("./shell.js");
-const { inputItemToPosixPath, finderSelection } = require("./input.js");
-const { rejectionReason, describeUnresolved } = require("./reasons.js");
+const { selectedItems } = require("./selection.js");
+const { finderSelection } = require("./input.js");
+const { rejectionReason } = require("./reasons.js");
 
 /*
  * Which of the requested files this action will convert, and why it will not
@@ -13,7 +13,8 @@ const { rejectionReason, describeUnresolved } = require("./reasons.js");
  *
  * Separated from resolution because a rejection is a stated reason rather than
  * the absence of an entry in a list: a silent filter turned a GIF selected
- * alongside two photos into a report that nothing had failed.
+ * alongside two photos into a report that nothing had failed. What was
+ * selected, and whether two selections are the same thing, is selection.js.
  */
 
 function record(path, folder) {
@@ -24,17 +25,21 @@ function record(path, folder) {
     return { path, originalName: basename(path), folder };
 }
 
+function rejection(path, reason) {
+    return { path, name: basename(path), reason };
+}
+
 function admitFolder(tree, path, outcome) {
-    const found = imagesInFolder(tree, path, new Set(
-        outcome.images.map((image) => image.path)
-    ));
+    const found = imagesInFolder(tree, path, outcome.taken);
+
+    // Reported as themselves: naming the folder or the file the walk could
+    // not look at is what lets someone go and see why.
+    for (const problem of found.problems) {
+        outcome.rejected.push(rejection(problem.path, problem.reason));
+    }
 
     if (found.reason) {
-        outcome.rejected.push({
-            path,
-            name: basename(path),
-            reason: found.reason
-        });
+        outcome.rejected.push(rejection(path, found.reason));
 
         return;
     }
@@ -44,35 +49,47 @@ function admitFolder(tree, path, outcome) {
     }
 }
 
-function admit(app, tree, path, outcome) {
-    if (tree && isDirectory(app, path)) {
-        admitFolder(tree, path, outcome);
-
-        return;
-    }
-
-    const reason = rejectionReason(app, path);
-
-    if (reason) {
-        outcome.rejected.push({ path, name: basename(path), reason });
-    } else {
-        outcome.images.push(record(path, dirname(path)));
-    }
+/*
+ * A package is a folder to the shell -- an .app, a .photoslibrary -- and
+ * walking into one wrote the PDFs inside the bundle. The tree tells them
+ * apart, so the reason can say which it is.
+ */
+function reasonFor(app, root) {
+    return root.kind === "package"
+        ? "a package, not a folder of images"
+        : rejectionReason(app, root.path);
 }
 
-function consider(app, tree, item, outcome) {
-    const path = inputItemToPosixPath(item);
-
-    if (path) {
-        admit(app, tree, path, outcome);
+/*
+ * Selection order puts every folder first, so by the time an explicit request
+ * is considered the walking is done and the ledger is complete.
+ *
+ * An explicit request is never dropped for sitting under a selected folder.
+ * The walk passes over hidden entries, packages and links, so assuming it had
+ * taken them removed the request from the run without a word: a photograph
+ * whose name began with a dot simply did not appear, and a file that could
+ * not be converted stopped saying so. Already in the ledger is the one case
+ * that is neither a rejection nor a second copy -- it was converted, which is
+ * what was asked.
+ */
+function admit(app, tree, root, outcome) {
+    // A kind at all means there is a tree: it is the tree that answered.
+    if (root.kind === "directory") {
+        admitFolder(tree, root.path, outcome);
 
         return;
     }
 
-    const unresolved = describeUnresolved(item);
+    if (outcome.taken.has(root.path)) {
+        return;
+    }
 
-    if (unresolved) {
-        outcome.rejected.push(unresolved);
+    const reason = reasonFor(app, root);
+
+    if (reason) {
+        outcome.rejected.push(rejection(root.path, reason));
+    } else {
+        outcome.images.push(record(root.path, dirname(root.path)));
     }
 }
 
@@ -83,10 +100,10 @@ function consider(app, tree, item, outcome) {
  */
 function collectImageFiles(app, inputItems, tree = null) {
     const items = inputItems.length > 0 ? inputItems : finderSelection();
-    const outcome = { images: [], rejected: [] };
+    const outcome = { images: [], rejected: [], taken: new Set() };
 
-    for (const item of items) {
-        consider(app, tree, item, outcome);
+    for (const root of selectedItems(tree, items, outcome.rejected)) {
+        admit(app, tree, root, outcome);
     }
 
     return {

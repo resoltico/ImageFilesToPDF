@@ -57,7 +57,7 @@ test("separate mode keeps a finished PDF it could not publish", () => {
     ]);
 
     assert.equal(result.outputs.length, 0);
-    assert.match(result.failures[0], /The finished PDF has been kept here/u);
+    assert.match(result.failures[0].message, /The finished PDF has been kept here/u);
     assert.equal(
         [...app.files].filter((file) => file.includes("staged")).length,
         1,
@@ -93,7 +93,7 @@ test("separate mode removes a file rejected by validation too", () => {
         imageOf("/a/good.png")
     ]);
 
-    assert.match(result.failures[0], /xref table is corrupt/u);
+    assert.match(result.failures[0].message, /xref table is corrupt/u);
     assert.deepEqual(
         [...app.files].filter((file) => file.includes("staged")),
         [],

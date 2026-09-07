@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { preparePage } = require("../../../src/runtime/pages.js");
+const { preparePage, preparePages } = require("../../../src/runtime/pages.js");
 const { createFakeApp, failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob, imageOf } = require("./fake-job.cjs");
@@ -33,7 +33,10 @@ test("the file being prepared is counted from one, not from zero", () => {
     const said = [];
 
     job.progress = {
-        file: (index, name) => said.push(`${index} ${name}`),
+        beginning: (index, name) => said.push(`${index} ${name}`),
+        finished() {
+            return undefined;
+        },
         phase() {
             return undefined;
         }
@@ -43,4 +46,30 @@ test("the file being prepared is counted from one, not from zero", () => {
     preparePage(job, imageOf("/a/y.png"), 4);
 
     assert.deepEqual(said, ["1 x.png", "5 y.png"]);
+});
+
+test("a prepared page is a unit of work that has finished, and says so", () => {
+    // completedUnitCount holds work that is done, so it moves when a page is
+    // finished rather than when one is started -- and what it says while it
+    // moves is the only description anybody waiting will read.
+    const app = createFakeHost({ files: ["/a/x.png", "/a/y.png"] });
+    const job = makeJob(app);
+    const said = [];
+
+    job.progress = {
+        beginning: (index) => said.push(`begin ${index}`),
+        finished: (description) => said.push(`done ${description}`),
+        phase() {
+            return undefined;
+        }
+    };
+
+    preparePages(job, [imageOf("/a/x.png"), imageOf("/a/y.png")]);
+
+    assert.deepEqual(said, [
+        "begin 1",
+        "done Preparing",
+        "begin 2",
+        "done Preparing"
+    ]);
 });

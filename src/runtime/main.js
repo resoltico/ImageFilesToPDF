@@ -16,7 +16,7 @@ const { collectSettings } = require("./settings-form.js");
 const { collectInvocation } = require("./input.js");
 const { collectImageFiles } = require("./admission.js");
 const { createTree } = require("./tree.js");
-const { createProgress } = require("./progress.js");
+const { createProgress, unitsOf } = require("./progress.js");
 const { createJob, runJob } = require("./job.js");
 
 /*
@@ -61,11 +61,12 @@ function prepareJob(app, invocation, tools, count) {
  * Nothing is reported to a caller that is reading a receipt.
  */
 function reportingJob(app, invocation, tools, work) {
-    const job = prepareJob(app, invocation, tools, work.images.length);
+    const images = work.images.length;
+    const job = prepareJob(app, invocation, tools, images);
 
     job.progress = work.headless
         ? job.progress
-        : createProgress(work.images.length);
+        : createProgress({ units: unitsOf(job.settings, images), images });
 
     return job;
 }

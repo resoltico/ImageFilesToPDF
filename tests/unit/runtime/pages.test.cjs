@@ -79,7 +79,7 @@ test("a stage that reports success but writes nothing is detected", () => {
 
         assert.throws(
             () => preparePage(makeJob(app), imageOf("/a/x.png"), 0),
-            new RegExp(`${label} was not written or is empty`, "u"),
+            new RegExp(`${label} is not a file with anything in it`, "u"),
             `${stage} producing nothing must be caught`
         );
     }

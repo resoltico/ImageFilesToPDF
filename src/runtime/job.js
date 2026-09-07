@@ -1,6 +1,7 @@
 "use strict";
 
 const { calculatePageGeometry } = require("../core/geometry.js");
+const { isSeparateMode } = require("../core/settings.js");
 const { createWorkspace, removeWorkspace } = require("./workspace.js");
 const { createCombinedPdf, createSeparatePdfs } = require("./pdf.js");
 const { SILENT } = require("./progress.js");
@@ -28,7 +29,7 @@ function createJob(app, settings, timestamp, tools) {
 }
 
 function runJob(job, imageFiles) {
-    const create = job.settings.mode === "separate"
+    const create = isSeparateMode(job.settings)
         ? createSeparatePdfs
         : createCombinedPdf;
 

@@ -31,18 +31,27 @@ function refusesDirectory(app, command) {
         !(app.directories ?? []).includes(directory.groups.path);
 }
 
+/*
+ * The header fields the runtime asks for, with the answers an ordinary image
+ * gives. Two of them are not universal, and the code has to tell the cases
+ * apart: a file written without metadata has no orientation field, and a
+ * single-page format has no n-pages field. vipsheader fails for a field it
+ * cannot find, naming it -- which is what the tests that cover those drive
+ * directly, because a fake that always answers would hide both.
+ */
+const HEADER_FIELDS = [
+    ["'width'", "width", 600],
+    ["'height'", "height", 400],
+    ["'orientation'", "orientation", 1],
+    ["n-pages", "pages", 1]
+];
+
 function cannedAnswer(app, command) {
 
-    if (command.includes("'width'")) {
-        return String(app.width ?? 600);
-    }
+    const field = HEADER_FIELDS.find(([name]) => command.includes(name));
 
-    if (command.includes("'height'")) {
-        return String(app.height ?? 400);
-    }
-
-    if (command.includes("n-pages")) {
-        return String(app.pages ?? 1);
+    if (field) {
+        return String(app[field[1]] ?? field[2]);
     }
 
     if (command.includes("nonexistent-image-files-to-pdf-preflight")) {

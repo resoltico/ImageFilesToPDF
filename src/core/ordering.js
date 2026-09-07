@@ -17,6 +17,38 @@ function isNumeric(part) {
 }
 
 /*
+ * Two runs of digits, compared as decimal numbers written out rather than as
+ * JavaScript numbers.
+ *
+ * Number() is exact only to 2^53. Past that, two different filenames become
+ * the same value -- 9007199254740992.jpg and ...93.jpg did -- and subtracting
+ * them says they are equal, which leaves their order to the order they
+ * happened to arrive in. Nineteen digits is a nanosecond timestamp, which is
+ * an ordinary way for a camera or an export to name a file.
+ *
+ * Leading zeros are not part of the value, so they come off first: what is
+ * left is longer when it is larger, and among equal lengths the larger is the
+ * one that reads later.
+ */
+const LEADING_ZEROS = /^0+(?=\d)/u;
+
+function compareNumeric(leftPart, rightPart) {
+    const left = leftPart.replace(LEADING_ZEROS, "");
+    const right = rightPart.replace(LEADING_ZEROS, "");
+
+    if (left.length !== right.length) {
+        return left.length - right.length;
+    }
+
+    if (left !== right) {
+        return left < right ? LEFT_FIRST : RIGHT_FIRST;
+    }
+
+    // Equal value, different zero padding: the narrower one sorts first.
+    return leftPart.length - rightPart.length;
+}
+
+/*
  * Compares one segment pair. Returns EQUAL when the caller should move on to
  * the next segment.
  */
@@ -34,12 +66,7 @@ function comparePart(leftPart, rightPart) {
     }
 
     if (isNumeric(leftPart) && isNumeric(rightPart)) {
-        const difference = Number(leftPart) - Number(rightPart);
-
-        // Equal value, different zero padding: the narrower one sorts first.
-        return difference === EQUAL
-            ? leftPart.length - rightPart.length
-            : difference;
+        return compareNumeric(leftPart, rightPart);
     }
 
     return leftPart < rightPart ? LEFT_FIRST : RIGHT_FIRST;

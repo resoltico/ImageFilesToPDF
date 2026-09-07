@@ -4,10 +4,10 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { imageOf } = require("./fake-job.cjs");
 const {
-    readImageSize,
     readPageCount,
     assertSinglePage
 } = require("../../../src/runtime/source-image.js");
+const { readImageSize } = require("../../../src/runtime/image-size.js");
 const { createFakeApp, failing } = require("./fake-app.cjs");
 
 test("a format with no n-pages field genuinely has one page", () => {

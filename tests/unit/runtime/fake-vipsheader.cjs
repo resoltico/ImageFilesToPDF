@@ -6,6 +6,10 @@
  * on the tool name alone would answer them all with the same number.
  */
 function headerField(host, command) {
+    if (command.includes("'orientation'")) {
+        return String(host.orientation ?? 1);
+    }
+
     if (command.includes("'width'")) {
         return String(host.width ?? 600);
     }

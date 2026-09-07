@@ -101,7 +101,9 @@ test("createSeparatePdfs continues past a failing image", () => {
     assert.equal(result.outputs.length, 1);
     assert.match(result.outputs[0], /good_20260904_010203\.pdf$/u);
     assert.equal(result.failures.length, 1);
-    assert.match(result.failures[0], /^bad\.png: /u);
+    assert.equal(result.failures[0].name, "bad.png");
+    // The command that failed travels with the failure, for the log.
+    assert.match(result.failures[0].command, /vipsheader/u);
 
     // The failing image's staged file is removed on the way out, and nothing
     // of it is left in the folder the images came from.
