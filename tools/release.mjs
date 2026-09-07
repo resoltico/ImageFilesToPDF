@@ -15,6 +15,7 @@ import {
 import { renderBanner, readMetadata } from "./banner.mjs";
 import { stripComments } from "./strip-comments.mjs";
 import { root } from "./repository.mjs";
+import { moduleOrder } from "./module-order.mjs";
 
 /*
  * The supported floor.
@@ -40,52 +41,6 @@ export const ECMASCRIPT_TARGET = 2022;
 export const artifactName = "Image-Files-to-PDF.jxa";
 export const artifactPath = path.join(root, "dist", artifactName);
 export const manifestPath = path.join(root, "dist", "SHA256SUMS");
-
-/*
- * Dependency order. A module may only depend on modules listed before it,
- * which is asserted during the build rather than assumed.
- */
-export const moduleOrder = [
-    "src/core/version.js",
-    "src/core/executables.js",
-    "src/core/numbers.js",
-    "src/core/errors.js",
-    "src/core/shell.js",
-    "src/core/paths.js",
-    "src/core/ordering.js",
-    "src/core/invocation.js",
-    "src/core/settings.js",
-    "src/core/geometry.js",
-    "src/core/choices.js",
-    "src/core/form.js",
-    "src/core/form-answers.js",
-    "src/core/naming.js",
-    "src/core/commands.js",
-    "src/core/preflight.js",
-    "src/runtime/shell.js",
-    "src/runtime/tools.js",
-    "src/runtime/workspace.js",
-    "src/runtime/preflight.js",
-    "src/runtime/appkit-swatch.js",
-    "src/runtime/appkit-widgets.js",
-    "src/runtime/appkit-form.js",
-    "src/runtime/appkit.js",
-    "src/runtime/dialogs.js",
-    "src/runtime/completion.js",
-    "src/runtime/settings-form.js",
-    "src/runtime/input.js",
-    "src/runtime/admission.js",
-    "src/runtime/receipt.js",
-    "src/runtime/reporting.js",
-    "src/runtime/source-image.js",
-    "src/runtime/pages.js",
-    "src/runtime/rescue.js",
-    "src/runtime/transfer.js",
-    "src/runtime/publish.js",
-    "src/runtime/pdf.js",
-    "src/runtime/job.js",
-    "src/runtime/main.js"
-];
 
 async function readRepositoryFile(relative) {
     return await readFile(path.join(root, relative), "utf8");
@@ -138,6 +93,8 @@ export async function renderRelease() {
         { ecmaVersion: ECMASCRIPT_TARGET, kept: markerTextsFor(moduleOrder) }
     );
 }
+
+export { moduleOrder };
 
 export function digestOf(release) {
     return createHash("sha256").update(release).digest("hex");

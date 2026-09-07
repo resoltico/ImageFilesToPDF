@@ -60,3 +60,23 @@ test("a Finder item that cannot say where it is is still reported", () => {
         "https://example.com/photo.png"
     ]);
 });
+
+test("a folder is reported as a folder, whatever it is called", () => {
+    // It used to be turned away for having the wrong extension -- and one
+    // called album.png for not being readable. Neither says what it is.
+    const app = createFakeApp();
+
+    app.directories = ["/a/album", "/a/album.png"];
+
+    const { images, rejected } = collectImageFiles(app, [
+        "/a/album",
+        "/a/album.png",
+        "/a/photo.png"
+    ]);
+
+    assert.deepEqual(images.map((image) => image.originalName), ["photo.png"]);
+    assert.deepEqual(rejected.map((entry) => `${entry.name}: ${entry.reason}`), [
+        "album: a folder; select the images inside it",
+        "album.png: a folder; select the images inside it"
+    ]);
+});

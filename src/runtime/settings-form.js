@@ -35,7 +35,10 @@ function appkitBridge(objc, ns) {
  * settings, or the answers to try again with.
  */
 function formRound(bridge, present, state) {
-    const outcome = present(bridge, formSpec(state.answers, state.problems));
+    const outcome = present(
+        bridge,
+        formSpec(state.answers, state.problems, state.count)
+    );
 
     if (!outcome) {
         return { unavailable: true };
@@ -56,11 +59,11 @@ function formRound(bridge, present, state) {
  * Redisplayed with the previous answers and every problem at once, so
  * correcting a mistyped DPI does not mean answering the other five again.
  */
-function collectViaForm(bridge, present) {
+function collectViaForm(bridge, present, count = 0) {
     // Nothing answered and nothing wrong yet. What that shows is formSpec's
     // to say: stating the defaults again here would be a second copy of them,
     // free to drift from the first.
-    let state = {};
+    let state = { count };
 
     for (;;) {
         const round = formRound(bridge, present, state);
@@ -73,7 +76,7 @@ function collectViaForm(bridge, present) {
             return round.settings;
         }
 
-        state = round;
+        state = { ...round, count };
     }
 }
 
@@ -82,9 +85,9 @@ function collectViaForm(bridge, present) {
  * throws is treated as the form being unusable, because falling back to
  * dialogs that work is better than failing the run over a widget.
  */
-function attemptForm(bridge, present) {
+function attemptForm(bridge, present, count) {
     try {
-        return collectViaForm(bridge, present);
+        return collectViaForm(bridge, present, count);
     } catch (error) {
         if (isUserCancelled(error)) {
             throw error;
@@ -96,11 +99,12 @@ function attemptForm(bridge, present) {
 
 function collectSettings(
     app,
+    count = 0,
     bridge = appkitBridge(globalThis.ObjC, globalThis.$),
     present = presentForm
 ) {
     if (bridge) {
-        const settings = attemptForm(bridge, present);
+        const settings = attemptForm(bridge, present, count);
 
         if (settings) {
             return settings;

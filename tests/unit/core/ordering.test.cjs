@@ -38,7 +38,10 @@ test("naturalCompare is case insensitive", () => {
     assert.equal(naturalCompare("ABC", "abc"), 0);
 });
 
-test("sortImageRecords orders by name then path, without mutating", () => {
+test("sortImageRecords orders by path, without mutating", () => {
+    // Everything in one folder together, in order, before the next folder.
+    // Ordering by name first put a photograph from one folder between two
+    // from another whenever the names interleaved.
     const records = [
         { originalName: "page10.png", path: "/b/page10.png" },
         { originalName: "page2.png", path: "/b/page2.png" },
@@ -52,13 +55,27 @@ test("sortImageRecords orders by name then path, without mutating", () => {
         sortImageRecords(records).map((record) => record.path),
         [
             "/a/page1.png",
-            "/z/page1.png",
             "/b/page01.png",
             "/b/page2.png",
-            "/b/page10.png"
+            "/b/page10.png",
+            "/z/page1.png"
         ]
     );
     assert.deepEqual(records, original, "input must not be mutated");
+});
+
+test("within one folder the order is exactly what it always was", () => {
+    // The path comparison is the name comparison with a shared prefix.
+    const names = ["page10.png", "page2.png", "page01.png", "page1.png"];
+    const records = names.map((originalName) => ({
+        originalName,
+        path: `/one/${originalName}`
+    }));
+
+    assert.deepEqual(
+        sortImageRecords(records).map((record) => record.originalName),
+        ["page1.png", "page01.png", "page2.png", "page10.png"]
+    );
 });
 
 test("identical names compare equal at every segment", () => {

@@ -55,6 +55,12 @@ function isRegularFile(app, path) {
     return testPath(app, "-f", path);
 }
 
+// A folder is not an image, and saying so is not the same as saying its name
+// has the wrong extension.
+function isDirectory(app, path) {
+    return testPath(app, "-d", path);
+}
+
 function isExecutable(app, path) {
     return testPath(app, "-x", path);
 }
@@ -85,6 +91,7 @@ module.exports = {
     runArgv,
     readTextFile,
     isRegularFile,
+    isDirectory,
     isExecutable,
     fileExists,
     verifyFileWritten,

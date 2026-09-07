@@ -11,9 +11,9 @@ const test = require("node:test");
 const { createSeparatePdfs } = require("../../../src/runtime/pdf.js");
 const { failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
-const { makeJob } = require("./fake-job.cjs");
+const { makeJob, imageOf } = require("./fake-job.cjs");
 
-const images = [{ path: "/a/x.png", originalName: "x.png" }];
+const images = [imageOf("/a/x.png")];
 
 function failureFrom(host) {
     const { failures } = createSeparatePdfs(makeJob(host), images);

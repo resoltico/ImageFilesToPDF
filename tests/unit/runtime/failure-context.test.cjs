@@ -13,9 +13,9 @@ const { preparePages } = require("../../../src/runtime/pages.js");
 const { commandOf } = require("../../../src/core/errors.js");
 const { failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
-const { makeJob } = require("./fake-job.cjs");
+const { makeJob, imageOf } = require("./fake-job.cjs");
 
-const image = { path: "/a/x.png", originalName: "x.png" };
+const image = imageOf("/a/x.png");
 
 test("naming the image keeps the command that failed underneath it", () => {
     const app = createFakeHost({

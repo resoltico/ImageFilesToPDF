@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { imageOf } = require("./fake-job.cjs");
 const {
     readImageSize,
     readPageCount,
@@ -54,7 +55,7 @@ test("an unknown count is refused, and says why", () => {
     assert.throws(
         () => assertSinglePage(
             { app, tools: { vipsheader: "/v/vipsheader" } },
-            { path: "/a/x.tif", originalName: "x.tif" }
+            imageOf("/a/x.tif")
         ),
         (error) => {
             assert.match(error.message, /could not be checked for multiple pages/u);
@@ -109,7 +110,7 @@ test("a twelve-page file is refused, and the count is in the message", () => {
     assert.throws(
         () => assertSinglePage(
             { app, tools: { vipsheader: "/v/vipsheader" } },
-            { path: "/a/x.tif", originalName: "x.tif" }
+            imageOf("/a/x.tif")
         ),
         /contains 12 pages/u
     );

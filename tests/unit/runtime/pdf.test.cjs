@@ -8,9 +8,9 @@ const {
 } = require("../../../src/runtime/pdf.js");
 const { failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
-const { makeJob } = require("./fake-job.cjs");
+const { makeJob, imageOf } = require("./fake-job.cjs");
 
-const images = [{ path: "/a/x.png", originalName: "x.png" }];
+const images = [imageOf("/a/x.png")];
 
 test("createCombinedPdf produces one output beside the first image", () => {
     const app = createFakeHost({ files: ["/a/x.png"] });
@@ -93,8 +93,8 @@ test("createSeparatePdfs continues past a failing image", () => {
         failures: [["'/a/bad.png'", failing("unreadable")]]
     });
     const files = [
-        { path: "/a/good.png", originalName: "good.png" },
-        { path: "/a/bad.png", originalName: "bad.png" }
+        imageOf("/a/good.png"),
+        imageOf("/a/bad.png")
     ];
     const result = createSeparatePdfs(makeJob(app), files);
 

@@ -3,9 +3,10 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
+    readPageCountFrom,
     buildPdfcpuImportArgv,
     buildPdfcpuValidateArgv
-} = require("../../../src/core/commands.js");
+} = require("../../../src/core/pdfcpu.js");
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
 
 const geometry = calculatePageGeometry({
@@ -51,4 +52,15 @@ test("pdfcpu validate uses the only flag form pflag accepts", () => {
     assert.deepEqual(argv, ["pdfcpu", "validate", "--mode=strict", "/tmp/output.pdf"]);
     assert.ok(!argv.includes("-mode"));
     assert.ok(!argv.includes("strict"));
+});
+
+test("a PDF that reports no page count reads as none", () => {
+    // The count is asked for only to catch an import that appended nothing,
+    // so output that does not carry one must not read as a number of pages.
+    assert.equal(readPageCountFrom("          Page count: 4\n"), 4);
+    assert.equal(readPageCountFrom("Page count: 4000"), 4000);
+    // pdfcpu pads the label; a version that stopped would still be read.
+    assert.equal(readPageCountFrom("Page count:4"), 4);
+    assert.equal(readPageCountFrom("pdfcpu: no such file\n"), 0);
+    assert.equal(readPageCountFrom(""), 0);
 });

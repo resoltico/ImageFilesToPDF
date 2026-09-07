@@ -41,6 +41,24 @@ brew install vips pdfcpu
 The script uses files supplied by Shortcuts. If it receives no explicit input,
 it falls back to Finder's current selection.
 
+## Selecting a folder
+
+Selecting a folder converts the images inside it, through every subfolder.
+Hidden items, application packages, links and files that are not images are
+passed over without comment — a folder of documents does not produce a
+complaint for every document. A folder that cannot be read, or that holds no
+supported images, is reported. Selecting a folder and a file inside it does not
+convert that file twice.
+
+The PDF is written to the folder you selected: one combined PDF inside it, or
+separate PDFs inside it, rather than scattered through the subfolders the
+images came from. Images are ordered by their whole path, so each folder's
+images stay together and in order.
+
+Before anything is converted, the settings window says how many images were
+found. Selecting a folder can mean a great many, and that number is there so
+that Cancel is a decision rather than a guess.
+
 ## Supported images
 
 JPEG, PNG, HEIC/HEIF, TIFF, WebP and AVIF — the still-image formats vips reads
@@ -90,6 +108,19 @@ stepwise dialogs remain as a live fallback. If AppKit cannot be reached, or
 the form cannot be presented, the action asks the same six questions one at a
 time and works exactly as before.
 
+## While it runs
+
+The action reports what it is doing — which file it is preparing, and then
+creating, validating and saving the PDF — through JavaScript for Automation's
+own progress object.
+
+Whether a Shortcut displays that is not something this project has been able to
+measure, because a Shortcut cannot be created from the command line. The
+reporting was chosen on that basis: writing to it cannot open a window, cannot
+raise the process activation policy and put a Dock icon up mid-action, and
+cannot pump a run loop underneath the host. If nothing is listening, nothing
+happens. `QA.md` says how to find out.
+
 ## When the tools are missing
 
 Nothing is asked of the user until the tools have been checked. A machine that
@@ -120,7 +151,8 @@ For every source image, the runtime:
    has one;
 3. centres the image on an exact page-sized canvas and saves a
    metadata-stripped JPEG page;
-4. imports the page or ordered pages with `pdfcpu` using `sc:1 rel`;
+4. imports the page or ordered pages with `pdfcpu` using `sc:1 rel`, in
+   groups when there are more pages than one command line can carry;
 5. validates the temporary PDF in strict mode;
 6. publishes the PDF without overwriting an existing path.
 

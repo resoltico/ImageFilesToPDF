@@ -1,6 +1,6 @@
 "use strict";
 
-const { fixed2, parseInteger } = require("./numbers.js");
+const { parseInteger } = require("./numbers.js");
 const {
     MINIMUM_QUALITY,
     MAXIMUM_QUALITY,
@@ -86,32 +86,6 @@ function buildGravityArgv(vipsPath, inputPath, outputPath, options) {
     ];
 }
 
-function buildPdfcpuImportArgv(pdfcpuPath, outputPath, pagePaths, geometry) {
-    if (!pagePaths || pagePaths.length === 0) {
-        throw new Error("At least one prepared page is required.");
-    }
-
-    const description = [
-        `dim:${fixed2(geometry.widthPoints)} ${fixed2(geometry.heightPoints)}`,
-        "pos:c",
-        "sc:1 rel"
-    ].join(", ");
-
-    return [pdfcpuPath, "import", "--", description, outputPath].concat(
-        pagePaths
-    );
-}
-
-/*
- * pdfcpu parses flags with pflag, where a single dash introduces a cluster of
- * short flags: "-mode strict" is read as "-m ode", and "strict" is then taken
- * for a filename. The long form must also use "=", because "--mode strict" is
- * rejected as an unknown flag.
- */
-function buildPdfcpuValidateArgv(pdfcpuPath, outputPath) {
-    return [pdfcpuPath, "validate", "--mode=strict", outputPath];
-}
-
 /*
  * After the thumbnail stage every image is sRGB, so an even band count means
  * an alpha channel is present. The JPEG page saver cannot represent alpha, so
@@ -131,7 +105,5 @@ module.exports = {
     buildPageCountArgv,
     buildFlattenArgv,
     buildGravityArgv,
-    buildPdfcpuImportArgv,
-    buildPdfcpuValidateArgv,
     hasAlphaBand
 };

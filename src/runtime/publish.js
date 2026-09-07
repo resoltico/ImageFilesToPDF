@@ -61,6 +61,7 @@ function confirm(job, stagedPath, finalPath) {
 function publishPdf(job, stagedPath, finalPath) {
     const { app } = job;
 
+    job.progress.phase("Saving PDF");
     job.unpublished.add(stagedPath);
 
     if (fileExists(app, finalPath)) {

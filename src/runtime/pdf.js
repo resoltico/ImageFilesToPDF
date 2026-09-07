@@ -1,23 +1,14 @@
 "use strict";
 
 const { errorMessage } = require("../core/errors.js");
-const { dirname } = require("../core/paths.js");
 const {
     outputNameForCombined,
     outputNameForSeparate,
     nextUniquePath,
     stagedPdfPath
 } = require("../core/naming.js");
-const {
-    buildPdfcpuImportArgv,
-    buildPdfcpuValidateArgv
-} = require("../core/commands.js");
-const {
-    runArgv,
-    fileExists,
-    verifyFileWritten,
-    removeFile
-} = require("./shell.js");
+const { createAndValidatePdf } = require("./staging.js");
+const { fileExists, removeFile } = require("./shell.js");
 const { publishPdf } = require("./publish.js");
 const { nonce } = require("./workspace.js");
 const { preparePage, preparePages, withImageName } = require("./pages.js");
@@ -25,26 +16,6 @@ const { preparePage, preparePages, withImageName } = require("./pages.js");
 /*
  * PDF creation, validation, and publication.
  */
-
-function createAndValidatePdf(job, stagedPath, pagePaths) {
-    removeFile(job.app, stagedPath);
-    runArgv(
-        job.app,
-        buildPdfcpuImportArgv(
-            job.tools.pdfcpu,
-            stagedPath,
-            pagePaths,
-            job.geometry
-        ),
-        "creating PDF"
-    );
-    verifyFileWritten(job.app, stagedPath, "partial PDF");
-    runArgv(
-        job.app,
-        buildPdfcpuValidateArgv(job.tools.pdfcpu, stagedPath),
-        "validating PDF"
-    );
-}
 
 function resolveOutputPaths(job, outputFolder, name) {
     const finalPath = nextUniquePath(
@@ -58,7 +29,7 @@ function resolveOutputPaths(job, outputFolder, name) {
 function createCombinedPdf(job, imageFiles) {
     const { finalPath, stagedPath } = resolveOutputPaths(
         job,
-        dirname(imageFiles[0].path),
+        imageFiles[0].folder,
         outputNameForCombined(job.timestamp)
     );
 
@@ -95,7 +66,7 @@ function createSeparatePdf(job, imageFile, index) {
     try {
         const { finalPath, stagedPath: staged } = resolveOutputPaths(
             job,
-            dirname(imageFile.path),
+            imageFile.folder,
             outputNameForSeparate(imageFile, job.timestamp)
         );
 
@@ -137,7 +108,6 @@ function createSeparatePdfs(job, imageFiles) {
 }
 
 module.exports = {
-    createAndValidatePdf,
     createCombinedPdf,
     createSeparatePdfs
 };

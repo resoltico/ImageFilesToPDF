@@ -62,17 +62,18 @@ function naturalCompare(left, right) {
 }
 
 /*
- * Sorts by display name, falling back to full path so that identically named
- * files from different folders keep a stable, reproducible order.
+ * Sorts by full path, which within one folder is the same as sorting by name
+ * and across several is what a folder tree reads as: everything in one place
+ * together, in order, before the next place.
+ *
+ * Sorting by name first put a photograph from one folder between two from
+ * another whenever the names happened to interleave -- which is what names in
+ * numbered folders do.
  */
 function sortImageRecords(records) {
-    return records.slice().sort((left, right) => {
-        const comparison = naturalCompare(left.originalName, right.originalName);
-
-        return comparison === EQUAL
-            ? naturalCompare(left.path, right.path)
-            : comparison;
-    });
+    return records.slice().sort(
+        (left, right) => naturalCompare(left.path, right.path)
+    );
 }
 
 module.exports = { naturalCompare, sortImageRecords };

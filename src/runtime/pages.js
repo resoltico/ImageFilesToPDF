@@ -96,6 +96,8 @@ function workspacePaths(job, index) {
 }
 
 function preparePage(job, imageFile, index) {
+    job.progress.file(index + 1, imageFile.originalName);
+
     const { preparedPath, flattenedPath, pagePath } = workspacePaths(job, index);
 
     assertSinglePage(job, imageFile);

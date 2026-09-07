@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { createAndValidatePdf } = require("../../../src/runtime/pdf.js");
+const { createAndValidatePdf } = require("../../../src/runtime/staging.js");
 const { createFakeApp } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob } = require("./fake-job.cjs");

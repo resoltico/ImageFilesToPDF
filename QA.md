@@ -144,6 +144,48 @@ written.
 Verified to fail: a `/bin/cp` or `/opt/homebrew/bin/ghostscript` literal in a
 production module.
 
+## Walking a selected folder
+
+A directory listing has to come back as a list. A filename may contain a
+newline, and no text separator survives that — so the walk asks Foundation
+rather than the shell. Measured: `contentsOfDirectoryAtPath` returns
+`"two\nlines.png"` intact, `attributesOfItemAtPath` reports a symbolic link
+without following it, and `NSWorkspace` tells a package from a folder.
+
+It is also the only way to ask about thousands of entries without paying for a
+subprocess each time: a folder of three thousand photographs would be three
+thousand invocations of `/bin/test`.
+
+The bridge is a parameter, so the walk runs against a fake tree in Node, and
+`tree.js` returns null when there is none — the action still converts the
+files it was given, and a selected folder is refused with a reason.
+
+Verified to fail: a link with an image's name being taken; a package being
+walked into; a hidden entry being taken; a folder that cannot be read passing
+as empty; a folder holding no images reporting nothing; the same file being
+taken twice when a folder and something inside it are both selected.
+
+## How many pages one command can carry
+
+Every page path goes on one command line, and a command line has a size.
+Measured on macOS: `ARG_MAX` is 1 MiB, and a combined PDF of 8,000 pages was
+accepted while 12,000 failed — with "An error occurred.", which is nothing a
+person can act on.
+
+pdfcpu appends to a PDF that already exists, in the order it is given the
+pages, so there is no ceiling left: measured, two imports of two pages produce
+four pages in the order imported, and 3,000 pages in four groups produce a PDF
+of 3,000 pages that passes strict validation.
+
+The budget is a fraction of the measured limit, because `execve` counts the
+environment against the same allowance and this code cannot see how large the
+environment is. It is spent on the arguments as they will actually be written,
+quoted and separated, so a batch adapts to how long the paths turn out to be.
+
+Chunking introduces a failure a single import did not have — a batch that
+appends nothing while exiting zero — so when the pages went over in more than
+one group, the PDF is asked how many pages it ended up with.
+
 ## What must not be ignored
 
 `dist/` holds the released artifact and is committed deliberately. If it were
@@ -277,6 +319,26 @@ Both halves are verified to fail when the constraint is broken.
 
 The floor is declared once, in `tools/release.mjs`, and flows from there into
 the artifact banner and the gate's output.
+
+## What the progress reporting does not establish
+
+The action writes what it is doing to JavaScript for Automation's own
+`Progress` object. **Whether a Shortcut displays any of it is unmeasured.**
+
+It was chosen on the strength of what happens when it is wrong. An assignment
+to `Progress` cannot open a window, cannot raise the process activation policy
+and put a Dock icon up in the middle of an action, and cannot pump a run loop
+underneath a host that is driving the script. If nothing is listening, nothing
+happens. An `NSPanel` can do all three, and this repository cannot measure
+whether it does: a Shortcut cannot be created from the command line, so the
+probe that established the settings form presents cleanly cannot be repeated
+without someone running it by hand.
+
+To find out: paste a script that sets `Progress.totalUnitCount`,
+`completedUnitCount` and `description` into a Run JavaScript action, run the
+Shortcut, and watch. The object exists and accepts those assignments under
+`osascript` — that much is measured. The sink is a parameter, so if the answer
+is no, a panel can replace it without touching a single call site.
 
 ## Coverage
 
@@ -498,6 +560,9 @@ to fail when the fix is reverted:
 | A file named for cancelling silencing its own failure | typed cancellation |
 | A tool that printed nothing passing as usable | positive capability probe |
 | An input that vanished between resolution and admission | accounting tests |
+| A combined PDF too large for one command line | batching + page-count check |
+| A folder reported as an unsupported image format | admission tests |
+| A folder tree ordered by name, interleaving its folders | ordering tests |
 | Tests that stop catching bugs | mutation testing with a break threshold |
 
 ## Acceptance boundary

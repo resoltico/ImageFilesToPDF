@@ -71,7 +71,8 @@ function createFakeHost(settings = {}) {
     const fs = createFilesystem(
         settings.files ?? [],
         settings.executables ?? INSTALLED_TOOLS,
-        settings.emptyFiles ?? []
+        settings.emptyFiles ?? [],
+        settings.directories ?? []
     );
     const failures = settings.failures ?? [];
     const host = {

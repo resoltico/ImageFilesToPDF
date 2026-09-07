@@ -8,9 +8,9 @@ const {
 } = require("../../../src/runtime/pdf.js");
 const { failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
-const { makeJob } = require("./fake-job.cjs");
+const { makeJob, imageOf } = require("./fake-job.cjs");
 
-const images = [{ path: "/a/x.png", originalName: "x.png" }];
+const images = [imageOf("/a/x.png")];
 
 test("a PDF that was built but could not be published is kept", () => {
     // The whole point of tracking whether it was validated. Deleting it here
@@ -53,7 +53,7 @@ test("separate mode keeps a finished PDF it could not publish", () => {
         failures: [["/bin/mv", denied], ["/bin/cp", denied]]
     });
     const result = createSeparatePdfs(makeJob(app), [
-        { path: "/a/good.png", originalName: "good.png" }
+        imageOf("/a/good.png")
     ]);
 
     assert.equal(result.outputs.length, 0);
@@ -90,7 +90,7 @@ test("separate mode removes a file rejected by validation too", () => {
         failures: [["'validate'", failing("pdfcpu: xref table is corrupt")]]
     });
     const result = createSeparatePdfs(makeJob(app), [
-        { path: "/a/good.png", originalName: "good.png" }
+        imageOf("/a/good.png")
     ]);
 
     assert.match(result.failures[0], /xref table is corrupt/u);

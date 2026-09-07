@@ -4,6 +4,43 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-07
+
+### Added
+
+- Selecting a folder converts the images inside it, through every subfolder.
+  Hidden items, application packages, links and files that are not images are
+  passed over without comment; a folder that cannot be read, or that holds no
+  supported images, is reported. Selecting a folder and something inside it
+  does not convert that file twice.
+- The settings window says how many images were found before it asks anything,
+  so choosing Cancel is a decision rather than a guess. Selecting a folder can
+  mean a great many images, and this is the only point between the selection
+  and the work where the run can be called off.
+- The action reports what it is doing as it goes — which file it is preparing,
+  and then creating, validating and saving the PDF. Whether a Shortcut
+  displays this is not something this project has been able to measure; the
+  reporting costs nothing when nothing is listening.
+
+### Changed
+
+- Images are ordered by their whole path rather than by name first, so a
+  folder's images stay together and in order instead of interleaving with
+  another folder's whenever the names happened to. Within a single folder the
+  order is unchanged.
+- A PDF is written to the folder that was selected. Selecting a folder used to
+  put a combined PDF inside whichever subfolder sorted first, and separate PDFs
+  beside each image wherever it was found.
+
+### Fixed
+
+- A combined PDF of more than about ten thousand images no longer fails with
+  "An error occurred." Every page was named on one command line, and there is
+  a limit to how long one of those can be; the pages are handed over in groups
+  now, and the finished PDF is asked how many pages it ended up with.
+- Selecting a folder is no longer reported as an unsupported image format —
+  and a folder named something.png is no longer reported as unreadable.
+
 ## [1.1.1] - 2026-09-07
 
 ### Fixed

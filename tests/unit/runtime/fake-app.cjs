@@ -17,7 +17,22 @@
  * tool name alone would answer them all with the band count. The preflight probes name
  * a file that cannot exist and expect an answer about the file.
  */
+const DIRECTORY_TEST = /^'[^']*\/test' '-d' '(?<path>.*)'$/u;
+
+/*
+ * Nothing is a directory unless the test says so, which is what a filesystem
+ * with no directories in it means. A stub that answered yes to every test
+ * made every path a folder.
+ */
+function refusesDirectory(app, command) {
+    const directory = DIRECTORY_TEST.exec(command);
+
+    return Boolean(directory) &&
+        !(app.directories ?? []).includes(directory.groups.path);
+}
+
 function cannedAnswer(app, command) {
+
     if (command.includes("'width'")) {
         return String(app.width ?? 600);
     }
@@ -57,6 +72,10 @@ function createFakeApp(responses = []) {
 
                     return result;
                 }
+            }
+
+            if (refusesDirectory(app, command)) {
+                throw new Error("test failed");
             }
 
             return cannedAnswer(app, command) ?? "";

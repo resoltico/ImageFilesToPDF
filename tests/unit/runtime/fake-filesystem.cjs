@@ -1,5 +1,7 @@
 "use strict";
 
+const { produceOutput } = require("./fake-producing.cjs");
+
 /*
  * The in-memory filesystem behind the fake host.
  *
@@ -7,31 +9,6 @@
  * reports success without producing its output is detected exactly as it
  * would be in production.
  */
-
-/*
- * Only the argument each tool actually writes is created. Creating every
- * path-shaped argument would make verifyFileWritten unfailable, and a stage
- * that silently produced nothing would go unnoticed.
- *
- *   vips <operation> <in> <out> ...
- *   pdfcpu import -- <description> <out> <page>...
- */
-function produceOutput(files, argv, command) {
-    if (!command.includes("pdfcpu")) {
-        files.add(String(argv[3]).replace(/\[.*$/u, ""));
-
-        return "";
-    }
-
-    if (argv[1] === "import") {
-        files.add(argv[4]);
-    } else if (!files.has(argv.at(-1))) {
-        // pdfcpu validate on a missing file fails, as it does for real.
-        throw new Error("no such file");
-    }
-
-    return "";
-}
 
 /*
  * Every file has a size, because a copy is verified by comparing the source
@@ -52,11 +29,15 @@ function operands(rest) {
     return rest.filter((argument) => !argument.startsWith("-"));
 }
 
-// -e asks whether the path exists, -s whether it is also non-empty.
+// -e asks whether the path exists, -s whether it is also non-empty, -d
+// whether it is a directory. Nothing is a directory unless it was seeded as
+// one: a filesystem of files is what most of these tests are.
 function testPath(state, [flag, target]) {
-    if (flag === "-x") {
-        if (!state.runnable.has(target)) {
-            throw new Error("not executable");
+    if (flag === "-d" || flag === "-x") {
+        const known = flag === "-d" ? state.directories : state.runnable;
+
+        if (!known.has(target)) {
+            throw new Error("test failed");
         }
 
         return "";
@@ -115,9 +96,11 @@ function remove(state, rest) {
     return "";
 }
 
-function createFilesystem(seed, executables, empty) {
+function createFilesystem(seed, executables, empty, directories = []) {
     const state = {
         files: new Set(seed),
+        directories: new Set(directories),
+        pages: new Map(),
         runnable: new Set(executables),
         emptyFiles: new Set(empty),
         sizes: new Map()
@@ -131,7 +114,7 @@ function createFilesystem(seed, executables, empty) {
         copy: (rest) => copy(state, rest),
         stat: (rest) => stat(state, rest),
         remove: (rest) => remove(state, rest),
-        produce: (argv, command) => produceOutput(state.files, argv, command)
+        produce: (argv, command) => produceOutput(state, argv, command)
     };
 }
 

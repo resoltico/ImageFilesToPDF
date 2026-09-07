@@ -8,6 +8,9 @@ the author directly if the problem should not be public first.
 ## What the tool does with your files
 
 - Source images are read, never modified.
+- A selected folder is read through, and only images are taken from it. Links
+  are not followed, so a walk cannot leave the folder it was given. Application
+  packages and hidden items are passed over.
 - Output PDFs are written beside their source — beside the first selected image
   for one combined PDF, beside each image for separate ones — and never
   overwrite an existing file: the name is suffixed until it is free, and

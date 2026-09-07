@@ -111,18 +111,31 @@ function formRows(answers, invalid) {
  * both listed above the form and used to mark the rows they name: reading
  * which field is wrong and seeing it should not be different jobs.
  */
-function formSpec(answers = defaultAnswers(), problems = []) {
+/*
+ * Selecting a folder can mean a great many images, and the form is the only
+ * place between the selection and the work where the run can be called off.
+ * Saying how many were found makes Cancel a decision rather than a guess.
+ */
+function invitation(count) {
+    return count > 0
+        ? `${count} ${count === 1 ? "image" : "images"}. Choose how the ` +
+            "pages are built, then create the PDF."
+        : "Choose how the pages are built, then create the PDF.";
+}
+
+function formSpec(answers = defaultAnswers(), problems = [], count = 0) {
     return {
         title: APP_NAME,
         detail: problems.length > 0
             ? problems.map((problem) => problem.message).join("\n")
-            : "Choose how the pages are built, then create the PDF.",
+            : invitation(count),
         rows: formRows(answers, new Set(problems.map((problem) => problem.key))),
         buttons: [CREATE_BUTTON, CANCEL_BUTTON]
     };
 }
 
 module.exports = {
+    invitation,
     CREATE_BUTTON,
     CANCEL_BUTTON,
     CHOICE_ROWS,

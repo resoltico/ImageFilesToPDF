@@ -2,10 +2,11 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { imageOf } = require("./fake-job.cjs");
 const { createJob, runJob } = require("../../../src/runtime/job.js");
 const { createFakeHost } = require("./fake-host.cjs");
 
-const IMAGES = [{ path: "/a/x.png", originalName: "x.png" }];
+const IMAGES = [imageOf("/a/x.png")];
 
 const SETTINGS = {
     paperSize: "A4",
@@ -45,7 +46,7 @@ test("the workspace is removed even when the run fails", () => {
     const prepared = job(host);
 
     assert.throws(() => runJob(prepared, [
-        { path: "/a/x.png", originalName: "x.png" }
+        imageOf("/a/x.png")
     ]));
 
     const removals = host.commands.filter((command) =>
@@ -56,7 +57,7 @@ test("the workspace is removed even when the run fails", () => {
 
 test("the mode chooses which builder runs", () => {
     const host = createFakeHost({ files: ["/a/x.png"] });
-    const images = [{ path: "/a/x.png", originalName: "x.png" }];
+    const images = [imageOf("/a/x.png")];
     const combined = runJob(job(host), images);
 
     assert.equal(combined.outputs.length, 1);

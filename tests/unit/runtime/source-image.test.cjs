@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { imageOf } = require("./fake-job.cjs");
 const {
     readImageSize,
     readBandCount,
@@ -44,7 +45,7 @@ test("a multi-page image is refused rather than silently truncated", () => {
 
     host.pages = 3;
     assert.throws(
-        () => assertSinglePage(job, { path: "/a/scan.tif", originalName: "scan.tif" }),
+        () => assertSinglePage(job, imageOf("/a/scan.tif")),
         (error) => {
             assert.match(error.message, /contains 3 pages/u);
             assert.match(error.message, /split the file/u);
@@ -59,7 +60,7 @@ test("a single-page image passes the check", () => {
     const job = { app: host, tools: { vipsheader: "/v/vipsheader" } };
 
     assert.doesNotThrow(
-        () => assertSinglePage(job, { path: "/a/photo.jpg", originalName: "photo.jpg" })
+        () => assertSinglePage(job, imageOf("/a/photo.jpg"))
     );
 });
 

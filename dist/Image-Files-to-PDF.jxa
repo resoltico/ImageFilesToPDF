@@ -1,5 +1,5 @@
 /*
- * Image Files to PDF 1.1.1
+ * Image Files to PDF 1.2.0
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
@@ -18,7 +18,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.1.1";
+const VERSION = "1.2.0";
 
 /* ===== src/core/executables.js ===== */
 
@@ -293,13 +293,9 @@ function naturalCompare(left, right) {
 }
 
 function sortImageRecords(records) {
-    return records.slice().sort((left, right) => {
-        const comparison = naturalCompare(left.originalName, right.originalName);
-
-        return comparison === EQUAL
-            ? naturalCompare(left.path, right.path)
-            : comparison;
-    });
+    return records.slice().sort(
+        (left, right) => naturalCompare(left.path, right.path)
+    );
 }
 
 /* ===== src/core/invocation.js ===== */
@@ -637,12 +633,19 @@ function formRows(answers, invalid) {
     return [...choices, ...numbers];
 }
 
-function formSpec(answers = defaultAnswers(), problems = []) {
+function invitation(count) {
+    return count > 0
+        ? `${count} ${count === 1 ? "image" : "images"}. Choose how the ` +
+            "pages are built, then create the PDF."
+        : "Choose how the pages are built, then create the PDF.";
+}
+
+function formSpec(answers = defaultAnswers(), problems = [], count = 0) {
     return {
         title: APP_NAME,
         detail: problems.length > 0
             ? problems.map((problem) => problem.message).join("\n")
-            : "Choose how the pages are built, then create the PDF.",
+            : invitation(count),
         rows: formRows(answers, new Set(problems.map((problem) => problem.key))),
         buttons: [CREATE_BUTTON, CANCEL_BUTTON]
     };
@@ -803,6 +806,15 @@ function buildGravityArgv(vipsPath, inputPath, outputPath, options) {
     ];
 }
 
+function hasAlphaBand(bandCount) {
+    const bands = Number(bandCount);
+
+    return bands === GREY_ALPHA_BANDS || bands >= RGB_ALPHA_BANDS;
+}
+
+/* ===== src/core/pdfcpu.js ===== */
+
+
 function buildPdfcpuImportArgv(pdfcpuPath, outputPath, pagePaths, geometry) {
     if (!pagePaths || pagePaths.length === 0) {
         throw new Error("At least one prepared page is required.");
@@ -819,14 +831,57 @@ function buildPdfcpuImportArgv(pdfcpuPath, outputPath, pagePaths, geometry) {
     );
 }
 
+function buildPdfcpuInfoArgv(pdfcpuPath, outputPath) {
+    return [pdfcpuPath, "info", outputPath];
+}
+
+const PAGE_COUNT = /Page count:\s*(?<value>\d+)/u;
+
+function readPageCountFrom(infoOutput) {
+    const match = PAGE_COUNT.exec(String(infoOutput));
+
+    return match ? Number(match.groups.value) : 0;
+}
+
 function buildPdfcpuValidateArgv(pdfcpuPath, outputPath) {
     return [pdfcpuPath, "validate", "--mode=strict", outputPath];
 }
 
-function hasAlphaBand(bandCount) {
-    const bands = Number(bandCount);
+/* ===== src/core/batching.js ===== */
 
-    return bands === GREY_ALPHA_BANDS || bands >= RGB_ALPHA_BANDS;
+const COMMAND_BUDGET_BYTES = 131072;
+
+function commandLengthOf(argv) {
+    return argv.reduce(
+        (total, argument) => total + shellQuote(argument).length + 1,
+        0
+    );
+}
+
+function place(state, page, available) {
+    const cost = shellQuote(page).length + 1;
+    const batch = state.batches.at(-1);
+
+    if (batch.length > 0 && state.length + cost > available) {
+        state.batches.push([page]);
+        state.length = cost;
+
+        return;
+    }
+
+    batch.push(page);
+    state.length += cost;
+}
+
+function batchPages(pagePaths, fixedArgv, budget = COMMAND_BUDGET_BYTES) {
+    const available = budget - commandLengthOf(fixedArgv);
+    const state = { batches: [[]], length: 0 };
+
+    for (const page of pagePaths) {
+        place(state, page, available);
+    }
+
+    return state.batches.at(-1).length > 0 ? state.batches : [];
 }
 
 /* ===== src/core/preflight.js ===== */
@@ -921,6 +976,10 @@ function testPath(app, flag, target) {
 
 function isRegularFile(app, path) {
     return testPath(app, "-f", path);
+}
+
+function isDirectory(app, path) {
+    return testPath(app, "-d", path);
 }
 
 function isExecutable(app, path) {
@@ -1574,7 +1633,10 @@ function appkitBridge(objc, ns) {
 }
 
 function formRound(bridge, present, state) {
-    const outcome = present(bridge, formSpec(state.answers, state.problems));
+    const outcome = present(
+        bridge,
+        formSpec(state.answers, state.problems, state.count)
+    );
 
     if (!outcome) {
         return { unavailable: true };
@@ -1591,8 +1653,8 @@ function formRound(bridge, present, state) {
         : { answers: outcome.answers, problems: read.problems };
 }
 
-function collectViaForm(bridge, present) {
-    let state = {};
+function collectViaForm(bridge, present, count = 0) {
+    let state = { count };
 
     for (;;) {
         const round = formRound(bridge, present, state);
@@ -1605,13 +1667,13 @@ function collectViaForm(bridge, present) {
             return round.settings;
         }
 
-        state = round;
+        state = { ...round, count };
     }
 }
 
-function attemptForm(bridge, present) {
+function attemptForm(bridge, present, count) {
     try {
-        return collectViaForm(bridge, present);
+        return collectViaForm(bridge, present, count);
     } catch (error) {
         if (isUserCancelled(error)) {
             throw error;
@@ -1623,11 +1685,12 @@ function attemptForm(bridge, present) {
 
 function collectSettings(
     app,
+    count = 0,
     bridge = appkitBridge(globalThis.ObjC, globalThis.$),
     present = presentForm
 ) {
     if (bridge) {
-        const settings = attemptForm(bridge, present);
+        const settings = attemptForm(bridge, present, count);
 
         if (settings) {
             return settings;
@@ -1702,25 +1765,120 @@ function collectInvocation(app, input, headless) {
     };
 }
 
-/* ===== src/runtime/admission.js ===== */
+/* ===== src/runtime/tree.js ===== */
+
+
+const DIRECTORY = "NSFileTypeDirectory";
+const REGULAR = "NSFileTypeRegular";
+
+function kindFrom(attributes, workspace, path, ns) {
+    if (!attributes) {
+        return "missing";
+    }
+
+    if (attributes.NSFileType !== DIRECTORY) {
+        return attributes.NSFileType === REGULAR ? "file" : "other";
+    }
+
+    return workspace.isFilePackageAtPath(ns(path)) ? "package" : "directory";
+}
+
+function createTree(objc, ns, ref) {
+    if (!objc || !ns || !ref) {
+        return null;
+    }
+
+    try {
+        objc.import("Foundation");
+        objc.import("AppKit");
+    } catch {
+        return null;
+    }
+
+    const manager = ns.NSFileManager.defaultManager;
+    const workspace = ns.NSWorkspace.sharedWorkspace;
+
+    return {
+        kind(path) {
+            const attributes = objc.deepUnwrap(
+                manager.attributesOfItemAtPathError(ns(path), ref())
+            );
+
+            return kindFrom(attributes, workspace, path, ns);
+        },
+
+        entries(path) {
+            return objc.deepUnwrap(
+                manager.contentsOfDirectoryAtPathError(ns(path), ref())
+            );
+        },
+
+        standardize(path) {
+            return objc.unwrap(ns(path).stringByStandardizingPath);
+        }
+    };
+}
+
+/* ===== src/runtime/expand.js ===== */
+
+
+const HIDDEN = ".";
+
+function isHidden(name) {
+    return name.startsWith(HIDDEN);
+}
+
+function childrenOf(tree, folder, names) {
+    return names
+        .filter((name) => !isHidden(name))
+        .map((name) => tree.standardize(`${folder}/${name}`));
+}
+
+function walk(tree, folder, found, taken) {
+    const names = tree.entries(folder);
+
+    if (!names) {
+        return false;
+    }
+
+    for (const path of childrenOf(tree, folder, names)) {
+        const kind = tree.kind(path);
+
+        if (kind === "directory") {
+            walk(tree, path, found, taken);
+        } else if (kind === "file" && isSupportedImage(path) && !taken.has(path)) {
+            found.push(path);
+        }
+    }
+
+    return true;
+}
+
+function imagesInFolder(tree, folder, taken) {
+    const found = [];
+
+    if (!walk(tree, folder, found, taken)) {
+        return { reason: "could not be read" };
+    }
+
+    return found.length > 0
+        ? { found }
+        : { reason: "contains no supported images" };
+}
+
+/* ===== src/runtime/reasons.js ===== */
 
 
 function rejectionReason(app, path) {
+    if (isDirectory(app, path)) {
+        return "a folder; select the images inside it";
+    }
+
     if (!isSupportedImage(path)) {
         return `not a supported format (${supportedFormatList()})`;
     }
 
     return isRegularFile(app, path) ? "" : "not a readable file";
-}
-
-function admit(app, path, images, rejected) {
-    const reason = rejectionReason(app, path);
-
-    if (reason) {
-        rejected.push({ path, name: basename(path), reason });
-    } else {
-        images.push({ path, originalName: basename(path) });
-    }
 }
 
 const ANONYMOUS = "[object Object]";
@@ -1738,11 +1896,54 @@ function describeUnresolved(item) {
         : null;
 }
 
-function consider(app, item, images, rejected) {
+/* ===== src/runtime/admission.js ===== */
+
+
+function record(path, folder) {
+    return { path, originalName: basename(path), folder };
+}
+
+function admitFolder(tree, path, outcome) {
+    const found = imagesInFolder(tree, path, new Set(
+        outcome.images.map((image) => image.path)
+    ));
+
+    if (found.reason) {
+        outcome.rejected.push({
+            path,
+            name: basename(path),
+            reason: found.reason
+        });
+
+        return;
+    }
+
+    for (const image of found.found) {
+        outcome.images.push(record(image, `${path}/`));
+    }
+}
+
+function admit(app, tree, path, outcome) {
+    if (tree && isDirectory(app, path)) {
+        admitFolder(tree, path, outcome);
+
+        return;
+    }
+
+    const reason = rejectionReason(app, path);
+
+    if (reason) {
+        outcome.rejected.push({ path, name: basename(path), reason });
+    } else {
+        outcome.images.push(record(path, dirname(path)));
+    }
+}
+
+function consider(app, tree, item, outcome) {
     const path = inputItemToPosixPath(item);
 
     if (path) {
-        admit(app, path, images, rejected);
+        admit(app, tree, path, outcome);
 
         return;
     }
@@ -1750,20 +1951,22 @@ function consider(app, item, images, rejected) {
     const unresolved = describeUnresolved(item);
 
     if (unresolved) {
-        rejected.push(unresolved);
+        outcome.rejected.push(unresolved);
     }
 }
 
-function collectImageFiles(app, inputItems) {
+function collectImageFiles(app, inputItems, tree = null) {
     const items = inputItems.length > 0 ? inputItems : finderSelection();
-    const images = [];
-    const rejected = [];
+    const outcome = { images: [], rejected: [] };
 
     for (const item of items) {
-        consider(app, item, images, rejected);
+        consider(app, tree, item, outcome);
     }
 
-    return { images: sortImageRecords(images), rejected };
+    return {
+        images: sortImageRecords(outcome.images),
+        rejected: outcome.rejected
+    };
 }
 
 /* ===== src/runtime/receipt.js ===== */
@@ -2025,6 +2228,8 @@ function workspacePaths(job, index) {
 }
 
 function preparePage(job, imageFile, index) {
+    job.progress.file(index + 1, imageFile.originalName);
+
     const { preparedPath, flattenedPath, pagePath } = workspacePaths(job, index);
 
     assertSinglePage(job, imageFile);
@@ -2182,6 +2387,7 @@ function confirm(job, stagedPath, finalPath) {
 function publishPdf(job, stagedPath, finalPath) {
     const { app } = job;
 
+    job.progress.phase("Saving PDF");
     job.unpublished.add(stagedPath);
 
     if (fileExists(app, finalPath)) {
@@ -2199,28 +2405,60 @@ function publishPdf(job, stagedPath, finalPath) {
     confirm(job, stagedPath, finalPath);
 }
 
-/* ===== src/runtime/pdf.js ===== */
+/* ===== src/runtime/staging.js ===== */
 
 
-function createAndValidatePdf(job, stagedPath, pagePaths) {
-    removeFile(job.app, stagedPath);
+function importBatch(job, stagedPath, pages) {
     runArgv(
         job.app,
-        buildPdfcpuImportArgv(
-            job.tools.pdfcpu,
-            stagedPath,
-            pagePaths,
-            job.geometry
-        ),
+        buildPdfcpuImportArgv(job.tools.pdfcpu, stagedPath, pages, job.geometry),
         "creating PDF"
     );
+}
+
+function verifyEveryPageArrived(job, stagedPath, expected) {
+    const found = readPageCountFrom(runArgv(
+        job.app,
+        buildPdfcpuInfoArgv(job.tools.pdfcpu, stagedPath),
+        "counting the pages"
+    ));
+
+    if (found !== expected) {
+        throw new Error(
+            `the PDF has ${found} pages where ${expected} were imported`
+        );
+    }
+}
+
+function createAndValidatePdf(job, stagedPath, pagePaths) {
+    job.progress.phase("Creating PDF");
+    removeFile(job.app, stagedPath);
+
+    const batches = batchPages(
+        pagePaths,
+        buildPdfcpuImportArgv(job.tools.pdfcpu, stagedPath, ["p"], job.geometry)
+    );
+
+    for (const pages of batches) {
+        importBatch(job, stagedPath, pages);
+    }
+
     verifyFileWritten(job.app, stagedPath, "partial PDF");
+
+    if (batches.length > 1) {
+        verifyEveryPageArrived(job, stagedPath, pagePaths.length);
+    }
+
+    job.progress.phase("Validating PDF");
     runArgv(
         job.app,
         buildPdfcpuValidateArgv(job.tools.pdfcpu, stagedPath),
         "validating PDF"
     );
 }
+
+/* ===== src/runtime/pdf.js ===== */
+
 
 function resolveOutputPaths(job, outputFolder, name) {
     const finalPath = nextUniquePath(
@@ -2234,7 +2472,7 @@ function resolveOutputPaths(job, outputFolder, name) {
 function createCombinedPdf(job, imageFiles) {
     const { finalPath, stagedPath } = resolveOutputPaths(
         job,
-        dirname(imageFiles[0].path),
+        imageFiles[0].folder,
         outputNameForCombined(job.timestamp)
     );
 
@@ -2262,7 +2500,7 @@ function createSeparatePdf(job, imageFile, index) {
     try {
         const { finalPath, stagedPath: staged } = resolveOutputPaths(
             job,
-            dirname(imageFile.path),
+            imageFile.folder,
             outputNameForSeparate(imageFile, job.timestamp)
         );
 
@@ -2303,6 +2541,65 @@ function createSeparatePdfs(job, imageFiles) {
     return { outputs, failures };
 }
 
+/* ===== src/runtime/progress.js ===== */
+
+
+const SILENT = Object.freeze({
+    file() {
+        return undefined;
+    },
+    phase() {
+        return undefined;
+    }
+});
+
+function jxaProgress(host = globalThis.Progress) {
+    if (!host) {
+        return null;
+    }
+
+    return {
+        start(total) {
+            host.totalUnitCount = total;
+            host.completedUnitCount = 0;
+        },
+
+        report(done, description, detail) {
+            host.completedUnitCount = done;
+            host.description = description;
+            host.additionalDescription = detail;
+        }
+    };
+}
+
+function createProgress(total, sink = jxaProgress()) {
+    let done = 0;
+    let name = "";
+
+    const say = (description) => {
+        try {
+            sink.report(done, description, `${done} of ${total} — ${name}`);
+        } catch {
+        }
+    };
+
+    try {
+        sink.start(total);
+    } catch {
+        return SILENT;
+    }
+
+    return {
+        file(index, originalName) {
+            done = index;
+            name = String(originalName).replace(/\s+/gu, " ");
+            say("Preparing");
+        },
+
+        phase: say
+    };
+}
+
 /* ===== src/runtime/job.js ===== */
 
 
@@ -2314,7 +2611,8 @@ function createJob(app, settings, timestamp, tools) {
         tools,
         geometry: calculatePageGeometry(settings),
         workspace: createWorkspace(app),
-        unpublished: new Set()
+        unpublished: new Set(),
+        progress: SILENT
     };
 }
 
@@ -2343,17 +2641,31 @@ function prepare(app, input, headless) {
     return {
         tools,
         invocation,
-        selection: collectImageFiles(app, invocation.inputItems)
+        selection: collectImageFiles(
+            app,
+            invocation.inputItems,
+            createTree(globalThis.ObjC, globalThis.$, globalThis.Ref)
+        )
     };
 }
 
-function prepareJob(app, invocation, tools) {
+function prepareJob(app, invocation, tools, count) {
     return createJob(
         app,
-        normalizeSettings(invocation.settings ?? collectSettings(app)),
+        normalizeSettings(invocation.settings ?? collectSettings(app, count)),
         invocation.timestamp || makeTimestamp(new Date()),
         tools
     );
+}
+
+function reportingJob(app, invocation, tools, work) {
+    const job = prepareJob(app, invocation, tools, work.images.length);
+
+    job.progress = work.headless
+        ? job.progress
+        : createProgress(work.images.length);
+
+    return job;
 }
 
 function execute(app, input, headless) {
@@ -2365,7 +2677,7 @@ function execute(app, input, headless) {
         return reportNoImages(app, headless, rejected);
     }
 
-    const job = prepareJob(app, invocation, tools);
+    const job = reportingJob(app, invocation, tools, { images, headless });
     const result = runJob(job, images);
 
     result.elapsed = formatDuration(new Date() - startedAt);

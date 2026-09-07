@@ -5,11 +5,11 @@ const test = require("node:test");
 const { preparePage, preparePages } = require("../../../src/runtime/pages.js");
 const { createFakeApp, failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
-const { makeJob } = require("./fake-job.cjs");
+const { makeJob, imageOf } = require("./fake-job.cjs");
 
 test("an opaque image skips the flatten stage", () => {
     const app = createFakeApp([["'bands'", "3"]]);
-    const pagePath = preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0);
+    const pagePath = preparePage(makeJob(app), imageOf("/a/x.png"), 0);
 
     assert.equal(pagePath, "/tmp/ImageFilesToPDF.X/000001-page.jpg");
     assert.equal(app.commands.filter((command) => command.includes("'flatten'")).length, 0);
@@ -20,7 +20,7 @@ test("an opaque image skips the flatten stage", () => {
 test("an image with alpha is flattened onto the background first", () => {
     const app = createFakeApp([["'bands'", "4"]]);
 
-    preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0);
+    preparePage(makeJob(app), imageOf("/a/x.png"), 0);
 
     const flatten = app.commands.find((command) => command.includes("'flatten'"));
 
@@ -36,7 +36,7 @@ test("an image with alpha is flattened onto the background first", () => {
 test("the thumbnail stage is ICC aware and sized to the placement", () => {
     const app = createFakeApp([["'bands'", "3"]]);
 
-    preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0);
+    preparePage(makeJob(app), imageOf("/a/x.png"), 0);
 
     const thumbnail = app.commands.find((command) => command.includes("'thumbnail'"));
 
@@ -54,7 +54,7 @@ test("intermediates are removed even when a stage fails", () => {
     ]);
 
     assert.throws(
-        () => preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0),
+        () => preparePage(makeJob(app), imageOf("/a/x.png"), 0),
         /laying out the page/u
     );
 
@@ -78,7 +78,7 @@ test("a stage that reports success but writes nothing is detected", () => {
         });
 
         assert.throws(
-            () => preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0),
+            () => preparePage(makeJob(app), imageOf("/a/x.png"), 0),
             new RegExp(`${label} was not written or is empty`, "u"),
             `${stage} producing nothing must be caught`
         );
@@ -104,7 +104,7 @@ test("a multi-page image is refused before any page is prepared", () => {
     const app = createFakeApp([["'n-pages'", "3\n"]]);
 
     assert.throws(
-        () => preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0),
+        () => preparePage(makeJob(app), imageOf("/a/x.png"), 0),
         /contains 3 pages/u
     );
     assert.equal(
@@ -128,6 +128,6 @@ test("each stage names itself when it fails", () => {
             [needle, failing("broke")]
         ]);
 
-        assert.throws(() => preparePage(makeJob(app), { path: "/a/x.png", originalName: "x.png" }, 0), expected);
+        assert.throws(() => preparePage(makeJob(app), imageOf("/a/x.png"), 0), expected);
     }
 });

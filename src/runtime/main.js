@@ -15,6 +15,8 @@ const { reportNoImages, reportResult } = require("./reporting.js");
 const { collectSettings } = require("./settings-form.js");
 const { collectInvocation } = require("./input.js");
 const { collectImageFiles } = require("./admission.js");
+const { createTree } = require("./tree.js");
+const { createProgress } = require("./progress.js");
 const { createJob, runJob } = require("./job.js");
 
 /*
@@ -38,17 +40,34 @@ function prepare(app, input, headless) {
     return {
         tools,
         invocation,
-        selection: collectImageFiles(app, invocation.inputItems)
+        selection: collectImageFiles(
+            app,
+            invocation.inputItems,
+            createTree(globalThis.ObjC, globalThis.$, globalThis.Ref)
+        )
     };
 }
 
-function prepareJob(app, invocation, tools) {
+function prepareJob(app, invocation, tools, count) {
     return createJob(
         app,
-        normalizeSettings(invocation.settings ?? collectSettings(app)),
+        normalizeSettings(invocation.settings ?? collectSettings(app, count)),
         invocation.timestamp || makeTimestamp(new Date()),
         tools
     );
+}
+
+/*
+ * Nothing is reported to a caller that is reading a receipt.
+ */
+function reportingJob(app, invocation, tools, work) {
+    const job = prepareJob(app, invocation, tools, work.images.length);
+
+    job.progress = work.headless
+        ? job.progress
+        : createProgress(work.images.length);
+
+    return job;
 }
 
 function execute(app, input, headless) {
@@ -60,7 +79,7 @@ function execute(app, input, headless) {
         return reportNoImages(app, headless, rejected);
     }
 
-    const job = prepareJob(app, invocation, tools);
+    const job = reportingJob(app, invocation, tools, { images, headless });
     const result = runJob(job, images);
 
     result.elapsed = formatDuration(new Date() - startedAt);

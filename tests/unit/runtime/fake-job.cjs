@@ -6,6 +6,7 @@
  */
 
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
+const { SILENT } = require("../../../src/runtime/progress.js");
 
 const geometry = calculatePageGeometry({
     paperSize: "A4",
@@ -24,8 +25,21 @@ function makeJob(app) {
         timestamp: "20260904_010203",
         workspace: "/tmp/ImageFilesToPDF.X",
         unpublished: new Set(),
+        progress: SILENT,
         tools: { vips: "/v/vips", vipsheader: "/v/vipsheader", pdfcpu: "/v/pdfcpu" }
     };
 }
 
-module.exports = { geometry, makeJob };
+/*
+ * What admission hands over: the path, the name to use for the output, and
+ * the folder the PDF goes in -- which for a directly selected file is its own.
+ */
+function imageOf(path) {
+    return {
+        path,
+        originalName: path.slice(path.lastIndexOf("/") + 1),
+        folder: path.slice(0, path.lastIndexOf("/") + 1)
+    };
+}
+
+module.exports = { geometry, makeJob, imageOf };
