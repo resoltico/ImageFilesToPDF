@@ -4,6 +4,29 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-09-07
+
+### Fixed
+
+- A saved PDF is checked for being the one that was made. On a drive that
+  cannot make the kind of link this uses, a file that appeared at the chosen
+  name at the wrong moment could be reported as your finished document — and
+  both copies of the real one were deleted, because a file of the right shape
+  at the right name was taken as proof. The output is now identified as the
+  file this run put there, and nothing else counts.
+- A file selected by hand is always answered, even when another name for the
+  same file was refused. Two names for one photograph — which a Mac gives out
+  freely — meant the first one seen decided the fate of the other: a name this
+  action cannot convert could make a convertible one disappear from the run
+  without being converted or reported.
+- A link is refused rather than followed. Selecting both a link and the
+  photograph it points to put that photograph in the PDF twice, because the
+  images found inside a folder skip links while a link selected by hand was
+  followed to its target.
+- A copy that fails part way no longer leaves a hidden file behind in your
+  folder. Copying can fail after writing some or all of a file, and the copy
+  was only cleaned up when it had reported success.
+
 ## [1.2.1] - 2026-09-07
 
 ### Fixed

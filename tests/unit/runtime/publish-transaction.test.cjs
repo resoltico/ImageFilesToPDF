@@ -25,6 +25,10 @@ const DIRECT_CLAIM = "ln' '/a/p.pdf'";
 // be taken between that check and the claim.
 const FREE_UNTIL_CLAIMED = ["test' '-e' '/a/out.pdf' '-o'", new Error("test failed")];
 
+function recovered(host) {
+    return [...host.files].filter((file) => file.includes("recovered"));
+}
+
 function touching(host, path) {
     return host.commands.filter((command) =>
         (/'\/bin\/(?:mv|cp|ln)'/u).test(command) && command.includes(`'${path}'`));
@@ -63,22 +67,30 @@ test("the staging copy is only reached when the link cannot be made", () => {
     );
 });
 
-test("a copy that fails part way never wears the finished PDF's name", () => {
-    // The copy goes to a name of its own, so a copy that stopped half way
-    // leaves nothing that looks like the finished document.
+test("a claim that landed inside a folder leaves nothing of ours in it", () => {
+    // ln puts the file inside a directory standing at the output path rather
+    // than refusing the name. The link is this run's own, so it goes; the PDF
+    // is in the workspace, where it always was.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
-        failures: [
-            [DIRECT_CLAIM, new Error(DENIED)],
-            ["stat' '-f%z' '/a/.ImageFilesToPDF", "7"]
-        ]
+        directories: ["/a/out.pdf"],
+        // The folder has to appear between the check and the claim.
+        failures: [["test' '-e' '/a/out.pdf' '-o'", new Error("test failed")]]
     });
+    const job = makeJob(host);
 
-    assert.throws(
-        () => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"),
-        /7 bytes where 1024 were expected/u
+    assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
+        assert.match(error.message, /does not hold the PDF this run published/u);
+        assert.match(error.message, /has been kept here:\n\n\S+recovered/u);
+
+        return true;
+    });
+    assert.deepEqual(
+        [...host.files].filter((file) => file.startsWith("/a/out.pdf/")),
+        [],
+        "the link inside the folder was this run's to remove"
     );
-    assert.ok(!host.files.has("/a/out.pdf"), "and nothing is at the output name");
+    assert.equal(recovered(host).length, 1);
 });
 
 test("a directory at the output name does not become a publication", () => {
@@ -92,6 +104,6 @@ test("a directory at the output name does not become a publication", () => {
 
     assert.throws(
         () => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"),
-        /output PDF is not a file with anything in it/u
+        /does not hold the PDF this run published/u
     );
 });

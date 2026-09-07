@@ -22,13 +22,7 @@ source "$ROOT/tests/integration/lib/fixtures.sh"
 
 require_tools
 
-solid_svg "$WORK/blue.svg" 64 64 "#3080c0"
-mkdir -p "$WORK/album/sub" "$WORK/album/locked" "$WORK/Photos.app"
-for image in album/a.png album/sub/b.png album/locked/c.png \
-    album/.hidden.png Photos.app/x.png; do
-    vips copy "$WORK/blue.svg" "$WORK/$image"
-done
-echo "not an image" > "$WORK/album/notes.txt"
+create_selection_fixtures "$WORK"
 
 # run <timestamp> <selected>...
 #
@@ -105,13 +99,31 @@ grep -q '"rejected":\[\]' <<<"$HIDDEN" || fail "nothing should be refused: $HIDD
 # photograph as album/A.png. Comparing the spellings put it in the PDF twice.
 # ---------------------------------------------------------------------------
 
-mkdir -p "$WORK/case"
-vips copy "$WORK/blue.svg" "$WORK/case/A.png"
 SPELLINGS=$(run 20260907_060606 "$WORK/case" "$WORK/case/a.png")
 
 test "$(pages "$WORK/case/output_20260907_060606.pdf")" = 1 ||
     fail "one photograph became $(pages "$WORK/case/output_20260907_060606.pdf") pages: $SPELLINGS"
 grep -q '"rejected":\[\]' <<<"$SPELLINGS" || fail "nothing should be refused: $SPELLINGS"
+
+# ---------------------------------------------------------------------------
+# More than one name for one file.
+#
+# A hard link is another name with no mark on it, and a symbolic link is one
+# the walk deliberately does not follow. Keyed by the file rather than by the
+# request, a name this action cannot convert silenced one it could; validated
+# through the shell, a symbolic link was followed and its target converted
+# twice.
+# ---------------------------------------------------------------------------
+
+NAMES=$(run 20260907_070707 "$WORK/names/image.backup" "$WORK/names/image.png" \
+    "$WORK/names/alias.png" "$WORK/names/extra.png")
+
+test "$(pages "$WORK/names/output_20260907_070707.pdf")" = 2 ||
+    fail "each photograph once: $NAMES"
+grep -q "not a supported format" <<<"$NAMES" ||
+    fail "the unsupported name must be answered, not swallowed: $NAMES"
+grep -q "a link; select the file it points to" <<<"$NAMES" ||
+    fail "the symbolic link must be refused: $NAMES"
 
 # ---------------------------------------------------------------------------
 # A package is an .app or a .photoslibrary: a folder as far as the shell is

@@ -168,11 +168,24 @@ Two names for one thing is also what a Mac's own filesystem hands over. It is
 case-insensitive as formatted, so `/photos/A.jpg` and `/photos/a.jpg` are one
 photograph -- measured: the same `NSFileSystemNumber` and the same
 `NSFileSystemFileNumber` -- and standardizing the spelling does not make them
-one selection. So a selection is keyed by what the filesystem says the file
-is, and the ledger of what has been taken holds the same thing. Both come out
-of the attributes the walk already reads, so knowing costs nothing. A path is
-the fallback where there is no file to identify, which is where there is
-nothing to convert either. Asking the shell instead is
+one selection. So the ledger of what has been taken holds what the filesystem says each file
+is, out of the attributes the walk already reads, and a path is the fallback
+where there is no file to identify -- which is where there is nothing to
+convert either.
+
+The ledger settles what is converted, not what is asked. Keyed by identity,
+the requests themselves were deduplicated before anything had asked whether
+they were convertible: two hard links to one photograph, one named `.jpg` and
+one `.backup`, meant the `.backup` was turned away and the `.jpg` vanished
+from the run without being converted or reported. Every request is answered on
+its own terms first -- what it is, and whether this action takes it -- and
+only then against the ledger, so the answer does not depend on which name
+arrived first.
+
+A link gets the same answer from admission that it gets from the walk. It is
+passed over there because following one is how a run leaves the folder it was
+given; it used to be validated here through the shell, which follows it, so a
+link and the file it points to were two images of one photograph. Asking the shell instead is
 what sent the walk inside an `.app`, which is a directory to `/bin/test`;
 deciding as each item came up is what made the answer depend on the order
 Finder handed the selection over.
@@ -265,12 +278,30 @@ size, was otherwise adopted and its unrelated bytes published. What remains is
 a race against a deliberate writer in the user's own folder, which the nonce
 in the name makes an adversarial act rather than an accident.
 
-What is at the output path is then checked as a regular file with something in
-it, and only then is anything let go. `test -s` alone passes for a directory --
-measured, and it is how a PDF that `mv` had pushed inside a folder standing at
-the output path was reported as published. `ln` puts the file inside such a
-folder too rather than refusing it, so the check after the claim is what
-catches that, and the link it left behind is this run's own to remove.
+From the moment the copy runs, that name is this attempt's to clear away --
+including when the copy fails. `cp` is documented to leave the destination in
+place after an error and can fail after writing part of the file or all of it,
+so treating a failed copy as having made nothing left hidden files behind in
+the user's folder.
+
+What is at the output path is then checked for *which file it is*, and only
+then is anything let go. The output path is asked for the volume and file
+number it holds, and they must be the ones that were published: a hard link
+shares them with the file it was made from and a rename carries them along --
+measured -- so the same pair is proof, and nothing else is. A nonempty regular
+file is not: another writer's PDF is one too, and taking it as ours published
+their document, deleted both copies of ours, and reported success.
+
+Which is what the rename fallback used to do. It asked whether the staging
+copy was still there, to tell a rename that happened from one that had
+declined -- and that question answers "gone" when it cannot be put at all, so
+a refused inspection read as a publication. Nothing infers a result from a
+file's absence any more; the identity at the output path settles it, and an
+identity that could not be read matches nothing.
+
+`ln` puts the file inside a folder standing at the output path rather than
+refusing it, so that check catches it as well: the identity there is the
+folder's, not ours. The link it left behind is this run's own to remove.
 
 Recovery does not search. The finished PDF is in the workspace by
 construction, so it is set aside from there. It used to be worked out by
@@ -281,11 +312,13 @@ missing.
 Verified to fail: a transfer that stops part way leaving an incomplete file at
 the final name; a copy whose size does not match the source being reported as
 published; a name another run took being overwritten, whether it is taken
-before the claim or while the copy is being made; a link whose target is gone
-being replaced; a staging name this run did not create being adopted or
-removed; a PDF pushed inside a folder being reported as published; a
-recovery that deletes or disowns the finished PDF because a check could not
-answer.
+before the claim or while the copy is being made; another writer's file at the
+output name being reported as ours; a publication claimed without anything to
+prove it by; a link whose target is gone being replaced; a staging name this
+run did not create being adopted or removed; a staging copy this run did make
+being left behind after a failed copy; a PDF pushed inside a folder being
+reported as published; a recovery that deletes or disowns the finished PDF
+because a check could not answer.
 
 ## How many pages one command can carry
 
@@ -624,8 +657,13 @@ right — every page, in order — but a job of four thousand pages becomes four
 thousand invocations of pdfcpu. The test now says a command carries more than
 one page.
 
-The run after the five-defect audit found five more, and one piece of dead
-code: that a rename which was refused has to say which of the two steps it
+The run after the four-defect audit found two more, both about an answer that
+looks like one: that a stat reporting a size and no file behind it identifies
+nothing, and that two sizes neither of which could be read are not a match --
+the check that a copy is whole has to know that its expectation was readable
+in the first place.
+
+The run before that found five, and one piece of dead code: that a rename which was refused has to say which of the two steps it
 was; that a staging file this run did not create is neither adopted nor
 removed; that the copy this run did make is cleared away when the claim after
 it fails; that among two spellings of one file the name it is stored under is
@@ -749,7 +787,10 @@ macOS itself answers and so cannot be settled by a fake:
   pass over it: a hidden image must still reach the PDF;
 - one photograph selected under two spellings, `A.png` and `a.png`, on the
   case-insensitive filesystem a Mac comes formatted with: one page, and
-  nothing refused.
+  nothing refused;
+- a real hard link named `.backup` beside the `.png` it shares a file with,
+  and a real symbolic link beside its target: each photograph once, the
+  unsupported name answered rather than swallowed, and the link refused.
 
 The third takes the finished PDF from the workspace to the output folder:
 
@@ -822,6 +863,11 @@ to fail when the fix is reverted:
 | A link whose target is gone being replaced | entry test + integration |
 | One photograph converted twice because a Mac is case-insensitive | identity tests + integration |
 | A newline in a folder name stopping the output numbering | naming tests + integration |
+| Another writer's file reported as this run's published PDF | identity confirmation tests |
+| A publication inferred from a file's absence | rename fallback tests |
+| An ineligible name for a file suppressing an eligible one | alias tests + integration |
+| A symbolic link converting its target a second time | alias tests + integration |
+| A failed copy leaving a hidden file nothing tracks | output-copy tests |
 | Tests that stop catching bugs | mutation testing with a break threshold |
 
 ## Acceptance boundary

@@ -2,7 +2,7 @@
 
 const { LN, MV } = require("../core/executables.js");
 const { errorMessage } = require("../core/errors.js");
-const { runArgv, fileExists, pathIsTaken } = require("./shell.js");
+const { runArgv, pathIsTaken } = require("./shell.js");
 const { copyBeside } = require("./output-copy.js");
 
 /*
@@ -27,14 +27,16 @@ const { copyBeside } = require("./output-copy.js");
  * what happens next, and it is decided by asking whether the output name is
  * taken rather than by reading the refusal.
  *
+ * What none of this decides is whether publication succeeded. That is settled
+ * afterwards, by asking the output path which file it holds: every step here
+ * reports what it did, and publish.js reports what came of it.
+ *
  * Where the PDF is built was settled the same way. pdfcpu created the file in
  * the user's Downloads folder; afterwards /bin/mv could not rename it and
  * /bin/cp could not even read it, both refused with "Operation not
  * permitted", while copying in from the workspace was allowed throughout. So
  * nothing is built there, and the fallbacks below are the operations that
  * host permitted.
- *
- * Who owns the PDF while this is going on is publish.js.
  */
 
 function claim(app, from, finalPath) {
@@ -42,10 +44,12 @@ function claim(app, from, finalPath) {
 }
 
 /*
- * mv -n exits zero when it declines, so the file still being under the
- * staging name is the only evidence that nothing moved. This runs only for a
- * name that has just been found free on a filesystem that cannot make links,
- * which is the one case a rename is the best that can be done.
+ * The rename that stands in where hard links are unsupported. mv -n exits
+ * zero when it declines, and it used to be asked whether the staging file was
+ * gone to find out which had happened -- a question that answers "gone" when
+ * it cannot be put at all, so a refused inspection read as a publication.
+ * Nothing is concluded here: the identity of the file at the output path is
+ * what settles it.
  */
 function renameOnto(app, incoming, finalPath, refused) {
     try {
@@ -54,9 +58,7 @@ function renameOnto(app, incoming, finalPath, refused) {
         return { published: false, reasons: [refused, errorMessage(error)] };
     }
 
-    return fileExists(app, incoming)
-        ? { published: false, reasons: [refused, "the output path was taken"] }
-        : { published: true, reasons: [], claimed: incoming };
+    return { published: true, reasons: [], claimed: incoming };
 }
 
 function claimFromStaging(app, incoming, finalPath) {
@@ -73,8 +75,8 @@ function claimFromStaging(app, incoming, finalPath) {
     }
 }
 
-function throughStaging(app, paths, refused) {
-    const copied = copyBeside(app, paths.staged, paths.incoming);
+function throughStaging(app, paths, facts, refused) {
+    const copied = copyBeside(app, paths.staged, paths.incoming, facts.size);
 
     if (copied.reasons.length > 0) {
         return {
@@ -86,6 +88,8 @@ function throughStaging(app, paths, refused) {
 
     return {
         ...claimFromStaging(app, paths.incoming, paths.final),
+        claimedIdentity: copied.identity,
+        claimedSize: facts.size,
         staged: copied.made
     };
 }
@@ -95,17 +99,23 @@ function throughStaging(app, paths, refused) {
  * taken, and otherwise go the long way round, because the refusal was about
  * the link rather than about the name.
  */
-function deliver(app, paths) {
+function deliver(app, paths, facts) {
     try {
         claim(app, paths.staged, paths.final);
 
-        return { published: true, reasons: [], claimed: paths.staged };
+        return {
+            published: true,
+            reasons: [],
+            claimed: paths.staged,
+            claimedIdentity: facts.identity,
+            claimedSize: facts.size
+        };
     } catch (error) {
         const refused = errorMessage(error);
 
         return pathIsTaken(app, paths.final)
             ? { published: false, reasons: [refused, "the output path was taken"] }
-            : throughStaging(app, paths, refused);
+            : throughStaging(app, paths, facts, refused);
     }
 }
 

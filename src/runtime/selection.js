@@ -16,7 +16,15 @@ const { describeUnresolved } = require("./reasons.js");
  * is case-insensitive as formatted, so /photos/A.jpg and /photos/a.jpg are
  * one photograph -- measured, the same volume and the same file number -- and
  * standardizing the spelling does not make them one selection. What the
- * filesystem says the file is does.
+ * filesystem says the file is does, and every root carries it.
+ *
+ * It is carried rather than used as the key. Keyed by it, the first spelling
+ * of a file was the only one considered, and whether that spelling was one
+ * this action could convert had not been asked yet: two hard links to one
+ * photograph, one named .jpg and one named .backup, meant the .backup was
+ * turned away and the .jpg vanished from the run without being converted or
+ * reported. Which requests there are is settled here; which of them convert
+ * the same file is settled where they are admitted.
  *
  * What each selected path is was asked of the shell, too, which cannot tell a
  * package from a folder. An .app or a .photoslibrary answered "directory", so
@@ -54,37 +62,29 @@ function reportUnresolved(item, rejected) {
 }
 
 /*
- * Standardized, so that /Trip, /Trip/ and /Trip/Berlin/.. are one path rather
- * than three, and then keyed by the file that path names -- falling back to
- * the path itself where the filesystem cannot say, which is where there is no
- * file to convert anyway.
+ * Standardized, so that /Trip, /Trip/ and /Trip/Berlin/.. are one request
+ * rather than three. The same spelling twice is the same question twice, and
+ * asking the tree is asking Foundation; two spellings are asked about
+ * separately, which is how they turn out to be one file.
  */
 function remember(found, tree, path) {
     const standardized = tree ? tree.standardize(path) : path;
 
-    // The same spelling twice is the same question twice, and asking the tree
-    // is asking Foundation. Two spellings still have to be asked about
-    // separately: that is how they turn out to be one file.
-    if (found.asked.has(standardized)) {
+    if (found.roots.has(standardized)) {
         return;
     }
 
-    found.asked.add(standardized);
-
     const entry = inspect(tree, standardized);
-    const key = entry.identity || standardized;
 
-    if (!found.roots.has(key)) {
-        found.roots.set(key, {
-            path: standardized,
-            kind: entry.kind,
-            identity: entry.identity
-        });
-    }
+    found.roots.set(standardized, {
+        path: standardized,
+        kind: entry.kind,
+        identity: entry.identity
+    });
 }
 
 function resolve(tree, items, rejected) {
-    const found = { roots: new Map(), asked: new Set() };
+    const found = { roots: new Map() };
 
     for (const item of items) {
         const path = inputItemToPosixPath(item);

@@ -1,9 +1,10 @@
 "use strict";
 
-const { CP, STAT } = require("../core/executables.js");
+const { CP } = require("../core/executables.js");
 const { errorMessage } = require("../core/errors.js");
 const { dirname } = require("../core/paths.js");
 const { runArgv, pathIsTaken } = require("./shell.js");
+const { fileFacts, SIZE_UNKNOWN } = require("./file-facts.js");
 const { nonce } = require("./workspace.js");
 
 /*
@@ -16,8 +17,6 @@ const { nonce } = require("./workspace.js");
  * claim that follows publishes whatever is under it.
  */
 
-const SIZE_UNKNOWN = -1;
-
 /*
  * Hidden, so a half-copied file never shows in the output folder; beside the
  * destination, so the claim that follows is on one volume; and unique to this
@@ -27,15 +26,8 @@ function stagingPath(finalPath) {
     return `${dirname(finalPath)}.ImageFilesToPDF-${nonce()}.part`;
 }
 
-function fileSize(app, path) {
-    try {
-        const text = runArgv(app, [STAT, "-f%z", path], "measuring the PDF");
-        const value = parseInt(String(text).trim(), 10);
-
-        return isFinite(value) ? value : SIZE_UNKNOWN;
-    } catch {
-        return SIZE_UNKNOWN;
-    }
+function mismatch(written, expected) {
+    return [`the staged file is ${written} bytes where ${expected} were expected`];
 }
 
 /*
@@ -44,8 +36,13 @@ function fileSize(app, path) {
  * and the size matches afterwards. A name that is not free is not borrowed:
  * publication stops instead, because adopting one would publish whatever
  * bytes happened to be under it.
+ *
+ * A copy that failed still made whatever is under that name. cp is documented
+ * to leave the destination in place after an error, and it can fail after
+ * writing part of the file or all of it -- so from the moment it is run, the
+ * name is this attempt's to clear away.
  */
-function copyBeside(app, staged, incoming) {
+function copyBeside(app, staged, incoming, expected) {
     if (pathIsTaken(app, incoming)) {
         return { made: false, reasons: ["the staging name was already taken"] };
     }
@@ -53,19 +50,14 @@ function copyBeside(app, staged, incoming) {
     try {
         runArgv(app, [CP, "-n", staged, incoming], "copying the PDF into the output folder");
     } catch (error) {
-        return { made: false, reasons: [errorMessage(error)] };
+        return { made: true, reasons: [errorMessage(error)] };
     }
 
-    const expected = fileSize(app, staged);
-    const written = fileSize(app, incoming);
+    const written = fileFacts(app, incoming);
 
-    return expected !== SIZE_UNKNOWN && written === expected
-        ? { made: true, reasons: [] }
-        : {
-            made: true,
-            reasons: [`the staged file is ${written} bytes where ` +
-                `${expected} were expected`]
-        };
+    return expected !== SIZE_UNKNOWN && written.size === expected
+        ? { made: true, reasons: [], identity: written.identity }
+        : { made: true, reasons: mismatch(written.size, expected) };
 }
 
-module.exports = { stagingPath, fileSize, copyBeside };
+module.exports = { stagingPath, copyBeside };

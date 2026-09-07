@@ -47,47 +47,33 @@ test("a claim refused because the name is taken does not become a rename", () =>
     );
 });
 
-test("a rename that was refused says which step it was", () => {
-    // Two operations can fail while taking the name, and they fail for
-    // different reasons: the link because the filesystem cannot make one, the
-    // rename because the host refused it. A message naming neither leaves the
-    // person reading it no better off.
+function recovered(host) {
+    return [...host.files].filter((file) => file.includes("recovered"));
+}
+
+test("another writer's file at the output name is not reported as ours", () => {
+    // The rename declines, which is right, and the inspection that would have
+    // said so cannot be made. Taking that as a publication published their
+    // document, deleted both copies of ours, and reported success.
     const host = createFakeHost({
-        files: ["/a/p.pdf"],
-        failures: [["/bin/ln", new Error("ln: unsupported")], ["/bin/mv", new Error(DENIED)]]
-    });
-
-    assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /claiming the output name/u);
-        assert.match(error.message, /putting the PDF in place/u);
-
-        return true;
-    });
-    assert.ok(!host.files.has("/a/out.pdf"), "and the name was never taken");
-});
-
-test("a rename that quietly did nothing is not a publication", () => {
-    // Where hard links are unsupported the rename is the best that can be
-    // done, and mv -n exits zero when it declines. The copy still being under
-    // the staging name is the only evidence that nothing moved.
-    const host = createFakeHost({
-        files: ["/a/p.pdf"],
+        files: ["/a/p.pdf", "/a/out.pdf"],
         failures: [
             ["/bin/ln", new Error(DENIED)],
-            ["mv' '-n' '/a/.ImageFilesToPDF", ""]
+            ["test' '-e' '/a/out.pdf' '-o'", new Error("test failed")],
+            ["test' '-e' '/a/.ImageFilesToPDF", new Error(DENIED)]
         ]
     });
+    const job = makeJob(host);
 
-    assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /the output path was taken/u);
+    host.sizes.set("/a/out.pdf", 4096);
+
+    assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
+        assert.match(error.message, /does not hold the PDF this run published/u);
 
         return true;
     });
-    assert.equal(
-        [...host.files].filter((file) => file.includes("recovered")).length,
-        1,
-        "and the finished PDF is kept"
-    );
+    assert.equal(host.sizes.get("/a/out.pdf"), 4096, "their file is untouched");
+    assert.equal(recovered(host).length, 1, "and ours was kept");
 });
 
 test("a name taken while the copy was being made is not renamed over", () => {

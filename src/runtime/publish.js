@@ -1,11 +1,10 @@
 "use strict";
 
-const { setAside } = require("./rescue.js");
-const { basename } = require("../core/paths.js");
-const { errorMessage } = require("../core/errors.js");
+const { keep, clearAway } = require("./recovery.js");
 const { deliver } = require("./transfer.js");
 const { stagingPath } = require("./output-copy.js");
-const { pathIsTaken, verifyFileWritten, removeFile } = require("./shell.js");
+const { fileFacts } = require("./file-facts.js");
+const { pathIsTaken, removeFile } = require("./shell.js");
 
 /*
  * Who owns a finished PDF, and where it goes when it cannot be published.
@@ -23,70 +22,32 @@ const { pathIsTaken, verifyFileWritten, removeFile } = require("./shell.js");
  * of a question about a file this run did not create.
  */
 
-function describeFailure(reasons, whereabouts) {
-    return [
-        "The PDF could not be published without overwriting another file.",
-        ...reasons,
-        whereabouts
-    ].join("\n\n");
-}
-
 /*
- * What this attempt left in the output folder: the staging copy, if it got as
- * far as making one, and the link a claim leaves inside a folder that is
- * standing at the output path -- ln puts it in there rather than refusing.
- * Both are this run's own, which is what makes removing them safe, and a
- * staging copy this run did not make is not one of them.
+ * The PDF is at the output path, or it is not published.
  *
- * Nothing is asked about either unless this attempt made it: an ordinary
- * publication, which is a link and nothing else, never names a staging file
- * at all.
- */
-function clearAway(job, paths, outcome) {
-    if (outcome.staged) {
-        removeFile(job.app, paths.incoming);
-    }
-
-    if (outcome.claimed) {
-        // Where a claim goes when a folder is standing at the output path.
-        removeFile(job.app, `${paths.final}/${basename(outcome.claimed)}`);
-    }
-}
-
-/*
- * Every way publication can fail ends here. The finished PDF is in the
- * workspace, where it was built and where it has stayed, so it is put
- * somewhere that will outlive the run and the message says where.
+ * Asked of the output path itself: which file is this? A hard link shares its
+ * volume and file number with the file it was made from, and a rename carries
+ * them along, so the same pair is proof that the entry holds what this run
+ * put there. A nonempty regular file is not proof of anything -- another
+ * writer's PDF is one too, and taking it as ours published their document and
+ * deleted both copies of ours.
  *
- * Setting aside is best effort: when it fails the file stays where it was,
- * and the workspace has to stay with it. That is what the unpublished set
- * decides, so it is cleared only when the PDF is somewhere else.
- */
-function keep(job, paths, outcome) {
-    clearAway(job, paths, outcome);
-
-    const recovered = setAside(job.app, paths.staged);
-
-    if (recovered !== paths.staged) {
-        job.unpublished.delete(paths.staged);
-    }
-
-    return new Error(describeFailure(
-        outcome.reasons,
-        `The finished PDF has been kept here:\n\n${recovered}`
-    ));
-}
-
-/*
- * The PDF is at the output path, or it is not published. Checked before
- * anything is let go: after this the staging copy and the workspace copy both
- * go, and a failed check has to still have a finished PDF to give back.
+ * Checked before anything is let go: after this the staging copy and the
+ * workspace copy both go, and a failed check has to still have a finished PDF
+ * to give back. An identity that could not be read is not a match, which is
+ * what makes a refused inspection safe.
  */
 function confirm(job, paths, outcome) {
-    try {
-        verifyFileWritten(job.app, paths.final, "output PDF");
-    } catch (error) {
-        throw keep(job, paths, { ...outcome, reasons: [errorMessage(error)] });
+    const published = fileFacts(job.app, paths.final);
+
+    if (!published.identity || published.identity !== outcome.claimedIdentity ||
+        published.size !== outcome.claimedSize) {
+        throw keep(job, paths, {
+            ...outcome,
+            reasons: [
+                `the output path does not hold the PDF this run published:\n\n${paths.final}`
+            ]
+        });
     }
 
     job.unpublished.delete(paths.staged);
@@ -95,8 +56,44 @@ function confirm(job, paths, outcome) {
     removeFile(job.app, paths.staged);
 }
 
+/*
+ * Why not to start: a PDF that cannot be identified cannot be shown to have
+ * been published, and a name that is taken is not this run's to take. The
+ * check on the name is a courtesy -- the claim is what makes it safe -- but
+ * it is a better message than a refused link.
+ */
+function refuseBefore(app, paths, facts) {
+    if (!facts.identity) {
+        return `The finished PDF could not be measured:\n\n${paths.staged}`;
+    }
+
+    return pathIsTaken(app, paths.final)
+        ? `The output path became occupied before publication:\n\n${paths.final}`
+        : "";
+}
+
+/*
+ * What is about to be published is measured first, so that what was published
+ * can be told apart from anything else that might be at the name afterwards.
+ */
+function attempt(job, paths) {
+    const facts = fileFacts(job.app, paths.staged);
+    const refusal = refuseBefore(job.app, paths, facts);
+
+    if (refusal) {
+        throw keep(job, paths, { reasons: [refusal] });
+    }
+
+    const outcome = deliver(job.app, paths, facts);
+
+    if (!outcome.published) {
+        throw keep(job, paths, outcome);
+    }
+
+    confirm(job, paths, outcome);
+}
+
 function publishPdf(job, stagedPath, finalPath) {
-    const { app } = job;
     const paths = {
         staged: stagedPath,
         incoming: stagingPath(finalPath),
@@ -105,20 +102,7 @@ function publishPdf(job, stagedPath, finalPath) {
 
     job.progress.phase("Saving PDF");
     job.unpublished.add(stagedPath);
-
-    if (pathIsTaken(app, finalPath)) {
-        throw keep(job, paths, {
-            reasons: [`The output path became occupied before publication:\n\n${finalPath}`]
-        });
-    }
-
-    const outcome = deliver(app, paths);
-
-    if (!outcome.published) {
-        throw keep(job, paths, outcome);
-    }
-
-    confirm(job, paths, outcome);
+    attempt(job, paths);
 }
 
 module.exports = { publishPdf };

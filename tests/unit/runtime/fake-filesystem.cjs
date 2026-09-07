@@ -2,6 +2,8 @@
 
 const { produceOutput } = require("./fake-producing.cjs");
 const { testPath } = require("./fake-testing.cjs");
+const { createIdentities } = require("./fake-identity.cjs");
+const { operands, sizeOf, stat } = require("./fake-measuring.cjs");
 
 /*
  * The in-memory filesystem behind the fake host.
@@ -10,21 +12,6 @@ const { testPath } = require("./fake-testing.cjs");
  * reports success without producing its output is detected exactly as it
  * would be in production.
  */
-
-/*
- * Every file has a size, because a copy is verified by comparing the source
- * with the destination. A real size is not needed, only a consistent one: the
- * default stands for "some bytes", and a file listed as empty has none.
- */
-const DEFAULT_SIZE = 1024;
-
-function sizeOf(state, path) {
-    if (state.emptyFiles.has(path)) {
-        return 0;
-    }
-
-    return state.sizes.has(path) ? state.sizes.get(path) : DEFAULT_SIZE;
-}
 
 /*
  * mv and cp into an existing directory put the file inside it under its own
@@ -40,10 +27,6 @@ function resolveDestination(state, source, destination) {
     return `${destination}/${source.slice(source.lastIndexOf("/") + 1)}`;
 }
 
-function operands(rest) {
-    return rest.filter((argument) => !argument.startsWith("-"));
-}
-
 // mv -n declines silently when the destination already exists.
 function move(state, rest) {
     const [source, target] = operands(rest);
@@ -54,6 +37,7 @@ function move(state, rest) {
         state.files.add(destination);
         state.sizes.set(destination, sizeOf(state, source));
         state.sizes.delete(source);
+        state.identities.carry(source, destination);
     }
 
     return "";
@@ -68,6 +52,7 @@ function copy(state, rest) {
         throw new Error("cp: no such file");
     }
 
+    // A copy is a different file with the same contents.
     if (!state.files.has(destination)) {
         state.files.add(destination);
         state.sizes.set(destination, sizeOf(state, source));
@@ -95,22 +80,16 @@ function link(state, rest) {
 
     state.files.add(destination);
     state.sizes.set(destination, sizeOf(state, source));
+    state.identities.share(source, destination);
 
     return "";
 }
 
-function stat(state, rest) {
-    const target = operands(rest).at(-1);
-
-    if (!state.files.has(target)) {
-        throw new Error("stat: no such file");
-    }
-
-    return String(sizeOf(state, target));
-}
-
 function remove(state, rest) {
-    operands(rest).forEach((target) => state.files.delete(target));
+    operands(rest).forEach((target) => {
+        state.files.delete(target);
+        state.identities.forget(target);
+    });
 
     return "";
 }
@@ -123,7 +102,8 @@ function createFilesystem(seed, executables, empty, settings = {}) {
         pages: new Map(),
         runnable: new Set(executables),
         emptyFiles: new Set(empty),
-        sizes: new Map()
+        sizes: new Map(),
+        identities: createIdentities()
     };
 
     return {

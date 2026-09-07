@@ -104,7 +104,10 @@ test("a failed publication keeps the finished PDF and says where", () => {
     assert.ok(!host.files.has("/a/out.pdf"), "and the output name is untouched");
 });
 
-test("a published file that is empty is still a failure", () => {
+test("a name holding something other than what was published is a failure", () => {
+    // The check is which file is there, not whether some file is there: a
+    // nonempty regular file at the output name is what another writer's PDF
+    // looks like too.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
         emptyFiles: ["/a/out.pdf"]
@@ -112,7 +115,7 @@ test("a published file that is empty is still a failure", () => {
 
     assert.throws(
         () => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"),
-        /output PDF is not a file with anything in it/u
+        /does not hold the PDF this run published/u
     );
 });
 

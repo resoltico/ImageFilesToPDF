@@ -74,3 +74,28 @@ write_config() {
 }
 JSON
 }
+
+# create_selection_fixtures <workdir>
+#
+# What the selection suite selects from: a folder with a subfolder, a folder
+# nobody can open, a hidden photograph, a file that is not an image, a package
+# that is a folder to the shell, and two more names for one file -- a hard
+# link with an extension this action does not take, and a symbolic link.
+create_selection_fixtures() {
+    local work=$1
+    local image
+
+    solid_svg "$work/blue.svg" 64 64 "#3080c0"
+    mkdir -p "$work/album/sub" "$work/album/locked" "$work/Photos.app" \
+        "$work/case" "$work/names"
+
+    for image in album/a.png album/sub/b.png album/locked/c.png \
+        album/.hidden.png Photos.app/x.png case/A.png names/image.png \
+        names/extra.png; do
+        vips copy "$work/blue.svg" "$work/$image"
+    done
+
+    echo "not an image" > "$work/album/notes.txt"
+    ln "$work/names/image.png" "$work/names/image.backup"
+    ln -s "$work/names/extra.png" "$work/names/alias.png"
+}

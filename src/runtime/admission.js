@@ -50,14 +50,22 @@ function admitFolder(tree, path, outcome) {
 }
 
 /*
+ * What the tree says a selected path is, when that settles it.
+ *
  * A package is a folder to the shell -- an .app, a .photoslibrary -- and
- * walking into one wrote the PDFs inside the bundle. The tree tells them
- * apart, so the reason can say which it is.
+ * walking into one wrote the PDFs inside the bundle. A link is refused for
+ * the same reason the walk passes over one: following it is how the run
+ * leaves the folder it was given and how it converts the same photograph
+ * twice. Asking the shell instead followed it -- test -f reports on the
+ * target -- so a link and the file it points to were two images.
  */
+const KIND_REASONS = {
+    package: "a package, not a folder of images",
+    other: "a link; select the file it points to"
+};
+
 function reasonFor(app, root) {
-    return root.kind === "package"
-        ? "a package, not a folder of images"
-        : rejectionReason(app, root.path);
+    return KIND_REASONS[root.kind] ?? rejectionReason(app, root.path);
 }
 
 /*
@@ -68,9 +76,15 @@ function reasonFor(app, root) {
  * The walk passes over hidden entries, packages and links, so assuming it had
  * taken them removed the request from the run without a word: a photograph
  * whose name began with a dot simply did not appear, and a file that could
- * not be converted stopped saying so. Already in the ledger is the one case
- * that is neither a rejection nor a second copy -- it was converted, which is
- * what was asked.
+ * not be converted stopped saying so.
+ *
+ * Each request is answered on its own terms first, and only then against the
+ * ledger. The other way round, what the ledger already held decided whether a
+ * name was ever assessed -- so of two names for one photograph, whichever
+ * arrived first settled what the other was told, and the same selection said
+ * different things depending on the order it arrived in. Being in the ledger
+ * already is the one case that is neither a rejection nor a second copy: it
+ * was converted, which is what was asked.
  */
 function admit(app, tree, root, outcome) {
     // A kind at all means there is a tree: it is the tree that answered.
@@ -80,17 +94,18 @@ function admit(app, tree, root, outcome) {
         return;
     }
 
-    // Which file, not which spelling: a folder walked before this request
-    // may have taken the same photograph under the name it is stored as.
-    if (outcome.taken.has(root.identity || root.path)) {
-        return;
-    }
-
     const reason = reasonFor(app, root);
 
     if (reason) {
         outcome.rejected.push(rejection(root.path, reason));
-    } else {
+
+        return;
+    }
+
+    // Which file, not which spelling: a folder walked before this request may
+    // have taken the same photograph under the name it is stored as.
+    if (!outcome.taken.has(root.identity || root.path)) {
+        outcome.taken.add(root.identity || root.path);
         outcome.images.push(record(root.path, dirname(root.path)));
     }
 }

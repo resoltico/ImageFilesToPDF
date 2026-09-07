@@ -89,32 +89,6 @@ test("a PDF that could not even be set aside keeps its workspace", () => {
     assert.deepEqual([...job.unpublished], ["/a/p.pdf"]);
 });
 
-test("a claim that landed inside a folder leaves nothing of ours in it", () => {
-    // ln puts the file inside a directory standing at the output path rather
-    // than refusing the name. The link is this run's own, so it goes; the PDF
-    // is in the workspace, where it always was.
-    const host = createFakeHost({
-        files: ["/a/p.pdf"],
-        directories: ["/a/out.pdf"],
-        // The folder has to appear between the check and the claim.
-        failures: [["test' '-e' '/a/out.pdf' '-o'", new Error("test failed")]]
-    });
-    const job = makeJob(host);
-
-    assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /is not a file with anything in it/u);
-        assert.match(error.message, /has been kept here:\n\n\S+recovered/u);
-
-        return true;
-    });
-    assert.deepEqual(
-        [...host.files].filter((file) => file.startsWith("/a/out.pdf/")),
-        [],
-        "the link inside the folder was this run's to remove"
-    );
-    assert.equal(recovered(host).length, 1);
-});
-
 test("a staging name this run did not make is left alone", () => {
     // Adopting a file that happens to be under the staging name would publish
     // whatever bytes are in it. Publication stops instead -- and the file it
@@ -146,4 +120,27 @@ test("a staging name this run did not make is left alone", () => {
         "and nothing removed it"
     );
     assert.equal(recovered(host).length, 1, "and the finished PDF was kept");
+});
+
+test("a PDF that cannot be identified is not published at all", () => {
+    // Publication is proved by comparing what the output path holds against
+    // what was published. With nothing to compare against there is no proof
+    // to be had, so the run stops with the PDF still in hand.
+    const host = createFakeHost({
+        files: ["/a/p.pdf"],
+        failures: [["/usr/bin/stat", new Error(DENIED)]]
+    });
+    const job = makeJob(host);
+
+    assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
+        assert.match(error.message, /could not be measured/u);
+
+        return true;
+    });
+    assert.equal(
+        host.commands.filter((command) => command.includes("/bin/ln")).length,
+        0,
+        "and nothing was attempted against the name"
+    );
+    assert.equal(recovered(host).length, 1, "the PDF was kept");
 });
