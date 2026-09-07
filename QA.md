@@ -371,16 +371,29 @@ cannot behave differently from this one. They fall into four groups.
   answer — `index >= 0` before a `slice` that already returns the whole
   string for `-1`, or `items.length > 0` before comparing `items[0]` to a
   flag it can never equal.
-- An anchor or quantifier that only matters for input the gate refuses: a
-  `"use strict"` that is not the first line, a file with no final newline,
-  two spaces after `function`.
+- An anchor or quantifier that only matters for input the shape of the data
+  cannot produce: a `"use strict"` that is not the first line, two spaces
+  after `function`, or `git+` somewhere other than the front of a repository
+  URL — GitHub names cannot contain a plus, so npm's prefix is the only one
+  there will ever be.
 
-These were each tested rather than assumed. The ordering comparator's six were
-settled by running the mutated comparator against the real one over every pair
-of strings up to three characters from a nine-symbol alphabet: five agree on
-all 672,400 pairs. The sixth did not — splitting a name into single characters
-rather than runs reorders `photo1.jpg` against `photo .jpg` — and that one is
-now a test.
+They are settled by running each mutant against the real function over a
+spread of inputs and looking for a disagreement, not by argument. The ordering
+comparator's six were decided over every pair of strings up to three
+characters from a nine-symbol alphabet: five agree on all 672,400 pairs, and
+the sixth did not — splitting a name into single characters rather than runs
+reorders `photo1.jpg` against `photo .jpg`, so that one is a test. The path
+and invocation guards were decided the same way, and `describeSetupProblems`
+and `createSeparatePdfs` were run with the mutated field in place to confirm
+that nothing downstream reads it.
+
+A campaign finds two kinds of thing, and only one of them is a defect. The
+last full run found no behaviour this code gets wrong; what it found was three
+correct behaviours that nothing was holding in place — a repository whose name
+ends in `.io` surviving npm's `.git` suffix being stripped, a value that
+merely mentions a file URL not being read as one, and a URL disagreement
+naming which file each value came from. Each is now a test, verified to fail
+against the mutant that exposed it.
 
 ### Runner
 

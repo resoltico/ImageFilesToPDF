@@ -8,7 +8,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
-    collectInvocation
+    collectInvocation,
+    inputItemToPosixPath
 } = require("../../../src/runtime/input.js");
 const { collectImageFiles } = require("../../../src/runtime/admission.js");
 const { createFakeApp } = require("./fake-app.cjs");
@@ -43,8 +44,6 @@ test("an item that stringifies to nothing cannot reach Path()", () => {
 
     assert.doesNotThrow(() => quickAction(app, []));
 
-    const { inputItemToPosixPath } = require("../../../src/runtime/input.js");
-
     for (const empty of ["", { toString: () => "" }]) {
         assert.equal(inputItemToPosixPath(empty), "");
     }
@@ -53,8 +52,6 @@ test("an item that stringifies to nothing cannot reach Path()", () => {
 test("a relative name is not resolved into a plausible absolute path", () => {
     // Path() would have turned "photo.jpg" into "<cwd>/photo.jpg", which
     // looks resolved and points nowhere the user chose.
-    const { inputItemToPosixPath } = require("../../../src/runtime/input.js");
-
     assert.equal(inputItemToPosixPath("photo.jpg"), "");
     assert.equal(inputItemToPosixPath("Downloads/photo.jpg"), "");
 });
@@ -62,8 +59,6 @@ test("a relative name is not resolved into a plausible absolute path", () => {
 test("only a leading file:// makes an item a URL", () => {
     // Unanchored, a name that merely contains the scheme would be decoded as
     // though it were one, quietly changing the path.
-    const { inputItemToPosixPath } = require("../../../src/runtime/input.js");
-
     assert.equal(
         inputItemToPosixPath("/a/notes-about-file://urls.png"),
         "/a/notes-about-file://urls.png"
@@ -85,4 +80,20 @@ test("a Quick Action reports the files it will not convert", () => {
         !rejected.some((entry) => entry.name.includes("object Object")),
         "host metadata is not a rejection"
     );
+});
+
+test("a value that mentions a file URL is not a file URL", () => {
+    // A file URL is what the value is, not something it contains. Matching it
+    // anywhere turns a description of a file into a path: "alias
+    // file:///a/b.png" was accepted whole, and the run went looking for a file
+    // whose name began with the word alias.
+    for (const value of [
+        "alias file:///a/b.png",
+        "document file://localhost/a/b.png",
+        "see file:// for details"
+    ]) {
+        assert.equal(inputItemToPosixPath(value), "", value);
+    }
+
+    assert.equal(inputItemToPosixPath("file:///a/b.png"), "/a/b.png");
 });
