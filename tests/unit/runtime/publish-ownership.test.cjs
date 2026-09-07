@@ -55,7 +55,7 @@ test("a failure after the copy leaves the workspace copy untouched", () => {
         failures: [
             [DIRECT_CLAIM, new Error(DENIED)],
             ["ln' '/a/.ImageFilesToPDF", new Error(DENIED)],
-            ["mv' '-n' '/a/.ImageFilesToPDF", new Error(DENIED)],
+            ["mv' '/a/.ImageFilesToPDF", new Error(DENIED)],
             // And the check on the staging copy cannot answer either.
             ["test' '-e' '/a/.ImageFilesToPDF", new Error(DENIED)]
         ]
@@ -87,60 +87,4 @@ test("a PDF that could not even be set aside keeps its workspace", () => {
         return true;
     });
     assert.deepEqual([...job.unpublished], ["/a/p.pdf"]);
-});
-
-test("a staging name this run did not make is left alone", () => {
-    // Adopting a file that happens to be under the staging name would publish
-    // whatever bytes are in it. Publication stops instead -- and the file it
-    // did not create stays where it is.
-    const host = createFakeHost({
-        files: ["/a/p.pdf"],
-        failures: [
-            [DIRECT_CLAIM, new Error(DENIED)],
-            // Whatever name this attempt picks is already occupied.
-            ["test' '-e' '/a/.ImageFilesToPDF", ""]
-        ]
-    });
-    const job = makeJob(host);
-
-    assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /the staging name was already taken/u);
-
-        return true;
-    });
-    assert.equal(
-        host.commands.filter((command) => command.includes("/bin/cp")).length,
-        0,
-        "nothing was copied over it"
-    );
-    assert.deepEqual(
-        host.commands.filter((command) => command.includes("/bin/rm") &&
-            command.includes(".ImageFilesToPDF")),
-        [],
-        "and nothing removed it"
-    );
-    assert.equal(recovered(host).length, 1, "and the finished PDF was kept");
-});
-
-test("a PDF that cannot be identified is not published at all", () => {
-    // Publication is proved by comparing what the output path holds against
-    // what was published. With nothing to compare against there is no proof
-    // to be had, so the run stops with the PDF still in hand.
-    const host = createFakeHost({
-        files: ["/a/p.pdf"],
-        failures: [["/usr/bin/stat", new Error(DENIED)]]
-    });
-    const job = makeJob(host);
-
-    assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /could not be measured/u);
-
-        return true;
-    });
-    assert.equal(
-        host.commands.filter((command) => command.includes("/bin/ln")).length,
-        0,
-        "and nothing was attempted against the name"
-    );
-    assert.equal(recovered(host).length, 1, "the PDF was kept");
 });

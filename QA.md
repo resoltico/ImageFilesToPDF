@@ -231,8 +231,24 @@ than one that is not published at all: the user is left with a file that
 carries the name of their document and is not it.
 
 One rule covers it, and it is about ownership rather than about inspection:
-**this run removes only what this run made, and the finished PDF stays in the
-workspace until the output path has been checked.**
+**every name this run writes to is one it took first, it removes only names it
+recorded taking, and the finished PDF stays in the workspace until the output
+path has been checked.**
+
+Taking a name is the whole of the no-overwrite promise, and there are exactly
+two ways to do it. `ln` creates a directory entry and fails if anything is
+there. The shell's noclobber redirection -- `sh -c 'set -C; : > "$0"' path`,
+which is `O_CREAT|O_EXCL` -- creates an empty entry the same way, and is the
+only exclusive create there is on a filesystem that cannot make hard links.
+Measured, on APFS and on an attached FAT volume alike: both take a free name
+and refuse a file, a folder, and a link whose target is gone.
+
+Checking that a name looked free is not the same thing, and the difference is
+not academic. It left whose file it was to be inferred from how the next
+command turned out: a copy refused because another program had taken the name
+in between was read as this run having made it, so cleanup deleted their file.
+Nothing is inferred now -- `mine` is the list of names this attempt took, and
+cleanup removes those and nothing else.
 
 The output name is claimed, never written into. `/bin/ln` creates the
 directory entry in one step and fails if anything is already there --
@@ -255,14 +271,23 @@ the finished document was to have.
 
 When the link cannot be made -- another volume, a filesystem without hard
 links, or a host that refuses -- the PDF is copied into the output folder
-under a hidden name and claimed from there. Which of those it was is decided
-by asking whether the output name is taken, not by reading the refusal: taken
-means publication stops, and free means the refusal was about the link. Only
-then, and only for a name just found free, does a rename stand in, because
-otherwise publishing to a FAT-formatted drive or some network shares would be
-impossible. That leaves `mv`'s own check-then-rename window on those volumes,
-which is stated rather than closed: there is no exclusive-create rename to
-reach from a shell.
+under a hidden name of its own and claimed from there. Which of those it was
+is decided by asking whether the output name is taken, not by reading the
+refusal: taken means publication stops, and free means the refusal was about
+the link.
+
+Where hard links do not exist at all -- FAT and exFAT, which is what a camera
+card is formatted as -- the output name is taken as an empty file and the PDF
+is renamed onto that reservation. The rename replaces this run's own empty
+file, so it cannot replace anybody else's. `mv -n` is what this replaced: it
+checks whether the destination exists and then renames, which are two
+operations, and a competing writer between them was overwritten while the
+check could not see a link whose target was gone.
+
+What that leaves is a name existing as an empty file for the length of a
+rename, on those volumes only. It is removed if anything fails, so only a hard
+kill in that window leaves it -- and an obviously empty PDF under the right
+name is a better failure than another program's document silently replaced.
 
 "Is the name taken" is one question with one answer: `test -e X -o -L X`. `-e`
 follows a symbolic link and reports on its target, so a link whose target is
@@ -271,18 +296,13 @@ without complaint while `ln` refuses it. The same question decides the output
 filename, so a name occupied that way is stepped around rather than collided
 with.
 
-The staging copy is this run's own or it is not used. The name is checked
-before anything is written to it and a name that is taken stops publication
-rather than being borrowed: a file that happened to be under it, of the same
-size, was otherwise adopted and its unrelated bytes published. What remains is
-a race against a deliberate writer in the user's own folder, which the nonce
-in the name makes an adversarial act rather than an accident.
-
-From the moment the copy runs, that name is this attempt's to clear away --
-including when the copy fails. `cp` is documented to leave the destination in
-place after an error and can fail after writing part of the file or all of it,
-so treating a failed copy as having made nothing left hidden files behind in
-the user's folder.
+The staging copy goes to a name this run took, so it is this run's by
+construction: the copy is made over its own empty file, and whatever is under
+that name afterwards -- a whole copy, half of one, or nothing -- is this
+attempt's to clear away. `cp` is documented to leave the destination in place
+after an error and can fail after writing part of the file or all of it, which
+is why "did the copy report success" was never the right question to ask about
+ownership.
 
 What is at the output path is then checked for *which file it is*, and only
 then is anything let go. The output path is asked for the volume and file
@@ -301,7 +321,10 @@ identity that could not be read matches nothing.
 
 `ln` puts the file inside a folder standing at the output path rather than
 refusing it, so that check catches it as well: the identity there is the
-folder's, not ours. The link it left behind is this run's own to remove.
+folder's, not ours. The link left inside is real, and it is removed only when
+it is the file this run published -- a name that merely looks familiar is not
+enough. An unrelated document with the same basename as the file the claim was
+made from was otherwise deleted for it.
 
 Recovery does not search. The finished PDF is in the workspace by
 construction, so it is set aside from there. It used to be worked out by
@@ -312,13 +335,15 @@ missing.
 Verified to fail: a transfer that stops part way leaving an incomplete file at
 the final name; a copy whose size does not match the source being reported as
 published; a name another run took being overwritten, whether it is taken
-before the claim or while the copy is being made; another writer's file at the
-output name being reported as ours; a publication claimed without anything to
-prove it by; a link whose target is gone being replaced; a staging name this
-run did not create being adopted or removed; a staging copy this run did make
-being left behind after a failed copy; a PDF pushed inside a folder being
-reported as published; a recovery that deletes or disowns the finished PDF
-because a check could not answer.
+before the claim, while the copy is being made, or on a volume without hard
+links; another writer's file at the output name being reported as ours; a
+publication claimed without anything to prove it by; a link whose target is
+gone being replaced; a name this run could not take being written to or
+removed; a document inside a folder that appeared at the output path being
+removed for having a familiar name; a staging copy this run did make being
+left behind after a failed copy; a PDF pushed inside a folder being reported
+as published; a recovery that deletes or disowns the finished PDF because a
+check could not answer.
 
 ## How many pages one command can carry
 
@@ -657,8 +682,14 @@ right — every page, in order — but a job of four thousand pages becomes four
 thousand invocations of pdfcpu. The test now says a command carries more than
 one page.
 
-The run after the four-defect audit found two more, both about an answer that
-looks like one: that a stat reporting a size and no file behind it identifies
+The run after the three-defect audit found four more, all about a message or a
+list that nothing was reading: which of the two names a publication takes was
+the one it could not take, and what a run removes -- on the ordinary path, on
+the path through a staging copy, on a volume without hard links, and when it
+refused before making anything. The last of those is the whole ownership rule
+stated as an assertion, and it was worth writing down.
+
+The run before that found two, both about an answer that looks like one: that a stat reporting a size and no file behind it identifies
 nothing, and that two sizes neither of which could be read are not a match --
 the check that a copy is whole has to know that its expectation was readable
 in the first place.
@@ -741,8 +772,9 @@ file under `tests/unit/`.
 ## macOS integration gate
 
 `npm run test:integration:macos` requires macOS, `vips`, `pdfcpu`, qpdf, libtiff,
-Poppler, and `osascript`. It runs three suites: `tests/integration/macos.sh`,
-`tests/integration/selection.sh` and `tests/integration/publication.sh`.
+Poppler, and `osascript`. It runs four suites: `tests/integration/macos.sh`,
+`tests/integration/selection.sh`, `tests/integration/publication.sh` and
+`tests/integration/volumes.sh`.
 
 The first exercises:
 
@@ -794,13 +826,9 @@ macOS itself answers and so cannot be settled by a fake:
 
 The third takes the finished PDF from the workspace to the output folder:
 
-- on one volume, where the whole publication is a rename, a claim and a
-  cleanup: the PDF validates, the folder holds no staging file, and the
-  published PDF has one name rather than two;
-- across volumes, on a disk image attached for the test, which is where `mv`
-  copies rather than renames — the case no fake can reach. Skipped, loudly,
-  where a test volume cannot be attached, because that is the machine's
-  decision rather than the code's;
+- on one volume, where the whole publication is taking the name and clearing
+  up: the PDF validates, the folder holds no staging file, and the published
+  PDF has one name rather than two;
 - a link whose target is gone, standing at the name the PDF was going to
   have: the link must survive and the PDF must be numbered past it, because
   `-e` calls such a link absent and a rename replaces it;
@@ -808,6 +836,19 @@ The third takes the finished PDF from the workspace to the output folder:
   there fails: the message must name a recovery path that exists and holds a
   PDF that passes strict validation, and nothing may be left at the output
   path — neither a partial nor the staging file.
+
+The fourth publishes to volumes attached for the test, which is the only way
+to reach two paths at all. Each is skipped, loudly, where a volume cannot be
+attached, because that is the machine's decision rather than the code's:
+
+- an APFS image, where the finished PDF and the output folder are on different
+  filesystems, so the PDF is copied in and claimed from there;
+- an MS-DOS image, where hard links do not exist — measured: `ln` refuses with
+  "Operation not supported" — so the output name is taken as an empty file and
+  the PDF is renamed onto it. The PDF must validate, nothing of the run's may
+  be left, and a name already holding another document must be stepped around
+  with that document untouched. A camera card is formatted this way, which is
+  why this path is not hypothetical.
 
 One half of the unexaminable-entry case is unit-level only: producing a
 directory that lists but will not let its entries be inspected takes either a
@@ -868,6 +909,9 @@ to fail when the fix is reverted:
 | An ineligible name for a file suppressing an eligible one | alias tests + integration |
 | A symbolic link converting its target a second time | alias tests + integration |
 | A failed copy leaving a hidden file nothing tracks | output-copy tests |
+| A file another program put at the staging name being written over or removed | reservation tests |
+| A document inside a folder at the output path removed for its name | unowned-file tests |
+| A competing writer's file replaced by the rename fallback | reservation tests + MS-DOS volume integration |
 | Tests that stop catching bugs | mutation testing with a break threshold |
 
 ## Acceptance boundary

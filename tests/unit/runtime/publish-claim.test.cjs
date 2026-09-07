@@ -51,10 +51,12 @@ function recovered(host) {
     return [...host.files].filter((file) => file.includes("recovered"));
 }
 
-test("another writer's file at the output name is not reported as ours", () => {
-    // The rename declines, which is right, and the inspection that would have
-    // said so cannot be made. Taking that as a publication published their
-    // document, deleted both copies of ours, and reported success.
+test("another writer's file at the output name is never written to", () => {
+    // The name has to be taken before anything is written to it, and taking
+    // it is what fails. What used to happen instead: the rename declined,
+    // which was right, the inspection that would have said so could not be
+    // made, and the run took that for a publication -- reporting their
+    // document as ours and deleting both copies of the real one.
     const host = createFakeHost({
         files: ["/a/p.pdf", "/a/out.pdf"],
         failures: [
@@ -68,7 +70,7 @@ test("another writer's file at the output name is not reported as ours", () => {
     host.sizes.set("/a/out.pdf", 4096);
 
     assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /does not hold the PDF this run published/u);
+        assert.match(error.message, /cannot overwrite existing file/u);
 
         return true;
     });

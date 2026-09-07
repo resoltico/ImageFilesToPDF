@@ -42,6 +42,11 @@ test("an occupied destination is refused, and the PDF is set aside", () => {
         "nothing was attempted against the name"
     );
     assert.equal(job.unpublished.size, 0, "so the job no longer owns it");
+    assert.deepEqual(
+        host.commands.filter((command) => command.includes("/bin/rm")),
+        [],
+        "and nothing was removed, because nothing had been made"
+    );
 });
 
 test("a link whose target is gone still occupies the name", () => {

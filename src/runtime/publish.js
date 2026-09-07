@@ -1,5 +1,6 @@
 "use strict";
 
+const { basename } = require("../core/paths.js");
 const { keep, clearAway } = require("./recovery.js");
 const { deliver } = require("./transfer.js");
 const { stagingPath } = require("./output-copy.js");
@@ -37,13 +38,33 @@ const { pathIsTaken, removeFile } = require("./shell.js");
  * to give back. An identity that could not be read is not a match, which is
  * what makes a refused inspection safe.
  */
+function isPublished(published, outcome) {
+    return Boolean(published.identity) &&
+        published.identity === outcome.claimedIdentity &&
+        published.size === outcome.claimedSize;
+}
+
+/*
+ * ln links into a folder standing at the output path rather than refusing it,
+ * so the claim may have gone inside one. The link there is this run's own
+ * only if it is the file this run published, which is a question with an
+ * exact answer -- and only then is it this run's to remove.
+ */
+function strayInside(app, paths, outcome) {
+    const inside = `${paths.final}/${basename(outcome.claimed)}`;
+
+    return fileFacts(app, inside).identity === outcome.claimedIdentity
+        ? [inside]
+        : [];
+}
+
 function confirm(job, paths, outcome) {
     const published = fileFacts(job.app, paths.final);
 
-    if (!published.identity || published.identity !== outcome.claimedIdentity ||
-        published.size !== outcome.claimedSize) {
+    if (!isPublished(published, outcome)) {
         throw keep(job, paths, {
             ...outcome,
+            mine: [...outcome.mine, ...strayInside(job.app, paths, outcome)],
             reasons: [
                 `the output path does not hold the PDF this run published:\n\n${paths.final}`
             ]
@@ -52,7 +73,7 @@ function confirm(job, paths, outcome) {
 
     job.unpublished.delete(paths.staged);
     job.progress.finished("Saved");
-    clearAway(job, paths, outcome);
+    clearAway(job, outcome);
     removeFile(job.app, paths.staged);
 }
 
@@ -81,7 +102,7 @@ function attempt(job, paths) {
     const refusal = refuseBefore(job.app, paths, facts);
 
     if (refusal) {
-        throw keep(job, paths, { reasons: [refusal] });
+        throw keep(job, paths, { reasons: [refusal], mine: [] });
     }
 
     const outcome = deliver(job.app, paths, facts);

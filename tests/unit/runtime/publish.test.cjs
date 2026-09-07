@@ -43,6 +43,19 @@ test("the workspace file is linked into place, and nothing is copied", () => {
     assert.equal(commandsFor(host, "/bin/ln").length, 1, "one claim");
 });
 
+test("an ordinary publication removes nothing but its own workspace copy", () => {
+    // What may be removed is what this run made, and on the ordinary path it
+    // made nothing in the output folder: the link is the publication.
+    const host = createFakeHost({ files: ["/a/p.pdf"] });
+
+    publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf");
+
+    assert.deepEqual(
+        commandsFor(host, "/bin/rm"),
+        ["'/bin/rm' '-f' '/a/p.pdf'"]
+    );
+});
+
 test("a refused link falls back to a copy, and the PDF is published", () => {
     // Another volume, or a host that will not link out of the workspace.
     // Creating files in the folder was permitted throughout, so the PDF is
@@ -61,6 +74,11 @@ test("a refused link falls back to a copy, and the PDF is published", () => {
         [],
         "and the copy it was claimed from is gone"
     );
+    assert.equal(
+        commandsFor(host, "/bin/rm").length,
+        2,
+        "the staging copy and the workspace copy, and nothing else"
+    );
 });
 
 test("a filesystem that cannot make links at all still publishes", () => {
@@ -75,6 +93,12 @@ test("a filesystem that cannot make links at all still publishes", () => {
 
     assert.ok(host.files.has("/a/out.pdf"));
     assert.deepEqual([...host.files].filter((file) => file.includes(".part")), []);
+    // The staging copy and the workspace copy, and nothing else. Removing
+    // the first is a no-op here -- the rename took it -- and it is still
+    // this run's to ask about.
+    assert.equal(commandsFor(host, "/bin/rm").length, 2);
+    assert.match(commandsFor(host, "/bin/rm")[0], /\.ImageFilesToPDF-[^']+\.part/u);
+    assert.match(commandsFor(host, "/bin/rm")[1], /'\/a\/p\.pdf'/u);
 });
 
 test("the workspace copy goes only after the output path is checked", () => {

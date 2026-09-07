@@ -4,6 +4,24 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-09-08
+
+### Fixed
+
+- A file another program puts where this action was about to write is never
+  written over or deleted. The name is taken first, in one step that either
+  gets it or does not, and only names it got are ever cleaned up. Before, a
+  copy that failed because someone else had taken the name in the meantime was
+  treated as this action's own work — and their file was removed.
+- Saving to a card or a drive formatted for cameras no longer risks replacing
+  a file that is already there. Those cannot hold the kind of link this uses,
+  so the name is claimed as an empty file and the PDF is moved onto it in one
+  step; what was there before is left alone, and the PDF is given a numbered
+  name instead.
+- A document inside a folder that appears where the PDF was going to be saved
+  is left alone. Cleanup used to remove anything in there whose name matched
+  the one it was expecting, whether this action had put it there or not.
+
 ## [1.2.2] - 2026-09-07
 
 ### Fixed

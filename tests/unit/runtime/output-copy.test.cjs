@@ -19,19 +19,27 @@ const DIRECT_CLAIM = "ln' '/a/p.pdf'";
 const STAGING_FACTS = "stat' '-f%d:%i:%z' '/a/.ImageFilesToPDF";
 const INCOMING = "/a/.ImageFilesToPDF-test.part";
 
-test("a name that is already taken is not borrowed", () => {
-    // Adopting a file that happens to be under the staging name would publish
-    // whatever bytes are in it -- and it would be removed afterwards as
-    // though this run had made it.
+test("a name that is already taken is not written to, and is not ours", () => {
+    // Taking the name is what says whose it is. Checking that it looked free
+    // and then inferring ownership from how the copy turned out meant a file
+    // another program had put there was copied over or deleted as though this
+    // run had made it.
     const host = createFakeHost({ files: ["/a/p.pdf", INCOMING] });
     const outcome = copyBeside(host, "/a/p.pdf", INCOMING, 1024);
 
-    assert.equal(outcome.made, false, "so nothing of it is this run's to remove");
-    assert.match(outcome.reasons[0], /the staging name was already taken/u);
+    assert.deepEqual(outcome.mine, [], "nothing of it is this run's to remove");
+    assert.match(outcome.reasons[0], /cannot overwrite existing file/u);
+    assert.match(
+        outcome.reasons[0],
+        /taking a name for the PDF in the output folder/u,
+        "and which name it was"
+    );
     assert.equal(
         host.commands.filter((command) => command.includes("/bin/cp")).length,
-        0
+        0,
+        "and nothing was written over it"
     );
+    assert.ok(host.files.has(INCOMING), "their file is still there");
 });
 
 test("a copy that failed still made whatever is under the name", () => {
@@ -44,7 +52,7 @@ test("a copy that failed still made whatever is under the name", () => {
     });
     const outcome = copyBeside(host, "/a/p.pdf", INCOMING, 1024);
 
-    assert.equal(outcome.made, true);
+    assert.deepEqual(outcome.mine, [INCOMING], "the name was taken before it ran");
     assert.match(outcome.reasons[0], /no space left/u);
 });
 
@@ -55,7 +63,7 @@ test("a copy is checked against the size it should have", () => {
     });
     const outcome = copyBeside(host, "/a/p.pdf", INCOMING, 1024);
 
-    assert.equal(outcome.made, true, "and it is still this run's to remove");
+    assert.deepEqual(outcome.mine, [INCOMING], "and it is still this run's to remove");
     assert.match(outcome.reasons[0], /7 bytes where 1024 were expected/u);
 });
 

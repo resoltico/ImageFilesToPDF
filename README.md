@@ -171,21 +171,24 @@ For every source image, the runtime:
 5. validates the temporary PDF in strict mode;
 6. publishes the PDF without overwriting an existing path.
 
-Publishing is all or nothing. The output name is claimed in a single
-operation that either creates it or leaves it alone: nothing is ever written
-to the name of your document, so nothing half finished can appear under it,
-and an existing file is never replaced — not a file, not a folder, not even a
-link whose target is gone. When the finished PDF is on the same drive as the
-folder it belongs in, which is the ordinary case, that claim is the whole
+Publishing is all or nothing. Every name this action writes to is one it
+takes first, in a single operation that either creates the name or leaves it
+alone — so nothing half finished appears under the name of your document, and
+an existing file is never replaced: not a file, not a folder, not even a link
+whose target is gone. When the finished PDF is on the same drive as the folder
+it belongs in, which is the ordinary case, taking the name *is* the whole
 publication and no other file of ours ever appears there. Otherwise it is
-copied in under a hidden name, checked, and claimed from there.
+copied in under a hidden name of its own and given the final one from there —
+including on a card or stick formatted for cameras, where that last step works
+differently and is tested against a real one.
 
 A saved PDF is checked for being the one that was made: the output path is
 asked which file it holds, and only the file this run put there counts. Some
 other file of the right shape is not evidence — another program's PDF is one
 too. Until that check passes the finished PDF stays where it was built, and
-this action removes only what it made itself. If publication fails the PDF is
-kept somewhere it will survive and the message says where it is.
+this action removes only names it took itself, which it knows because taking
+them is how it got them. If publication fails the PDF is kept somewhere it
+will survive and the message says where it is.
 
 The source images are never modified. Temporary work is held in a private
 `mktemp` directory and removed on success or failure.

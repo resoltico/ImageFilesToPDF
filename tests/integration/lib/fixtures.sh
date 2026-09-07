@@ -99,3 +99,18 @@ create_selection_fixtures() {
     ln "$work/names/image.png" "$work/names/image.backup"
     ln -s "$work/names/extra.png" "$work/names/alias.png"
 }
+
+# attach_test_volume <format> <name>
+#
+# A volume of its own, so the publication can be exercised where the finished
+# PDF and the output folder are not on one filesystem -- and, for MS-DOS,
+# where hard links cannot be made at all. Prints nothing and fails quietly
+# when a volume cannot be attached: whether that is possible is the machine's
+# decision rather than the code's.
+attach_test_volume() {
+    local format=$1 name=$2 image
+    image=$(mktemp -t "ImageFilesToPDF-$name").dmg
+
+    hdiutil create -size 40m -fs "$format" -volname "$name" -quiet -ov "$image" &&
+        hdiutil attach -quiet "$image"
+}

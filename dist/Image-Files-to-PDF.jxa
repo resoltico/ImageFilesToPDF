@@ -1,5 +1,5 @@
 /*
- * Image Files to PDF 1.2.2
+ * Image Files to PDF 1.2.3
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
@@ -18,7 +18,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.2.2";
+const VERSION = "1.2.3";
 
 /* ===== src/core/executables.js ===== */
 
@@ -28,12 +28,13 @@ const CP = "/bin/cp";
 const LN = "/bin/ln";
 const MV = "/bin/mv";
 const RM = "/bin/rm";
+const SH = "/bin/sh";
 const TEST = "/bin/test";
 const MKTEMP = "/usr/bin/mktemp";
 const PRINTENV = "/usr/bin/printenv";
 const STAT = "/usr/bin/stat";
 
-const EXECUTABLES = [CAT, CP, LN, MV, RM, TEST, MKTEMP, PRINTENV, STAT];
+const EXECUTABLES = [CAT, CP, LN, MV, RM, SH, TEST, MKTEMP, PRINTENV, STAT];
 
 /* ===== src/core/numbers.js ===== */
 
@@ -2583,6 +2584,15 @@ function setAside(app, stagedPath) {
     }
 }
 
+/* ===== src/runtime/reserve.js ===== */
+
+
+const CLAIM_EMPTY = 'set -C; : > "$0"';
+
+function reserveName(app, path, label) {
+    runArgv(app, [SH, "-c", CLAIM_EMPTY, path], label);
+}
+
 /* ===== src/runtime/file-facts.js ===== */
 
 
@@ -2620,21 +2630,23 @@ function mismatch(written, expected) {
 }
 
 function copyBeside(app, staged, incoming, expected) {
-    if (pathIsTaken(app, incoming)) {
-        return { made: false, reasons: ["the staging name was already taken"] };
+    try {
+        reserveName(app, incoming, "taking a name for the PDF in the output folder");
+    } catch (error) {
+        return { reasons: [errorMessage(error)], mine: [] };
     }
 
     try {
-        runArgv(app, [CP, "-n", staged, incoming], "copying the PDF into the output folder");
+        runArgv(app, [CP, staged, incoming], "copying the PDF into the output folder");
     } catch (error) {
-        return { made: true, reasons: [errorMessage(error)] };
+        return { reasons: [errorMessage(error)], mine: [incoming] };
     }
 
     const written = fileFacts(app, incoming);
 
     return expected !== SIZE_UNKNOWN && written.size === expected
-        ? { made: true, reasons: [], identity: written.identity }
-        : { made: true, reasons: mismatch(written.size, expected) };
+        ? { reasons: [], mine: [incoming], identity: written.identity }
+        : { reasons: mismatch(written.size, expected), mine: [incoming] };
 }
 
 /* ===== src/runtime/transfer.js ===== */
@@ -2644,27 +2656,41 @@ function claim(app, from, finalPath) {
     runArgv(app, [LN, from, finalPath], "claiming the output name");
 }
 
-function renameOnto(app, incoming, finalPath, refused) {
+function reserveAndRename(app, incoming, finalPath, refused) {
     try {
-        runArgv(app, [MV, "-n", incoming, finalPath], "putting the PDF in place");
+        reserveName(app, finalPath, "taking the output name");
     } catch (error) {
-        return { published: false, reasons: [refused, errorMessage(error)] };
+        return { published: false, reasons: [refused, errorMessage(error)], mine: [] };
     }
 
-    return { published: true, reasons: [], claimed: incoming };
+    try {
+        runArgv(app, [MV, incoming, finalPath], "putting the PDF in place");
+    } catch (error) {
+        return {
+            published: false,
+            reasons: [refused, errorMessage(error)],
+            mine: [finalPath]
+        };
+    }
+
+    return { published: true, reasons: [], claimed: incoming, mine: [] };
 }
 
 function claimFromStaging(app, incoming, finalPath) {
     try {
         claim(app, incoming, finalPath);
 
-        return { published: true, reasons: [], claimed: incoming };
+        return { published: true, reasons: [], claimed: incoming, mine: [] };
     } catch (error) {
         const refused = errorMessage(error);
 
         return pathIsTaken(app, finalPath)
-            ? { published: false, reasons: [refused, "the output path was taken"] }
-            : renameOnto(app, incoming, finalPath, refused);
+            ? {
+                published: false,
+                reasons: [refused, "the output path was taken"],
+                mine: []
+            }
+            : reserveAndRename(app, incoming, finalPath, refused);
     }
 }
 
@@ -2675,15 +2701,17 @@ function throughStaging(app, paths, facts, refused) {
         return {
             published: false,
             reasons: [refused, ...copied.reasons],
-            staged: copied.made
+            mine: copied.mine
         };
     }
 
+    const outcome = claimFromStaging(app, paths.incoming, paths.final);
+
     return {
-        ...claimFromStaging(app, paths.incoming, paths.final),
+        ...outcome,
         claimedIdentity: copied.identity,
         claimedSize: facts.size,
-        staged: copied.made
+        mine: [...copied.mine, ...outcome.mine]
     };
 }
 
@@ -2696,13 +2724,14 @@ function deliver(app, paths, facts) {
             reasons: [],
             claimed: paths.staged,
             claimedIdentity: facts.identity,
-            claimedSize: facts.size
+            claimedSize: facts.size,
+            mine: []
         };
     } catch (error) {
         const refused = errorMessage(error);
 
         return pathIsTaken(app, paths.final)
-            ? { published: false, reasons: [refused, "the output path was taken"] }
+            ? { published: false, reasons: [refused, "the output path was taken"], mine: [] }
             : throughStaging(app, paths, facts, refused);
     }
 }
@@ -2718,18 +2747,14 @@ function describeFailure(reasons, whereabouts) {
     ].join("\n\n");
 }
 
-function clearAway(job, paths, outcome) {
-    if (outcome.staged) {
-        removeFile(job.app, paths.incoming);
-    }
-
-    if (outcome.claimed) {
-        removeFile(job.app, `${paths.final}/${basename(outcome.claimed)}`);
+function clearAway(job, outcome) {
+    for (const path of outcome.mine) {
+        removeFile(job.app, path);
     }
 }
 
 function keep(job, paths, outcome) {
-    clearAway(job, paths, outcome);
+    clearAway(job, outcome);
 
     const recovered = setAside(job.app, paths.staged);
 
@@ -2746,13 +2771,27 @@ function keep(job, paths, outcome) {
 /* ===== src/runtime/publish.js ===== */
 
 
+function isPublished(published, outcome) {
+    return Boolean(published.identity) &&
+        published.identity === outcome.claimedIdentity &&
+        published.size === outcome.claimedSize;
+}
+
+function strayInside(app, paths, outcome) {
+    const inside = `${paths.final}/${basename(outcome.claimed)}`;
+
+    return fileFacts(app, inside).identity === outcome.claimedIdentity
+        ? [inside]
+        : [];
+}
+
 function confirm(job, paths, outcome) {
     const published = fileFacts(job.app, paths.final);
 
-    if (!published.identity || published.identity !== outcome.claimedIdentity ||
-        published.size !== outcome.claimedSize) {
+    if (!isPublished(published, outcome)) {
         throw keep(job, paths, {
             ...outcome,
+            mine: [...outcome.mine, ...strayInside(job.app, paths, outcome)],
             reasons: [
                 `the output path does not hold the PDF this run published:\n\n${paths.final}`
             ]
@@ -2761,7 +2800,7 @@ function confirm(job, paths, outcome) {
 
     job.unpublished.delete(paths.staged);
     job.progress.finished("Saved");
-    clearAway(job, paths, outcome);
+    clearAway(job, outcome);
     removeFile(job.app, paths.staged);
 }
 
@@ -2780,7 +2819,7 @@ function attempt(job, paths) {
     const refusal = refuseBefore(job.app, paths, facts);
 
     if (refusal) {
-        throw keep(job, paths, { reasons: [refusal] });
+        throw keep(job, paths, { reasons: [refusal], mine: [] });
     }
 
     const outcome = deliver(job.app, paths, facts);

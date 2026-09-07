@@ -46,6 +46,7 @@ export const moduleOrder = [
     "src/runtime/page-stages.js",
     "src/runtime/pages.js",
     "src/runtime/rescue.js",
+    "src/runtime/reserve.js",
     "src/runtime/file-facts.js",
     "src/runtime/output-copy.js",
     "src/runtime/transfer.js",

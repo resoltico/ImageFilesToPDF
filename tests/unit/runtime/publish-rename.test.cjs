@@ -20,6 +20,34 @@ const { makeJob } = require("./fake-job.cjs");
 
 const DENIED = "Operation not permitted";
 
+test("a name that could not be taken says which name it was", () => {
+    // Two names are taken in a publication that goes the long way round, and
+    // a message naming neither leaves the person reading it no better off.
+    // The name is free when publication starts and taken by the time the
+    // reservation is made, which is the only way this step is reached.
+    const host = createFakeHost({
+        files: ["/a/p.pdf", "/a/out.pdf"],
+        failures: [
+            ["/bin/ln", new Error("ln: unsupported")],
+            ["test' '-e' '/a/out.pdf' '-o'", new Error("test failed")]
+        ]
+    });
+
+    assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
+        assert.match(error.message, /taking the output name/u);
+        assert.match(error.message, /cannot overwrite existing file/u);
+
+        return true;
+    });
+    assert.ok(host.files.has("/a/out.pdf"), "and their file is still there");
+    // The copy this run made is cleared away, and nothing else is: the
+    // output name was never taken, so there is nothing of ours there.
+    const removed = host.commands.filter((command) => command.includes("/bin/rm"));
+
+    assert.equal(removed.length, 1, removed.join("\n"));
+    assert.match(removed[0], /\.ImageFilesToPDF-[^']+\.part/u);
+});
+
 test("a rename that was refused says which step it was", () => {
     // Two operations can fail while taking the name, and they fail for
     // different reasons: the link because the filesystem cannot make one, the
@@ -49,7 +77,7 @@ test("a rename that quietly did nothing is not a publication", () => {
         files: ["/a/p.pdf"],
         failures: [
             ["/bin/ln", new Error(DENIED)],
-            ["mv' '-n' '/a/.ImageFilesToPDF", ""]
+            ["mv' '/a/.ImageFilesToPDF", ""]
         ]
     });
 

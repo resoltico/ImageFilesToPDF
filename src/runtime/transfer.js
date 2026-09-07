@@ -3,40 +3,39 @@
 const { LN, MV } = require("../core/executables.js");
 const { errorMessage } = require("../core/errors.js");
 const { runArgv, pathIsTaken } = require("./shell.js");
+const { reserveName } = require("./reserve.js");
 const { copyBeside } = require("./output-copy.js");
 
 /*
  * Getting the finished PDF from the workspace to the name the user will see.
  *
- * The name is claimed, not written to. ln creates the directory entry in one
- * step and fails if anything is already there -- measured, including that
- * what is already there is left exactly as it was, and that a link whose
- * target is gone still counts as there. Nothing else can produce a name
- * atomically, so nothing else is used to produce this one.
+ * Every name this run writes to is one it took first, and nothing writes over
+ * a name that was already there. Two operations give that, and they are the
+ * only two used.
+ *
+ * ln creates the directory entry in one step and fails if anything is there
+ * -- measured, including that what is there is left exactly as it was, and
+ * that a link whose target is gone still counts as there. It is also what
+ * makes a publication provable afterwards: the published name holds the very
+ * file it was made from.
+ *
+ * The shell's noclobber redirection creates an empty entry the same way, and
+ * on the filesystems where a hard link cannot be made at all -- FAT and
+ * exFAT, which is what a camera card is formatted as -- it is the only
+ * exclusive create there is. A rename onto that reservation replaces this
+ * run's own empty file, so it cannot replace anybody else's.
+ *
+ * mv -n is what this replaced. It checks whether the destination exists and
+ * then renames, which are two operations: a competing writer between them was
+ * overwritten, and the check could not see a link whose target was gone.
  *
  * The claim is made from the workspace file itself whenever it can be, which
  * is whenever the two are on one volume: the ordinary case, where the whole
- * publication is one operation and no file of ours ever appears in the output
- * folder under any other name. A hard link is not a second copy, and it is
- * indistinguishable from one afterwards -- measured: same mode, same owner,
- * same extended attributes, and it outlives the workspace it was made from.
- *
- * When that link cannot be made -- another volume, a filesystem without hard
- * links, or a host that refuses -- the PDF is copied into the output folder
- * under a hidden name and claimed from there. Which of those it was decides
- * what happens next, and it is decided by asking whether the output name is
- * taken rather than by reading the refusal.
+ * publication is one operation, no file of ours appears in the output folder
+ * under any other name, and the workspace copy is never given up.
  *
  * What none of this decides is whether publication succeeded. That is settled
- * afterwards, by asking the output path which file it holds: every step here
- * reports what it did, and publish.js reports what came of it.
- *
- * Where the PDF is built was settled the same way. pdfcpu created the file in
- * the user's Downloads folder; afterwards /bin/mv could not rename it and
- * /bin/cp could not even read it, both refused with "Operation not
- * permitted", while copying in from the workspace was allowed throughout. So
- * nothing is built there, and the fallbacks below are the operations that
- * host permitted.
+ * afterwards, by asking the output path which file it holds.
  */
 
 function claim(app, from, finalPath) {
@@ -44,34 +43,45 @@ function claim(app, from, finalPath) {
 }
 
 /*
- * The rename that stands in where hard links are unsupported. mv -n exits
- * zero when it declines, and it used to be asked whether the staging file was
- * gone to find out which had happened -- a question that answers "gone" when
- * it cannot be put at all, so a refused inspection read as a publication.
- * Nothing is concluded here: the identity of the file at the output path is
- * what settles it.
+ * Where hard links are unsupported: take the name as an empty file, then put
+ * the PDF into it in one rename. The reservation is this run's own, so the
+ * rename replaces nothing that belonged to anyone else.
  */
-function renameOnto(app, incoming, finalPath, refused) {
+function reserveAndRename(app, incoming, finalPath, refused) {
     try {
-        runArgv(app, [MV, "-n", incoming, finalPath], "putting the PDF in place");
+        reserveName(app, finalPath, "taking the output name");
     } catch (error) {
-        return { published: false, reasons: [refused, errorMessage(error)] };
+        return { published: false, reasons: [refused, errorMessage(error)], mine: [] };
     }
 
-    return { published: true, reasons: [], claimed: incoming };
+    try {
+        runArgv(app, [MV, incoming, finalPath], "putting the PDF in place");
+    } catch (error) {
+        return {
+            published: false,
+            reasons: [refused, errorMessage(error)],
+            mine: [finalPath]
+        };
+    }
+
+    return { published: true, reasons: [], claimed: incoming, mine: [] };
 }
 
 function claimFromStaging(app, incoming, finalPath) {
     try {
         claim(app, incoming, finalPath);
 
-        return { published: true, reasons: [], claimed: incoming };
+        return { published: true, reasons: [], claimed: incoming, mine: [] };
     } catch (error) {
         const refused = errorMessage(error);
 
         return pathIsTaken(app, finalPath)
-            ? { published: false, reasons: [refused, "the output path was taken"] }
-            : renameOnto(app, incoming, finalPath, refused);
+            ? {
+                published: false,
+                reasons: [refused, "the output path was taken"],
+                mine: []
+            }
+            : reserveAndRename(app, incoming, finalPath, refused);
     }
 }
 
@@ -82,15 +92,17 @@ function throughStaging(app, paths, facts, refused) {
         return {
             published: false,
             reasons: [refused, ...copied.reasons],
-            staged: copied.made
+            mine: copied.mine
         };
     }
 
+    const outcome = claimFromStaging(app, paths.incoming, paths.final);
+
     return {
-        ...claimFromStaging(app, paths.incoming, paths.final),
+        ...outcome,
         claimedIdentity: copied.identity,
         claimedSize: facts.size,
-        staged: copied.made
+        mine: [...copied.mine, ...outcome.mine]
     };
 }
 
@@ -108,13 +120,14 @@ function deliver(app, paths, facts) {
             reasons: [],
             claimed: paths.staged,
             claimedIdentity: facts.identity,
-            claimedSize: facts.size
+            claimedSize: facts.size,
+            mine: []
         };
     } catch (error) {
         const refused = errorMessage(error);
 
         return pathIsTaken(app, paths.final)
-            ? { published: false, reasons: [refused, "the output path was taken"] }
+            ? { published: false, reasons: [refused, "the output path was taken"], mine: [] }
             : throughStaging(app, paths, facts, refused);
     }
 }

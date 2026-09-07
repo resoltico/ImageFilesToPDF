@@ -1,6 +1,6 @@
 {
   "name": "image-files-to-pdf-macos",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "private": true,
   "description": "Source, build, QA, and release scaffolding for a vips + pdfcpu macOS Finder Quick Action",
   "license": "MIT",
@@ -22,7 +22,7 @@
     "check-dist": "node tools/check-dist.mjs",
     "quality": "npm run lint && npm run lint:js && npm run test:coverage && npm run test:mutation && npm run check-dist",
     "release": "npm run build && npm run quality",
-    "test:integration:macos": "bash tests/integration/macos.sh && bash tests/integration/selection.sh && bash tests/integration/publication.sh",
+    "test:integration:macos": "bash tests/integration/macos.sh && bash tests/integration/selection.sh && bash tests/integration/publication.sh && bash tests/integration/volumes.sh",
     "test:mutation": "stryker run",
     "test:unit": "node --test \"tests/unit/**/*.test.cjs\""
   },

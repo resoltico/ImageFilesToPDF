@@ -13,11 +13,8 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 SCRIPT="$ROOT/dist/Image-Files-to-PDF.jxa"
 WORK=$(mktemp -d -t ImageFilesToPDF-publication)
-VOLUME_NAME=ImageFilesToPDF-test-volume
-VOLUME="/Volumes/$VOLUME_NAME"
 
 cleanup() {
-    hdiutil detach -quiet "$VOLUME" 2>/dev/null || true
     chmod -R u+rwx "$WORK" 2>/dev/null || true
     rm -rf "$WORK"
 }
@@ -47,7 +44,7 @@ run() {
 # that attempt's to remove -- and a folder holding one afterwards means a
 # publication that did not finish tidying up after itself.
 assert_nothing_left_behind() {
-    test -z "$(find "$1" -name '.ImageFilesToPDF-*' -maxdepth 1)" ||
+    test -z "$(find "$1" -maxdepth 1 -name '.ImageFilesToPDF-*')" ||
         fail "a staging file was left in $1: $(ls -a "$1")"
 }
 
@@ -65,29 +62,6 @@ assert_valid_pdf "$SAME"
 assert_nothing_left_behind "$WORK/same-volume"
 test "$(stat -f%l "$SAME")" = 1 ||
     fail "the published PDF still has a second name: $(stat -f%l "$SAME") links"
-
-# ---------------------------------------------------------------------------
-# Across volumes, where mv copies rather than renames.
-#
-# Skipped rather than failed where a test volume cannot be attached: the
-# machine, not the code, decides whether that is possible.
-# ---------------------------------------------------------------------------
-
-if hdiutil create -size 40m -fs APFS -volname "$VOLUME_NAME" -quiet \
-        "$WORK/volume.dmg" && hdiutil attach -quiet "$WORK/volume.dmg"
-then
-    cp "$WORK/photo.png" "$VOLUME/"
-    run 20260907_020202 "$VOLUME/photo.png"
-
-    CROSS="$VOLUME/output_20260907_020202.pdf"
-    assert_valid_pdf "$CROSS"
-    assert_nothing_left_behind "$VOLUME"
-    test "$(stat -f%l "$CROSS")" = 1 ||
-        fail "the published PDF still has a second name"
-    hdiutil detach -quiet "$VOLUME"
-else
-    printf 'cross-volume publication skipped: no test volume could be attached\n'
-fi
 
 # ---------------------------------------------------------------------------
 # A link whose target is gone, standing at the name the PDF was going to have.

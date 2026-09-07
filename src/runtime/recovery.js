@@ -1,19 +1,23 @@
 "use strict";
 
 const { setAside } = require("./rescue.js");
-const { basename } = require("../core/paths.js");
 const { removeFile } = require("./shell.js");
 
 /*
  * What a failed publication leaves behind, and where the finished PDF goes.
  *
  * One rule, and it is about ownership rather than about inspection: this run
- * removes only what this run made, and the PDF stays in the workspace until
- * the output path has been checked. The workspace copy used to be moved into
- * the output folder, so a failure afterwards had to work out where the bytes
- * were -- through a check that answers "no" both when a file is absent and
- * when the question could not be put at all. A refused check therefore
- * deleted the finished PDF and reported it missing.
+ * removes only the names it took, and the PDF stays in the workspace until
+ * the output path has been checked.
+ *
+ * Both halves were learned the hard way. The workspace copy used to be moved
+ * into the output folder, so a failure afterwards had to work out where the
+ * bytes were -- through a check that answers "no" both when a file is absent
+ * and when the question could not be put at all, so a refused check deleted
+ * the finished PDF and reported it missing. And what to clear away used to be
+ * worked out from pathnames rather than recorded: a file another program had
+ * put at the staging name, and a document inside a folder that appeared at
+ * the output path, were both deleted for having a name this run recognised.
  */
 
 function describeFailure(reasons, whereabouts) {
@@ -25,24 +29,15 @@ function describeFailure(reasons, whereabouts) {
 }
 
 /*
- * What this attempt left in the output folder: the staging copy, if it got as
- * far as making one, and the link a claim leaves inside a folder that is
- * standing at the output path -- ln puts it in there rather than refusing.
- * Both are this run's own, which is what makes removing them safe, and a
- * staging copy this run did not make is not one of them.
- *
- * Nothing is asked about either unless this attempt made it: an ordinary
- * publication, which is a link and nothing else, never names a staging file
- * at all.
+ * The names this attempt took and does not need: the staging copy, a
+ * reservation nothing was moved into, and -- when a folder was standing at
+ * the output path, which ln links into rather than refusing -- the link left
+ * inside it, which publish.js adds once it has confirmed the file there is
+ * the one this run published.
  */
-function clearAway(job, paths, outcome) {
-    if (outcome.staged) {
-        removeFile(job.app, paths.incoming);
-    }
-
-    if (outcome.claimed) {
-        // Where a claim goes when a folder is standing at the output path.
-        removeFile(job.app, `${paths.final}/${basename(outcome.claimed)}`);
+function clearAway(job, outcome) {
+    for (const path of outcome.mine) {
+        removeFile(job.app, path);
     }
 }
 
@@ -56,7 +51,7 @@ function clearAway(job, paths, outcome) {
  * decides, so it is cleared only when the PDF is somewhere else.
  */
 function keep(job, paths, outcome) {
-    clearAway(job, paths, outcome);
+    clearAway(job, outcome);
 
     const recovered = setAside(job.app, paths.staged);
 
