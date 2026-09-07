@@ -19,7 +19,7 @@ test("a PDF that was built but could not be published is kept", () => {
     const denied = new Error("Operation not permitted");
     const app = createFakeHost({
         files: ["/a/x.png"],
-        failures: [["/bin/mv", denied], ["/bin/cp", denied]]
+        failures: [["/bin/ln", denied], ["/bin/mv", denied], ["/bin/cp", denied]]
     });
 
     assert.throws(
@@ -50,7 +50,7 @@ test("separate mode keeps a finished PDF it could not publish", () => {
     const denied = new Error("Operation not permitted");
     const app = createFakeHost({
         files: ["/a/good.png"],
-        failures: [["/bin/mv", denied], ["/bin/cp", denied]]
+        failures: [["/bin/ln", denied], ["/bin/mv", denied], ["/bin/cp", denied]]
     });
     const result = createSeparatePdfs(makeJob(app), [
         imageOf("/a/good.png")

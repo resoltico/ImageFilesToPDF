@@ -1,101 +1,51 @@
 "use strict";
 
-const { CP, LN, MV, STAT } = require("../core/executables.js");
+const { LN, MV } = require("../core/executables.js");
 const { errorMessage } = require("../core/errors.js");
-const { dirname } = require("../core/paths.js");
-const { runArgv, fileExists } = require("./shell.js");
-const { nonce } = require("./workspace.js");
+const { runArgv, fileExists, pathIsTaken } = require("./shell.js");
+const { copyBeside } = require("./output-copy.js");
 
 /*
- * Getting the bytes from the workspace to the output folder.
+ * Getting the finished PDF from the workspace to the name the user will see.
  *
- * One protocol for every destination, because the destination is not
- * something this code can see. The finished PDF is put into the output folder
- * under a hidden name of its own, checked there, and only then given the name
- * the user will see -- in a single operation that either creates that name or
- * fails.
+ * The name is claimed, not written to. ln creates the directory entry in one
+ * step and fails if anything is already there -- measured, including that
+ * what is already there is left exactly as it was, and that a link whose
+ * target is gone still counts as there. Nothing else can produce a name
+ * atomically, so nothing else is used to produce this one.
  *
- * It used to be renamed straight to the final name, which is atomic only when
- * both ends are on one volume. Across volumes, Apple's mv copies to the
- * destination pathname it was given: measured, an interrupted move left
- * 3,211,264 bytes of a 1,258,291,200-byte file sitting under the name of the
- * finished document. Photographs on an external drive are an ordinary reason
- * for the two ends to differ.
+ * The claim is made from the workspace file itself whenever it can be, which
+ * is whenever the two are on one volume: the ordinary case, where the whole
+ * publication is one operation and no file of ours ever appears in the output
+ * folder under any other name. A hard link is not a second copy, and it is
+ * indistinguishable from one afterwards -- measured: same mode, same owner,
+ * same extended attributes, and it outlives the workspace it was made from.
  *
- * Where the PDF is built matters as much, and was settled the same way.
- * pdfcpu created the file in the user's Downloads folder; afterwards /bin/mv
- * could not rename it and /bin/cp could not even read it, both refused with
- * "Operation not permitted". In the same folder, on the same run, a file the
- * shell itself created could be renamed freely, and copying in from the
- * workspace was allowed. So nothing is built there -- and the fallbacks below
- * are exactly the operations that host permitted.
+ * When that link cannot be made -- another volume, a filesystem without hard
+ * links, or a host that refuses -- the PDF is copied into the output folder
+ * under a hidden name and claimed from there. Which of those it was decides
+ * what happens next, and it is decided by asking whether the output name is
+ * taken rather than by reading the refusal.
+ *
+ * Where the PDF is built was settled the same way. pdfcpu created the file in
+ * the user's Downloads folder; afterwards /bin/mv could not rename it and
+ * /bin/cp could not even read it, both refused with "Operation not
+ * permitted", while copying in from the workspace was allowed throughout. So
+ * nothing is built there, and the fallbacks below are the operations that
+ * host permitted.
  *
  * Who owns the PDF while this is going on is publish.js.
  */
 
-const SIZE_UNKNOWN = -1;
-
-/*
- * Hidden, so the output folder never shows a half-finished document; beside
- * the destination, so the operation that follows is a rename within one
- * directory; and unique to this attempt, so removing it afterwards -- however
- * the attempt ended -- cannot remove anything else. Its name says who made it
- * and does not grow with the name of the PDF, which was long enough on its
- * own to be refused.
- */
-function stagingPath(finalPath) {
-    return `${dirname(finalPath)}.ImageFilesToPDF-${nonce()}.part`;
-}
-
-function fileSize(app, path) {
-    try {
-        const text = runArgv(
-            app,
-            [STAT, "-f%z", path],
-            "measuring the PDF"
-        );
-        const value = parseInt(String(text).trim(), 10);
-
-        return isFinite(value) ? value : SIZE_UNKNOWN;
-    } catch {
-        return SIZE_UNKNOWN;
-    }
+function claim(app, from, finalPath) {
+    runArgv(app, [LN, from, finalPath], "claiming the output name");
 }
 
 /*
- * The bytes are in the output folder under the staging name, or they are not
- * there at all. A rename is preferred -- one volume, no second copy of the
- * file -- and a copy is what the sandbox permitted when it refused the
- * rename. Either way the result is measured: a copy is not atomic, and a size
- * that cannot be read is not a size.
- */
-function stageBeside(app, from, incoming, expected) {
-    const refusals = [];
-
-    for (const [tool, label] of [[MV, "moving"], [CP, "copying"]]) {
-        try {
-            runArgv(app, [tool, "-n", from, incoming], `${label} the PDF into the output folder`);
-
-            const written = fileSize(app, incoming);
-
-            return expected !== SIZE_UNKNOWN && written === expected
-                ? { published: true, reasons: [] }
-                : {
-                    published: false,
-                    reasons: [`the staged file is ${written} bytes where ` +
-                        `${expected} were expected`]
-                };
-        } catch (error) {
-            refusals.push(errorMessage(error));
-        }
-    }
-
-    return { published: false, reasons: refusals };
-}
-
-/*
- * mv -n exits zero when it declines, so what is still under the staging name
- * is the only evidence that the output path was taken.
+ * mv -n exits zero when it declines, so the file still being under the
+ * staging name is the only evidence that nothing moved. This runs only for a
+ * name that has just been found free on a filesystem that cannot make links,
+ * which is the one case a rename is the best that can be done.
  */
 function renameOnto(app, incoming, finalPath, refused) {
     try {
@@ -106,39 +56,57 @@ function renameOnto(app, incoming, finalPath, refused) {
 
     return fileExists(app, incoming)
         ? { published: false, reasons: [refused, "the output path was taken"] }
-        : { published: true, reasons: [] };
+        : { published: true, reasons: [], claimed: incoming };
 }
 
-/*
- * The output name is claimed, not written to. ln creates the directory entry
- * in one step and fails if the name is already there -- measured, including
- * that the file already at that name is left exactly as it was -- so two runs
- * cannot both believe they published, and nothing can appear under that name
- * half written.
- *
- * Hard links are not supported everywhere: FAT-formatted drives and some
- * network shares refuse them. The fallback is a rename within one directory,
- * which is atomic wherever it works at all.
- */
-function claim(app, incoming, finalPath) {
+function claimFromStaging(app, incoming, finalPath) {
     try {
-        runArgv(app, [LN, incoming, finalPath], "claiming the output name");
+        claim(app, incoming, finalPath);
 
-        return { published: true, reasons: [] };
+        return { published: true, reasons: [], claimed: incoming };
     } catch (error) {
-        return renameOnto(app, incoming, finalPath, errorMessage(error));
+        const refused = errorMessage(error);
+
+        return pathIsTaken(app, finalPath)
+            ? { published: false, reasons: [refused, "the output path was taken"] }
+            : renameOnto(app, incoming, finalPath, refused);
     }
 }
 
-function deliver(app, stagedPath, incoming, finalPath) {
-    const staging = stageBeside(
-        app,
-        stagedPath,
-        incoming,
-        fileSize(app, stagedPath)
-    );
+function throughStaging(app, paths, refused) {
+    const copied = copyBeside(app, paths.staged, paths.incoming);
 
-    return staging.published ? claim(app, incoming, finalPath) : staging;
+    if (copied.reasons.length > 0) {
+        return {
+            published: false,
+            reasons: [refused, ...copied.reasons],
+            staged: copied.made
+        };
+    }
+
+    return {
+        ...claimFromStaging(app, paths.incoming, paths.final),
+        staged: copied.made
+    };
 }
 
-module.exports = { fileSize, stagingPath, stageBeside, claim, deliver };
+/*
+ * The claim, and what to do when it is refused: stop if the output name is
+ * taken, and otherwise go the long way round, because the refusal was about
+ * the link rather than about the name.
+ */
+function deliver(app, paths) {
+    try {
+        claim(app, paths.staged, paths.final);
+
+        return { published: true, reasons: [], claimed: paths.staged };
+    } catch (error) {
+        const refused = errorMessage(error);
+
+        return pathIsTaken(app, paths.final)
+            ? { published: false, reasons: [refused, "the output path was taken"] }
+            : throughStaging(app, paths, refused);
+    }
+}
+
+module.exports = { deliver };

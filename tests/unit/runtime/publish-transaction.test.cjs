@@ -3,16 +3,14 @@
 /*
  * Publication as one transaction.
  *
- * The output name is claimed, never written into: it is created in a single
- * operation that either succeeds or leaves the name alone. Everything before
- * that happens under a hidden name of this attempt's own, so an interruption
- * or a refusal can leave a half-finished file only where nobody will mistake
- * it for their document.
+ * The output name is claimed, never written into: ln creates the directory
+ * entry in one step, or fails and leaves the name alone. Measured, including
+ * that what is already at the name is left exactly as it was.
  *
- * This is why it matters that the file is not simply renamed to its final
- * name: across volumes Apple's mv copies to the pathname it was given, and an
- * interrupted move was measured leaving 3,211,264 bytes of a 1,258,291,200
- * byte file under exactly that name.
+ * This is why the finished PDF is not simply renamed to its final name.
+ * Across volumes Apple's mv copies to the pathname it is given, and an
+ * interrupted move on an attached test volume left 3,211,264 bytes of a
+ * 1,258,291,200-byte file under exactly that name.
  */
 
 const assert = require("node:assert/strict");
@@ -22,76 +20,56 @@ const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob } = require("./fake-job.cjs");
 
 const DENIED = "Operation not permitted";
-const STAGED_MOVE = "mv' '-n' '/a/p.pdf'";
+const DIRECT_CLAIM = "ln' '/a/p.pdf'";
+// The check publishPdf makes before it starts, stubbed away so the name can
+// be taken between that check and the claim.
+const FREE_UNTIL_CLAIMED = ["test' '-e' '/a/out.pdf' '-o'", new Error("test failed")];
 
-function partials(host) {
-    return [...host.files].filter((file) => file.includes(".part"));
+function touching(host, path) {
+    return host.commands.filter((command) =>
+        (/'\/bin\/(?:mv|cp|ln)'/u).test(command) && command.includes(`'${path}'`));
 }
 
-function commandsFor(host, tool) {
-    return host.commands.filter((command) => command.includes(tool));
-}
-
-test("nothing is written to the output name; it is claimed in one step", () => {
-    // Every operation before the claim names the staging file, which is
-    // hidden, beside the destination, and this attempt's alone.
+test("one operation touches the output name, and it is the claim", () => {
     const host = createFakeHost({ files: ["/a/p.pdf"] });
 
     publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf");
 
-    const writes = host.commands.filter((command) =>
-        /'\/bin\/(?:mv|cp|ln)'/u.test(command) && command.includes("'/a/out.pdf'"));
+    const writes = touching(host, "/a/out.pdf");
 
-    assert.deepEqual(writes.length, 1, writes.join("\n"));
-    assert.match(writes[0], /^'\/bin\/ln' '\/a\/\.ImageFilesToPDF-[^']+\.part' '\/a\/out\.pdf'$/u);
+    assert.equal(writes.length, 1, writes.join("\n"));
+    assert.equal(writes[0], "'/bin/ln' '/a/p.pdf' '/a/out.pdf'");
 });
 
-test("the staging name is hidden, beside the destination, and this run's own", () => {
-    const host = createFakeHost({
+test("the staging copy is only reached when the link cannot be made", () => {
+    const linked = createFakeHost({ files: ["/a/p.pdf"] });
+
+    publishPdf(makeJob(linked), "/a/p.pdf", "/a/out.pdf");
+    assert.equal(
+        linked.commands.filter((command) => command.includes(".ImageFilesToPDF")).length,
+        0,
+        "nothing about a staging name is even asked"
+    );
+
+    const copied = createFakeHost({
         files: ["/a/p.pdf"],
-        failures: [[STAGED_MOVE, new Error(DENIED)]]
+        failures: [[DIRECT_CLAIM, new Error(DENIED)]]
     });
 
-    publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf");
-
+    publishPdf(makeJob(copied), "/a/p.pdf", "/a/out.pdf");
     assert.match(
-        commandsFor(host, "/bin/cp")[0],
+        copied.commands.find((command) => command.includes("/bin/cp")),
         /'\/a\/\.ImageFilesToPDF-[^']+\.part'/u
     );
-    assert.deepEqual(partials(host), [], "and nothing of it is left");
-});
-
-test("both ways of taking the name say which one failed", () => {
-    // Two operations can fail here and they fail for different reasons: the
-    // link because the name is taken or unsupported, the rename because the
-    // host refused it. A message naming neither leaves the person reading it
-    // no better off.
-    const host = createFakeHost({
-        files: ["/a/p.pdf"],
-        failures: [
-            ["/bin/ln", new Error("ln: unsupported")],
-            ["mv' '-n' '/a/.ImageFilesToPDF", new Error(DENIED)]
-        ]
-    });
-
-    assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /claiming the output name/u);
-        assert.match(error.message, /putting the PDF in place/u);
-
-        return true;
-    });
-    assert.ok(!host.files.has("/a/out.pdf"), "and the name was never taken");
 });
 
 test("a copy that fails part way never wears the finished PDF's name", () => {
-    // It did once: the copy went straight to the final name, so a copy that
-    // stopped half way left an incomplete file called out.pdf. The run
-    // reported the failure and kept the good copy elsewhere, and the user was
-    // still left with something that looked like their document.
+    // The copy goes to a name of its own, so a copy that stopped half way
+    // leaves nothing that looks like the finished document.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
         failures: [
-            [STAGED_MOVE, new Error(DENIED)],
+            [DIRECT_CLAIM, new Error(DENIED)],
             ["stat' '-f%z' '/a/.ImageFilesToPDF", "7"]
         ]
     });
@@ -100,26 +78,20 @@ test("a copy that fails part way never wears the finished PDF's name", () => {
         () => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"),
         /7 bytes where 1024 were expected/u
     );
-    assert.ok(!host.files.has("/a/out.pdf"), "the final name is untouched");
-    assert.deepEqual(partials(host), [], "and the half-written copy is gone");
+    assert.ok(!host.files.has("/a/out.pdf"), "and nothing is at the output name");
 });
 
-test("a name another run took is not overwritten, and the PDF is kept", () => {
-    // The claim is what makes this safe rather than the check before it: two
-    // runs can both find the name free and both go to publish it.
-    const host = createFakeHost({ files: ["/a/p.pdf", "/a/theirs.pdf"] });
-    const job = makeJob(host);
-
-    host.sizes.set("/a/theirs.pdf", 99);
+test("a directory at the output name does not become a publication", () => {
+    // ln puts the file inside a directory rather than refusing the name, so
+    // what is at the output path is checked afterwards for what it is.
+    const host = createFakeHost({
+        files: ["/a/p.pdf"],
+        directories: ["/a/out.pdf"],
+        failures: [FREE_UNTIL_CLAIMED]
+    });
 
     assert.throws(
-        () => publishPdf(job, "/a/p.pdf", "/a/theirs.pdf"),
-        /could not be published/u
-    );
-    assert.equal(host.sizes.get("/a/theirs.pdf"), 99, "the other run's PDF is intact");
-    assert.equal(
-        [...host.files].filter((file) => file.includes("recovered")).length,
-        1,
-        "and ours is kept"
+        () => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"),
+        /output PDF is not a file with anything in it/u
     );
 });

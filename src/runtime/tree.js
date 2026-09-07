@@ -23,6 +23,22 @@
 const DIRECTORY = "NSFileTypeDirectory";
 const REGULAR = "NSFileTypeRegular";
 
+/*
+ * Which file this is, as the filesystem knows it: the volume it is on and its
+ * number on that volume. Two spellings of one file give the same pair --
+ * measured, for A.jpg against a.jpg on a case-insensitive volume, which is
+ * how a Mac is formatted by default.
+ *
+ * It comes out of the attributes this walk already reads, so knowing it costs
+ * nothing, and it is "" when there are no attributes to read -- which is the
+ * same thing as there being no file.
+ */
+function identityFrom(attributes) {
+    return attributes
+        ? `${attributes.NSFileSystemNumber}:${attributes.NSFileSystemFileNumber}`
+        : "";
+}
+
 function kindFrom(attributes, workspace, path, ns) {
     if (!attributes) {
         return "missing";
@@ -51,12 +67,16 @@ function createTree(objc, ns, ref) {
     const workspace = ns.NSWorkspace.sharedWorkspace;
 
     return {
-        kind(path) {
+        // What the path is, and which file it is, from one question.
+        inspect(path) {
             const attributes = objc.deepUnwrap(
                 manager.attributesOfItemAtPathError(ns(path), ref())
             );
 
-            return kindFrom(attributes, workspace, path, ns);
+            return {
+                kind: kindFrom(attributes, workspace, path, ns),
+                identity: identityFrom(attributes)
+            };
         },
 
         // The names in a directory, or null when it cannot be read at all.
@@ -74,4 +94,4 @@ function createTree(objc, ns, ref) {
     };
 }
 
-module.exports = { createTree, kindFrom };
+module.exports = { createTree, kindFrom, identityFrom };

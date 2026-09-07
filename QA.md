@@ -162,7 +162,17 @@ files it was given, and a selected folder is refused with a reason.
 
 What was selected is settled before anything is admitted, because two names
 for one thing were two things: every path is standardized and asked what it is
-through the same tree that will do the walking. Asking the shell instead is
+through the same tree that will do the walking.
+
+Two names for one thing is also what a Mac's own filesystem hands over. It is
+case-insensitive as formatted, so `/photos/A.jpg` and `/photos/a.jpg` are one
+photograph -- measured: the same `NSFileSystemNumber` and the same
+`NSFileSystemFileNumber` -- and standardizing the spelling does not make them
+one selection. So a selection is keyed by what the filesystem says the file
+is, and the ledger of what has been taken holds the same thing. Both come out
+of the attributes the walk already reads, so knowing costs nothing. A path is
+the fallback where there is no file to identify, which is where there is
+nothing to convert either. Asking the shell instead is
 what sent the walk inside an `.app`, which is a directory to `/bin/test`;
 deciding as each item came up is what made the answer depend on the order
 Finder handed the selection over.
@@ -207,58 +217,75 @@ Publication is one transaction, because a PDF that is half published is worse
 than one that is not published at all: the user is left with a file that
 carries the name of their document and is not it.
 
-The output name is claimed, never written into. Everything before the claim
-happens under a hidden name beside the destination — this attempt's own, so
-removing it afterwards cannot remove anything else — and the claim itself is
-`/bin/ln`, which creates the directory entry in one step and fails if the name
-is already there. Measured: linking onto an occupied name fails with
-`File exists` and leaves the file that is there exactly as it was. So two runs
-cannot both believe they published, and the check this code makes before
-publishing is a courtesy rather than the guarantee.
+One rule covers it, and it is about ownership rather than about inspection:
+**this run removes only what this run made, and the finished PDF stays in the
+workspace until the output path has been checked.**
+
+The output name is claimed, never written into. `/bin/ln` creates the
+directory entry in one step and fails if anything is already there --
+measured, including that what is there is left exactly as it was, and that a
+link whose target is gone still counts as there. Nothing else can produce a
+name atomically, so nothing else is used to produce this one.
+
+The claim is made from the workspace file itself whenever it can be, which is
+whenever the two are on one volume: the ordinary case, where the whole
+publication is one operation and no file of ours ever appears in the output
+folder under any other name. A hard link is not a second copy and is
+indistinguishable from one afterwards -- measured: same mode, same owner, same
+extended attributes, and it outlives the workspace it was made from.
 
 Renaming straight to the final name is what this replaced, and it is atomic
 only when both ends are on one volume. Across volumes Apple's `mv` copies to
 the pathname it is given: measured on an attached test volume, an interrupted
 move left 3,211,264 bytes of a 1,258,291,200-byte file under exactly the name
-the finished document was to have. Photographs on an external drive are an
-ordinary reason for the two ends to differ.
+the finished document was to have.
 
-Getting the PDF into the folder is a rename where the host allows one and a
-copy where it does not, which is what the Shortcuts sandbox permitted when it
-refused the rename. A copy is not atomic, so the result is measured against
-the size taken before the transfer — the source is gone once a rename has
-moved it. Neither `mv -n` nor `cp -n` reports declining, both exit zero and do
-nothing, so what is left under the hidden name afterwards is the evidence that
-the name it was aimed at was taken.
+When the link cannot be made -- another volume, a filesystem without hard
+links, or a host that refuses -- the PDF is copied into the output folder
+under a hidden name and claimed from there. Which of those it was is decided
+by asking whether the output name is taken, not by reading the refusal: taken
+means publication stops, and free means the refusal was about the link. Only
+then, and only for a name just found free, does a rename stand in, because
+otherwise publishing to a FAT-formatted drive or some network shares would be
+impossible. That leaves `mv`'s own check-then-rename window on those volumes,
+which is stated rather than closed: there is no exclusive-create rename to
+reach from a shell.
 
-Hard links are not supported everywhere — FAT-formatted drives and some
-network shares refuse them — so the fallback is a rename within one directory,
-which is atomic wherever it works at all. `/bin/ln` also links *into* a
-directory rather than refusing one, so a folder standing at the output path is
-still caught by the check that follows rather than by the claim.
+"Is the name taken" is one question with one answer: `test -e X -o -L X`. `-e`
+follows a symbolic link and reports on its target, so a link whose target is
+gone reads as nothing at all -- measured, and `mv` replaces such a link
+without complaint while `ln` refuses it. The same question decides the output
+filename, so a name occupied that way is stepped around rather than collided
+with.
+
+The staging copy is this run's own or it is not used. The name is checked
+before anything is written to it and a name that is taken stops publication
+rather than being borrowed: a file that happened to be under it, of the same
+size, was otherwise adopted and its unrelated bytes published. What remains is
+a race against a deliberate writer in the user's own folder, which the nonce
+in the name makes an adversarial act rather than an accident.
 
 What is at the output path is then checked as a regular file with something in
-it, and only then are the staging file and the workspace file let go: a failed
-check still has a finished PDF to give back. `test -s` alone passes for a
-directory — measured, and it is how a PDF that `mv` had pushed inside a folder
-standing at the output path was reported as published.
+it, and only then is anything let go. `test -s` alone passes for a directory --
+measured, and it is how a PDF that `mv` had pushed inside a folder standing at
+the output path was reported as published. `ln` puts the file inside such a
+folder too rather than refusing it, so the check after the claim is what
+catches that, and the link it left behind is this run's own to remove.
 
-Where the finished PDF is, when publication fails, is asked rather than
-assumed: the staging file, then the file inside a folder at the output path,
-in the order the bytes travel. Naming the workspace was wrong as soon as a
-rename had emptied it. When none of them is there, the message says where the
-PDF was headed rather than naming a file that is not.
-
-If removing the staging link is refused, a hidden second name for the
-published PDF stays in the folder. It is a link rather than a copy, so it
-costs no space, and nothing can mistake it for the document.
+Recovery does not search. The finished PDF is in the workspace by
+construction, so it is set aside from there. It used to be worked out by
+asking whether files existed, through a check that answers "no" when it cannot
+tell -- so a refused check deleted the only copy and then reported the PDF
+missing.
 
 Verified to fail: a transfer that stops part way leaving an incomplete file at
-the final name; a staged file whose size does not match the source being
-reported as published; a name another run took being overwritten; a PDF pushed
-inside a folder being reported as published; a recovery message naming a file
-that is not there; the staging file being left behind after a failure; a host
-that cannot make links failing to publish at all.
+the final name; a copy whose size does not match the source being reported as
+published; a name another run took being overwritten, whether it is taken
+before the claim or while the copy is being made; a link whose target is gone
+being replaced; a staging name this run did not create being adopted or
+removed; a PDF pushed inside a folder being reported as published; a
+recovery that deletes or disowns the finished PDF because a check could not
+answer.
 
 ## How many pages one command can carry
 
@@ -301,6 +328,13 @@ This is a bound on one component, not on a path. `PATH_MAX` is 1024, and a
 folder path already near it plus any legal name will exceed it; that is stated
 rather than guarded, because the folder is the user's and truncating their
 path is not this action's to do.
+
+Where the extension ends is read off the end of the name rather than matched
+across the whole path. A pattern could not reach it past a newline -- `.` does
+not match one -- so a folder with a newline in its name, which this action
+handles everywhere else and the integration suite exercises deliberately,
+could not have a second PDF numbered inside it. Two files of one stem, such as
+`photo.jpg` and `photo.png`, need that numbering within a single run.
 
 ## What must not be ignored
 
@@ -590,7 +624,18 @@ right — every page, in order — but a job of four thousand pages becomes four
 thousand invocations of pdfcpu. The test now says a command carries more than
 one page.
 
-The run after the six-defect audit found eight more of the same kind: the
+The run after the five-defect audit found five more, and one piece of dead
+code: that a rename which was refused has to say which of the two steps it
+was; that a staging file this run did not create is neither adopted nor
+removed; that the copy this run did make is cleared away when the claim after
+it fails; that among two spellings of one file the name it is stored under is
+the one used; and that the fake answering /bin/test had been answering a
+question that was not asked -- it matched any five-word test, so a mutated
+flag still got the right answer. The dead code was half of a guard: a claim is
+made from the workspace file or from the staging copy, never from the output
+name, so comparing it against the output name decided nothing.
+
+The run before that found eight of the same kind: the
 catch that turns an unmeasurable file into "unknown" rather than into nothing;
 the two operations that can fail while taking the output name, which have to
 say which one it was; that the staging file is the only copy the run has once
@@ -701,7 +746,10 @@ macOS itself answers and so cannot be settled by a fake:
 - a directory named `Photos.app`, which `/bin/test -d` calls a directory and
   `NSWorkspace` calls a package: refused, with nothing written inside it;
 - a photograph selected by hand alongside its folder, where the walk would
-  pass over it: a hidden image must still reach the PDF.
+  pass over it: a hidden image must still reach the PDF;
+- one photograph selected under two spellings, `A.png` and `a.png`, on the
+  case-insensitive filesystem a Mac comes formatted with: one page, and
+  nothing refused.
 
 The third takes the finished PDF from the workspace to the output folder:
 
@@ -712,6 +760,9 @@ The third takes the finished PDF from the workspace to the output folder:
   copies rather than renames — the case no fake can reach. Skipped, loudly,
   where a test volume cannot be attached, because that is the machine's
   decision rather than the code's;
+- a link whose target is gone, standing at the name the PDF was going to
+  have: the link must survive and the PDF must be numbered past it, because
+  `-e` calls such a link absent and a rename replaces it;
 - an output folder `chmod 555` denies, where every way of getting the PDF in
   there fails: the message must name a recovery path that exists and holds a
   PDF that passes strict validation, and nothing may be left at the output
@@ -765,6 +816,12 @@ to fail when the fix is reverted:
 | A completed count passing the total it was given | progress unit tests |
 | A valid source name producing an output name the filesystem refuses | filename budget tests |
 | Two long numeric filenames sorting as equal | comparator tests |
+| A finished PDF deleted because a check could not answer | ownership tests |
+| A staging file this run did not create being adopted or removed | ownership tests |
+| A refused claim turning into an operation that replaces | claim tests |
+| A link whose target is gone being replaced | entry test + integration |
+| One photograph converted twice because a Mac is case-insensitive | identity tests + integration |
+| A newline in a folder name stopping the output numbering | naming tests + integration |
 | Tests that stop catching bugs | mutation testing with a break threshold |
 
 ## Acceptance boundary

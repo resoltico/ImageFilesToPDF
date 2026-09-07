@@ -10,14 +10,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { imagesInFolder, isHidden } = require("../../../src/runtime/expand.js");
-
-function treeOf(shape, kinds = {}) {
-    return {
-        entries: (path) => shape[path] ?? null,
-        kind: (path) => kinds[path] ?? (shape[path] ? "directory" : "file"),
-        standardize: (path) => path
-    };
-}
+const { treeOf } = require("./fake-tree.cjs");
 
 test("images are found through every subfolder, in one list", () => {
     const tree = treeOf({
@@ -86,11 +79,26 @@ test("a folder holding nothing to convert says that, not nothing", () => {
 });
 
 test("a file already taken is not taken again", () => {
-    // Selecting a folder and something inside it, or a folder twice.
+    // Selecting a folder and something inside it, or a folder twice. What is
+    // already taken is a file, not a name: the ledger holds what the
+    // filesystem says each one is.
     const tree = treeOf({ "/t": ["a.png", "b.png"] });
 
     assert.deepEqual(
         imagesInFolder(tree, "/t", new Set(["/t/a.png"])).found,
+        ["/t/b.png"]
+    );
+});
+
+test("a file taken under another of its names is not taken again", () => {
+    const tree = treeOf(
+        { "/t": ["A.png", "b.png"] },
+        {},
+        { "/t/A.png": "16777232:99" }
+    );
+
+    assert.deepEqual(
+        imagesInFolder(tree, "/t", new Set(["16777232:99"])).found,
         ["/t/b.png"]
     );
 });
@@ -100,9 +108,13 @@ test("the walk records what it took, so the next folder does not take it again",
     // each has to see what the ones before it found.
     const taken = new Set();
 
-    imagesInFolder(treeOf({ "/t": ["a.png"] }), "/t", taken);
+    imagesInFolder(
+        treeOf({ "/t": ["a.png"] }, {}, { "/t/a.png": "16777232:7" }),
+        "/t",
+        taken
+    );
 
-    assert.deepEqual([...taken], ["/t/a.png"]);
+    assert.deepEqual([...taken], ["16777232:7"], "the file, not the name");
 });
 
 test("a dot-prefixed name is hidden, and only at the front", () => {

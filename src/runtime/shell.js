@@ -41,14 +41,32 @@ function readTextFile(app, path) {
  * through runArgv: that would build a described Error, complete with a
  * summarised command, for every probe that simply returns false.
  */
-function testPath(app, flag, target) {
+function asks(app, argumentsList) {
     try {
-        app.doShellScript(shellJoin([TEST, flag, target]));
+        app.doShellScript(shellJoin([TEST, ...argumentsList]));
 
         return true;
     } catch {
         return false;
     }
+}
+
+function testPath(app, flag, target) {
+    return asks(app, [flag, target]);
+}
+
+/*
+ * Whether there is any directory entry at this path -- which is the question
+ * an output name poses, and not the one -e answers.
+ *
+ * -e follows a symbolic link and reports on its target, so a link whose
+ * target is gone reads as nothing at all. Something is still there: measured,
+ * mv replaces such a link without complaint while ln refuses the name. -L
+ * asks about the entry itself, and the two together cover files, folders and
+ * links alike, in one call.
+ */
+function pathIsTaken(app, path) {
+    return asks(app, ["-e", path, "-o", "-L", path]);
 }
 
 function isRegularFile(app, path) {
@@ -114,6 +132,7 @@ module.exports = {
     isDirectory,
     isExecutable,
     fileExists,
+    pathIsTaken,
     verifyFileWritten,
     removeFile
 };

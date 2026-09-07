@@ -49,6 +49,21 @@ function setupAnswer(host, command) {
     return undefined;
 }
 
+/*
+ * What a test has arranged to happen instead. A function answers differently
+ * as the run goes on, which is how a name becomes occupied while a copy is
+ * still being made.
+ */
+function injectedAnswer(failures, command) {
+    for (const [needle, result] of failures) {
+        if (command.includes(needle)) {
+            return typeof result === "function" ? result(command) : result;
+        }
+    }
+
+    return undefined;
+}
+
 function dialogSurface(host) {
     return {
         displayDialog(message, options) {
@@ -72,7 +87,10 @@ function createFakeHost(settings = {}) {
         settings.files ?? [],
         settings.executables ?? INSTALLED_TOOLS,
         settings.emptyFiles ?? [],
-        settings.directories ?? []
+        {
+            directories: settings.directories ?? [],
+            danglingLinks: settings.danglingLinks ?? []
+        }
     );
     const failures = settings.failures ?? [];
     const host = {
@@ -93,14 +111,14 @@ function createFakeHost(settings = {}) {
                 return answered;
             }
 
-            for (const [needle, result] of failures) {
-                if (command.includes(needle)) {
-                    if (result instanceof Error) {
-                        throw result;
-                    }
+            const injected = injectedAnswer(failures, command);
 
-                    return result;
+            if (injected !== undefined) {
+                if (injected instanceof Error) {
+                    throw injected;
                 }
+
+                return injected;
             }
 
             return dispatch(fs, parseArgv(command), command, host);

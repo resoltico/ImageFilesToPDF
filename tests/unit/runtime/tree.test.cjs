@@ -62,11 +62,31 @@ test("a folder, a file, a package and a link are told apart", () => {
     const { objc, ns, ref } = bridgeOf(world);
     const tree = createTree(objc, ns, ref);
 
-    assert.equal(tree.kind("/t"), "directory");
-    assert.equal(tree.kind("/t/a.png"), "file");
-    assert.equal(tree.kind("/t/app"), "package");
-    assert.equal(tree.kind("/t/link"), "other");
-    assert.equal(tree.kind("/t/gone"), "missing");
+    assert.equal(tree.inspect("/t").kind, "directory");
+    assert.equal(tree.inspect("/t/a.png").kind, "file");
+    assert.equal(tree.inspect("/t/app").kind, "package");
+    assert.equal(tree.inspect("/t/link").kind, "other");
+    assert.equal(tree.inspect("/t/gone").kind, "missing");
+});
+
+test("which file a path names comes back with what it is", () => {
+    // Two spellings of one file give the same volume and the same file
+    // number, which is how a case-insensitive Mac says they are one
+    // photograph. It comes out of the attributes already being read.
+    const world = {
+        attributes: {
+            "/t/A.png": {
+                NSFileType: "NSFileTypeRegular",
+                NSFileSystemNumber: 16777232,
+                NSFileSystemFileNumber: 308723978
+            }
+        }
+    };
+    const { objc, ns, ref } = bridgeOf(world);
+    const tree = createTree(objc, ns, ref);
+
+    assert.equal(tree.inspect("/t/A.png").identity, "16777232:308723978");
+    assert.equal(tree.inspect("/t/gone.png").identity, "", "nothing to identify");
 });
 
 test("a package is only asked about once it is known to be a folder", () => {

@@ -8,7 +8,7 @@ const {
     stagedPdfPath
 } = require("../core/naming.js");
 const { createAndValidatePdf } = require("./staging.js");
-const { fileExists, removeFile } = require("./shell.js");
+const { pathIsTaken, removeFile } = require("./shell.js");
 const { publishPdf } = require("./publish.js");
 const { nonce } = require("./workspace.js");
 const { preparePage, preparePages, withImageName } = require("./pages.js");
@@ -18,9 +18,11 @@ const { preparePage, preparePages, withImageName } = require("./pages.js");
  */
 
 function resolveOutputPaths(job, outputFolder, name) {
+    // Any entry at all counts as taken, including a link whose target is
+    // gone: something is there, and the name cannot be created over it.
     const finalPath = nextUniquePath(
         outputFolder + name,
-        (candidate) => fileExists(job.app, candidate)
+        (candidate) => pathIsTaken(job.app, candidate)
     );
 
     return { finalPath, stagedPath: stagedPdfPath(job.workspace, nonce()) };

@@ -115,10 +115,11 @@ function remove(state, rest) {
     return "";
 }
 
-function createFilesystem(seed, executables, empty, directories = []) {
+function createFilesystem(seed, executables, empty, settings = {}) {
     const state = {
         files: new Set(seed),
-        directories: new Set(directories),
+        directories: new Set(settings.directories ?? []),
+        danglingLinks: new Set(settings.danglingLinks ?? []),
         pages: new Map(),
         runnable: new Set(executables),
         emptyFiles: new Set(empty),

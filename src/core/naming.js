@@ -64,6 +64,27 @@ function outputNameForSeparate(record, timestamp) {
     return `${boundedStem(stem, suffix)}${suffix}`;
 }
 
+const EXTENSION = ".pdf";
+
+/*
+ * The name without its extension.
+ *
+ * Read off the end rather than matched. A pattern over the whole path made
+ * the directories part of the question: a folder with a newline in its name
+ * -- which is a legal folder, and which this action handles everywhere else
+ * -- stopped the pattern reaching the extension at all, and a second file of
+ * the same name could not be given its suffix.
+ */
+function stemOf(path) {
+    const tail = path.slice(-EXTENSION.length);
+
+    if (tail.toLowerCase() !== EXTENSION) {
+        throw new Error(`Cannot generate a unique PDF path for: ${path}`);
+    }
+
+    return path.slice(0, -EXTENSION.length);
+}
+
 /*
  * Never overwrite: append _2, _3 and so on until the path is free. The caller
  * supplies the existence predicate so this stays pure.
@@ -73,14 +94,10 @@ function nextUniquePath(initialPath, exists) {
         return initialPath;
     }
 
-    const match = /^(?<stem>.*?)(?<extension>\.pdf)$/iu.exec(initialPath);
-
-    if (!match) {
-        throw new Error(`Cannot generate a unique PDF path for: ${initialPath}`);
-    }
+    const stem = stemOf(initialPath);
 
     for (let suffix = FIRST_SUFFIX; suffix < MAXIMUM_SUFFIX; suffix += 1) {
-        const candidate = `${match.groups.stem}_${suffix}${match.groups.extension}`;
+        const candidate = `${stem}_${suffix}${initialPath.slice(-EXTENSION.length)}`;
 
         if (!exists(candidate)) {
             return candidate;

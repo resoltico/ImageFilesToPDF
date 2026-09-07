@@ -23,6 +23,11 @@ const { isSupportedImage } = require("../core/paths.js");
  * Dot-prefixed entries, packages and links are passed over. A link is not
  * followed because following one is how a walk leaves the folder it was given
  * and how it finds the same file twice.
+ *
+ * What the ledger holds is which file was taken, not which name it was taken
+ * under. A Mac is formatted case-insensitively by default, so /photos/A.jpg
+ * and /photos/a.jpg are one photograph, and a run that compared the spellings
+ * put it in the PDF twice.
  */
 
 const HIDDEN = ".";
@@ -47,26 +52,26 @@ function childrenOf(tree, folder, names) {
  * One entry that is not a folder: an image to take, something to report, or
  * something nobody asked for.
  */
-function consider(path, kind, taken, outcome) {
-    if (kind === "missing") {
+function consider(path, entry, taken, outcome) {
+    if (entry.kind === "missing") {
         outcome.problems.push({ path, reason: UNEXAMINABLE });
 
         return;
     }
 
-    if (kind !== "file" || !isSupportedImage(path)) {
+    if (entry.kind !== "file" || !isSupportedImage(path)) {
         return;
     }
 
-    if (taken.has(path)) {
-        // Another selection already has it. Counted, because a folder whose
-        // images are all already taken is not a folder to complain about.
+    if (taken.has(entry.identity)) {
+        // Another selection already has this file. Counted, because a folder
+        // whose images are all already taken is not one to complain about.
         outcome.skipped += 1;
 
         return;
     }
 
-    taken.add(path);
+    taken.add(entry.identity);
     outcome.found.push(path);
 }
 
@@ -80,12 +85,12 @@ function walk(tree, folder, taken, outcome) {
     }
 
     for (const path of childrenOf(tree, folder, names)) {
-        const kind = tree.kind(path);
+        const entry = tree.inspect(path);
 
-        if (kind === "directory") {
+        if (entry.kind === "directory") {
             walk(tree, path, taken, outcome);
         } else {
-            consider(path, kind, taken, outcome);
+            consider(path, entry, taken, outcome);
         }
     }
 

@@ -81,3 +81,28 @@ test("a stem cut short does not end in a dot or an underscore", () => {
     );
     assert.match(nameFor("a".repeat(300)), /^a+_20260907_010203\.pdf$/u);
 });
+
+test("a newline in the parent folder does not stop the numbering", () => {
+    // The extension is read off the end rather than matched across the whole
+    // path: a pattern could not reach it past a newline, and a folder with
+    // one in its name is a folder this action handles everywhere else.
+    const taken = new Set(["/Scans\n2026/photo.pdf"]);
+
+    assert.equal(
+        nextUniquePath("/Scans\n2026/photo.pdf", (path) => taken.has(path)),
+        "/Scans\n2026/photo_2.pdf"
+    );
+});
+
+test("a name that is not a PDF is refused rather than numbered", () => {
+    assert.throws(
+        () => nextUniquePath("/a/notes.txt", () => true),
+        /Cannot generate a unique PDF path/u
+    );
+});
+
+test("the extension is matched whatever its case", () => {
+    const taken = new Set(["/a/b.PDF"]);
+
+    assert.equal(nextUniquePath("/a/b.PDF", (path) => taken.has(path)), "/a/b_2.PDF");
+});

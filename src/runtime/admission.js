@@ -80,7 +80,9 @@ function admit(app, tree, root, outcome) {
         return;
     }
 
-    if (outcome.taken.has(root.path)) {
+    // Which file, not which spelling: a folder walked before this request
+    // may have taken the same photograph under the name it is stored as.
+    if (outcome.taken.has(root.identity || root.path)) {
         return;
     }
 

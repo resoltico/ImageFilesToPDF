@@ -13,14 +13,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { imagesInFolder } = require("../../../src/runtime/expand.js");
+const { treeOf } = require("./fake-tree.cjs");
 
-function treeOf(shape, kinds = {}) {
-    return {
-        entries: (path) => shape[path] ?? null,
-        kind: (path) => kinds[path] ?? (shape[path] ? "directory" : "file"),
-        standardize: (path) => path
-    };
-}
 test("a subfolder that cannot be read comes back with the images", () => {
     // Its result used to be thrown away, so a folder whose photographs were
     // all in a subfolder nobody had permission to open produced a PDF of

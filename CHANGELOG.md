@@ -4,6 +4,39 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-07
+
+### Fixed
+
+- A finished PDF that could not be saved is never deleted. If the check that
+  looks for a file could not be carried out — a folder the action is not
+  allowed to look in, a system under strain — it answered "there is nothing
+  there", and the recovery that was meant to rescue the PDF removed it and
+  then reported it missing. Nothing is removed now that this run did not put
+  there, and the PDF stays where it was built until it has been confirmed
+  saved somewhere else.
+- Saving to a folder that already holds a file of the same name never replaces
+  it, whatever the reason the name could not be taken. It did in one case: a
+  drive that cannot make the kind of link this uses fell back to an operation
+  that quietly replaces what it finds. A file that appeared at the moment of
+  saving, and a link left pointing at something that has been deleted, are now
+  both recognised as the name being taken.
+- On a drive that cannot make that kind of link, the PDF is no longer saved
+  alongside its own name — the folder is left as it was and the PDF is kept
+  for you instead.
+- A saved PDF always contains your document. There was one way for it not to:
+  the temporary copy the PDF is made through is named for the run that makes
+  it, and if a file of exactly the same size already had that name, it was
+  used instead of the PDF and the PDF was deleted. That name is now checked
+  before anything is written to it.
+- The same photograph selected twice is converted once, however it is spelled.
+  A Mac does not distinguish upper from lower case in filenames as it comes,
+  so selecting a folder together with a file inside it whose name you typed
+  differently put that photograph in the PDF twice.
+- A second PDF is numbered correctly inside a folder whose name contains a
+  line break. Converting two images of the same name — photo.jpg and photo.png
+  — inside such a folder failed instead of producing photo_2.pdf.
+
 ## [1.2.0] - 2026-09-07
 
 ### Added

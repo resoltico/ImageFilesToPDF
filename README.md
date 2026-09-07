@@ -53,8 +53,10 @@ that something is missing. A folder that holds no supported images is reported
 too.
 
 Selecting a folder and a file inside it does not convert that file twice, in
-whichever order they are selected — and a file you select by hand is always
-answered, even when its folder is selected too. A hidden photograph you pick
+whichever order they are selected, and neither does selecting the same
+photograph under two names: a Mac is case-insensitive as it comes, so
+`A.jpg` and `a.jpg` are one file and are converted once. A file you select by
+hand is always answered, even when its folder is selected too. A hidden photograph you pick
 out yourself is converted, though the walk passes over hidden files it finds
 on its own, and a file that cannot be converted still says so. A package
 selected directly — an application, a photo library — is refused rather than
@@ -166,14 +168,18 @@ For every source image, the runtime:
 5. validates the temporary PDF in strict mode;
 6. publishes the PDF without overwriting an existing path.
 
-Publishing is all or nothing. The finished PDF is first moved into the output
-folder under a hidden name of its own — copied instead, and checked, when the
-move is refused or the folder is on another drive — and only then given the
-name you will see, in a single operation that either creates that name or
-leaves it alone. Nothing is ever written to the name of your document, so
-nothing half finished can appear under it, and an existing file is never
-replaced. If it cannot be published at all, the PDF is kept somewhere it will
-survive and the message says where it is.
+Publishing is all or nothing. The output name is claimed in a single
+operation that either creates it or leaves it alone: nothing is ever written
+to the name of your document, so nothing half finished can appear under it,
+and an existing file is never replaced — not a file, not a folder, not even a
+link whose target is gone. When the finished PDF is on the same drive as the
+folder it belongs in, which is the ordinary case, that claim is the whole
+publication and no other file of ours ever appears there. Otherwise it is
+copied in under a hidden name, checked, and claimed from there.
+
+Until the output path has been checked, the finished PDF stays where it was
+built, and this action removes only what it made itself. If publication fails
+the PDF is kept somewhere it will survive and the message says where it is.
 
 The source images are never modified. Temporary work is held in a private
 `mktemp` directory and removed on success or failure.

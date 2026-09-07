@@ -9,14 +9,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { collectImageFiles } = require("../../../src/runtime/admission.js");
 const { createFakeApp } = require("./fake-app.cjs");
-
-function treeOf(shape, kinds = {}) {
-    return {
-        entries: (path) => shape[path] ?? null,
-        kind: (path) => kinds[path] ?? (shape[path] ? "directory" : "file"),
-        standardize: (path) => path
-    };
-}
+const { treeOf } = require("./fake-tree.cjs");
 
 function appWith(directories) {
     const app = createFakeApp();

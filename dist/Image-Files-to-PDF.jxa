@@ -1,5 +1,5 @@
 /*
- * Image Files to PDF 1.2.0
+ * Image Files to PDF 1.2.1
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
@@ -18,7 +18,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.2.0";
+const VERSION = "1.2.1";
 
 /* ===== src/core/executables.js ===== */
 
@@ -795,19 +795,27 @@ function outputNameForSeparate(record, timestamp) {
     return `${boundedStem(stem, suffix)}${suffix}`;
 }
 
+const EXTENSION = ".pdf";
+
+function stemOf(path) {
+    const tail = path.slice(-EXTENSION.length);
+
+    if (tail.toLowerCase() !== EXTENSION) {
+        throw new Error(`Cannot generate a unique PDF path for: ${path}`);
+    }
+
+    return path.slice(0, -EXTENSION.length);
+}
+
 function nextUniquePath(initialPath, exists) {
     if (!exists(initialPath)) {
         return initialPath;
     }
 
-    const match = /^(?<stem>.*?)(?<extension>\.pdf)$/iu.exec(initialPath);
-
-    if (!match) {
-        throw new Error(`Cannot generate a unique PDF path for: ${initialPath}`);
-    }
+    const stem = stemOf(initialPath);
 
     for (let suffix = FIRST_SUFFIX; suffix < MAXIMUM_SUFFIX; suffix += 1) {
-        const candidate = `${match.groups.stem}_${suffix}${match.groups.extension}`;
+        const candidate = `${stem}_${suffix}${initialPath.slice(-EXTENSION.length)}`;
 
         if (!exists(candidate)) {
             return candidate;
@@ -1033,14 +1041,22 @@ function readTextFile(app, path) {
     return runArgv(app, [CAT, path], "reading headless configuration");
 }
 
-function testPath(app, flag, target) {
+function asks(app, argumentsList) {
     try {
-        app.doShellScript(shellJoin([TEST, flag, target]));
+        app.doShellScript(shellJoin([TEST, ...argumentsList]));
 
         return true;
     } catch {
         return false;
     }
+}
+
+function testPath(app, flag, target) {
+    return asks(app, [flag, target]);
+}
+
+function pathIsTaken(app, path) {
+    return asks(app, ["-e", path, "-o", "-L", path]);
 }
 
 function isRegularFile(app, path) {
@@ -1927,6 +1943,12 @@ function collectInvocation(app, input, headless) {
 const DIRECTORY = "NSFileTypeDirectory";
 const REGULAR = "NSFileTypeRegular";
 
+function identityFrom(attributes) {
+    return attributes
+        ? `${attributes.NSFileSystemNumber}:${attributes.NSFileSystemFileNumber}`
+        : "";
+}
+
 function kindFrom(attributes, workspace, path, ns) {
     if (!attributes) {
         return "missing";
@@ -1955,12 +1977,15 @@ function createTree(objc, ns, ref) {
     const workspace = ns.NSWorkspace.sharedWorkspace;
 
     return {
-        kind(path) {
+        inspect(path) {
             const attributes = objc.deepUnwrap(
                 manager.attributesOfItemAtPathError(ns(path), ref())
             );
 
-            return kindFrom(attributes, workspace, path, ns);
+            return {
+                kind: kindFrom(attributes, workspace, path, ns),
+                identity: identityFrom(attributes)
+            };
         },
 
         entries(path) {
@@ -1992,24 +2017,24 @@ function childrenOf(tree, folder, names) {
         .map((name) => tree.standardize(`${folder}/${name}`));
 }
 
-function consider(path, kind, taken, outcome) {
-    if (kind === "missing") {
+function consider(path, entry, taken, outcome) {
+    if (entry.kind === "missing") {
         outcome.problems.push({ path, reason: UNEXAMINABLE });
 
         return;
     }
 
-    if (kind !== "file" || !isSupportedImage(path)) {
+    if (entry.kind !== "file" || !isSupportedImage(path)) {
         return;
     }
 
-    if (taken.has(path)) {
+    if (taken.has(entry.identity)) {
         outcome.skipped += 1;
 
         return;
     }
 
-    taken.add(path);
+    taken.add(entry.identity);
     outcome.found.push(path);
 }
 
@@ -2023,12 +2048,12 @@ function walk(tree, folder, taken, outcome) {
     }
 
     for (const path of childrenOf(tree, folder, names)) {
-        const kind = tree.kind(path);
+        const entry = tree.inspect(path);
 
-        if (kind === "directory") {
+        if (entry.kind === "directory") {
             walk(tree, path, taken, outcome);
         } else {
-            consider(path, kind, taken, outcome);
+            consider(path, entry, taken, outcome);
         }
     }
 
@@ -2088,8 +2113,8 @@ function describeUnresolved(item) {
 /* ===== src/runtime/selection.js ===== */
 
 
-function kindOf(tree, path) {
-    return tree ? tree.kind(path) : null;
+function inspect(tree, path) {
+    return tree ? tree.inspect(path) : { kind: null, identity: "" };
 }
 
 function reportUnresolved(item, rejected) {
@@ -2100,28 +2125,41 @@ function reportUnresolved(item, rejected) {
     }
 }
 
-function remember(roots, tree, path) {
-    const identity = tree ? tree.standardize(path) : path;
+function remember(found, tree, path) {
+    const standardized = tree ? tree.standardize(path) : path;
 
-    if (!roots.has(identity)) {
-        roots.set(identity, { path: identity, kind: kindOf(tree, identity) });
+    if (found.asked.has(standardized)) {
+        return;
+    }
+
+    found.asked.add(standardized);
+
+    const entry = inspect(tree, standardized);
+    const key = entry.identity || standardized;
+
+    if (!found.roots.has(key)) {
+        found.roots.set(key, {
+            path: standardized,
+            kind: entry.kind,
+            identity: entry.identity
+        });
     }
 }
 
 function resolve(tree, items, rejected) {
-    const roots = new Map();
+    const found = { roots: new Map(), asked: new Set() };
 
     for (const item of items) {
         const path = inputItemToPosixPath(item);
 
         if (path) {
-            remember(roots, tree, path);
+            remember(found, tree, path);
         } else {
             reportUnresolved(item, rejected);
         }
     }
 
-    return [...roots.values()];
+    return [...found.roots.values()];
 }
 
 function isFolder(root) {
@@ -2183,7 +2221,7 @@ function admit(app, tree, root, outcome) {
         return;
     }
 
-    if (outcome.taken.has(root.path)) {
+    if (outcome.taken.has(root.identity || root.path)) {
         return;
     }
 
@@ -2546,14 +2584,7 @@ function setAside(app, stagedPath) {
     }
 }
 
-function whereItIs(app, paths) {
-    const inside = `${paths.final}/${basename(paths.incoming)}`;
-    const candidates = [paths.staged, paths.incoming, inside];
-
-    return candidates.find((path) => fileExists(app, path)) ?? "";
-}
-
-/* ===== src/runtime/transfer.js ===== */
+/* ===== src/runtime/output-copy.js ===== */
 
 
 const SIZE_UNKNOWN = -1;
@@ -2564,11 +2595,7 @@ function stagingPath(finalPath) {
 
 function fileSize(app, path) {
     try {
-        const text = runArgv(
-            app,
-            [STAT, "-f%z", path],
-            "measuring the PDF"
-        );
+        const text = runArgv(app, [STAT, "-f%z", path], "measuring the PDF");
         const value = parseInt(String(text).trim(), 10);
 
         return isFinite(value) ? value : SIZE_UNKNOWN;
@@ -2577,28 +2604,34 @@ function fileSize(app, path) {
     }
 }
 
-function stageBeside(app, from, incoming, expected) {
-    const refusals = [];
-
-    for (const [tool, label] of [[MV, "moving"], [CP, "copying"]]) {
-        try {
-            runArgv(app, [tool, "-n", from, incoming], `${label} the PDF into the output folder`);
-
-            const written = fileSize(app, incoming);
-
-            return expected !== SIZE_UNKNOWN && written === expected
-                ? { published: true, reasons: [] }
-                : {
-                    published: false,
-                    reasons: [`the staged file is ${written} bytes where ` +
-                        `${expected} were expected`]
-                };
-        } catch (error) {
-            refusals.push(errorMessage(error));
-        }
+function copyBeside(app, staged, incoming) {
+    if (pathIsTaken(app, incoming)) {
+        return { made: false, reasons: ["the staging name was already taken"] };
     }
 
-    return { published: false, reasons: refusals };
+    try {
+        runArgv(app, [CP, "-n", staged, incoming], "copying the PDF into the output folder");
+    } catch (error) {
+        return { made: false, reasons: [errorMessage(error)] };
+    }
+
+    const expected = fileSize(app, staged);
+    const written = fileSize(app, incoming);
+
+    return expected !== SIZE_UNKNOWN && written === expected
+        ? { made: true, reasons: [] }
+        : {
+            made: true,
+            reasons: [`the staged file is ${written} bytes where ` +
+                `${expected} were expected`]
+        };
+}
+
+/* ===== src/runtime/transfer.js ===== */
+
+
+function claim(app, from, finalPath) {
+    runArgv(app, [LN, from, finalPath], "claiming the output name");
 }
 
 function renameOnto(app, incoming, finalPath, refused) {
@@ -2610,28 +2643,52 @@ function renameOnto(app, incoming, finalPath, refused) {
 
     return fileExists(app, incoming)
         ? { published: false, reasons: [refused, "the output path was taken"] }
-        : { published: true, reasons: [] };
+        : { published: true, reasons: [], claimed: incoming };
 }
 
-function claim(app, incoming, finalPath) {
+function claimFromStaging(app, incoming, finalPath) {
     try {
-        runArgv(app, [LN, incoming, finalPath], "claiming the output name");
+        claim(app, incoming, finalPath);
 
-        return { published: true, reasons: [] };
+        return { published: true, reasons: [], claimed: incoming };
     } catch (error) {
-        return renameOnto(app, incoming, finalPath, errorMessage(error));
+        const refused = errorMessage(error);
+
+        return pathIsTaken(app, finalPath)
+            ? { published: false, reasons: [refused, "the output path was taken"] }
+            : renameOnto(app, incoming, finalPath, refused);
     }
 }
 
-function deliver(app, stagedPath, incoming, finalPath) {
-    const staging = stageBeside(
-        app,
-        stagedPath,
-        incoming,
-        fileSize(app, stagedPath)
-    );
+function throughStaging(app, paths, refused) {
+    const copied = copyBeside(app, paths.staged, paths.incoming);
 
-    return staging.published ? claim(app, incoming, finalPath) : staging;
+    if (copied.reasons.length > 0) {
+        return {
+            published: false,
+            reasons: [refused, ...copied.reasons],
+            staged: copied.made
+        };
+    }
+
+    return {
+        ...claimFromStaging(app, paths.incoming, paths.final),
+        staged: copied.made
+    };
+}
+
+function deliver(app, paths) {
+    try {
+        claim(app, paths.staged, paths.final);
+
+        return { published: true, reasons: [], claimed: paths.staged };
+    } catch (error) {
+        const refused = errorMessage(error);
+
+        return pathIsTaken(app, paths.final)
+            ? { published: false, reasons: [refused, "the output path was taken"] }
+            : throughStaging(app, paths, refused);
+    }
 }
 
 /* ===== src/runtime/publish.js ===== */
@@ -2645,44 +2702,41 @@ function describeFailure(reasons, whereabouts) {
     ].join("\n\n");
 }
 
-function statement(job, paths, held) {
-    if (!held) {
-        return `The finished PDF was last seen on its way here:\n\n${paths.final}`;
+function clearAway(job, paths, outcome) {
+    if (outcome.staged) {
+        removeFile(job.app, paths.incoming);
     }
 
-    const recovered = setAside(job.app, held);
+    if (outcome.claimed) {
+        removeFile(job.app, `${paths.final}/${basename(outcome.claimed)}`);
+    }
+}
+
+function keep(job, paths, outcome) {
+    clearAway(job, paths, outcome);
+
+    const recovered = setAside(job.app, paths.staged);
 
     if (recovered !== paths.staged) {
         job.unpublished.delete(paths.staged);
     }
 
-    return `The finished PDF has been kept here:\n\n${recovered}`;
+    return new Error(describeFailure(
+        outcome.reasons,
+        `The finished PDF has been kept here:\n\n${recovered}`
+    ));
 }
 
-function keep(job, paths, reasons) {
-    const held = whereItIs(job.app, paths);
-
-    if (held !== paths.incoming) {
-        removeFile(job.app, paths.incoming);
-    }
-
-    if (held !== paths.staged) {
-        job.unpublished.delete(paths.staged);
-    }
-
-    return new Error(describeFailure(reasons, statement(job, paths, held)));
-}
-
-function confirm(job, paths) {
+function confirm(job, paths, outcome) {
     try {
         verifyFileWritten(job.app, paths.final, "output PDF");
     } catch (error) {
-        throw keep(job, paths, [errorMessage(error)]);
+        throw keep(job, paths, { ...outcome, reasons: [errorMessage(error)] });
     }
 
     job.unpublished.delete(paths.staged);
     job.progress.finished("Saved");
-    removeFile(job.app, paths.incoming);
+    clearAway(job, paths, outcome);
     removeFile(job.app, paths.staged);
 }
 
@@ -2697,19 +2751,19 @@ function publishPdf(job, stagedPath, finalPath) {
     job.progress.phase("Saving PDF");
     job.unpublished.add(stagedPath);
 
-    if (fileExists(app, finalPath)) {
-        throw keep(job, paths, [
-            `The output path became occupied before publication:\n\n${finalPath}`
-        ]);
+    if (pathIsTaken(app, finalPath)) {
+        throw keep(job, paths, {
+            reasons: [`The output path became occupied before publication:\n\n${finalPath}`]
+        });
     }
 
-    const outcome = deliver(app, stagedPath, paths.incoming, finalPath);
+    const outcome = deliver(app, paths);
 
     if (!outcome.published) {
-        throw keep(job, paths, outcome.reasons);
+        throw keep(job, paths, outcome);
     }
 
-    confirm(job, paths);
+    confirm(job, paths, outcome);
 }
 
 /* ===== src/runtime/staging.js ===== */
@@ -2775,7 +2829,7 @@ function createAndValidatePdf(job, stagedPath, pagePaths) {
 function resolveOutputPaths(job, outputFolder, name) {
     const finalPath = nextUniquePath(
         outputFolder + name,
-        (candidate) => fileExists(job.app, candidate)
+        (candidate) => pathIsTaken(job.app, candidate)
     );
 
     return { finalPath, stagedPath: stagedPdfPath(job.workspace, nonce()) };

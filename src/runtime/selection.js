@@ -12,6 +12,12 @@ const { describeUnresolved } = require("./reasons.js");
  * the other way round made the folder report that it held nothing to convert:
  * the answer depended on the order Finder happened to hand the selection over.
  *
+ * Two names for one thing is also what a Mac's own filesystem hands over. It
+ * is case-insensitive as formatted, so /photos/A.jpg and /photos/a.jpg are
+ * one photograph -- measured, the same volume and the same file number -- and
+ * standardizing the spelling does not make them one selection. What the
+ * filesystem says the file is does.
+ *
  * What each selected path is was asked of the shell, too, which cannot tell a
  * package from a folder. An .app or a .photoslibrary answered "directory", so
  * the walk went inside the bundle and the PDFs were written in there.
@@ -29,13 +35,14 @@ const { describeUnresolved } = require("./reasons.js");
  */
 
 /*
- * What the path is, as the tree that would walk it sees it. Without a tree
- * nothing is walked and nothing has to be told from a package, so there is
- * nothing to ask: such a folder is turned away by the same rejection that
- * turns away everything else this action cannot convert.
+ * What the path is and which file it is, as the tree that would walk it sees
+ * them. Without a tree nothing is walked and nothing has to be told from a
+ * package, so there is nothing to ask: such a folder is turned away by the
+ * same rejection that turns away everything else this action cannot convert,
+ * and a path is the only identity there is.
  */
-function kindOf(tree, path) {
-    return tree ? tree.kind(path) : null;
+function inspect(tree, path) {
+    return tree ? tree.inspect(path) : { kind: null, identity: "" };
 }
 
 function reportUnresolved(item, rejected) {
@@ -47,31 +54,49 @@ function reportUnresolved(item, rejected) {
 }
 
 /*
- * Standardized, so that /Trip, /Trip/ and /Trip/Berlin/.. are one selection
- * rather than three.
+ * Standardized, so that /Trip, /Trip/ and /Trip/Berlin/.. are one path rather
+ * than three, and then keyed by the file that path names -- falling back to
+ * the path itself where the filesystem cannot say, which is where there is no
+ * file to convert anyway.
  */
-function remember(roots, tree, path) {
-    const identity = tree ? tree.standardize(path) : path;
+function remember(found, tree, path) {
+    const standardized = tree ? tree.standardize(path) : path;
 
-    if (!roots.has(identity)) {
-        roots.set(identity, { path: identity, kind: kindOf(tree, identity) });
+    // The same spelling twice is the same question twice, and asking the tree
+    // is asking Foundation. Two spellings still have to be asked about
+    // separately: that is how they turn out to be one file.
+    if (found.asked.has(standardized)) {
+        return;
+    }
+
+    found.asked.add(standardized);
+
+    const entry = inspect(tree, standardized);
+    const key = entry.identity || standardized;
+
+    if (!found.roots.has(key)) {
+        found.roots.set(key, {
+            path: standardized,
+            kind: entry.kind,
+            identity: entry.identity
+        });
     }
 }
 
 function resolve(tree, items, rejected) {
-    const roots = new Map();
+    const found = { roots: new Map(), asked: new Set() };
 
     for (const item of items) {
         const path = inputItemToPosixPath(item);
 
         if (path) {
-            remember(roots, tree, path);
+            remember(found, tree, path);
         } else {
             reportUnresolved(item, rejected);
         }
     }
 
-    return [...roots.values()];
+    return [...found.roots.values()];
 }
 
 function isFolder(root) {

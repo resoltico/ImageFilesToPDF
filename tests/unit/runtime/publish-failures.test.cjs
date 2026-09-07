@@ -5,8 +5,8 @@
  *
  * Neither mv -n nor cp -n reports declining: both exit zero and do nothing.
  * A copy is not atomic either, so a file at the destination is not evidence
- * that it holds our PDF. What is left under the staging name, and what the
- * sizes say, is what settles it.
+ * that it holds our PDF. What the sizes say, and what is left under the
+ * staging name, is what settles it.
  */
 
 const assert = require("node:assert/strict");
@@ -16,7 +16,7 @@ const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob } = require("./fake-job.cjs");
 
 const DENIED = "Operation not permitted";
-const STAGED_MOVE = "mv' '-n' '/a/p.pdf'";
+const DIRECT_CLAIM = "ln' '/a/p.pdf'";
 
 function refusing(...tools) {
     return tools.map((tool) => [tool, new Error(DENIED)]);
@@ -37,29 +37,46 @@ test("an occupied destination is refused, and the PDF is set aside", () => {
         return true;
     });
     assert.equal(
-        host.commands.filter((command) => command.includes("/bin/cp")).length,
+        host.commands.filter((command) => command.includes("/bin/ln")).length,
         0,
-        "nothing was copied"
-    );
-    assert.ok(!host.files.has("/a/p.pdf"), "it is not where it was built");
-    assert.equal(
-        [...host.files].filter((file) => file.includes("recovered")).length,
-        1,
-        "it is in a recovery folder"
+        "nothing was attempted against the name"
     );
     assert.equal(job.unpublished.size, 0, "so the job no longer owns it");
 });
 
-test("when the PDF cannot be got into the folder at all, both refusals are named", () => {
-    // The mv message is what made the original failure diagnosable at all,
-    // and the cp message is what says the fallback was tried.
+test("a link whose target is gone still occupies the name", () => {
+    // -e follows the link and finds nothing, so the name reads as free while
+    // something is plainly there: measured, mv replaces such a link without
+    // complaint. The entry is what the output name is about.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
-        failures: refusing(STAGED_MOVE, "/bin/cp")
+        danglingLinks: ["/a/out.pdf"]
+    });
+
+    assert.throws(
+        () => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"),
+        /became occupied before publication/u
+    );
+    // Setting the PDF aside uses mv too, so what matters is that nothing
+    // was aimed at the name.
+    assert.deepEqual(
+        host.commands.filter((command) =>
+            (/'\/bin\/(?:mv|cp|ln)'/u).test(command) && command.includes("'/a/out.pdf'")),
+        [],
+        "nothing was renamed or linked over it"
+    );
+});
+
+test("when the PDF cannot be got into the folder at all, every refusal is named", () => {
+    // The link message is what made the original failure diagnosable, and the
+    // copy message is what says the fallback was tried.
+    const host = createFakeHost({
+        files: ["/a/p.pdf"],
+        failures: refusing("/bin/ln", "/bin/cp")
     });
 
     assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /moving the PDF into the output folder/u);
+        assert.match(error.message, /claiming the output name/u);
         assert.match(error.message, /copying the PDF into the output folder/u);
 
         return true;
@@ -71,7 +88,7 @@ test("a failed publication keeps the finished PDF and says where", () => {
     // completed work over a failure that has nothing to do with its contents.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
-        failures: refusing(STAGED_MOVE, "/bin/cp")
+        failures: refusing("/bin/ln", "/bin/cp")
     });
 
     assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
@@ -103,33 +120,14 @@ test("the failure reads as paragraphs, not as one run-on line", () => {
     // It goes in front of a person in a dialog, under a heading sentence.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
-        failures: refusing(STAGED_MOVE, "/bin/cp")
+        failures: refusing(DIRECT_CLAIM, "/bin/cp")
     });
 
     assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
-        // The heading stands apart from the detail beneath it; run together
-        // they read as one sentence about something else.
         assert.ok(error.message.startsWith(
             "The PDF could not be published without overwriting another file.\n\n"
         ), error.message);
 
         return true;
     });
-});
-
-test("a staging file nothing is holding on to does not stay in the folder", () => {
-    // It is hidden and named for this attempt, so it is this attempt's to
-    // remove -- but only while the finished PDF is somewhere else.
-    const host = createFakeHost({
-        files: ["/a/p.pdf"],
-        failures: [[STAGED_MOVE, new Error(DENIED)], ["/bin/ln", new Error(DENIED)],
-            ["mv' '-n' '/a/.ImageFilesToPDF", new Error(DENIED)]]
-    });
-
-    assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), /could not be published/u);
-    assert.deepEqual(
-        [...host.files].filter((file) => file.includes(".part")),
-        [],
-        "the copy that could not be claimed is gone"
-    );
 });

@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * Measuring a file, which is the whole basis for trusting the staging step.
+ * Measuring a file, which is the whole basis for trusting a copy.
  *
  * A copy is not atomic, so a file at the staging name proves nothing about
  * whether it is complete. Comparing sizes is what settles it -- provided a
@@ -11,11 +11,11 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { publishPdf } = require("../../../src/runtime/publish.js");
-const { fileSize, stageBeside } = require("../../../src/runtime/transfer.js");
+const { fileSize, copyBeside } = require("../../../src/runtime/output-copy.js");
 const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob } = require("./fake-job.cjs");
 
-const STAGED_MOVE = "mv' '-n' '/a/p.pdf'";
+const DIRECT_CLAIM = "ln' '/a/p.pdf'";
 const STAGING_SIZE = "stat' '-f%z' '/a/.ImageFilesToPDF";
 const INCOMING = "/a/.ImageFilesToPDF-test.part";
 
@@ -52,33 +52,24 @@ test("the size is asked for in the one format that yields bytes", () => {
     );
 });
 
-test("an unmeasurable source is never staged successfully", () => {
-    // If the source size is unknown there is nothing to check the staged file
+test("an unmeasurable source is never copied successfully", () => {
+    // If the source size is unknown there is nothing to check the copy
     // against, so it cannot be treated as safely in the folder.
-    const host = createFakeHost({ files: ["/a/p.pdf"] });
-    const outcome = stageBeside(host, "/a/p.pdf", INCOMING, -1);
-
-    assert.equal(outcome.published, false);
-    assert.match(outcome.reasons[0], /-1 were expected/u);
-});
-
-test("neither file being measurable is not a match", () => {
-    // Two unknown sizes are equal to each other. Without the explicit check
-    // for an unknown size, a staged file nobody could measure would pass.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
         failures: [["/usr/bin/stat", new Error("stat: denied")]]
     });
-    const outcome = stageBeside(host, "/a/p.pdf", INCOMING, -1);
+    const outcome = copyBeside(host, "/a/p.pdf", INCOMING);
 
-    assert.equal(outcome.published, false);
+    assert.equal(outcome.made, true, "the copy was made, so it is ours to remove");
+    assert.match(outcome.reasons[0], /-1 were expected/u);
 });
 
-test("a truncated staged file is a failure, not a publication", () => {
-    // Only the staged copy measures short, as a half-written file would.
+test("a truncated copy is a failure, not a publication", () => {
+    // Only the copy measures short, as a half-written file would.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
-        failures: [[STAGED_MOVE, new Error("Operation not permitted")], [STAGING_SIZE, "7"]]
+        failures: [[DIRECT_CLAIM, new Error("Operation not permitted")], [STAGING_SIZE, "7"]]
     });
 
     assert.throws(
@@ -86,35 +77,20 @@ test("a truncated staged file is a failure, not a publication", () => {
         /7 bytes where 1024 were expected/u
     );
     assert.ok(!host.files.has("/a/out.pdf"), "the output name is never reached");
+    assert.deepEqual(
+        [...host.files].filter((file) => file.includes(".part")),
+        [],
+        "and the half-written copy is gone"
+    );
 });
 
-test("a staging attempt that fails names each refusal once", () => {
-    // The message goes in front of a person. Every refusal is worth having,
-    // and nothing else is.
+test("a copy that could not be made says so, and leaves nothing to remove", () => {
     const host = createFakeHost({
         files: ["/a/p.pdf"],
-        failures: [["/bin/mv", new Error("mv refused")], ["/bin/cp", new Error("cp refused")]]
+        failures: [["/bin/cp", new Error("cp: refused")]]
     });
-    const outcome = stageBeside(host, "/a/p.pdf", INCOMING, 1024);
+    const outcome = copyBeside(host, "/a/p.pdf", INCOMING);
 
-    assert.equal(outcome.published, false);
-    assert.equal(outcome.reasons.length, 2, outcome.reasons.join(" / "));
-});
-
-test("a rename that quietly did nothing says so", () => {
-    // mv exiting zero while the staged file is still there is the only signal
-    // that the name it was aimed at was taken.
-    const host = createFakeHost({
-        files: ["/a/p.pdf"],
-        failures: [
-            ["/bin/ln", new Error("ln: File exists")],
-            ["mv' '-n' '/a/.ImageFilesToPDF", ""]
-        ]
-    });
-
-    assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /the output path was taken/u);
-
-        return true;
-    });
+    assert.equal(outcome.made, false);
+    assert.match(outcome.reasons[0], /cp: refused/u);
 });

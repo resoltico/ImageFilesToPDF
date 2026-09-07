@@ -90,6 +90,24 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# A link whose target is gone, standing at the name the PDF was going to have.
+#
+# -e follows the link and reports on the target, so the name reads as free
+# while something is plainly there -- and a rename replaces it without
+# complaint. The entry is what the output name is about.
+# ---------------------------------------------------------------------------
+
+mkdir -p "$WORK/link"
+cp "$WORK/photo.png" "$WORK/link/"
+ln -s /nowhere/gone.pdf "$WORK/link/output_20260907_040404.pdf"
+run 20260907_040404 "$WORK/link/photo.png"
+
+test -L "$WORK/link/output_20260907_040404.pdf" ||
+    fail "the link was replaced instead of stepped around"
+assert_valid_pdf "$WORK/link/output_20260907_040404_2.pdf"
+assert_nothing_left_behind "$WORK/link"
+
+# ---------------------------------------------------------------------------
 # An output folder that cannot be written to. Every way of getting the PDF in
 # there is refused, so the finished PDF is set aside -- and the message has to
 # name somewhere it actually is.

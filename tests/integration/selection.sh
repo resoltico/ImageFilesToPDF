@@ -99,6 +99,21 @@ test "$(pages "$WORK/album/output_20260907_035353.pdf")" = 4 ||
 grep -q '"rejected":\[\]' <<<"$HIDDEN" || fail "nothing should be refused: $HIDDEN"
 
 # ---------------------------------------------------------------------------
+# Two spellings of one file.
+#
+# A Mac is case-insensitive as formatted, so album/a.png names the same
+# photograph as album/A.png. Comparing the spellings put it in the PDF twice.
+# ---------------------------------------------------------------------------
+
+mkdir -p "$WORK/case"
+vips copy "$WORK/blue.svg" "$WORK/case/A.png"
+SPELLINGS=$(run 20260907_060606 "$WORK/case" "$WORK/case/a.png")
+
+test "$(pages "$WORK/case/output_20260907_060606.pdf")" = 1 ||
+    fail "one photograph became $(pages "$WORK/case/output_20260907_060606.pdf") pages: $SPELLINGS"
+grep -q '"rejected":\[\]' <<<"$SPELLINGS" || fail "nothing should be refused: $SPELLINGS"
+
+# ---------------------------------------------------------------------------
 # A package is an .app or a .photoslibrary: a folder as far as the shell is
 # concerned. Asking the shell sent the walk inside the bundle and wrote the
 # PDFs in there.

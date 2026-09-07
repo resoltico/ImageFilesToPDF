@@ -12,14 +12,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { collectImageFiles } = require("../../../src/runtime/admission.js");
 const { createFakeApp } = require("./fake-app.cjs");
-
-function treeOf(shape, kinds = {}) {
-    return {
-        entries: (path) => shape[path] ?? null,
-        kind: (path) => kinds[path] ?? (shape[path] ? "directory" : "file"),
-        standardize: (path) => path.replace(/\/+$/u, "")
-    };
-}
+const { treeOf } = require("./fake-tree.cjs");
 
 function appWith(directories) {
     const app = createFakeApp();
@@ -32,6 +25,39 @@ function appWith(directories) {
 function collect(selection, tree) {
     return collectImageFiles(appWith(["/Trip"]), selection, tree);
 }
+
+test("two spellings of one file are one photograph", () => {
+    // A Mac is case-insensitive as formatted, so /Trip/A.png and /Trip/a.png
+    // are one file -- measured: the same volume and the same file number.
+    // Comparing the spellings put it in the PDF twice.
+    const tree = treeOf(
+        { "/Trip": ["A.png"] },
+        {},
+        { "/Trip/A.png": "16777232:99", "/Trip/a.png": "16777232:99" }
+    );
+
+    for (const selection of [
+        ["/Trip", "/Trip/a.png"],
+        ["/Trip/a.png", "/Trip"],
+        ["/Trip/A.png", "/Trip/a.png"]
+    ]) {
+        const { images, rejected } = collectImageFiles(
+            appWith(["/Trip"]),
+            selection,
+            tree
+        );
+
+        assert.equal(images.length, 1, selection.join(" then "));
+        // The name it is stored under: a folder is walked before any
+        // explicit request, and its own listing gives the real spelling.
+        assert.equal(
+            images[0].path,
+            "/Trip/A.png",
+            `for ${selection.join(" then ")}`
+        );
+        assert.deepEqual(rejected, []);
+    }
+});
 
 test("the same folder under two names is one folder", () => {
     // A trailing separator, or the path Finder gives against the one a
@@ -48,10 +74,13 @@ test("what a selected path is, is asked once", () => {
     const asked = [];
     const tree = {
         entries: (path) => (path === "/Trip" ? ["a.png"] : null),
-        kind: (path) => {
+        inspect: (path) => {
             asked.push(path);
 
-            return path === "/Trip" ? "directory" : "file";
+            return {
+                kind: path === "/Trip" ? "directory" : "file",
+                identity: path
+            };
         },
         standardize: (path) => path.replace(/\/+$/u, "")
     };
