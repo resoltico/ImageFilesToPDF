@@ -29,6 +29,14 @@ test("a job too large for one command is imported in several", () => {
     const imports = host.commands.filter((command) => command.includes("'import'"));
 
     assert.ok(imports.length > 1, `expected several imports, got ${imports.length}`);
+    // Each command is filled, not handed one page at a time. Measuring the
+    // fixed part of the command with every page already in it leaves nothing
+    // of the budget, and a job of four thousand pages becomes four thousand
+    // invocations of pdfcpu -- correct, and minutes of spawning processes.
+    assert.ok(
+        (imports[0].match(/page_/gu) ?? []).length > 1,
+        "a command carrying one page means the budget was measured wrong"
+    );
     assert.equal(
         imports.map((command) => command.split("page_").length - 1)
             .reduce((total, count) => total + count, 0),

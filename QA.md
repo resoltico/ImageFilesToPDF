@@ -449,13 +449,21 @@ and invocation guards were decided the same way, and `describeSetupProblems`
 and `createSeparatePdfs` were run with the mutated field in place to confirm
 that nothing downstream reads it.
 
-A campaign finds two kinds of thing, and only one of them is a defect. The
-last full run found no behaviour this code gets wrong; what it found was three
-correct behaviours that nothing was holding in place — a repository whose name
-ends in `.io` surviving npm's `.git` suffix being stripped, a value that
-merely mentions a file URL not being read as one, and a URL disagreement
-naming which file each value came from. Each is now a test, verified to fail
-against the mutant that exposed it.
+A campaign finds two kinds of thing, and only one of them is a defect. No run
+so far has found behaviour this code gets wrong. What they find is correct
+behaviour that nothing is holding in place — a repository whose name ends in
+`.io` surviving npm's `.git` suffix being stripped, a value that merely
+mentions a file URL not being read as one, a URL disagreement naming which
+file each value came from, the file being prepared counted from one rather
+than zero.
+
+The last run also found a cost rather than a wrongness, which is the same
+thing at a distance: the batching measures the fixed part of the import
+command so it knows how much room is left for pages, and measuring it with
+every page already in it leaves nothing of the budget. The PDF still comes out
+right — every page, in order — but a job of four thousand pages becomes four
+thousand invocations of pdfcpu. The test now says a command carries more than
+one page.
 
 ### Runner
 

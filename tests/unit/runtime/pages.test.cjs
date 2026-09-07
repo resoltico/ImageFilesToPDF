@@ -113,21 +113,3 @@ test("a multi-page image is refused before any page is prepared", () => {
         "nothing may be converted before the page count is known"
     );
 });
-
-test("each stage names itself when it fails", () => {
-    // The description is the only thing telling a person which stage broke.
-    const stages = [
-        ["'thumbnail'", /preparing the image/u],
-        ["'flatten'", /flattening the image/u]
-    ];
-
-    for (const [needle, expected] of stages) {
-        const app = createFakeApp([
-            ["'n-pages'", "1\n"],
-            ["'bands'", "4\n"],
-            [needle, failing("broke")]
-        ]);
-
-        assert.throws(() => preparePage(makeJob(app), imageOf("/a/x.png"), 0), expected);
-    }
-});

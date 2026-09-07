@@ -2436,7 +2436,12 @@ function createAndValidatePdf(job, stagedPath, pagePaths) {
 
     const batches = batchPages(
         pagePaths,
-        buildPdfcpuImportArgv(job.tools.pdfcpu, stagedPath, ["p"], job.geometry)
+        buildPdfcpuImportArgv(
+            job.tools.pdfcpu,
+            stagedPath,
+            pagePaths.slice(0, 1),
+            job.geometry
+        )
     );
 
     for (const pages of batches) {

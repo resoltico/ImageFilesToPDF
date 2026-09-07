@@ -110,3 +110,20 @@ test("after a copy the partial is cleared, and a refused rm is survivable", () =
     assert.doesNotThrow(() => publishPdf(makeJob(stubborn), "/a/p.pdf", "/a/out.pdf"));
     assert.ok(stubborn.files.has("/a/out.pdf"));
 });
+
+test("publication announces itself before it starts", () => {
+    // The last thing a run does, and on a large PDF the longest wait in it.
+    const host = createFakeHost({ files: ["/a/p.pdf"] });
+    const job = makeJob(host);
+    const said = [];
+
+    job.progress = {
+        file() {
+            return undefined;
+        },
+        phase: (name) => said.push(name)
+    };
+
+    publishPdf(job, "/a/p.pdf", "/a/out.pdf");
+    assert.deepEqual(said, ["Saving PDF"]);
+});
