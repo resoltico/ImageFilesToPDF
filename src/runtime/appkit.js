@@ -45,10 +45,20 @@ const WIDGETS = {
  * a form which never rendered does not look like a hang forever. Reaching it
  * costs one slow run and then the dialogs appear instead.
  */
-const WATCHDOG_SECONDS = 120;
 
-// Measured, not assumed: abortModal yields NSModalResponseAbort, which is
-// -1001. -1000 is NSModalResponseStop and is not what fires here.
+/*
+ * A modal that ends any other way than by one of its buttons is one this code
+ * did not ask for, and the form is treated as unavailable so the stepwise
+ * dialogs can ask instead.
+ *
+ * There used to be a watchdog here: an abortModal scheduled two minutes out,
+ * so a form that never returned could not hang the run. It fired on forms
+ * that were working perfectly, because taking two minutes to choose a paper
+ * size and a colour is not evidence of anything -- and the user was dropped
+ * into the stepwise dialogs half way through answering. Measured, not
+ * assumed: abortModal yields NSModalResponseAbort, which is -1001, and -1000
+ * is NSModalResponseStop.
+ */
 const RESPONSE_ABORT = -1001;
 const FIRST_BUTTON = 1000;
 
@@ -68,48 +78,13 @@ function readControls(bridge, spec, controls) {
     return answers;
 }
 
-function abortSelector(bridge) {
-    return bridge.ns.NSSelectorFromString("abortModal");
-}
-
-/*
- * The watchdog runs in NSModalPanelRunLoopMode because the default mode does
- * not tick while a modal loop owns the thread.
- */
-function armWatchdog(bridge, application) {
-    application.performSelectorWithObjectAfterDelayInModes(
-        abortSelector(bridge),
-        null,
-        WATCHDOG_SECONDS,
-        bridge.ns([bridge.ns.NSModalPanelRunLoopMode])
-    );
-}
-
-/*
- * Disarmed as soon as the form closes. A pending abort outlives the modal it
- * was armed for: a form answered in ten seconds leaves an abort due at two
- * minutes, which then dismisses whatever modal happens to be open — the
- * redisplayed form after a correction, or the next run's form entirely.
- */
-function disarmWatchdog(bridge, application) {
-    bridge.ns.NSObject.cancelPreviousPerformRequestsWithTargetSelectorObject(
-        application,
-        abortSelector(bridge),
-        null
-    );
-}
-
 function presentForm(bridge, spec, widgets = WIDGETS) {
-    const application = bridge.ns.NSApplication.sharedApplication;
     const { view, controls } = buildForm(bridge, spec, widgets);
     const alert = widgets.makeAlert(bridge.ns, spec);
 
     alert.accessoryView = view;
-    armWatchdog(bridge, application);
 
     const response = Number(alert.runModal);
-
-    disarmWatchdog(bridge, application);
 
     if (response === RESPONSE_ABORT) {
         return null;

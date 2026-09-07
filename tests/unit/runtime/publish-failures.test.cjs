@@ -10,12 +10,13 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { publishPdf } = require("../../../src/runtime/publish.js");
 const {
     fileSize,
-    copyInto,
-    publishPdf
-} = require("../../../src/runtime/publish.js");
+    copyInto
+} = require("../../../src/runtime/transfer.js");
 const { createFakeHost } = require("./fake-host.cjs");
+const { makeJob } = require("./fake-job.cjs");
 
 const DENIED = "Operation not permitted";
 
@@ -51,7 +52,7 @@ test("a truncated copy is a failure, not a publication", () => {
     });
 
     assert.throws(
-        () => publishPdf(host, "/a/p.pdf", "/a/out.pdf"),
+        () => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"),
         /could not be published/u
     );
 });
@@ -63,7 +64,7 @@ test("when both ways are refused, the error says what each said", () => {
         failures: refusing("/bin/mv", "/bin/cp")
     });
 
-    assert.throws(() => publishPdf(host, "/a/p.pdf", "/a/out.pdf"), (error) => {
+    assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
         assert.match(error.message, /could not be published/u);
         assert.match(error.message, /publishing PDF/u);
         assert.match(error.message, /copying the PDF into place/u);
@@ -80,7 +81,7 @@ test("a failed publication keeps the finished PDF and says where", () => {
         failures: refusing("/bin/mv", "/bin/cp")
     });
 
-    assert.throws(() => publishPdf(host, "/a/p.pdf", "/a/out.pdf"), (error) => {
+    assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
         assert.match(error.message, /The finished PDF has been kept here:/u);
         assert.match(error.message, /\/a\/p\.pdf/u);
 
@@ -96,7 +97,7 @@ test("a published file that is empty is still a failure", () => {
     });
 
     assert.throws(
-        () => publishPdf(host, "/a/p.pdf", "/a/out.pdf"),
+        () => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"),
         /output PDF was not written or is empty/u
     );
 });

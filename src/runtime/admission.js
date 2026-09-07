@@ -7,7 +7,11 @@ const {
 } = require("../core/paths.js");
 const { sortImageRecords } = require("../core/ordering.js");
 const { isRegularFile } = require("./shell.js");
-const { inputItemToPosixPath, finderSelection } = require("./input.js");
+const {
+    pathCandidates,
+    inputItemToPosixPath,
+    finderSelection
+} = require("./input.js");
 
 /*
  * Which of the requested files this action will convert, and why it will not
@@ -51,16 +55,53 @@ function admit(app, path, images, rejected) {
     }
 }
 
+/*
+ * What to say about an item that resolved to no path at all.
+ *
+ * Shortcuts appends its parameters object to the input of every Quick Action,
+ * and that is host metadata: it has no identity of its own, and String() on it
+ * says as much. Anything that did name itself and still did not resolve is
+ * something the user asked for, and used to be dropped between the resolution
+ * and the admission without appearing in either list.
+ */
+const ANONYMOUS = "[object Object]";
+
+function describeUnresolved(item) {
+    const named = pathCandidates(item)
+        .find((candidate) => candidate && candidate !== ANONYMOUS);
+
+    return named
+        ? {
+            path: "",
+            name: named,
+            reason: "not an absolute path to a file"
+        }
+        : null;
+}
+
+function consider(app, item, images, rejected) {
+    const path = inputItemToPosixPath(item);
+
+    if (path) {
+        admit(app, path, images, rejected);
+
+        return;
+    }
+
+    const unresolved = describeUnresolved(item);
+
+    if (unresolved) {
+        rejected.push(unresolved);
+    }
+}
+
 function collectImageFiles(app, inputItems) {
     const items = inputItems.length > 0 ? inputItems : finderSelection();
     const images = [];
     const rejected = [];
-    const paths = items
-        .map((item) => inputItemToPosixPath(item))
-        .filter(Boolean);
 
-    for (const path of paths) {
-        admit(app, path, images, rejected);
+    for (const item of items) {
+        consider(app, item, images, rejected);
     }
 
     return { images: sortImageRecords(images), rejected };

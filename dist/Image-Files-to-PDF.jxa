@@ -1,5 +1,5 @@
 /*
- * Image Files to PDF 1.1.0
+ * Image Files to PDF 1.1.1
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
@@ -18,7 +18,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.1.0";
+const VERSION = "1.1.1";
 
 /* ===== src/core/executables.js ===== */
 
@@ -108,14 +108,16 @@ function errorMessage(error) {
     return String(error);
 }
 
-function isUserCancelled(error) {
-    const message = errorMessage(error);
+class UserCancelled extends Error {
+    constructor() {
+        super("User cancelled.");
+        this.name = "UserCancelled";
+    }
+}
 
-    return (
-        message.includes("User cancelled") ||
-        message.includes("User canceled") ||
-        Boolean(error && error.errorNumber === CANCEL_ERROR_NUMBER)
-    );
+function isUserCancelled(error) {
+    return error instanceof UserCancelled ||
+        Boolean(error && error.errorNumber === CANCEL_ERROR_NUMBER);
 }
 
 function summarizeCommand(command) {
@@ -853,7 +855,7 @@ function buildPdfcpuProbeArgv(pdfcpuPath) {
 }
 
 function isVipsUsable(probeOutput) {
-    return !/Unknown option/u.test(String(probeOutput));
+    return /VipsForeignLoad/u.test(String(probeOutput));
 }
 
 function isPdfcpuUsable(probeOutput) {
@@ -1373,7 +1375,6 @@ const WIDGETS = {
 };
 
 
-const WATCHDOG_SECONDS = 120;
 
 const RESPONSE_ABORT = -1001;
 const FIRST_BUTTON = 1000;
@@ -1394,38 +1395,13 @@ function readControls(bridge, spec, controls) {
     return answers;
 }
 
-function abortSelector(bridge) {
-    return bridge.ns.NSSelectorFromString("abortModal");
-}
-
-function armWatchdog(bridge, application) {
-    application.performSelectorWithObjectAfterDelayInModes(
-        abortSelector(bridge),
-        null,
-        WATCHDOG_SECONDS,
-        bridge.ns([bridge.ns.NSModalPanelRunLoopMode])
-    );
-}
-
-function disarmWatchdog(bridge, application) {
-    bridge.ns.NSObject.cancelPreviousPerformRequestsWithTargetSelectorObject(
-        application,
-        abortSelector(bridge),
-        null
-    );
-}
-
 function presentForm(bridge, spec, widgets = WIDGETS) {
-    const application = bridge.ns.NSApplication.sharedApplication;
     const { view, controls } = buildForm(bridge, spec, widgets);
     const alert = widgets.makeAlert(bridge.ns, spec);
 
     alert.accessoryView = view;
-    armWatchdog(bridge, application);
 
     const response = Number(alert.runModal);
-
-    disarmWatchdog(bridge, application);
 
     if (response === RESPONSE_ABORT) {
         return null;
@@ -1448,7 +1424,7 @@ function chooseRequired(app, control) {
     });
 
     if (!choice) {
-        throw new Error("User cancelled.");
+        throw new UserCancelled();
     }
 
     return valueOfLabel(control, choice[0]);
@@ -1605,7 +1581,7 @@ function formRound(bridge, present, state) {
     }
 
     if (outcome.cancelled) {
-        throw new Error("User cancelled.");
+        throw new UserCancelled();
     }
 
     const read = readAnswers(outcome.answers);
@@ -1747,16 +1723,44 @@ function admit(app, path, images, rejected) {
     }
 }
 
+const ANONYMOUS = "[object Object]";
+
+function describeUnresolved(item) {
+    const named = pathCandidates(item)
+        .find((candidate) => candidate && candidate !== ANONYMOUS);
+
+    return named
+        ? {
+            path: "",
+            name: named,
+            reason: "not an absolute path to a file"
+        }
+        : null;
+}
+
+function consider(app, item, images, rejected) {
+    const path = inputItemToPosixPath(item);
+
+    if (path) {
+        admit(app, path, images, rejected);
+
+        return;
+    }
+
+    const unresolved = describeUnresolved(item);
+
+    if (unresolved) {
+        rejected.push(unresolved);
+    }
+}
+
 function collectImageFiles(app, inputItems) {
     const items = inputItems.length > 0 ? inputItems : finderSelection();
     const images = [];
     const rejected = [];
-    const paths = items
-        .map((item) => inputItemToPosixPath(item))
-        .filter(Boolean);
 
-    for (const path of paths) {
-        admit(app, path, images, rejected);
+    for (const item of items) {
+        consider(app, item, images, rejected);
     }
 
     return { images: sortImageRecords(images), rejected };
@@ -1871,11 +1875,29 @@ function readField(app, vipsheaderPath, imagePath, field) {
     return value;
 }
 
+const UPRIGHT = 1;
+const FIRST_TURNED = 5;
+const LAST_TURNED = 8;
+
+function exchangesSides(orientation) {
+    return orientation >= FIRST_TURNED && orientation <= LAST_TURNED;
+}
+
+function readOrientation(app, vipsheaderPath, imagePath) {
+    try {
+        return readField(app, vipsheaderPath, imagePath, "orientation");
+    } catch {
+        return UPRIGHT;
+    }
+}
+
 function readImageSize(app, vipsheaderPath, imagePath) {
-    return {
-        width: readField(app, vipsheaderPath, imagePath, "width"),
-        height: readField(app, vipsheaderPath, imagePath, "height")
-    };
+    const width = readField(app, vipsheaderPath, imagePath, "width");
+    const height = readField(app, vipsheaderPath, imagePath, "height");
+
+    return exchangesSides(readOrientation(app, vipsheaderPath, imagePath))
+        ? { width: height, height: width }
+        : { width, height };
 }
 
 function readBandCount(app, vipsheaderPath, imagePath) {
@@ -2062,7 +2084,7 @@ function setAside(app, stagedPath) {
     }
 }
 
-/* ===== src/runtime/publish.js ===== */
+/* ===== src/runtime/transfer.js ===== */
 
 
 const SIZE_UNKNOWN = -1;
@@ -2115,34 +2137,66 @@ function copyInto(app, from, to) {
     return { published: true };
 }
 
-function describeFailure(attempts, recovered) {
-    return [
-        "The PDF could not be published without overwriting another file.",
-        ...attempts.map((attempt) => attempt.reason),
-        `The finished PDF has been kept here:\n\n${recovered}`
-    ].join("\n\n");
-}
-
-function publishPdf(app, stagedPath, finalPath) {
-    if (fileExists(app, finalPath)) {
-        throw new Error(
-            `The output path became occupied before publication:\n\n${finalPath}`
-        );
-    }
-
+function attemptPublication(app, stagedPath, finalPath) {
     const attempts = [renameInto(app, stagedPath, finalPath)];
 
     if (!attempts[0].published) {
         attempts.push(copyInto(app, stagedPath, finalPath));
     }
 
-    if (!attempts.at(-1).published) {
-        throw new Error(describeFailure(attempts, setAside(app, stagedPath)));
+    return attempts;
+}
+
+/* ===== src/runtime/publish.js ===== */
+
+
+function describeFailure(reasons, recovered) {
+    return [
+        "The PDF could not be published without overwriting another file.",
+        ...reasons,
+        `The finished PDF has been kept here:\n\n${recovered}`
+    ].join("\n\n");
+}
+
+function keep(job, stagedPath, reasons) {
+    const recovered = setAside(job.app, stagedPath);
+
+    if (recovered !== stagedPath) {
+        job.unpublished.delete(stagedPath);
     }
 
-    verifyFileWritten(app, finalPath, "output PDF");
+    return new Error(describeFailure(reasons, recovered));
+}
 
-    removeFile(app, stagedPath);
+function confirm(job, stagedPath, finalPath) {
+    try {
+        verifyFileWritten(job.app, finalPath, "output PDF");
+    } catch (error) {
+        throw keep(job, stagedPath, [errorMessage(error)]);
+    }
+
+    job.unpublished.delete(stagedPath);
+    removeFile(job.app, stagedPath);
+}
+
+function publishPdf(job, stagedPath, finalPath) {
+    const { app } = job;
+
+    job.unpublished.add(stagedPath);
+
+    if (fileExists(app, finalPath)) {
+        throw keep(job, stagedPath, [
+            `The output path became occupied before publication:\n\n${finalPath}`
+        ]);
+    }
+
+    const attempts = attemptPublication(app, stagedPath, finalPath);
+
+    if (!attempts.at(-1).published) {
+        throw keep(job, stagedPath, attempts.map((attempt) => attempt.reason));
+    }
+
+    confirm(job, stagedPath, finalPath);
 }
 
 /* ===== src/runtime/pdf.js ===== */
@@ -2189,7 +2243,7 @@ function createCombinedPdf(job, imageFiles) {
     try {
         createAndValidatePdf(job, stagedPath, preparePages(job, imageFiles));
         validated = true;
-        publishPdf(job.app, stagedPath, finalPath);
+        publishPdf(job, stagedPath, finalPath);
 
         return { outputs: [finalPath], failures: [] };
     } catch (error) {
@@ -2219,7 +2273,7 @@ function createSeparatePdf(job, imageFile, index) {
                 preparePage(job, imageFile, index)
             ]);
             validated = true;
-            publishPdf(job.app, stagedPath, finalPath);
+            publishPdf(job, stagedPath, finalPath);
         });
 
         return { output: finalPath, failure: "" };
@@ -2259,7 +2313,8 @@ function createJob(app, settings, timestamp, tools) {
         timestamp,
         tools,
         geometry: calculatePageGeometry(settings),
-        workspace: createWorkspace(app)
+        workspace: createWorkspace(app),
+        unpublished: new Set()
     };
 }
 
@@ -2271,7 +2326,9 @@ function runJob(job, imageFiles) {
     try {
         return create(job, imageFiles);
     } finally {
-        removeWorkspace(job.app, job.workspace);
+        if (job.unpublished.size === 0) {
+            removeWorkspace(job.app, job.workspace);
+        }
     }
 }
 

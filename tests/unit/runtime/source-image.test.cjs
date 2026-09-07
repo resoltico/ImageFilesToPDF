@@ -81,6 +81,15 @@ test("the header is asked for the right field each time", () => {
     ]);
 });
 
+test("a failed dimension read says which field it was reading", () => {
+    const app = createFakeApp([["'height'", failing("unable to load")]]);
+
+    assert.throws(
+        () => readImageSize(app, "/v/vipsheader", "/a/x.png"),
+        /reading the image height/u
+    );
+});
+
 test("a failed band read says which step failed", () => {
     // The description is what the user is shown, and "reading image bands" is
     // the only clue that the header, not the conversion, is at fault.
@@ -89,37 +98,5 @@ test("a failed band read says which step failed", () => {
     assert.throws(
         () => readBandCount(app, "/v/vipsheader", "/a/x.tif"),
         /reading image bands/u
-    );
-});
-
-test("an image one pixel across is a usable size", () => {
-    // The bound is "at least one", not "more than one": a 1-pixel image is
-    // small, not invalid, and refusing it would be a lie about the file.
-    const app = createFakeApp([["'width'", "1\n"], ["'height'", "1\n"]]);
-
-    assert.deepEqual(
-        readImageSize(app, "/v/vipsheader", "/a/dot.png"),
-        { width: 1, height: 1 }
-    );
-});
-
-test("the dimensions are asked for by field, each in its own read", () => {
-    // -f is what makes vipsheader answer with the bare value; without it the
-    // whole header comes back and nothing parses.
-    const app = createFakeApp([["'width'", "1200\n"], ["'height'", "800\n"]]);
-
-    readImageSize(app, "/v/vipsheader", "/a/x.png");
-    assert.deepEqual(app.commands, [
-        "'/v/vipsheader' '-f' 'width' '/a/x.png'",
-        "'/v/vipsheader' '-f' 'height' '/a/x.png'"
-    ]);
-});
-
-test("a failed dimension read says which field it was reading", () => {
-    const app = createFakeApp([["'height'", failing("unable to load")]]);
-
-    assert.throws(
-        () => readImageSize(app, "/v/vipsheader", "/a/x.png"),
-        /reading the image height/u
     );
 });

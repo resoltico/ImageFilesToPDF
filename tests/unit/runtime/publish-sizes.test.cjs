@@ -10,12 +10,13 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { publishPdf } = require("../../../src/runtime/publish.js");
 const {
     fileSize,
-    copyInto,
-    publishPdf
-} = require("../../../src/runtime/publish.js");
+    copyInto
+} = require("../../../src/runtime/transfer.js");
 const { createFakeHost } = require("./fake-host.cjs");
+const { makeJob } = require("./fake-job.cjs");
 
 test("a size that cannot be read is not mistaken for a size", () => {
     // stat can succeed and still say something unusable. Treating that as a
@@ -50,7 +51,7 @@ test("a rename that quietly did nothing says so", () => {
         failures: [["/bin/mv", ""], ["/bin/cp", new Error("Operation not permitted")]]
     });
 
-    assert.throws(() => publishPdf(host, "/a/p.pdf", "/a/out.pdf"), (error) => {
+    assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
         assert.match(error.message, /the rename declined: the output path was taken/u);
 
         return true;
@@ -92,7 +93,7 @@ test("the failure reads as paragraphs, not as one run-on line", () => {
         ]
     });
 
-    assert.throws(() => publishPdf(host, "/a/p.pdf", "/a/out.pdf"), (error) => {
+    assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
         // The heading stands apart from the detail beneath it; run together
         // they read as one sentence about something else.
         assert.ok(error.message.startsWith(

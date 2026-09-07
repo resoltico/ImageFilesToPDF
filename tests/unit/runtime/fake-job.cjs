@@ -23,6 +23,7 @@ function makeJob(app) {
         settings: { quality: 85, background: "#FFFFFF" },
         timestamp: "20260904_010203",
         workspace: "/tmp/ImageFilesToPDF.X",
+        unpublished: new Set(),
         tools: { vips: "/v/vips", vipsheader: "/v/vipsheader", pdfcpu: "/v/pdfcpu" }
     };
 }

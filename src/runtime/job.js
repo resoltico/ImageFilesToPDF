@@ -19,7 +19,9 @@ function createJob(app, settings, timestamp, tools) {
         timestamp,
         tools,
         geometry: calculatePageGeometry(settings),
-        workspace: createWorkspace(app)
+        workspace: createWorkspace(app),
+        // Validated PDFs this run has produced and not yet published.
+        unpublished: new Set()
     };
 }
 
@@ -31,7 +33,12 @@ function runJob(job, imageFiles) {
     try {
         return create(job, imageFiles);
     } finally {
-        removeWorkspace(job.app, job.workspace);
+        // A workspace still holding a validated PDF outlives the run. It has
+        // been imported and validated by then, and the message that reported
+        // the failure sent the user to it.
+        if (job.unpublished.size === 0) {
+            removeWorkspace(job.app, job.workspace);
+        }
     }
 }
 

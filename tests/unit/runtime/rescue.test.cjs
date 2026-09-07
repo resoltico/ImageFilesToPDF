@@ -11,7 +11,9 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { setAside } = require("../../../src/runtime/rescue.js");
-const { createFakeHost, WORKSPACE } = require("./fake-host.cjs");
+const { createFakeHost } = require("./fake-host.cjs");
+
+const RECOVERY = "/var/folders/xx/T/ImageFilesToPDF-recovered.Fake01";
 
 test("the PDF is moved out of the workspace, keeping its name", () => {
     const host = createFakeHost({ files: ["/tmp/ws/output_20260906.pdf"] });
@@ -78,5 +80,8 @@ test("a host that answers with something other than a string still works", () =>
         toString: () => doShellScript(command)
     });
 
-    assert.equal(setAside(host, "/tmp/ws/a.pdf"), `${WORKSPACE}/a.pdf`);
+    assert.equal(
+        setAside(host, "/tmp/ws/a.pdf"),
+        `${RECOVERY}/a.pdf`
+    );
 });

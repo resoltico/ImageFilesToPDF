@@ -2,7 +2,7 @@
 
 const { formSpec } = require("../core/form.js");
 const { readAnswers } = require("../core/form-answers.js");
-const { isUserCancelled } = require("../core/errors.js");
+const { isUserCancelled, UserCancelled } = require("../core/errors.js");
 const { presentForm } = require("./appkit.js");
 const { collectDialogSettings } = require("./dialogs.js");
 
@@ -42,7 +42,7 @@ function formRound(bridge, present, state) {
     }
 
     if (outcome.cancelled) {
-        throw new Error("User cancelled.");
+        throw new UserCancelled();
     }
 
     const read = readAnswers(outcome.answers);

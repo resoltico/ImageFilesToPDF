@@ -24,14 +24,45 @@ function readField(app, vipsheaderPath, imagePath, field) {
 }
 
 /*
- * The pixel dimensions of the source, which decide how large it sits on the
- * page. Read rather than inferred: the placement is meaningless without them.
+ * Orientations 5 to 8 are the ones that involve a quarter turn, either way and
+ * with or without a mirror, and a quarter turn exchanges the sides. One to
+ * four leave the sides as they are.
+ */
+const UPRIGHT = 1;
+const FIRST_TURNED = 5;
+const LAST_TURNED = 8;
+
+function exchangesSides(orientation) {
+    return orientation >= FIRST_TURNED && orientation <= LAST_TURNED;
+}
+
+function readOrientation(app, vipsheaderPath, imagePath) {
+    try {
+        return readField(app, vipsheaderPath, imagePath, "orientation");
+    } catch {
+        // Most formats carry no orientation at all, which means upright.
+        return UPRIGHT;
+    }
+}
+
+/*
+ * The pixel dimensions the image will have once it has been read, which is
+ * what decides how large it sits on the page.
+ *
+ * Not the dimensions stored in the file. vips rotates an image to match its
+ * orientation tag as it reads it, while vipsheader reports the width and
+ * height as stored -- so a photograph taken in portrait, which a phone stores
+ * as landscape with a tag saying to turn it, was measured on its side and
+ * placed in a box of the wrong shape. It reached the page at a quarter of the
+ * area of the same photograph with its pixels already upright.
  */
 function readImageSize(app, vipsheaderPath, imagePath) {
-    return {
-        width: readField(app, vipsheaderPath, imagePath, "width"),
-        height: readField(app, vipsheaderPath, imagePath, "height")
-    };
+    const width = readField(app, vipsheaderPath, imagePath, "width");
+    const height = readField(app, vipsheaderPath, imagePath, "height");
+
+    return exchangesSides(readOrientation(app, vipsheaderPath, imagePath))
+        ? { width: height, height: width }
+        : { width, height };
 }
 
 function readBandCount(app, vipsheaderPath, imagePath) {

@@ -22,14 +22,27 @@ function errorMessage(error) {
     return String(error);
 }
 
-function isUserCancelled(error) {
-    const message = errorMessage(error);
+/*
+ * Cancellation is a decision, not a phrase.
+ *
+ * This used to be read out of the message text, and every per-image failure
+ * carries the name of the image it happened to -- so a file called
+ * "User cancelled.jpg" that genuinely failed to convert looked exactly like
+ * somebody pressing Cancel, and the run ended silently with no dialog at all.
+ *
+ * The host's own cancellation still arrives as a number, because that is how
+ * osascript reports one and there is nothing to mistake it for.
+ */
+class UserCancelled extends Error {
+    constructor() {
+        super("User cancelled.");
+        this.name = "UserCancelled";
+    }
+}
 
-    return (
-        message.includes("User cancelled") ||
-        message.includes("User canceled") ||
-        Boolean(error && error.errorNumber === CANCEL_ERROR_NUMBER)
-    );
+function isUserCancelled(error) {
+    return error instanceof UserCancelled ||
+        Boolean(error && error.errorNumber === CANCEL_ERROR_NUMBER);
 }
 
 /*
@@ -90,6 +103,7 @@ function describeForLog(error) {
 }
 
 module.exports = {
+    UserCancelled,
     errorMessage,
     commandOf,
     isUserCancelled,

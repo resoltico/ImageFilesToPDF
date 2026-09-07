@@ -69,7 +69,7 @@ function createCombinedPdf(job, imageFiles) {
     try {
         createAndValidatePdf(job, stagedPath, preparePages(job, imageFiles));
         validated = true;
-        publishPdf(job.app, stagedPath, finalPath);
+        publishPdf(job, stagedPath, finalPath);
 
         return { outputs: [finalPath], failures: [] };
     } catch (error) {
@@ -106,7 +106,7 @@ function createSeparatePdf(job, imageFile, index) {
                 preparePage(job, imageFile, index)
             ]);
             validated = true;
-            publishPdf(job.app, stagedPath, finalPath);
+            publishPdf(job, stagedPath, finalPath);
         });
 
         return { output: finalPath, failure: "" };

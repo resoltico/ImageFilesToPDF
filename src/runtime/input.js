@@ -93,6 +93,7 @@ function collectInvocation(app, input, headless) {
 }
 
 module.exports = {
+    pathCandidates,
     inputItemToPosixPath,
     finderSelection,
     collectInvocation

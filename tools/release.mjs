@@ -80,6 +80,7 @@ export const moduleOrder = [
     "src/runtime/source-image.js",
     "src/runtime/pages.js",
     "src/runtime/rescue.js",
+    "src/runtime/transfer.js",
     "src/runtime/publish.js",
     "src/runtime/pdf.js",
     "src/runtime/job.js",

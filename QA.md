@@ -301,9 +301,16 @@ What is tested, against a fake ObjC namespace: that each row becomes the right
 control, that the rows are laid out top to bottom rather than upside down in
 AppKit's bottom-left coordinate space, that the colour options carry swatches
 and the others do not, that current answers are preselected, that edited
-values are read back, that the modal is guarded by a watchdog scheduled in the
-run loop mode a modal actually ticks, and that each of the three outcomes —
-answered, cancelled, never presented — is handled distinctly.
+values are read back, that nothing is scheduled against the form, and that
+each of the three outcomes — answered, cancelled, never presented — is handled
+distinctly.
+
+There was a watchdog: an `abortModal` scheduled two minutes out, so a form
+that never returned could not hang the run. It fired on forms that were
+working perfectly — taking two minutes to choose a paper size and a colour is
+not evidence of anything — and the abort reads as "never presented", so the
+user was dropped into the stepwise dialogs half way through answering. Nothing
+replaced it: the form ends when it is answered or cancelled.
 
 What is not tested, and cannot be: that AppKit renders it. That was
 established by running a probe inside `ShortcutsMacHelper`, which presented a
@@ -473,6 +480,11 @@ to fail when the fix is reverted:
 | A bundler bug reaching the artifact | `tools/bundle.mjs` unit tests |
 | A guard that stops rejecting | gate-module tests + empty-rule-list check |
 | An executable reaching the artifact from outside one module | source rule |
+| An image measured on its side, and placed at a quarter of its area | orientation unit tests + integration |
+| A validated PDF deleted with the workspace it was built in | job ownership tests |
+| A file named for cancelling silencing its own failure | typed cancellation |
+| A tool that printed nothing passing as usable | positive capability probe |
+| An input that vanished between resolution and admission | accounting tests |
 | Tests that stop catching bugs | mutation testing with a break threshold |
 
 ## Acceptance boundary

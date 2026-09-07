@@ -1,5 +1,7 @@
 "use strict";
 
+const { UserCancelled } = require("../core/errors.js");
+
 /*
  * The interactive front end: collecting the settings. What the run reports
  * afterwards is completion.js.
@@ -30,7 +32,7 @@ function chooseRequired(app, control) {
     });
 
     if (!choice) {
-        throw new Error("User cancelled.");
+        throw new UserCancelled();
     }
 
     return valueOfLabel(control, choice[0]);

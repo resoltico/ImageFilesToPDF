@@ -38,18 +38,16 @@ test("a form that never appeared is reported as unavailable", () => {
     assert.equal(outcome, null);
 });
 
-test("the modal is guarded by an abortModal watchdog", () => {
+test("nothing is scheduled against the form, and nothing ends it early", () => {
+    // There was a watchdog here: an abortModal two minutes out, so a form that
+    // never returned could not hang the run. It fired on forms that were
+    // working perfectly -- taking two minutes to choose a paper size and a
+    // colour is not evidence of anything -- and dropped the user into the
+    // stepwise dialogs half way through answering. Nothing replaced it,
+    // deliberately: the form ends when it is answered or cancelled.
     const { bridge } = present([CREATE]);
 
-    assert.equal(bridge.state.watchdogs.length, 1);
-
-    const [watchdog] = bridge.state.watchdogs;
-
-    assert.equal(watchdog.selector, "sel:abortModal");
-    assert.ok(watchdog.delay > 0, "a watchdog with no delay would fire at once");
-    // The default run loop mode does not tick while a modal owns the thread,
-    // so a watchdog scheduled there would never fire.
-    assert.deepEqual(watchdog.modes, { boxed: ["NSModalPanelRunLoopMode"] });
+    assert.deepEqual(bridge.state.watchdogs, []);
 });
 
 test("the alert carries the form's own title, detail and buttons", () => {
@@ -104,26 +102,3 @@ test("edited values come back out, not the values that went in", () => {
     assert.equal(outcome.answers.paperSize, "US Letter");
 });
 
-test("the watchdog is disarmed when the form closes", () => {
-    // A pending abort outlives the modal it was armed for. Left armed, a form
-    // answered quickly leaves an abort due two minutes later, which dismisses
-    // whatever modal is open then — the redisplayed form after a correction,
-    // or the next run's form.
-    const { bridge } = present([CREATE]);
-
-    assert.equal(bridge.state.watchdogs.length, 1, "armed once");
-    assert.equal(bridge.state.disarmed.length, 1, "and disarmed once");
-    assert.equal(bridge.state.disarmed[0].selector, "sel:abortModal");
-});
-
-test("the watchdog is disarmed however the form ends", () => {
-    for (const response of [CANCEL, ABORT]) {
-        const { bridge } = present([response]);
-
-        assert.equal(
-            bridge.state.disarmed.length,
-            1,
-            `a form ending with ${response} must still disarm`
-        );
-    }
-});

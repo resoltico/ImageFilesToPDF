@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
+    UserCancelled,
     errorMessage,
     isUserCancelled,
     summarizeCommand,
@@ -17,10 +18,22 @@ test("errorMessage extracts a message from anything", () => {
     assert.equal(errorMessage({ message: "object" }), "object");
 });
 
-test("isUserCancelled recognizes both spellings and the error number", () => {
-    assert.equal(isUserCancelled(new Error("User cancelled.")), true);
-    assert.equal(isUserCancelled(new Error("User canceled.")), true);
-    assert.equal(isUserCancelled({ errorNumber: -128 }), true);
+test("cancellation is what the interface raised, or what the host reports", () => {
+    assert.equal(isUserCancelled(new UserCancelled()), true);
+    assert.equal(isUserCancelled({ errorNumber: -128 }), true, "osascript's own");
+});
+
+test("a file named for cancelling is not a cancellation", () => {
+    // Every per-image failure carries the name of the image it happened to,
+    // so reading the message meant a file called "User cancelled.jpg" that
+    // genuinely failed ended the run silently, with no dialog at all.
+    for (const message of [
+        "User cancelled.jpg: vips: unable to load",
+        "User canceled.png: pdfcpu: xref table is corrupt",
+        "User cancelled."
+    ]) {
+        assert.equal(isUserCancelled(new Error(message)), false, message);
+    }
 });
 
 test("isUserCancelled returns false, not a falsy operand", () => {

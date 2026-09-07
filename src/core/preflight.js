@@ -41,8 +41,14 @@ function buildPdfcpuProbeArgv(pdfcpuPath) {
  * vips reports an unrecognised flag as "Unknown option --x" and a missing
  * input as a load failure, so only the former means the build is too old.
  */
+/*
+ * Asserted rather than assumed: vips names the loader it reached for before
+ * complaining that the file is not there, and it only gets that far once it
+ * has accepted the flags. Asking instead that a particular complaint is
+ * absent passes a vips that printed nothing at all because it crashed.
+ */
 function isVipsUsable(probeOutput) {
-    return !/Unknown option/u.test(String(probeOutput));
+    return /VipsForeignLoad/u.test(String(probeOutput));
 }
 
 /*

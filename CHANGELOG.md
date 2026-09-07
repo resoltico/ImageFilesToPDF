@@ -4,6 +4,38 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-07
+
+### Fixed
+
+- A photograph taken in portrait is placed at its proper size. A phone stores
+  such a photograph sideways with a note to turn it, and the note was read
+  when the image was converted but not when its place on the page was worked
+  out — so it arrived at a quarter of the area of the same photograph whose
+  pixels were already upright. Measured: 101 × 200 points where 201 × 400 was
+  intended.
+- A finished PDF that cannot be saved is no longer deleted along with the
+  temporary folder it was built in. It was moved somewhere safe and the
+  message said where, but the folder was then removed regardless — and if the
+  move had also failed, the message pointed at a file that had just been
+  deleted. The folder now outlives a run that is still holding one.
+- An image whose name happens to contain the words "user cancelled" no longer
+  silences its own failure. Cancelling was recognised by reading the words out
+  of the message, and every failure carries the name of the image it happened
+  to, so such a file ending in an error looked exactly like somebody pressing
+  Cancel: the run ended quietly with nothing said.
+- A vips that prints nothing at all is reported as unusable rather than
+  assumed to be working. The check asked whether a particular complaint was
+  absent, and a program that crashed before printing anything is silent.
+- The settings window no longer closes itself after two minutes. It was
+  guarded by a timer meant for a window that never opened, and the guard could
+  not tell that from someone taking their time — the form vanished mid-answer
+  and the questions started again one at a time.
+- A file that was asked for and could not be resolved is reported. It used to
+  disappear between being read and being accepted, so a selection could
+  quietly become a smaller job than the one requested, with nothing said about
+  the difference.
+
 ## [1.1.0] - 2026-09-06
 
 ### Added

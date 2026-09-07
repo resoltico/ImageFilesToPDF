@@ -5,6 +5,8 @@ const test = require("node:test");
 const { createJob, runJob } = require("../../../src/runtime/job.js");
 const { createFakeHost } = require("./fake-host.cjs");
 
+const IMAGES = [{ path: "/a/x.png", originalName: "x.png" }];
+
 const SETTINGS = {
     paperSize: "A4",
     orientation: "Portrait",
@@ -66,4 +68,33 @@ test("the mode chooses which builder runs", () => {
     );
 
     assert.match(separate.outputs[0], /x_20260905_010203\.pdf$/u);
+});
+
+test("a workspace still holding an unpublished PDF outlives the run", () => {
+    // The run removes its workspace on the way out. A validated PDF that
+    // could not be published, and could not be set aside either, is in there
+    // -- and the message that reported the failure sent the user to it.
+    const host = createFakeHost({ files: ["/a/x.png"] });
+    const running = job(host);
+
+    running.unpublished.add(`${running.workspace}/staged.pdf`);
+    runJob(running, IMAGES);
+
+    assert.deepEqual(
+        host.commands.filter((command) => command.includes("'-rf'")),
+        [],
+        "the workspace was not removed"
+    );
+});
+
+test("a run that published everything takes its workspace with it", () => {
+    const host = createFakeHost({ files: ["/a/x.png"] });
+
+    runJob(job(host), IMAGES);
+
+    assert.equal(
+        host.commands.filter((command) => command.includes("'-rf'")).length,
+        1,
+        "the workspace was removed"
+    );
 });

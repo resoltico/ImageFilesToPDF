@@ -27,13 +27,20 @@ test("the pdfcpu probe uses the flag form the pipeline depends on", () => {
     assert.ok(/nonexistent/u.test(argv[3]));
 });
 
-test("vips is usable unless it rejects a flag", () => {
+test("vips is usable when it got as far as reaching for the file", () => {
     // The real failure for a missing file, which means the flags parsed.
     assert.equal(isVipsUsable('VipsForeignLoad: file "/x.png" does not exist'), true);
-    assert.equal(isVipsUsable(""), true);
     // The real failure for a build that does not know the flag.
     assert.equal(isVipsUsable("Unknown option --export-profile"), false);
     assert.equal(isVipsUsable("Unknown option --size"), false);
+});
+
+test("a vips that said nothing at all is not usable", () => {
+    // Asking that a particular complaint is absent passes silence, and a
+    // binary that crashed before printing anything is silent.
+    assert.equal(isVipsUsable(""), false);
+    assert.equal(isVipsUsable("Segmentation fault"), false);
+    assert.equal(isVipsUsable("dyld: Library not loaded: libvips.42.dylib"), false);
 });
 
 test("pdfcpu is usable only when it echoes the mode it understood", () => {

@@ -8,7 +8,11 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { commandOf, describeForLog } = require("../../../src/core/errors.js");
+const {
+    UserCancelled,
+    commandOf,
+    describeForLog
+} = require("../../../src/core/errors.js");
 
 function wrap(error, layers) {
     let wrapped = error;
@@ -46,4 +50,13 @@ test("the walk stops at the depth it says it stops at", () => {
 
     assert.equal(commandOf(wrap(root, 7)), "'/bin/cp'", "the last layer within reach");
     assert.equal(commandOf(wrap(root, 8)), "", "one layer too far");
+});
+
+test("a cancellation says what it is in a log", () => {
+    // It reaches stderr in headless runs, where "UserCancelled: User
+    // cancelled." says which of the two it was and "Error:" does not.
+    const cancelled = new UserCancelled();
+
+    assert.equal(cancelled.name, "UserCancelled");
+    assert.equal(String(cancelled), "UserCancelled: User cancelled.");
 });

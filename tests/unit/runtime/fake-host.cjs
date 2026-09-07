@@ -11,9 +11,13 @@
  */
 
 const { createFilesystem } = require("./fake-filesystem.cjs");
-const { headerField } = require("./fake-vipsheader.cjs");
+const {
+    parseArgv,
+    dispatch,
+    TEMPORARY
+} = require("./fake-commands.cjs");
 
-const WORKSPACE = "/var/folders/xx/T/ImageFilesToPDF.Fake01";
+const WORKSPACE = `${TEMPORARY}/ImageFilesToPDF.Fake01`;
 
 /*
  * A healthy machine by default: the tools are installed where Homebrew puts
@@ -24,43 +28,6 @@ const INSTALLED_TOOLS = [
     "/opt/homebrew/bin/vipsheader",
     "/opt/homebrew/bin/pdfcpu"
 ];
-
-function parseArgv(command) {
-    const argv = [];
-
-    for (const match of command.matchAll(/'(?<value>(?:[^']|'\\'')*)'/gu)) {
-        argv.push(match.groups.value.split("'\\''").join("'"));
-    }
-
-    return argv;
-}
-
-function dispatch(fs, argv, command, host) {
-    const [tool, ...rest] = argv;
-    const handlers = {
-        // mktemp terminates its answer with a newline, as the real one does:
-        // a caller that does not trim ends up with a path containing one.
-        "/usr/bin/mktemp": () => `${WORKSPACE}\n`,
-        "/usr/bin/printenv": () => {
-            throw new Error("unset");
-        },
-        "/bin/test": () => fs.test(rest),
-        "/bin/mv": () => fs.move(rest),
-        "/bin/cp": () => fs.copy(rest),
-        "/usr/bin/stat": () => fs.stat(rest),
-        "/bin/rm": () => fs.remove(rest)
-    };
-
-    if (Object.hasOwn(handlers, tool)) {
-        return handlers[tool]();
-    }
-
-    if (command.includes("vipsheader")) {
-        return headerField(host, command);
-    }
-
-    return fs.produce(argv, command);
-}
 
 /*
  * The preflight probes deliberately name a file that cannot exist; a
