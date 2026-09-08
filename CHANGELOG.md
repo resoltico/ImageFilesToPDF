@@ -4,6 +4,19 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-09-08
+
+### Fixed
+
+- Saving to a card or drive formatted for cameras is now a single step on most
+  of them, rather than making the name and then filling it. There is no longer
+  a moment in which your document's name exists with nothing in it, and a run
+  that is interrupted cannot leave an empty PDF behind. FAT-formatted cards
+  take this path; the older way remains only for exFAT, which cannot do it.
+- On the drives that still need the older way, a file that appears at the name
+  at the wrong moment is no longer deleted during cleanup: only the file this
+  action itself created is removed.
+
 ## [1.2.4] - 2026-09-08
 
 ### Fixed

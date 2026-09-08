@@ -47,6 +47,7 @@ export const moduleOrder = [
     "src/runtime/pages.js",
     "src/runtime/rescue.js",
     "src/runtime/file-facts.js",
+    "src/runtime/exclusive-rename.js",
     "src/runtime/staging-area.js",
     "src/runtime/output-copy.js",
     "src/runtime/transfer.js",

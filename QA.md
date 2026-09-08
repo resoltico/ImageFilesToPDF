@@ -235,11 +235,28 @@ One rule covers it, and it is about ownership rather than about inspection:
 recorded taking, and the finished PDF stays in the workspace until the output
 path has been checked.**
 
-Taking a name is the whole of the no-overwrite promise. `ln` does it for the
-publication itself: it creates a directory entry and fails if anything is
-there. `mkdir` does it for the place a publication needs when it cannot link
--- it creates the directory or fails, and it fails for anything already at
-that name.
+Taking a name is the whole of the no-overwrite promise, and which operation
+takes it depends on what the destination can do. Measured, on volumes
+attached for the purpose:
+
+| | hard link | `renamex_np` with `RENAME_EXCL` | `mkdir` |
+| --- | --- | --- | --- |
+| APFS, HFS Plus | yes | yes | yes |
+| FAT32 | no | yes | yes |
+| exFAT | no | no | yes |
+
+`ln` creates a directory entry and fails if anything is there. The exclusive
+rename moves a file onto a name and fails rather than replace what is at it --
+one operation, so there is no moment in which the name exists and the PDF is
+not in it. `mkdir` creates the place a publication needs when it cannot link,
+and fails for anything already at that name.
+
+It is reached through the C library, and the header is the whole of it:
+`renamex_np` is declared in `stdio`, and a bridge that imports anything else
+leaves it undefined -- which is how it was missed the first time it was looked
+for, and why a fallback was carried for a year of releases that did not need
+one. errno does not come back through the bridge, so a refusal is classified
+the way a refused link is: by asking whether the name is taken.
 
 Measured against a regular file, a link pointing at `/dev/null`, a directory
 and a named pipe: `mkdir` refuses all four. The shell's noclobber redirection,
@@ -284,29 +301,36 @@ is decided by asking whether the output name is taken, not by reading the
 refusal: taken means publication stops, and free means the refusal was about
 the link.
 
-Where hard links do not exist at all -- FAT and exFAT, which is what a camera
-card is formatted as -- there is no exclusive create that also carries the
-contents, and no exclusive rename to reach from here: `renamex_np` is not
-bridged into JXA, measured. So the name is taken empty and filled by one
-shell, in one step:
+Where neither exists -- exFAT, measurably, where plain rename works and the
+exclusive form is not implemented -- there is no operation at all that takes a
+name and carries contents. Only there is the name taken empty and filled, by
+one shell, in one step:
 
 ```sh
 [ ! -e "$1" ] || exit 1; set -C; : > "$1" || exit 1; \
     mv "$0" "$1" || { rm -f "$1"; exit 1; }
 ```
 
-It refuses a name that is there, takes it exclusively, puts the PDF in it, and
-gives the name back if that last step fails. `mv -n` is what this replaced: it
-checks whether the destination exists and then renames, which are two
-operations, and a competing writer between them was overwritten while the
+It refuses a name that is there, takes it, puts the PDF in it, and gives the
+name back if that last step fails -- and only if what is at the name is still
+the file it made, because by then it may not be. `mv -n` is what this
+replaced: it checks whether the destination exists and then renames, which are
+two operations, and a competing writer between them was overwritten while the
 check could not see a link whose target was gone.
 
-What it leaves is the name existing empty for the length of two adjacent
-system calls in one process, on those volumes only, and the shell removes it
-itself if the rename fails. Refusing to publish there instead -- which is the
-alternative -- would mean a camera card's photographs could never be converted
-where they are, which is a worse answer to a narrower problem. It is stated
-here rather than traded away quietly.
+Two things are left there, and they are properties of the filesystem rather
+than of this code. The name exists empty for the length of two adjacent system
+calls, so a process killed in that window leaves a nought-byte file under it --
+litter that the next run steps around, since it counts as a name that is
+taken. And a file created at that name inside the same window would be
+replaced by the move; nothing reachable from here can prevent that, since the
+one operation that would is what exFAT does not implement. The only program
+realistically able to create that name is another run of this action, and it
+cannot: its own creation is exclusive too.
+
+Refusing to publish there instead -- which is the alternative -- would mean
+the photographs on an exFAT card could never be converted where they are. It
+is stated here rather than traded away quietly.
 
 "Is the name taken" is one question with one answer: `test -e X -o -L X`. `-e`
 follows a symbolic link and reports on its target, so a link whose target is
@@ -702,7 +726,11 @@ right — every page, in order — but a job of four thousand pages becomes four
 thousand invocations of pdfcpu. The test now says a command carries more than
 one page.
 
-The run after the two-defect audit found nothing this code gets wrong: every
+The run after the fallback audit found one thing worth holding: that a bridge
+which will not take the header must not be used even when the operation looks
+present on it, since the header is what makes it callable.
+
+The run before that found nothing this code gets wrong: every
 survivor fell into a group already written down here -- a description whose
 command swallows it, a defensive conversion, and a list nothing reads on the
 path that returns it.
@@ -869,11 +897,13 @@ attached, because that is the machine's decision rather than the code's:
 - an APFS image, where the finished PDF and the output folder are on different
   filesystems, so the PDF is copied in and claimed from there;
 - an MS-DOS image, where hard links do not exist — measured: `ln` refuses with
-  "Operation not supported" — so the output name is taken as an empty file and
-  the PDF is renamed onto it. The PDF must validate, nothing of the run's may
-  be left, and a name already holding another document must be stepped around
-  with that document untouched. A camera card is formatted this way, which is
-  why this path is not hypothetical.
+  "Operation not supported" — so the PDF is moved onto its name by the
+  exclusive rename;
+- an exFAT image, where neither exists, so the last resort publishes. In both,
+  the PDF must validate, nothing of the run's may be left, and a name already
+  holding another document must be stepped around with that document
+  untouched. A camera card is formatted one of these two ways, which is why
+  neither path is hypothetical.
 
 One half of the unexaminable-entry case is unit-level only: producing a
 directory that lists but will not let its entries be inspected takes either a
@@ -937,6 +967,8 @@ to fail when the fix is reverted:
 | A file another program put at the staging name being written over or removed | reservation tests |
 | A document inside a folder at the output path removed for its name | unowned-file tests |
 | A competing writer's file replaced by the rename fallback | staging-area tests + MS-DOS volume integration |
+| A publication left as an empty name where an exclusive rename exists | exclusive-rename tests + MS-DOS volume integration |
+| Cleanup removing a file that replaced this run's own placeholder | identity-guarded last resort |
 | A link at the staging name adopted, and then deleted, as this run's | staging-area tests |
 | A named pipe at the staging name hanging the run with no timeout | staging-area tests |
 | Tests that stop catching bugs | mutation testing with a break threshold |

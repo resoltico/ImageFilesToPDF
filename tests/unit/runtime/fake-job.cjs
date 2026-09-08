@@ -26,6 +26,7 @@ function makeJob(app) {
         workspace: "/tmp/ImageFilesToPDF.X",
         unpublished: new Set(),
         progress: SILENT,
+        rename: app.renamer ?? null,
         tools: { vips: "/v/vips", vipsheader: "/v/vipsheader", pdfcpu: "/v/pdfcpu" }
     };
 }

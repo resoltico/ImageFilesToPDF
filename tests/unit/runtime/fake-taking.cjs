@@ -45,12 +45,21 @@ function removeDirectory(state, rest) {
 /*
  * The one script the runtime asks a shell to run: refuse anything already at
  * the name, take it exclusively, put the PDF in it, and give the name back if
- * that fails. Matched as itself, so a changed script is not answered by
- * something that only looks like it.
+ * that fails -- and only if what is there is still the file it made.
+ *
+ * Written out here rather than imported, and matched as itself: a changed
+ * script must fail these tests until somebody decides what the fake should
+ * now do, instead of being answered by something that only looks like it.
  */
-const TAKE_AND_FILL =
-    '[ ! -e "$1" ] || exit 1; set -C; : > "$1" || exit 1; ' +
-    'mv "$0" "$1" || { rm -f "$1"; exit 1; }';
+const TAKE_AND_FILL = [
+    '[ ! -e "$1" ] || exit 1',
+    "set -C",
+    ': > "$1" || exit 1',
+    'ours=$(/usr/bin/stat -f%i "$1")',
+    '/bin/mv "$0" "$1" && exit 0',
+    '[ "$(/usr/bin/stat -f%i "$1" 2>/dev/null)" = "$ours" ] && /bin/rm -f "$1"',
+    "exit 1"
+].join("; ");
 
 function shell(state, rest) {
     const [flag, script, from, to] = rest;
@@ -67,4 +76,26 @@ function shell(state, rest) {
     return move(state, [from, to]);
 }
 
-module.exports = { makeDirectory, removeDirectory, shell };
+/*
+ * renamex_np with RENAME_EXCL: one step that moves the file and refuses a
+ * destination that is already there, whatever kind of thing it is. The file
+ * keeps the number that identifies it, which is what a publication is proved
+ * by afterwards.
+ */
+function exclusiveRename(state, from, to) {
+    if (state.files.has(to) || state.directories.has(to) ||
+        state.danglingLinks.has(to) || !state.files.has(from)) {
+        return false;
+    }
+
+    move(state, [from, to]);
+
+    return true;
+}
+
+module.exports = {
+    makeDirectory,
+    removeDirectory,
+    shell,
+    exclusiveRename
+};

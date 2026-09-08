@@ -1,5 +1,5 @@
 /*
- * Image Files to PDF 1.2.4
+ * Image Files to PDF 1.2.5
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
@@ -18,7 +18,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.2.4";
+const VERSION = "1.2.5";
 
 /* ===== src/core/executables.js ===== */
 
@@ -2613,6 +2613,37 @@ function fileFacts(app, path) {
     }
 }
 
+/* ===== src/runtime/exclusive-rename.js ===== */
+
+
+const RENAME_EXCL = 4;
+
+function createRenamer(objc, ns) {
+    if (!objc || !ns) {
+        return null;
+    }
+
+    try {
+        objc.import("stdio");
+    } catch {
+        return null;
+    }
+
+    if (typeof ns.renamex_np !== "function") {
+        return null;
+    }
+
+    return {
+        rename(from, to) {
+            try {
+                return ns.renamex_np(from, to, RENAME_EXCL) === 0;
+            } catch {
+                return false;
+            }
+        }
+    };
+}
+
 /* ===== src/runtime/staging-area.js ===== */
 
 
@@ -2671,80 +2702,92 @@ function copyBeside(app, staged, area, expected) {
 /* ===== src/runtime/transfer.js ===== */
 
 
-const TAKE_AND_FILL =
-    '[ ! -e "$1" ] || exit 1; set -C; : > "$1" || exit 1; ' +
-    'mv "$0" "$1" || { rm -f "$1"; exit 1; }';
+const TAKE_AND_FILL = [
+    '[ ! -e "$1" ] || exit 1',
+    "set -C",
+    ': > "$1" || exit 1',
+    `ours=$(${STAT} -f%i "$1")`,
+    `${MV} "$0" "$1" && exit 0`,
+    `[ "$(${STAT} -f%i "$1" 2>/dev/null)" = "$ours" ] && ${RM} -f "$1"`,
+    "exit 1"
+].join("; ");
+
+function published(from) {
+    return { published: true, reasons: [], claimed: from };
+}
+
+function refused(reasons) {
+    return { published: false, reasons };
+}
 
 function claim(app, from, finalPath) {
     runArgv(app, [LN, from, finalPath], "claiming the output name");
 }
 
-function takeAndFill(app, from, finalPath, refused) {
+function takeAndFill(attempt, from) {
     try {
         runArgv(
-            app,
-            [SH, "-c", TAKE_AND_FILL, from, finalPath],
+            attempt.app,
+            [SH, "-c", TAKE_AND_FILL, from, attempt.paths.final],
             "taking the output name and putting the PDF in it"
         );
     } catch (error) {
-        return { published: false, reasons: [refused, errorMessage(error)] };
+        return refused([errorMessage(error)]);
     }
 
-    return { published: true, reasons: [], claimed: from };
+    return published(from);
 }
 
-function claimFromStaging(app, from, finalPath) {
-    try {
-        claim(app, from, finalPath);
+function commitFromPlace(attempt) {
+    const from = attempt.paths.area.file;
 
-        return { published: true, reasons: [], claimed: from };
-    } catch (error) {
-        const refused = errorMessage(error);
-
-        return pathIsTaken(app, finalPath)
-            ? { published: false, reasons: [refused, "the output path was taken"] }
-            : takeAndFill(app, from, finalPath, refused);
+    if (attempt.rename && attempt.rename.rename(from, attempt.paths.final)) {
+        return published(from);
     }
+
+    return pathIsTaken(attempt.app, attempt.paths.final)
+        ? refused(["the output path was taken"])
+        : takeAndFill(attempt, from);
 }
 
-function throughStaging(app, paths, facts, refused) {
+function throughStaging(attempt, facts, refusal) {
+    const { app, paths } = attempt;
     const copied = copyBeside(app, paths.staged, paths.area, facts.size);
     const staging = copied.made ? paths.area : null;
 
     if (copied.reasons.length > 0) {
-        return { published: false, reasons: [refused, ...copied.reasons], staging };
+        return { published: false, reasons: [refusal, ...copied.reasons], staging };
     }
 
+    const outcome = commitFromPlace(attempt);
+
     return {
-        ...claimFromStaging(app, paths.area.file, paths.final),
+        ...outcome,
+        reasons: outcome.published ? [] : [refusal, ...outcome.reasons],
         claimedIdentity: copied.identity,
         claimedSize: facts.size,
         staging
     };
 }
 
-function deliver(app, paths, facts) {
+function deliver(app, paths, facts, rename) {
+    const attempt = { app, paths, rename };
+
     try {
         claim(app, paths.staged, paths.final);
 
         return {
-            published: true,
-            reasons: [],
-            claimed: paths.staged,
+            ...published(paths.staged),
             claimedIdentity: facts.identity,
             claimedSize: facts.size,
             staging: null
         };
     } catch (error) {
-        const refused = errorMessage(error);
+        const refusal = errorMessage(error);
 
         return pathIsTaken(app, paths.final)
-            ? {
-                published: false,
-                reasons: [refused, "the output path was taken"],
-                staging: null
-            }
-            : throughStaging(app, paths, facts, refused);
+            ? { ...refused([refusal, "the output path was taken"]), staging: null }
+            : throughStaging(attempt, facts, refusal);
     }
 }
 
@@ -2838,7 +2881,7 @@ function attempt(job, paths) {
         throw keep(job, paths, { reasons: [refusal], staging: null });
     }
 
-    const outcome = deliver(job.app, paths, facts);
+    const outcome = deliver(job.app, paths, facts, job.rename);
 
     if (!outcome.published) {
         throw keep(job, paths, outcome);
@@ -3020,7 +3063,8 @@ function createJob(app, settings, timestamp, tools) {
         geometry: calculatePageGeometry(settings),
         workspace: createWorkspace(app),
         unpublished: new Set(),
-        progress: SILENT
+        progress: SILENT,
+        rename: null
     };
 }
 
@@ -3070,6 +3114,7 @@ function reportingJob(app, invocation, tools, work) {
     const images = work.images.length;
     const job = prepareJob(app, invocation, tools, images);
 
+    job.rename = createRenamer(globalThis.ObjC, globalThis.$);
     job.progress = work.headless
         ? job.progress
         : createProgress({ units: unitsOf(job.settings, images), images });

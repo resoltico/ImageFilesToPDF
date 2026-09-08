@@ -19,13 +19,22 @@ const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob } = require("./fake-job.cjs");
 
 const DENIED = "Operation not permitted";
+// A filesystem that can do neither a hard link nor an exclusive rename, which
+// is what exFAT measurably is: the last resort is all that is left.
+function withoutExclusiveRename(settings) {
+    const host = createFakeHost(settings);
+
+    host.renamer = { rename: () => false };
+
+    return host;
+}
 
 test("a name that could not be taken says which name it was", () => {
     // Two names are taken in a publication that goes the long way round, and
     // a message naming neither leaves the person reading it no better off.
     // The name is free when publication starts and taken by the time the
     // reservation is made, which is the only way this step is reached.
-    const host = createFakeHost({
+    const host = withoutExclusiveRename({
         files: ["/a/p.pdf", "/a/out.pdf"],
         failures: [
             ["/bin/ln", new Error("ln: unsupported")],
@@ -55,7 +64,7 @@ test("a rename that was refused says which step it was", () => {
     // different reasons: the link because the filesystem cannot make one, the
     // rename because the host refused it. A message naming neither leaves the
     // person reading it no better off.
-    const host = createFakeHost({
+    const host = withoutExclusiveRename({
         files: ["/a/p.pdf"],
         failures: [["/bin/ln", new Error("ln: unsupported")], ["/bin/sh", new Error(DENIED)]]
     });
@@ -75,7 +84,7 @@ test("a rename that quietly did nothing is not a publication", () => {
     // file the output path holds afterwards -- asking whether the staging
     // copy was still there answered "gone" when the question could not be put
     // at all, and a refused inspection read as a publication.
-    const host = createFakeHost({
+    const host = withoutExclusiveRename({
         files: ["/a/p.pdf"],
         failures: [
             ["/bin/ln", new Error(DENIED)],

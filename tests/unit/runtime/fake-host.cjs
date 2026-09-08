@@ -64,6 +64,15 @@ function injectedAnswer(failures, command) {
     return undefined;
 }
 
+/*
+ * What renamex_np with RENAME_EXCL does: move the file, refusing a
+ * destination that is there. A test gives the host a different one to stand
+ * for a filesystem that cannot do it at all.
+ */
+function renamerOn(fs) {
+    return { renamer: { rename: (from, to) => fs.exclusiveRename(from, to) } };
+}
+
 function dialogSurface(host) {
     return {
         displayDialog(message, options) {
@@ -125,7 +134,7 @@ function createFakeHost(settings = {}) {
         }
     };
 
-    return Object.assign(host, dialogSurface(host));
+    return Object.assign(host, dialogSurface(host), renamerOn(fs));
 }
 
 module.exports = { createFakeHost, parseArgv, WORKSPACE };

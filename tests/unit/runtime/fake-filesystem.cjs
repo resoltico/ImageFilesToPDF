@@ -8,7 +8,8 @@ const { move, copy, link, remove } = require("./fake-writing.cjs");
 const {
     makeDirectory,
     removeDirectory,
-    shell
+    shell,
+    exclusiveRename
 } = require("./fake-taking.cjs");
 
 /*
@@ -35,6 +36,7 @@ function createFilesystem(seed, executables, empty, settings = {}) {
         files: state.files,
         sizes: state.sizes,
         test: (rest) => testPath(state, rest),
+        exclusiveRename: (from, to) => exclusiveRename(state, from, to),
         makeDirectory: (rest) => makeDirectory(state, rest),
         removeDirectory: (rest) => removeDirectory(state, rest),
         shell: (rest) => shell(state, rest),

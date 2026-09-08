@@ -17,6 +17,7 @@ const { collectInvocation } = require("./input.js");
 const { collectImageFiles } = require("./admission.js");
 const { createTree } = require("./tree.js");
 const { createProgress, unitsOf } = require("./progress.js");
+const { createRenamer } = require("./exclusive-rename.js");
 const { createJob, runJob } = require("./job.js");
 
 /*
@@ -64,6 +65,7 @@ function reportingJob(app, invocation, tools, work) {
     const images = work.images.length;
     const job = prepareJob(app, invocation, tools, images);
 
+    job.rename = createRenamer(globalThis.ObjC, globalThis.$);
     job.progress = work.headless
         ? job.progress
         : createProgress({ units: unitsOf(job.settings, images), images });

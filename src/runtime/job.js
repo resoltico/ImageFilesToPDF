@@ -24,7 +24,11 @@ function createJob(app, settings, timestamp, tools) {
         workspace: createWorkspace(app),
         // Validated PDFs this run has produced and not yet published.
         unpublished: new Set(),
-        progress: SILENT
+        progress: SILENT,
+        // The exclusive rename, where the host can reach it. main.js supplies
+        // it for the same reason it supplies progress: the bridge belongs to
+        // the run rather than to the job's shape.
+        rename: null
     };
 }
 

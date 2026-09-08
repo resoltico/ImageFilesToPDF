@@ -78,13 +78,23 @@ test("another writer's file at the output name is never written to", () => {
     assert.equal(recovered(host).length, 1, "and ours was kept");
 });
 
+// A filesystem that can do neither a hard link nor an exclusive rename, which
+// is what exFAT measurably is: the last resort is all that is left.
+function withoutExclusiveRename(settings) {
+    const host = createFakeHost(settings);
+
+    host.renamer = { rename: () => false };
+
+    return host;
+}
+
 test("a name taken while the copy was being made is not renamed over", () => {
     // A copy takes time, and the name it was headed for can be claimed by
     // something else in the meantime. The rename would replace it; the check
     // that decides between them has to be made when the claim fails, not
     // when publication started.
     let asked = 0;
-    const host = createFakeHost({
+    const host = withoutExclusiveRename({
         files: ["/a/p.pdf"],
         failures: [
             [DIRECT_CLAIM, new Error(DENIED)],

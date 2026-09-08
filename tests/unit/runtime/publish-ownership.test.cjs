@@ -47,10 +47,20 @@ test("a check that cannot answer never costs the finished PDF", () => {
     assert.ok(!host.files.has("/a/out.pdf"), "and nothing was published");
 });
 
+// A filesystem that can do neither a hard link nor an exclusive rename, which
+// is what exFAT measurably is: the last resort is all that is left.
+function withoutExclusiveRename(settings) {
+    const host = createFakeHost(settings);
+
+    host.renamer = { rename: () => false };
+
+    return host;
+}
+
 test("a failure after the copy leaves the workspace copy untouched", () => {
     // The copy is a second file, not a move: whatever happens to it, the PDF
     // this run built is still where it built it.
-    const host = createFakeHost({
+    const host = withoutExclusiveRename({
         files: ["/a/p.pdf"],
         failures: [
             [DIRECT_CLAIM, new Error(DENIED)],

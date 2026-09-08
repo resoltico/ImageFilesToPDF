@@ -19,10 +19,13 @@ VOLUME="/Volumes/$VOLUME_NAME"
 # the volume mounts as NO NAME.
 FAT_NAME=IMGPDFTEST
 FAT_VOLUME="/Volumes/$FAT_NAME"
+EXFAT_NAME=IMGPDFEXF
+EXFAT_VOLUME="/Volumes/$EXFAT_NAME"
 
 cleanup() {
     hdiutil detach -quiet "$VOLUME" 2>/dev/null || true
     hdiutil detach -quiet "$FAT_VOLUME" 2>/dev/null || true
+    hdiutil detach -quiet "$EXFAT_VOLUME" 2>/dev/null || true
     rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -74,12 +77,11 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# A volume that cannot make hard links at all.
+# A volume that cannot make hard links.
 #
-# Which is what a camera card is: MS-DOS. The name is taken as an empty file
-# first -- the one exclusive create there is on such a volume -- and the PDF
-# is renamed onto that reservation, so nothing that was already there can be
-# replaced.
+# Which is what a camera card is. MS-DOS cannot link, but it can rename
+# exclusively -- one operation that moves the PDF onto the name and refuses a
+# name that is taken -- so that is what publishes there.
 # ---------------------------------------------------------------------------
 
 if attach_test_volume "MS-DOS FAT32" "$FAT_NAME"; then
@@ -103,6 +105,33 @@ if attach_test_volume "MS-DOS FAT32" "$FAT_NAME"; then
     hdiutil detach -quiet "$FAT_VOLUME"
 else
     printf 'link-free publication skipped: no MS-DOS volume could be attached\n'
+fi
+
+# ---------------------------------------------------------------------------
+# And a volume that can do neither.
+#
+# exFAT, measurably: no hard links, and the exclusive rename is not
+# implemented there. The name is taken empty and filled instead, which is the
+# last resort, and it must still refuse a name that is already held.
+# ---------------------------------------------------------------------------
+
+if attach_test_volume "ExFAT" "$EXFAT_NAME"; then
+    cp "$WORK/photo.png" "$EXFAT_VOLUME/"
+    run 20260907_070707 "$EXFAT_VOLUME/photo.png"
+
+    assert_valid_pdf "$EXFAT_VOLUME/output_20260907_070707.pdf"
+    assert_nothing_left_behind "$EXFAT_VOLUME"
+
+    printf 'someone elses document' > "$EXFAT_VOLUME/output_20260907_080808.pdf"
+    run 20260907_080808 "$EXFAT_VOLUME/photo.png"
+
+    test "$(cat "$EXFAT_VOLUME/output_20260907_080808.pdf")" = "someone elses document" ||
+        fail "a file that was already there was overwritten"
+    assert_valid_pdf "$EXFAT_VOLUME/output_20260907_080808_2.pdf"
+    assert_nothing_left_behind "$EXFAT_VOLUME"
+    hdiutil detach -quiet "$EXFAT_VOLUME"
+else
+    printf 'exFAT publication skipped: no exFAT volume could be attached\n'
 fi
 
 printf 'macOS volume integration passed\n'
