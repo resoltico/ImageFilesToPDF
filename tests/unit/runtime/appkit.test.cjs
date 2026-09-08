@@ -10,10 +10,26 @@ const CREATE = 1000;
 const CANCEL = 1001;
 const ABORT = -1001;
 
-function present(responses, spec = formSpec()) {
-    const bridge = createFakeObjC({ responses });
+function present(responses, spec, duringModal) {
+    const bridge = createFakeObjC({ responses, duringModal });
 
-    return { bridge, outcome: presentForm(bridge, spec) };
+    return { bridge, outcome: presentForm(bridge, spec ?? formSpec()) };
+}
+
+/*
+ * The labels and hints are NSTextFields too, so a control is picked out by
+ * what it holds rather than by being the only one of its kind.
+ */
+function controlsIn(alert) {
+    const views = alert.accessoryView.subviews;
+
+    return {
+        combo: views.find((view) => view.kind === "combo"),
+        popup: views.find((view) => view.kind === "popup"),
+        resolution: views.find(
+            (view) => view.kind === "field" && view.stringValue === "300"
+        )
+    };
 }
 
 test("clicking Create returns what the controls hold", () => {
@@ -21,6 +37,29 @@ test("clicking Create returns what the controls hold", () => {
 
     assert.deepEqual(outcome.answers, defaultAnswers());
     assert.equal(outcome.cancelled, undefined);
+});
+
+test("a colour typed over a preset is the answer, not the preset", () => {
+    // Selecting White and then replacing its text is the whole point of the
+    // control. Reading the item last selected from the list would take the
+    // preset and discard what the person actually wrote.
+    const { outcome } = present([CREATE], formSpec(), (alert) => {
+        controlsIn(alert).combo.stringValue = "  c7dae8 ";
+    });
+
+    assert.equal(outcome.answers.background, "  c7dae8 ");
+});
+
+test("what is being typed is committed before it is read", () => {
+    // Text lives in the window's field editor until something commits it, and
+    // stringValue is what was last committed. A value typed and submitted
+    // without leaving the field would otherwise read as the one before it.
+    const { bridge } = present([CREATE]);
+    const { combo, resolution, popup } = controlsIn(bridge.state.alerts[0]);
+
+    assert.ok(combo.committed > 0, "the colour");
+    assert.ok(resolution.committed > 0, "and the numbers, which had the same fault");
+    assert.equal(popup.committed, 0, "a menu has no editor to commit");
 });
 
 test("clicking Cancel is an answer, not a failure", () => {

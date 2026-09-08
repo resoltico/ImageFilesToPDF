@@ -6,11 +6,11 @@ const {
     makeHint,
     makePopup,
     addPopupItem,
-    makeField,
     markInvalid,
     markHintInvalid,
     makeAlert
 } = require("./appkit-widgets.js");
+const { makeField, makeColourCombo } = require("./appkit-fields.js");
 const { buildForm } = require("./appkit-form.js");
 
 // Gathered into one object so a test can substitute the whole widget layer.
@@ -21,6 +21,7 @@ const WIDGETS = {
     makePopup,
     addPopupItem,
     makeField,
+    makeColourCombo,
     markInvalid,
     markHintInvalid,
     makeAlert
@@ -68,6 +69,23 @@ function readControls(bridge, spec, controls) {
     for (const row of spec.rows) {
         const control = controls[row.key];
 
+        if (row.kind !== "choice") {
+            /*
+             * What is being typed lives in the window's field editor until
+             * something commits it, and stringValue is what was last
+             * committed. Clicking a button usually ends editing first, which
+             * is not the same as always: a value typed and submitted without
+             * leaving the field would otherwise be read as the one before it.
+             * validateEditing copies the editor's contents into the cell, and
+             * is documented to do exactly that.
+             *
+             * A zero-argument ObjC method, which JXA invokes on property
+             * access -- written with parentheses it would call the result.
+             */
+            // eslint-disable-next-line no-unused-expressions
+            control.validateEditing;
+        }
+
         answers[row.key] = String(bridge.objc.unwrap(
             row.kind === "choice"
                 ? control.titleOfSelectedItem
@@ -95,4 +113,4 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
         : { cancelled: true };
 }
 
-module.exports = { presentForm };
+module.exports = { presentForm, WIDGETS };

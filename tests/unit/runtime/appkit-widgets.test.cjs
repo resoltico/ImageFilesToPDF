@@ -8,7 +8,6 @@ const {
     makeHint,
     makePopup,
     addPopupItem,
-    makeField,
     makeAlert
 } = require("../../../src/runtime/appkit-widgets.js");
 const { createFakeObjC } = require("./fake-objc.cjs");
@@ -44,14 +43,6 @@ test("a hint is secondary: smaller, dimmer, and not editable", () => {
     assert.equal(hint.textColor.name, "secondaryLabel");
 });
 
-test("a field keeps its value and its place", () => {
-    const field = makeField(bridge().ns, "300", RECT);
-
-    assert.equal(field.stringValue, "300");
-    assert.deepEqual(field.rect, RECT);
-    assert.notEqual(field.editable, false, "a field must stay editable");
-});
-
 test("a choice control is a pop-up, not a pull-down", () => {
     // A pull-down keeps showing its first item as the title whatever is
     // chosen, so the form would never show the current answer.
@@ -81,22 +72,14 @@ test("an alert is titled and carries its buttons in order", () => {
     assert.deepEqual(alert.buttons, ["Create PDF", "Cancel"]);
 });
 
-test("an option gets an image only when it has a colour", () => {
+test("an option is a title, in the order it was added", () => {
     const { ns } = bridge();
     const popup = makePopup(ns, RECT);
 
-    addPopupItem(ns, popup, { label: "A4", swatch: null });
-    addPopupItem(ns, popup, {
-        label: "Dark blue (#204486)",
-        swatch: { red: 32, green: 68, blue: 134 }
-    });
+    addPopupItem(popup, { label: "A4" });
+    addPopupItem(popup, { label: "US Letter" });
 
-    assert.deepEqual(popup.items.map((item) => item.title), [
-        "A4",
-        "Dark blue (#204486)"
-    ]);
-    assert.equal(popup.items[0].image, null);
-    assert.ok(popup.items[1].image, "a colour option must show its colour");
+    assert.deepEqual(popup.items.map((item) => item.title), ["A4", "US Letter"]);
 });
 
 test("a hint has no chrome of any kind", () => {

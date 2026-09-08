@@ -46,27 +46,30 @@ assert_pixel "$WORK/first.png" 30 42 223 41 53 28 \
     "natural order (page 2 must precede page 10, so page one is red)"
 
 # ---------------------------------------------------------------------------
-# Separate PDFs, Letter landscape, purple background, alpha flattening
+# Separate PDFs, Letter landscape, alpha flattening, and a background that is
+# not one of the four presets -- typed in lower case and without its hash, as
+# a person or a script may supply it. What the presets had written down for
+# them is worked out for whatever arrives, so this is the same path they take.
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/separate.json" Letter Landscape "Separate PDFs" "#8E79E0" 20260904_020304
+write_config "$WORK/separate.json" Letter Landscape "Separate PDFs" "c7dae8" 20260904_020304
 run_headless "$WORK/separate.json" "$WORK/alpha image.png"
 
 SEPARATE="$WORK/alpha image_20260904_020304.pdf"
 assert_valid_pdf "$SEPARATE"
 assert_page_size "$SEPARATE" "792 x 612 pts" "separate PDF is not Letter landscape"
 
-pdftoppm -f 1 -singlefile -r 10 -png "$SEPARATE" "$WORK/purple" >/dev/null 2>&1
-assert_pixel "$WORK/purple.png" 0 0 142 121 224 6 \
-    "purple page background with alpha flattening"
+pdftoppm -f 1 -singlefile -r 10 -png "$SEPARATE" "$WORK/custom" >/dev/null 2>&1
+assert_pixel "$WORK/custom.png" 0 0 199 218 232 6 \
+    "a typed page background, with alpha flattening"
 
 # No-clobber: a second run must not overwrite the first.
 run_headless "$WORK/separate.json" "$WORK/alpha image.png"
 test -s "$WORK/alpha image_20260904_020304_2.pdf"
 
 # ---------------------------------------------------------------------------
-# A black background, which uses the single-value vips vector rather than a
-# triple. Getting that wrong would silently produce the wrong colour.
+# A black background, which vips is given as one number rather than three.
+# Getting that wrong would silently produce the wrong colour.
 # ---------------------------------------------------------------------------
 
 write_config "$WORK/black.json" A4 Portrait "Single PDF" "#000000" 20260904_060708

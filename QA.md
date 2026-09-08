@@ -438,6 +438,88 @@ left behind after a failed copy; a PDF pushed inside a folder being reported
 as published; a recovery that deletes or disowns the finished PDF because a
 check could not answer.
 
+## What a page background is
+
+Any opaque sRGB colour, written as six hexadecimal digits. The four named
+colours are presets — what the list offers — and not the list of colours the
+program permits, which is what they used to be: a value was looked up in a
+table of four and anything else refused.
+
+Permissive at the edge and strict in what is kept. A leading `#` is optional,
+either case is taken, surrounding space is ignored, and what is stored is
+always uppercase `#RRGGBB`. Normalizing is idempotent, which is what lets the
+form and the headless path share one parser without either needing to know
+whether the other ran first.
+
+Six digits and only six. Three-digit shorthand is refused rather than guessed
+at, because `#FFF` is as readily an unfinished `#FFF000` as it is white; eight
+digits are refused because the fourth pair is transparency, and a page
+background has nothing behind it to be transparent against. A value that is
+not text is refused rather than converted: a headless configuration is JSON,
+where a bare number is a mistake to report, not a colour to infer.
+
+One parser, in `src/core/colour.js`, and that is the point of it. There were
+two before: the settings accepted `#RRGGBB` and nothing else, while the swatch
+parser beside it also demanded upper case — so a value one accepted was one
+the other quietly made nothing of. With arbitrary colours allowed, that
+disagreement would have been a colour accepted and shown as no colour at all.
+
+What vips is given is derived rather than tabulated, because a table cannot be
+written out in advance for a colour the user typed a moment ago: one number
+for a grey and three for a colour, which is exactly what the four entries
+held. Measured: vips accepts a comma-separated and a space-separated vector
+alike, and accepts a three-element background on a two-band image — a
+greyscale photograph with an alpha channel — where it takes the first number.
+The comma form is kept because it is what shipped and it raises no question
+about an argument containing spaces.
+
+A colour that is grey in two of its three channels is not grey. Sending one
+number for `#C7C7E8` would spread 199 across every band and paint the page a
+colour nobody asked for, while still looking like a colour — so the rule is
+that all three must agree, and the tests say so with each pair in turn.
+
+The background fills the page around an image and shows behind transparent
+pixels. It recolours nothing opaque. Measured end to end, through the built
+artifact: a typed `c7dae8` reaches both the margin and the flattened
+transparency of a greyscale-plus-alpha source as 199, 218, 232 within JPEG
+tolerance.
+
+The preset labels never reach the settings. `White (#FFFFFF)` is the wording
+of a menu, and a headless configuration asking in it would be depending on
+display text that renaming a preset would change. An exact label is
+recognised at the form's edge and turned into a colour there; a hex code is
+not fished out of whatever else was typed around it, so `use #C7DAE8 please`
+is a mistake worth reporting rather than an instruction worth obeying.
+
+## Reading an answer
+
+Both front ends read their answers through `src/core/answers.js`, and that is
+the point of the file. The form asks six questions at once and collects every
+problem; the stepwise dialogs ask one and ask again; what an answer may be,
+and the sentence said when it may not, is the same either way.
+
+The rule for a number used to be written three times over — the coercion for a
+headless configuration, the form's own check, and the dialog's own check —
+with three wordings for one rule, so the two front ends said different things
+about the same answer. One reader now serves both, and it is deliberately
+stricter than the coercion it sits beside: a typed answer is digits, where
+`Number()` also reads `0x12C` and `3e2` as 300. A JSON configuration is a
+different question, where a number is legitimately a number, and keeps the
+coercion.
+
+A rejected answer comes back for correction. Asking again with the setting's
+default in the box threw away the one thing the person had that the program
+did not — the value being corrected — and for a number it put back a figure
+that looked as though it had been accepted: mistyping a resolution redisplayed
+`300`. The reason goes into the prompt that asks again rather than into a
+dialog of its own, which is what the form does with its problems, and it means
+one dialog per mistake instead of two.
+
+Cancelling stays outside all of it. `displayDialog` raises when a person
+cancels, and that call sits outside the block that catches an unusable answer,
+so a cancelled prompt cancels the run and can never be mistaken for a colour
+that could not be read.
+
 ## How many pages one command can carry
 
 Every page path goes on one command line, and a command line has a size.
@@ -664,11 +746,42 @@ than they do.
 
 What is tested, against a fake ObjC namespace: that each row becomes the right
 control, that the rows are laid out top to bottom rather than upside down in
-AppKit's bottom-left coordinate space, that the colour options carry swatches
-and the others do not, that current answers are preselected, that edited
-values are read back, that nothing is scheduled against the form, and that
-each of the three outcomes — answered, cancelled, never presented — is handled
-distinctly.
+AppKit's bottom-left coordinate space, that the background is a control which
+is both a list and a field, that current answers are preselected, that a value
+typed over a preset is the one read back, that what is being typed is
+committed before it is read, that nothing is scheduled against the form, and
+that each of the three outcomes — answered, cancelled, never presented — is
+handled distinctly.
+
+What is not tested and matters most for the background row: that an
+`NSComboBox` in an alert's accessory view renders, opens its list, and can be
+typed into inside the Shortcuts helper. Every check listed above passes
+against a fake that cannot render anything, so the risk in that row sits
+almost entirely outside them. It is checked by hand, on the real Shortcut,
+against this list:
+
+- the row shows the current colour and opens a list of the four presets;
+- a preset can be chosen with the mouse and with the keyboard;
+- the text can be selected and replaced by typing or pasting;
+- a pasted colour is accepted by pressing Create PDF immediately, without
+  first pressing Tab or Return;
+- a colour that is not six hex digits redisplays the form with the text as
+  typed rather than replaced by a preset;
+- nothing is completed for you while typing.
+
+A value typed and submitted without leaving the field is the one that used to
+be at risk everywhere, not only here: text lives in the window's field editor
+until something commits it, and `stringValue` is what was last committed.
+`validateEditing` is now called on every editable row before it is read, which
+covers the resolution and quality fields as well.
+
+The four backgrounds used to carry a colour swatch in their menu, drawn into
+an `NSImage` for each. A combo box list holds strings and nothing else, and a
+swatch shown beside the field instead would be telling the truth only until
+the next keystroke — so the swatches went with the pop-up, and the names and
+hex codes are what the list shows. That is the price of typing a colour at
+all, and it was paid deliberately: no control offers both, and a second
+control beside the first would be a second place for the answer to live.
 
 There was a watchdog: an `abortModal` scheduled two minutes out, so a form
 that never returned could not hang the run. It fired on forms that were
@@ -767,12 +880,23 @@ mentions a file URL not being read as one, a URL disagreement naming which
 file each value came from, the file being prepared counted from one rather
 than zero.
 
-The last run found nothing new: every survivor in the publication path was
-gone, and the one that remains there is equivalent -- a `catch` that returns
+The last run found nothing in the reworked prompts: no survivor in any file
+this round changed.
+
+The run before that found one thing that would have painted the wrong colour
+on a page. The rule deciding whether vips is given one number or three is that all
+three channels agree, and nothing distinguished it from either channel pair
+agreeing on its own: `#C7C7E8` would have been sent as a single 199 and come
+out grey, silently, while still looking like a colour. Three colours, one for
+each pair, now say so. The rest of its survivors were the wording of the
+colour prompt and the buttons on it, which are what a person answers.
+
+The run before that found nothing new: every survivor in the publication path
+was gone, and the one that remains there is equivalent -- a `catch` that returns
 `false` to callers that only ask whether the answer is truthy, which is the
 group already written down above.
 
-The run before that found no wrong behaviour and two pieces of dead weight. Six of
+The run before those found no wrong behaviour and two pieces of dead weight. Six of
 its survivors were one finding wearing six faces: a label passed to `runArgv`
 describes a failure for somebody to read, and six of them were attached to
 commands whose failure is discarded where it happens -- text written for a
@@ -1065,6 +1189,11 @@ to fail when the fix is reverted:
 | A named pipe at the staging name hanging the run with no timeout | staging-area tests |
 | A refusal explained by a cause that was never established | refusal tests + ACL folder integration |
 | A volume with hard links refused because a bridge was missing | claim-order tests |
+| A colour accepted by the settings and shown as no colour by the swatch | one colour parser, shared |
+| A colour grey in two channels painted as a grey | vips vector tests, each pair in turn |
+| A value typed and submitted without leaving the field being read as the one before it | field-editor commit tests |
+| An answer being corrected replaced by the default when the question is asked again | retry-state tests |
+| One rule stated in different words by the form and by the dialogs | shared reader tests |
 | Tests that stop catching bugs | mutation testing with a break threshold |
 
 ## Acceptance boundary

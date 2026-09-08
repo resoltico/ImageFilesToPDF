@@ -7,7 +7,7 @@ const {
     NUMBER_WIDTH,
     buildForm
 } = require("../../../src/runtime/appkit-form.js");
-const WIDGETS = require("../../../src/runtime/appkit-widgets.js");
+const { WIDGETS } = require("../../../src/runtime/appkit.js");
 const { formSpec } = require("../../../src/core/form.js");
 const { createFakeObjC } = require("./fake-objc.cjs");
 

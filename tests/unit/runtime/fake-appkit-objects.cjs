@@ -15,13 +15,60 @@ function makeView(rect) {
     return view;
 }
 
+/*
+ * committed counts validateEditing, which is how the form takes what is being
+ * typed out of the field editor before reading it.
+ */
+function commitCounter(control) {
+    Object.defineProperty(control, "validateEditing", {
+        get: () => {
+            control.committed += 1;
+
+            return true;
+        }
+    });
+
+    return control;
+}
+
 function makeField(rect) {
-    return { kind: "field", rect, stringValue: "" };
+    return commitCounter({
+        kind: "field",
+        rect,
+        stringValue: "",
+        committed: 0
+    });
+}
+
+function makeCombo(rect) {
+    const combo = commitCounter({
+        kind: "combo",
+        rect,
+        items: [],
+        stringValue: "",
+        committed: 0
+    });
+
+    combo.addItemsWithObjectValues = (values) => {
+        combo.items.push(...values.boxed);
+    };
+    combo.setAccessibilityLabel = (label) => {
+        combo.accessibilityLabel = label;
+    };
+
+    return combo;
 }
 
 function makePopup(rect, pullsDown) {
     const items = [];
-    const popup = { kind: "popup", rect, items, pullsDown, selected: null };
+    const popup = commitCounter({
+        kind: "popup",
+        rect,
+        items,
+        pullsDown,
+        selected: null,
+        committed: 0
+    });
 
     popup.addItemWithTitle = (title) => items.push({ title, image: null });
     popup.selectItemWithTitle = (title) => {
@@ -34,27 +81,6 @@ function makePopup(rect, pullsDown) {
     });
 
     return popup;
-}
-
-function makeImage(size) {
-    const image = { kind: "image", size, focused: 0, fills: [] };
-
-    Object.defineProperty(image, "lockFocus", {
-        get: () => {
-            image.focused += 1;
-
-            return true;
-        }
-    });
-    Object.defineProperty(image, "unlockFocus", {
-        get: () => {
-            image.focused -= 1;
-
-            return true;
-        }
-    });
-
-    return image;
 }
 
 function makeAlert(state) {
@@ -70,6 +96,9 @@ function makeAlert(state) {
     Object.defineProperty(alert, "runModal", {
         get: () => {
             state.alerts.push(alert);
+            // Where a person would be typing: the controls exist and nothing
+            // has been read back yet.
+            state.duringModal(alert);
 
             return state.responses.length > 0 ? state.responses.shift() : 1000;
         }
@@ -78,4 +107,4 @@ function makeAlert(state) {
     return alert;
 }
 
-module.exports = { makeView, makeField, makePopup, makeImage, makeAlert };
+module.exports = { makeView, makeField, makeCombo, makePopup, makeAlert };

@@ -51,7 +51,7 @@ test("normalizeSettings rejects unsupported choices", () => {
     );
     assert.throws(
         () => normalizeSettings(settings({ background: "black" })),
-        /Unsupported background: black/u
+        /six hexadecimal digits/u
     );
 });
 
@@ -65,10 +65,26 @@ test("normalizeSettings enforces the numeric ranges", () => {
     }
 });
 
-test("backgroundDefinition maps a choice to its vips vector", () => {
+test("backgroundDefinition derives the vips vector from the colour", () => {
+    // What the table of four held, now worked out -- so a colour the user
+    // typed a moment ago needs no entry written for it.
     assert.equal(backgroundDefinition("#FFFFFF").vipsVector, "255");
+    assert.equal(backgroundDefinition("#000000").vipsVector, "0");
     assert.equal(backgroundDefinition("#8E79E0").vipsVector, "142,121,224");
-    assert.throws(() => backgroundDefinition("black"), /Unsupported background/u);
+    assert.equal(backgroundDefinition("#204486").vipsVector, "32,68,134");
+    assert.equal(backgroundDefinition("#C7DAE8").vipsVector, "199,218,232");
+    assert.throws(() => backgroundDefinition("black"), /six hexadecimal digits/u);
+});
+
+test("a colour with two channels alike is still a colour", () => {
+    // One number means grey, and vips spreads it over every band. A colour
+    // that is grey in two of its three channels is not grey, and sending one
+    // number for it would paint the page a different colour than was asked
+    // for -- silently, since the page would still be a colour.
+    assert.equal(backgroundDefinition("#C7C7E8").vipsVector, "199,199,232");
+    assert.equal(backgroundDefinition("#C7E8E8").vipsVector, "199,232,232");
+    assert.equal(backgroundDefinition("#E8C7E8").vipsVector, "232,199,232");
+    assert.equal(backgroundDefinition("#7F7F7F").vipsVector, "127", "and a grey is one");
 });
 
 test("normalizeSettings ignores inherited properties", () => {
@@ -83,7 +99,7 @@ test("normalizeSettings ignores inherited properties", () => {
 test("every offered background has a vips vector", () => {
     // A colour that reaches the dialog without one would fail mid-run, after
     // the user has answered everything.
-    for (const hex of ["#FFFFFF", "#000000", "#8E79E0", "#204486"]) {
+    for (const hex of ["#FFFFFF", "#000000", "#8E79E0", "#204486", "#C7DAE8"]) {
         const definition = backgroundDefinition(hex);
 
         assert.ok(definition.vipsVector.length > 0, hex);

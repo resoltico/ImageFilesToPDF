@@ -51,7 +51,7 @@ function addChoice(context, row, rect) {
     const popup = widgets.makePopup(ns, rect);
 
     for (const option of row.options) {
-        widgets.addPopupItem(ns, popup, option);
+        widgets.addPopupItem(popup, option);
     }
 
     popup.selectItemWithTitle(row.value);
@@ -62,6 +62,25 @@ function addChoice(context, row, rect) {
     }
 
     return popup;
+}
+
+/*
+ * The one control that is a list and a field at once, so the presets stay
+ * available without a second control to keep in step with them. It takes the
+ * whole control column: the guidance that a number row shows beside itself is
+ * the combo box's tooltip instead.
+ */
+function addColour(context, row, rect) {
+    const { ns, widgets, view } = context;
+    const combo = widgets.makeColourCombo(ns, row, rect);
+
+    view.addSubview(combo);
+
+    if (row.invalid) {
+        widgets.markInvalid(ns, combo);
+    }
+
+    return combo;
 }
 
 /*
@@ -94,6 +113,12 @@ function addNumber(context, row, rect) {
     return field;
 }
 
+const ADD_ROW = {
+    choice: addChoice,
+    colour: addColour,
+    number: addNumber
+};
+
 function buildForm(bridge, spec, widgets) {
     const rowCount = spec.rows.length;
     const view = widgets.makeView(
@@ -113,9 +138,7 @@ function buildForm(bridge, spec, widgets) {
 
         const rect = rowRect(index, rowCount, CONTROL_LEFT, CONTROL_WIDTH);
 
-        controls[row.key] = row.kind === "choice"
-            ? addChoice(context, row, rect)
-            : addNumber(context, row, rect);
+        controls[row.key] = ADD_ROW[row.kind](context, row, rect);
     });
 
     return { view, controls };

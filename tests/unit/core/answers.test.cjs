@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { readAnswers } = require("../../../src/core/form-answers.js");
+const { readAnswers } = require("../../../src/core/answers.js");
 const { defaultAnswers } = require("../../../src/core/form.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
@@ -95,7 +95,9 @@ test("every problem is reported at once, not one per attempt", () => {
         ["background", "dpi", "paperSize", "quality"]
     );
     assert.ok(problems.some((problem) => problem.message.includes("Legal")));
-    assert.ok(problems.some((problem) => problem.message.includes("Beige")));
+    assert.ok(problems.some(
+        (problem) => problem.message.includes("six hexadecimal digits")
+    ), "and the colour says what a colour is, having no list to be absent from");
     // Named the way the form labels them, not the way a dialog would ask.
     assert.ok(problems.some((problem) => problem.message.startsWith("Resolution:")));
     assert.ok(problems.some((problem) => problem.message.startsWith("JPEG quality:")));

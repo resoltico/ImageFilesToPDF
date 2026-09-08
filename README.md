@@ -105,12 +105,19 @@ job rather than a conversion.
   largest paper size rather than chosen
 - JPEG quality from 1 through 100
 - one combined PDF or one PDF per image
-- page background: white, black, purple `#8E79E0`, or dark blue `#204486`
+- page background: any colour, given as six hexadecimal digits, with white,
+  black, purple `#8E79E0` and dark blue `#204486` offered as presets
 
-All six are asked on one form, with the colours shown as swatches rather than
-described in words and hex. A mistyped number is reported alongside every
-other problem, with the answers already given left in place, so correcting it
-does not mean answering the rest again.
+All six are asked on one form. The background is a menu you can also type
+into: pick one of the four presets, or write a colour of your own — `#C7DAE8`,
+`c7dae8` and ` C7DAE8 ` are all the same colour, and all accepted. A mistyped
+number or colour is reported alongside every other problem, with the answers
+already given left in place, so correcting it does not mean answering the rest
+again.
+
+The page background fills the area around an image and shows behind
+transparent pixels. It does not recolour anything opaque: a screenshot with a
+white background stays white.
 
 The form is drawn with AppKit through the JXA ObjC bridge. That it displays
 at all inside a Shortcuts action is measured rather than assumed: a probe run
@@ -121,7 +128,8 @@ and so without a Dock icon appearing mid-action.
 That is a fact about macOS 15.7, not a promise about the next one, so the
 stepwise dialogs remain as a live fallback. If AppKit cannot be reached, or
 the form cannot be presented, the action asks the same six questions one at a
-time and works exactly as before.
+time and works exactly as before — offering the four presets and, if you want
+a colour of your own, asking for it.
 
 ## While it runs
 

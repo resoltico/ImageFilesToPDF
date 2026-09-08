@@ -1,5 +1,5 @@
 /*
- * Image Files to PDF 1.2.7
+ * Image Files to PDF 1.3.0
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
@@ -18,7 +18,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.2.7";
+const VERSION = "1.3.0";
 
 /* ===== src/core/executables.js ===== */
 
@@ -38,6 +38,50 @@ const STAT = "/usr/bin/stat";
 const EXECUTABLES = [
     CAT, CP, LN, MKDIR, MV, RM, RMDIR, TEST, MKTEMP, PRINTENV, STAT
 ];
+
+/* ===== src/core/colour.js ===== */
+
+
+const HEX_COLOUR =
+    /^#?(?<red>[\da-f]{2})(?<green>[\da-f]{2})(?<blue>[\da-f]{2})$/iu;
+const HEX_RADIX = 16;
+
+const COLOUR_ERROR = "Page background must be six hexadecimal digits, for " +
+    "example #C7DAE8. The # is optional, and transparency is not supported.";
+
+function groupsOf(value) {
+    if (typeof value !== "string") {
+        return null;
+    }
+
+    const match = HEX_COLOUR.exec(value.trim());
+
+    return match ? match.groups : null;
+}
+
+function normalizeColour(value) {
+    const groups = groupsOf(value);
+
+    if (!groups) {
+        throw new Error(COLOUR_ERROR);
+    }
+
+    return `#${groups.red}${groups.green}${groups.blue}`.toUpperCase();
+}
+
+function rgbOf(value) {
+    const groups = groupsOf(value);
+
+    if (!groups) {
+        throw new Error(COLOUR_ERROR);
+    }
+
+    return {
+        red: parseInt(groups.red, HEX_RADIX),
+        green: parseInt(groups.green, HEX_RADIX),
+        blue: parseInt(groups.blue, HEX_RADIX)
+    };
+}
 
 /* ===== src/core/numbers.js ===== */
 
@@ -398,13 +442,6 @@ const PAGE_DEFINITIONS = {
     Letter: { widthPoints: 612, heightPoints: 792 }
 };
 
-const BACKGROUND_DEFINITIONS = {
-    "#FFFFFF": { vipsVector: "255" },
-    "#000000": { vipsVector: "0" },
-    "#8E79E0": { vipsVector: "142,121,224" },
-    "#204486": { vipsVector: "32,68,134" }
-};
-
 const MODE_MAP = {
     "Single PDF": "single",
     "Separate PDFs": "separate",
@@ -445,10 +482,14 @@ function assertChoice(value, choices, label) {
     return text;
 }
 
+function vipsVectorOf({ red, green, blue }) {
+    return red === green && green === blue
+        ? String(red)
+        : [red, green, blue].join(",");
+}
+
 function backgroundDefinition(background) {
-    return BACKGROUND_DEFINITIONS[
-        assertChoice(background, BACKGROUND_DEFINITIONS, "background")
-    ];
+    return { vipsVector: vipsVectorOf(rgbOf(background)) };
 }
 
 function normalizeSettings(settings) {
@@ -457,11 +498,7 @@ function normalizeSettings(settings) {
         PAGE_DEFINITIONS,
         "paper size"
     );
-    const background = assertChoice(
-        settings.background,
-        BACKGROUND_DEFINITIONS,
-        "background"
-    );
+    const background = normalizeColour(settings.background);
     const orientation = String(settings.orientation);
     const modeKey = String(settings.mode);
 
@@ -617,44 +654,29 @@ function valueOfLabel(control, label) {
 /* ===== src/core/form.js ===== */
 
 
-const HEX_COLOUR = /^#(?<red>[\dA-F]{2})(?<green>[\dA-F]{2})(?<blue>[\dA-F]{2})$/u;
-const HEX_RADIX = 16;
-
 const CREATE_BUTTON = "Create PDF";
 const CANCEL_BUTTON = "Cancel";
 
 const CHOICE_ROWS = [
     { key: "paperSize", control: PAPER_SIZE },
     { key: "orientation", control: ORIENTATION },
-    { key: "mode", control: OUTPUT_MODE },
-    { key: "background", control: BACKGROUND }
+    { key: "mode", control: OUTPUT_MODE }
 ];
+
+const COLOUR_ROW = { key: "background", control: BACKGROUND };
+
+const COLOUR_TOOLTIP = "Choose a preset or type six hex digits, " +
+    "for example #C7DAE8.";
 
 const NUMBER_ROWS = [
     { key: "dpi", control: RESOLUTION },
     { key: "quality", control: QUALITY }
 ];
 
-function swatchOf(value) {
-    const match = HEX_COLOUR.exec(String(value));
-
-    if (!match) {
-        return null;
-    }
-
-    const { red, green, blue } = match.groups;
-
-    return {
-        red: parseInt(red, HEX_RADIX),
-        green: parseInt(green, HEX_RADIX),
-        blue: parseInt(blue, HEX_RADIX)
-    };
-}
-
 function defaultAnswers() {
     const answers = {};
 
-    for (const { key, control } of CHOICE_ROWS) {
+    for (const { key, control } of [...CHOICE_ROWS, COLOUR_ROW]) {
         answers[key] = defaultLabelOf(control);
     }
 
@@ -672,11 +694,20 @@ function formRows(answers, invalid) {
         label: control.label,
         value: String(answers[key]),
         invalid: invalid.has(key),
-        options: control.choices.map((choice) => ({
-            label: choice.label,
-            swatch: swatchOf(choice.value)
-        }))
+        options: control.choices.map((choice) => ({ label: choice.label }))
     }));
+
+    const colour = {
+        key: COLOUR_ROW.key,
+        kind: "colour",
+        label: COLOUR_ROW.control.label,
+        tooltip: COLOUR_TOOLTIP,
+        value: String(answers[COLOUR_ROW.key]),
+        invalid: invalid.has(COLOUR_ROW.key),
+        options: COLOUR_ROW.control.choices.map((choice) => ({
+            label: choice.label
+        }))
+    };
 
     const numbers = NUMBER_ROWS.map(({ key, control }) => ({
         key,
@@ -689,7 +720,7 @@ function formRows(answers, invalid) {
         maximum: control.maximum
     }));
 
-    return [...choices, ...numbers];
+    return [...choices, colour, ...numbers];
 }
 
 function invitation(count) {
@@ -710,47 +741,65 @@ function formSpec(answers = defaultAnswers(), problems = [], count = 0) {
     };
 }
 
-/* ===== src/core/form-answers.js ===== */
+/* ===== src/core/answers.js ===== */
 
 
-function readChoice(settings, problems, { key, control }, answers) {
+const DIGITS = /^\d+$/u;
+
+function readNumber(control, answer) {
+    const text = String(answer).trim();
+    const value = parseInt(text, 10);
+
+    if (!DIGITS.test(text) || value < control.minimum || value > control.maximum) {
+        throw new Error(
+            `${control.label} enter a whole number from ` +
+                `${control.minimum} to ${control.maximum}.`
+        );
+    }
+
+    return value;
+}
+
+function readColour(control, answer) {
+    const text = String(answer);
+    const preset = control.choices.find((choice) => choice.label === text);
+
+    return normalizeColour(preset ? preset.value : text);
+}
+
+function readChoice(control, answer) {
     try {
-        settings[key] = valueOfLabel(control, answers[key]);
+        return valueOfLabel(control, answer);
     } catch {
-        problems.push({
-            key,
-            message: `${control.label} "${answers[key]}" is not one of the choices.`
-        });
+        throw new Error(`${control.label} "${answer}" is not one of the choices.`);
     }
 }
 
-function readNumber(settings, problems, { key, control }, answers) {
-    const text = String(answers[key]).trim();
-    const value = parseInt(text, 10);
-
-    if (!/^\d+$/u.test(text) || value < control.minimum || value > control.maximum) {
-        problems.push({
-            key,
-            message: `${control.label} enter a whole number from ` +
-                `${control.minimum} to ${control.maximum}.`
-        });
-
-        return;
+function collect(settings, problems, key, read) {
+    try {
+        settings[key] = read();
+    } catch (error) {
+        problems.push({ key, message: errorMessage(error) });
     }
-
-    settings[key] = value;
 }
 
 function readAnswers(answers) {
     const settings = {};
     const problems = [];
 
-    for (const row of CHOICE_ROWS) {
-        readChoice(settings, problems, row, answers);
+    for (const { key, control } of CHOICE_ROWS) {
+        collect(settings, problems, key, () => readChoice(control, answers[key]));
     }
 
-    for (const row of NUMBER_ROWS) {
-        readNumber(settings, problems, row, answers);
+    collect(
+        settings,
+        problems,
+        COLOUR_ROW.key,
+        () => readColour(COLOUR_ROW.control, answers[COLOUR_ROW.key])
+    );
+
+    for (const { key, control } of NUMBER_ROWS) {
+        collect(settings, problems, key, () => readNumber(control, answers[key]));
     }
 
     return problems.length > 0 ? { problems } : { settings };
@@ -1276,44 +1325,6 @@ function checkTools(app) {
     return tools;
 }
 
-/* ===== src/runtime/appkit-swatch.js ===== */
-
-
-const SWATCH_SIZE = 12;
-const FULL_ALPHA = 1;
-const COLOUR_MAX = 255;
-const SWATCH_BORDER_ALPHA = 0.3;
-
-const STROKE_INSET = 0.5;
-const STROKE_TRIM = 1;
-
-function makeSwatch(ns, swatch) {
-    const image = ns.NSImage.alloc.initWithSize(
-        ns.NSMakeSize(SWATCH_SIZE, SWATCH_SIZE)
-    );
-
-    image.lockFocus;
-    ns.NSColor.colorWithSRGBRedGreenBlueAlpha(
-        swatch.red / COLOUR_MAX,
-        swatch.green / COLOUR_MAX,
-        swatch.blue / COLOUR_MAX,
-        FULL_ALPHA
-    ).set;
-    ns.NSBezierPath.fillRect(ns.NSMakeRect(0, 0, SWATCH_SIZE, SWATCH_SIZE));
-    ns.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0, 0, SWATCH_BORDER_ALPHA).set;
-    ns.NSBezierPath.strokeRect(
-        ns.NSMakeRect(
-            STROKE_INSET,
-            STROKE_INSET,
-            SWATCH_SIZE - STROKE_TRIM,
-            SWATCH_SIZE - STROKE_TRIM
-        )
-    );
-    image.unlockFocus;
-
-    return image;
-}
-
 /* ===== src/runtime/appkit-widgets.js ===== */
 
 
@@ -1370,26 +1381,10 @@ function makePopup(ns, rect) {
     );
 }
 
-function addPopupItem(ns, popup, option) {
+function addPopupItem(popup, option) {
     popup.addItemWithTitle(option.label);
 
-    const item = popup.lastItem;
-
-    if (option.swatch) {
-        item.image = makeSwatch(ns, option.swatch);
-    }
-
-    return item;
-}
-
-function makeField(ns, text, rect) {
-    const field = ns.NSTextField.alloc.initWithFrame(
-        ns.NSMakeRect(rect.left, rect.bottom, rect.width, rect.height)
-    );
-
-    field.stringValue = text;
-
-    return field;
+    return popup.lastItem;
 }
 
 function markInvalid(ns, control) {
@@ -1413,6 +1408,38 @@ function makeAlert(ns, spec) {
     }
 
     return alert;
+}
+
+/* ===== src/runtime/appkit-fields.js ===== */
+
+
+function makeField(ns, text, rect) {
+    const field = ns.NSTextField.alloc.initWithFrame(
+        ns.NSMakeRect(rect.left, rect.bottom, rect.width, rect.height)
+    );
+
+    field.stringValue = text;
+
+    return field;
+}
+
+function makeColourCombo(ns, row, rect) {
+    const combo = ns.NSComboBox.alloc.initWithFrame(
+        ns.NSMakeRect(rect.left, rect.bottom, rect.width, rect.height)
+    );
+
+    combo.usesDataSource = false;
+    combo.editable = true;
+    combo.completes = false;
+    combo.numberOfVisibleItems = row.options.length;
+    combo.addItemsWithObjectValues(
+        ns(row.options.map((option) => option.label))
+    );
+    combo.stringValue = row.value;
+    combo.toolTip = row.tooltip;
+    combo.setAccessibilityLabel(row.label);
+
+    return combo;
 }
 
 /* ===== src/runtime/appkit-form.js ===== */
@@ -1450,7 +1477,7 @@ function addChoice(context, row, rect) {
     const popup = widgets.makePopup(ns, rect);
 
     for (const option of row.options) {
-        widgets.addPopupItem(ns, popup, option);
+        widgets.addPopupItem(popup, option);
     }
 
     popup.selectItemWithTitle(row.value);
@@ -1461,6 +1488,19 @@ function addChoice(context, row, rect) {
     }
 
     return popup;
+}
+
+function addColour(context, row, rect) {
+    const { ns, widgets, view } = context;
+    const combo = widgets.makeColourCombo(ns, row, rect);
+
+    view.addSubview(combo);
+
+    if (row.invalid) {
+        widgets.markInvalid(ns, combo);
+    }
+
+    return combo;
 }
 
 function addNumber(context, row, rect) {
@@ -1488,6 +1528,12 @@ function addNumber(context, row, rect) {
     return field;
 }
 
+const ADD_ROW = {
+    choice: addChoice,
+    colour: addColour,
+    number: addNumber
+};
+
 function buildForm(bridge, spec, widgets) {
     const rowCount = spec.rows.length;
     const view = widgets.makeView(
@@ -1507,9 +1553,7 @@ function buildForm(bridge, spec, widgets) {
 
         const rect = rowRect(index, rowCount, CONTROL_LEFT, CONTROL_WIDTH);
 
-        controls[row.key] = row.kind === "choice"
-            ? addChoice(context, row, rect)
-            : addNumber(context, row, rect);
+        controls[row.key] = ADD_ROW[row.kind](context, row, rect);
     });
 
     return { view, controls };
@@ -1524,6 +1568,7 @@ const WIDGETS = {
     makePopup,
     addPopupItem,
     makeField,
+    makeColourCombo,
     markInvalid,
     markHintInvalid,
     makeAlert
@@ -1539,6 +1584,10 @@ function readControls(bridge, spec, controls) {
 
     for (const row of spec.rows) {
         const control = controls[row.key];
+
+        if (row.kind !== "choice") {
+            control.validateEditing;
+        }
 
         answers[row.key] = String(bridge.objc.unwrap(
             row.kind === "choice"
@@ -1585,32 +1634,65 @@ function chooseRequired(app, control) {
     return valueOfLabel(control, choice[0]);
 }
 
-function promptInteger(app, control) {
-    const { prompt, defaultAnswer, minimum, maximum } = control;
+const CUSTOM_COLOUR = "Custom colour...";
+
+const COLOUR_QUESTION = {
+    ...BACKGROUND,
+    prompt: "Page background as six hexadecimal digits:",
+    defaultAnswer: "#"
+};
+
+function askUntil(app, control, read) {
+    let answer = control.defaultAnswer;
+    let problem = "";
 
     for (;;) {
-        const response = app.displayDialog(prompt, {
-            withTitle: APP_NAME,
-            defaultAnswer,
-            buttons: ["Cancel", "OK"],
-            defaultButton: "OK",
-            cancelButton: "Cancel"
-        });
-        const text = String(response.textReturned).trim();
-
-        if (/^\d+$/u.test(text)) {
-            const value = parseInt(text, 10);
-
-            if (value >= minimum && value <= maximum) {
-                return value;
+        const response = app.displayDialog(
+            problem ? `${problem}\n\n${control.prompt}` : control.prompt,
+            {
+                withTitle: APP_NAME,
+                defaultAnswer: answer,
+                buttons: ["Cancel", "OK"],
+                defaultButton: "OK",
+                cancelButton: "Cancel"
             }
-        }
-
-        app.displayDialog(
-            `Please enter a whole number from ${minimum} to ${maximum}.`,
-            { withTitle: APP_NAME, buttons: ["OK"], defaultButton: "OK" }
         );
+
+        answer = String(response.textReturned);
+
+        try {
+            return read(control, answer);
+        } catch (error) {
+            problem = errorMessage(error);
+        }
     }
+}
+
+function promptColour(app) {
+    return askUntil(app, COLOUR_QUESTION, readColour);
+}
+
+function chooseColour(app) {
+    const choice = app.chooseFromList(
+        [...labelsOf(BACKGROUND), CUSTOM_COLOUR],
+        {
+            withTitle: APP_NAME,
+            withPrompt: BACKGROUND.prompt,
+            defaultItems: [defaultLabelOf(BACKGROUND)]
+        }
+    );
+
+    if (!choice) {
+        throw new UserCancelled();
+    }
+
+    return String(choice[0]) === CUSTOM_COLOUR
+        ? promptColour(app)
+        : valueOfLabel(BACKGROUND, choice[0]);
+}
+
+function promptInteger(app, control) {
+    return askUntil(app, control, readNumber);
 }
 
 function collectDialogSettings(app) {
@@ -1620,7 +1702,7 @@ function collectDialogSettings(app) {
         dpi: promptInteger(app, RESOLUTION),
         quality: promptInteger(app, QUALITY),
         mode: chooseRequired(app, OUTPUT_MODE),
-        background: chooseRequired(app, BACKGROUND)
+        background: chooseColour(app)
     };
 }
 

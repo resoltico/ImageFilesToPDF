@@ -1,7 +1,7 @@
 "use strict";
 
 const { formSpec } = require("../core/form.js");
-const { readAnswers } = require("../core/form-answers.js");
+const { readAnswers } = require("../core/answers.js");
 const { isUserCancelled, UserCancelled } = require("../core/errors.js");
 const { presentForm } = require("./appkit.js");
 const { collectDialogSettings } = require("./dialogs.js");

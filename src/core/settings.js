@@ -1,5 +1,6 @@
 "use strict";
 
+const { normalizeColour, rgbOf } = require("./colour.js");
 const { parseInteger } = require("./numbers.js");
 
 /*
@@ -16,18 +17,6 @@ const { parseInteger } = require("./numbers.js");
 const PAGE_DEFINITIONS = {
     A4: { widthPoints: 595.2756, heightPoints: 841.8898 },
     Letter: { widthPoints: 612, heightPoints: 792 }
-};
-
-/*
- * Backgrounds are keyed by hex, so every value is the same kind of thing. The
- * vips vector is a single number for greys and a triple for colours, which is
- * what vips itself expects.
- */
-const BACKGROUND_DEFINITIONS = {
-    "#FFFFFF": { vipsVector: "255" },
-    "#000000": { vipsVector: "0" },
-    "#8E79E0": { vipsVector: "142,121,224" },
-    "#204486": { vipsVector: "32,68,134" }
 };
 
 const MODE_MAP = {
@@ -84,10 +73,26 @@ function assertChoice(value, choices, label) {
     return text;
 }
 
+/*
+ * What vips is given for --background: one number for a grey and three for a
+ * colour, which is exactly what the table of four backgrounds held while
+ * there were only four. vips broadcasts a single value across however many
+ * bands an image has, and at the flatten stage an image can still be one band
+ * and an alpha -- a greyscale photograph with transparency is two, and takes
+ * the first number of a triple. Measured on both: "255" and "199,218,232" are
+ * each accepted by a two-band and a four-band image.
+ *
+ * Derived rather than tabulated, now that any colour is allowed. A table
+ * would have to be written out for a value the user has just typed.
+ */
+function vipsVectorOf({ red, green, blue }) {
+    return red === green && green === blue
+        ? String(red)
+        : [red, green, blue].join(",");
+}
+
 function backgroundDefinition(background) {
-    return BACKGROUND_DEFINITIONS[
-        assertChoice(background, BACKGROUND_DEFINITIONS, "background")
-    ];
+    return { vipsVector: vipsVectorOf(rgbOf(background)) };
 }
 
 function normalizeSettings(settings) {
@@ -96,11 +101,7 @@ function normalizeSettings(settings) {
         PAGE_DEFINITIONS,
         "paper size"
     );
-    const background = assertChoice(
-        settings.background,
-        BACKGROUND_DEFINITIONS,
-        "background"
-    );
+    const background = normalizeColour(settings.background);
     const orientation = String(settings.orientation);
     const modeKey = String(settings.mode);
 

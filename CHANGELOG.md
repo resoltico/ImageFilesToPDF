@@ -4,6 +4,39 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-08
+
+### Added
+
+- The page background can be any colour, not only the four that were offered.
+  Choose a preset from the list as before, or type a colour into the same
+  control: `#C7DAE8`, `c7dae8` and `C7DAE8` are all accepted, and six
+  hexadecimal digits is the whole rule. Colours with transparency are not
+  supported, and a value that is not a colour is reported with everything else
+  that needs correcting, with your other answers left in place.
+- Headless configurations accept the same colours, written the same way. The
+  four existing values keep working exactly as before.
+
+### Changed
+
+- The background list no longer shows a colour swatch beside each preset. A
+  control you can type into cannot carry them, and a swatch that stayed put
+  while you typed a different colour would be showing you the wrong one.
+- Where the settings are asked one question at a time — the fallback used when
+  the form cannot be shown — the background list ends with "Custom colour...",
+  which asks for the colour you want.
+
+### Fixed
+
+- A value typed into the form and submitted without first leaving the field is
+  no longer read as the value it replaced. This affected the resolution and
+  quality fields as well.
+- Where the settings are asked one question at a time, a rejected answer comes
+  back for you to correct instead of being replaced by the default, which
+  looked as though it had been accepted. The reason is shown in the dialog
+  that asks again rather than in a separate one before it. This covers the
+  resolution and quality prompts as well as a colour of your own.
+
 ## [1.2.7] - 2026-09-08
 
 ### Fixed

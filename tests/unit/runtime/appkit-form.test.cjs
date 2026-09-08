@@ -9,7 +9,7 @@ const {
     PADDING,
     buildForm
 } = require("../../../src/runtime/appkit-form.js");
-const WIDGETS = require("../../../src/runtime/appkit-widgets.js");
+const { WIDGETS } = require("../../../src/runtime/appkit.js");
 const { formSpec, defaultAnswers } = require("../../../src/core/form.js");
 const { createFakeObjC } = require("./fake-objc.cjs");
 
@@ -55,21 +55,36 @@ test("rows read top to bottom, which is upside down in AppKit", () => {
 
 test("a choice row offers every option, in order", () => {
     const { controls } = build();
-    const { background } = controls;
+    const { paperSize } = controls;
 
-    assert.equal(background.kind, "popup");
-    assert.deepEqual(
-        background.items.map((item) => item.title),
-        ["White (#FFFFFF)", "Black (#000000)", "Purple (#8E79E0)", "Dark blue (#204486)"]
-    );
+    assert.equal(paperSize.kind, "popup");
+    assert.deepEqual(paperSize.items.map((item) => item.title), ["A4", "US Letter"]);
 });
 
-test("only the colour options carry an image", () => {
+test("the background is a control that is a list and a field at once", () => {
+    // A popup could offer the four presets and nothing else; a plain field
+    // could take any colour and offer nothing. The row has to do both, in one
+    // control, or the form grows a second one to keep in step with the first.
     const { controls } = build();
+    const { background } = controls;
 
-    for (const item of controls.background.items) {
-        assert.ok(item.image, `${item.title} should show its colour`);
-    }
+    assert.equal(background.kind, "combo");
+    assert.deepEqual(
+        background.items,
+        ["White (#FFFFFF)", "Black (#000000)", "Purple (#8E79E0)", "Dark blue (#204486)"]
+    );
+    assert.equal(background.stringValue, "White (#FFFFFF)", "showing the current one");
+    assert.equal(background.editable, true, "and it can be typed into");
+    assert.equal(background.completes, false, "without finishing the word for you");
+    assert.match(background.toolTip, /six hex digits/u);
+    assert.equal(background.accessibilityLabel, "Page background:");
+});
+
+test("a menu item is a title and nothing else", () => {
+    // The four backgrounds used to carry a colour swatch here. They are in a
+    // combo box now, whose list holds strings, so nothing builds an image and
+    // no option carries one.
+    const { controls } = build();
 
     for (const item of controls.paperSize.items) {
         assert.equal(item.image, null, `${item.title} needs no image`);
@@ -104,4 +119,18 @@ test("the form is as tall as it has rows, plus its margins", () => {
         spec.rows.length * ROW_HEIGHT + PADDING * 2
     );
     assert.equal(view.rect.width, FORM_WIDTH);
+});
+
+test("a colour that could not be read is marked, keeping what was typed", () => {
+    // The raw text stays in the control rather than being replaced by a
+    // preset, so correcting it is a correction and not a retype.
+    const spec = formSpec(
+        { ...defaultAnswers(), background: "c7dae" },
+        [{ key: "background", message: "Page background must be six hex digits." }]
+    );
+    const { controls } = build(spec);
+
+    assert.equal(controls.background.stringValue, "c7dae", "what was typed");
+    assert.equal(controls.background.drawsBackground, true);
+    assert.equal(controls.background.backgroundColor.name, "systemRed");
 });

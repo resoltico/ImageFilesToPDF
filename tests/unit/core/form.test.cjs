@@ -5,7 +5,6 @@ const test = require("node:test");
 const {
     CREATE_BUTTON,
     CANCEL_BUTTON,
-    swatchOf,
     defaultAnswers,
     formSpec
 } = require("../../../src/core/form.js");
@@ -43,32 +42,26 @@ test("the form offers the same choices as the stepwise dialogs", () => {
     );
 });
 
-test("a hex colour becomes a swatch, and anything else does not", () => {
-    assert.deepEqual(swatchOf("#204486"), { red: 32, green: 68, blue: 134 });
-    assert.deepEqual(swatchOf("#FFFFFF"), { red: 255, green: 255, blue: 255 });
-    assert.deepEqual(swatchOf("#000000"), { red: 0, green: 0, blue: 0 });
-    assert.equal(swatchOf("A4"), null);
-    assert.equal(swatchOf("Portrait"), null);
-    assert.equal(swatchOf("#20448"), null, "five digits is not a colour");
-    assert.equal(swatchOf("#2044866"), null, "seven digits is not a colour");
-    assert.equal(swatchOf("204486"), null, "a colour needs its hash");
-    assert.equal(
-        swatchOf("Purple #8E79E0"),
-        null,
-        "a hex code inside a label is not the value"
+test("the background is a row of its own, offering the presets", () => {
+    // Neither a closed list nor a number: the four colours are presets, and
+    // any opaque sRGB colour may be typed instead.
+    const row = rowFor("background");
+
+    assert.equal(row.kind, "colour");
+    assert.deepEqual(
+        row.options.map((option) => option.label),
+        BACKGROUND.choices.map((choice) => choice.label)
     );
+    assert.equal(row.value, "White (#FFFFFF)");
+    assert.match(row.tooltip, /six hex digits/u);
+    assert.match(row.tooltip, /#C7DAE8/u, "and shows one, since a shape is easier to copy");
 });
 
-test("only the colours carry swatches", () => {
-    for (const option of rowFor("background").options) {
-        assert.ok(option.swatch, `${option.label} should have a swatch`);
-    }
-
-    for (const key of ["paperSize", "orientation", "mode"]) {
-        for (const option of rowFor(key).options) {
-            assert.equal(option.swatch, null, `${option.label} needs no swatch`);
-        }
-    }
+test("the background sits where it always sat, between mode and resolution", () => {
+    assert.deepEqual(
+        formSpec().rows.map((row) => row.key),
+        ["paperSize", "orientation", "mode", "background", "dpi", "quality"]
+    );
 });
 
 test("the defaults are the ones the dialogs would have offered first", () => {

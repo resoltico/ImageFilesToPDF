@@ -3,8 +3,8 @@
 const {
     makeView,
     makeField,
+    makeCombo,
     makePopup,
-    makeImage,
     makeAlert
 } = require("./fake-appkit-objects.cjs");
 
@@ -24,7 +24,7 @@ const {
  * The classes the widget layer reaches for, and nothing else: a fake that
  * grew past what is used would stop being evidence about the real code.
  */
-function colourClass(state) {
+function colourClass() {
     return {
         secondaryLabelColor: { kind: "colour", name: "secondaryLabel" },
         systemRedColor: {
@@ -35,20 +35,8 @@ function colourClass(state) {
                 name: "systemRed",
                 alpha
             })
-        },
-        colorWithSRGBRedGreenBlueAlpha(red, green, blue, alpha) {
-            const colour = { red, green, blue, alpha };
-
-            return Object.defineProperty({}, "set", {
-                get: () => {
-                    // Order matters: the fill is set, then the border.
-                    state.colours.push(colour);
-
-                    return true;
-                }
-            });
         }
-        };
+    };
 }
 
 function installClasses(ns, state, application) {
@@ -60,21 +48,9 @@ function installClasses(ns, state, application) {
         NSView: { alloc: { initWithFrame: makeView } },
         NSTextField: { alloc: { initWithFrame: makeField } },
         NSPopUpButton: { alloc: { initWithFramePullsDown: makePopup } },
-        NSImage: {
-            alloc: {
-                initWithSize: (size) => {
-                    state.currentImage = makeImage(size);
-
-                    return state.currentImage;
-                }
-            }
-        },
-        NSColor: colourClass(state),
+        NSComboBox: { alloc: { initWithFrame: makeCombo } },
+        NSColor: colourClass(),
         NSFont: { systemFontOfSize: (size) => ({ kind: "font", size }) },
-        NSBezierPath: {
-            fillRect: (rect) => state.fills.push(rect),
-            strokeRect: (rect) => state.strokes.push(rect)
-        },
         NSAlert: { alloc: { get init() { return makeAlert(state); } } },
         NSApplication: { sharedApplication: application },
         NSObject: {
@@ -94,11 +70,8 @@ function createFakeObjC(settings = {}) {
         responses: [...(settings.responses ?? [])],
         alerts: [],
         watchdogs: [],
-        currentImage: null,
         disarmed: [],
-        fills: [],
-        strokes: [],
-        colours: []
+        duringModal: settings.duringModal ?? (() => undefined)
     };
 
     const application = {

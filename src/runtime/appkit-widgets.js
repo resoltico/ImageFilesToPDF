@@ -1,9 +1,9 @@
 "use strict";
 
-const { makeSwatch } = require("./appkit-swatch.js");
-
 /*
- * The only code in the project that touches AppKit directly.
+ * The structure a form is built from: the view, the labels, the menus and
+ * the alert around them. Controls a person types into are appkit-fields.js,
+ * and between them they are the only code that touches AppKit directly.
  *
  * Every function takes the ObjC namespace as its first parameter rather than
  * reaching for the `$` global, which is what lets the composition above be
@@ -82,26 +82,10 @@ function makePopup(ns, rect) {
     );
 }
 
-function addPopupItem(ns, popup, option) {
+function addPopupItem(popup, option) {
     popup.addItemWithTitle(option.label);
 
-    const item = popup.lastItem;
-
-    if (option.swatch) {
-        item.image = makeSwatch(ns, option.swatch);
-    }
-
-    return item;
-}
-
-function makeField(ns, text, rect) {
-    const field = ns.NSTextField.alloc.initWithFrame(
-        ns.NSMakeRect(rect.left, rect.bottom, rect.width, rect.height)
-    );
-
-    field.stringValue = text;
-
-    return field;
+    return popup.lastItem;
 }
 
 /*
@@ -138,7 +122,6 @@ module.exports = {
     makeHint,
     makePopup,
     addPopupItem,
-    makeField,
     markInvalid,
     markHintInvalid,
     makeAlert

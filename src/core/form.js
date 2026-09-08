@@ -24,50 +24,35 @@ const {
  * offer different options or accept different values.
  */
 
-const HEX_COLOUR = /^#(?<red>[\dA-F]{2})(?<green>[\dA-F]{2})(?<blue>[\dA-F]{2})$/u;
-const HEX_RADIX = 16;
-
 const CREATE_BUTTON = "Create PDF";
 const CANCEL_BUTTON = "Cancel";
 
 const CHOICE_ROWS = [
     { key: "paperSize", control: PAPER_SIZE },
     { key: "orientation", control: ORIENTATION },
-    { key: "mode", control: OUTPUT_MODE },
-    { key: "background", control: BACKGROUND }
+    { key: "mode", control: OUTPUT_MODE }
 ];
+
+/*
+ * The background is a row of its own because it is the one setting that is
+ * neither a closed list nor a number: the four colours are presets, and any
+ * opaque sRGB colour may be typed instead. It sits where it always sat, after
+ * the output mode and before the two numbers.
+ */
+const COLOUR_ROW = { key: "background", control: BACKGROUND };
+
+const COLOUR_TOOLTIP = "Choose a preset or type six hex digits, " +
+    "for example #C7DAE8.";
 
 const NUMBER_ROWS = [
     { key: "dpi", control: RESOLUTION },
     { key: "quality", control: QUALITY }
 ];
 
-/*
- * Parsed here rather than in the widget layer, so that turning "#204486" into
- * a colour is covered by tests like everything else. A value that is not a
- * hex colour simply has no swatch, which is how the non-colour controls get
- * the same row shape.
- */
-function swatchOf(value) {
-    const match = HEX_COLOUR.exec(String(value));
-
-    if (!match) {
-        return null;
-    }
-
-    const { red, green, blue } = match.groups;
-
-    return {
-        red: parseInt(red, HEX_RADIX),
-        green: parseInt(green, HEX_RADIX),
-        blue: parseInt(blue, HEX_RADIX)
-    };
-}
-
 function defaultAnswers() {
     const answers = {};
 
-    for (const { key, control } of CHOICE_ROWS) {
+    for (const { key, control } of [...CHOICE_ROWS, COLOUR_ROW]) {
         answers[key] = defaultLabelOf(control);
     }
 
@@ -85,11 +70,20 @@ function formRows(answers, invalid) {
         label: control.label,
         value: String(answers[key]),
         invalid: invalid.has(key),
-        options: control.choices.map((choice) => ({
-            label: choice.label,
-            swatch: swatchOf(choice.value)
-        }))
+        options: control.choices.map((choice) => ({ label: choice.label }))
     }));
+
+    const colour = {
+        key: COLOUR_ROW.key,
+        kind: "colour",
+        label: COLOUR_ROW.control.label,
+        tooltip: COLOUR_TOOLTIP,
+        value: String(answers[COLOUR_ROW.key]),
+        invalid: invalid.has(COLOUR_ROW.key),
+        options: COLOUR_ROW.control.choices.map((choice) => ({
+            label: choice.label
+        }))
+    };
 
     const numbers = NUMBER_ROWS.map(({ key, control }) => ({
         key,
@@ -102,7 +96,7 @@ function formRows(answers, invalid) {
         maximum: control.maximum
     }));
 
-    return [...choices, ...numbers];
+    return [...choices, colour, ...numbers];
 }
 
 /*
@@ -139,8 +133,8 @@ module.exports = {
     CREATE_BUTTON,
     CANCEL_BUTTON,
     CHOICE_ROWS,
+    COLOUR_ROW,
     NUMBER_ROWS,
-    swatchOf,
     defaultAnswers,
     formSpec
 };

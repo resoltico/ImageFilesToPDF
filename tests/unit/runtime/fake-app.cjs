@@ -63,6 +63,46 @@ function cannedAnswer(app, command) {
     return undefined;
 }
 
+/*
+ * A list of answers is given in order, which is how a prompt that asks again
+ * after a bad entry can be driven. Only a dialog that offers a text field
+ * takes one: a message with an OK button asks nothing and consumes nothing.
+ * An Error in the list is raised where the real dialog raises on Cancel.
+ */
+function answerFor(app, options) {
+    if (!options || options.defaultAnswer === undefined) {
+        return "";
+    }
+
+    return Array.isArray(app.nextAnswer)
+        ? app.nextAnswer.shift()
+        : app.nextAnswer;
+}
+
+function dialogSurface(app) {
+    return {
+        displayDialog(message, options) {
+            app.dialogs.push({ message, options });
+
+            const answer = answerFor(app, options);
+
+            if (answer instanceof Error) {
+                throw answer;
+            }
+
+            return { textReturned: answer ?? "" };
+        },
+
+        chooseFromList(options, settings) {
+            app.listPrompts.push({ options, settings });
+
+            return app.nextChoice === undefined
+                ? [options[0]]
+                : app.nextChoice;
+        }
+    };
+}
+
 function createFakeApp(responses = []) {
     const app = {
         commands: [],
@@ -88,24 +128,10 @@ function createFakeApp(responses = []) {
             }
 
             return cannedAnswer(app, command) ?? "";
-        },
-
-        displayDialog(message, options) {
-            app.dialogs.push({ message, options });
-
-            return { textReturned: app.nextAnswer ?? "" };
-        },
-
-        chooseFromList(options, settings) {
-            app.listPrompts.push({ options, settings });
-
-            return app.nextChoice === undefined
-                ? [options[0]]
-                : app.nextChoice;
         }
     };
 
-    return app;
+    return Object.assign(app, dialogSurface(app));
 }
 
 function failing(message) {
