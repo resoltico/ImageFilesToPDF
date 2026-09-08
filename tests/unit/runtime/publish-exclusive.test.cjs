@@ -1,16 +1,19 @@
 "use strict";
 
 /*
- * Publishing where a hard link cannot go.
+ * Publishing from beside the destination.
  *
- * An exclusive rename does in one step what the fallback needs three for: it
- * moves the file onto the name and fails rather than replace what is there.
- * Measured through the bridge -- a free name is taken, an occupied one, a
- * folder and a link whose target is gone are refused with what is there left
- * exactly as it was, and the file keeps the number that identifies it, so the
- * publication can still be proved afterwards. FAT32 can do it -- a camera
- * card -- and exFAT cannot do this or a hard link, which is where publication
- * stops and says so.
+ * Two operations create a name whole, and which one works is the volume's
+ * business. Measured, from a place beside the destination: APFS and HFS Plus
+ * take a hard link, FAT32 has none and takes an exclusive rename, exFAT takes
+ * neither. So the link is tried first -- it needs no bridge, and a volume
+ * that has links must not be refused because a bridge is missing -- and the
+ * rename is what a camera card is published by.
+ *
+ * The rename is measured through the bridge too: a free name is taken, an
+ * occupied one, a folder and a link whose target is gone are refused with
+ * what is there left exactly as it was, and the file keeps the number that
+ * identifies it, so the publication can still be proved afterwards.
  */
 
 const assert = require("node:assert/strict");
@@ -22,11 +25,39 @@ const { makeJob } = require("./fake-job.cjs");
 const DENIED = "Operation not permitted";
 const DIRECT_CLAIM = "ln' '/a/p.pdf'";
 
-function linkless(settings) {
+// Another volume: the workspace is elsewhere, so the claim from it is
+// refused, and the copy beside the destination can still be linked into
+// place. An attached APFS or HFS Plus drive is this.
+function otherVolume(settings) {
     return createFakeHost({
         ...settings,
         failures: [[DIRECT_CLAIM, new Error(DENIED)], ...settings.failures ?? []]
     });
+}
+
+// A volume with no hard links at all, which is what FAT32 measurably is: no
+// claim of ours can be a link, wherever it is made from.
+function linkless(settings) {
+    return createFakeHost({
+        ...settings,
+        failures: [["/bin/ln", new Error("Operation not supported")],
+            ...settings.failures ?? []]
+    });
+}
+
+// What the run has to reach the exclusive rename through, counted, so a
+// publication can be shown to have gone without it.
+function countingRenamer(host) {
+    const calls = [];
+
+    return {
+        calls,
+        rename(from, to) {
+            calls.push(to);
+
+            return host.renamer.rename(from, to);
+        }
+    };
 }
 
 test("where a link cannot be made, one rename publishes", () => {
@@ -40,6 +71,37 @@ test("where a link cannot be made, one rename publishes", () => {
             /\/bin\/(?:cp|mv|rm)/u.test(command)),
         [],
         "and nothing wrote to the output name on the way there"
+    );
+});
+
+test("a volume that has links is published to without the rename", () => {
+    // The bridge to the rename is a thing that can be missing, and a drive
+    // with hard links has no need of it: the copy beside the destination is
+    // linked into place from there. When the rename was the only thing tried
+    // from that place, a volume that could take a link was refused instead.
+    const host = otherVolume({ files: ["/a/p.pdf"] });
+    const job = makeJob(host);
+    const renamer = countingRenamer(host);
+
+    job.rename = renamer;
+    publishPdf(job, "/a/p.pdf", "/a/out.pdf");
+
+    assert.ok(host.files.has("/a/out.pdf"), "the PDF is at its name");
+    assert.deepEqual(renamer.calls, [], "and the rename was never reached for");
+});
+
+test("a volume that has links publishes with no bridge at all", () => {
+    const host = otherVolume({ files: ["/a/p.pdf"] });
+    const job = makeJob(host);
+
+    job.rename = null;
+    publishPdf(job, "/a/p.pdf", "/a/out.pdf");
+
+    assert.ok(host.files.has("/a/out.pdf"));
+    assert.deepEqual(
+        [...host.files].filter((file) => file.includes(".ImageFilesToPDF")),
+        [],
+        "and the place it was copied into is cleared away"
     );
 });
 
@@ -57,70 +119,5 @@ test("the copy is moved out of the place it was made in, which then goes", () =>
         host.commands.at(-2),
         /'\/bin\/rmdir' '\/a\/\.ImageFilesToPDF-[^']+'/u,
         "the place is cleared away"
-    );
-});
-
-test("a name that is taken is refused, and what is there is untouched", () => {
-    // The rename fails and so would the link; what the refusal meant is
-    // decided by asking whether the name is taken, because errno does not
-    // reach here.
-    const host = linkless({
-        files: ["/a/p.pdf", "/a/theirs.pdf"],
-        failures: [["test' '-e' '/a/theirs.pdf' '-o'", new Error("test failed")]]
-    });
-
-    host.sizes.set("/a/theirs.pdf", 99);
-
-    assert.throws(
-        () => publishPdf(makeJob(host), "/a/p.pdf", "/a/theirs.pdf"),
-        /could not be saved where it was meant to go/u
-    );
-    assert.equal(host.sizes.get("/a/theirs.pdf"), 99, "their file is intact");
-});
-
-test("a destination that can do neither is told about, not worked around", () => {
-    // Taking the name empty and filling it is what this replaced. The name
-    // existed before the PDF was in it, and the move and the cleanup that
-    // followed acted on whatever was at that name by then -- which no guard
-    // fixes, because proving an entry matches something measured a moment ago
-    // is not proving it is the file that was created.
-    const host = linkless({ files: ["/a/p.pdf"] });
-    const job = makeJob(host);
-
-    host.renamer = { rename: () => false };
-    job.rename = host.renamer;
-
-    assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /this drive cannot take the output name/u);
-        // The half that says what became of the PDF, which is the half the
-        // person reading it is waiting for.
-        assert.match(error.message, /so the PDF was not put on it/u);
-
-        return true;
-    });
-    assert.ok(!host.files.has("/a/out.pdf"), "and the name was never created");
-    assert.equal(
-        [...host.files].filter((file) => file.includes("recovered")).length,
-        1,
-        "the finished PDF is kept instead"
-    );
-});
-
-test("a job with no bridge to the rename does not publish by other means", () => {
-    // The operation lives on the bridge, and there is no second-best way to
-    // put a whole file at a name.
-    const host = linkless({ files: ["/a/p.pdf"] });
-    const job = makeJob(host);
-
-    job.rename = null;
-
-    assert.throws(
-        () => publishPdf(job, "/a/p.pdf", "/a/out.pdf"),
-        /this drive cannot take the output name/u
-    );
-    assert.deepEqual(
-        [...host.files].filter((file) => file.includes(".ImageFilesToPDF")),
-        [],
-        "and the place it made is cleared away"
     );
 });

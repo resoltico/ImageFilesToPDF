@@ -3,8 +3,9 @@
 # Publication integration gate.
 #
 # How the finished PDF gets from the workspace to the name the user will see,
-# against real filesystems: one that refuses to be written to, and one that is
-# not the volume the PDF was built on. The second is the case a fake cannot
+# against real filesystems: one that refuses to be written to, one that is not
+# the volume the PDF was built on, and one that refuses the name for a reason
+# that has nothing to do with what the disk can do. The second is the case a fake cannot
 # reach at all -- across volumes Apple's mv copies to the pathname it is given,
 # so the protection has to be that the pathname it is given is never the
 # document's own.
@@ -100,5 +101,36 @@ rm -rf "$(dirname "$KEPT")"
 assert_nothing_left_behind "$WORK/readonly"
 test -z "$(find "$WORK/readonly" -name '*.pdf')" ||
     fail "something was left at the output path"
+
+# ---------------------------------------------------------------------------
+# A folder that refuses a new file on a disk that can do everything.
+#
+# The ACL denies add_file and allows add_subdirectory, so the place beside the
+# destination is made and copied into, and both ways of creating the name are
+# refused -- for a reason that is nothing to do with what the disk can do.
+# This said "this drive cannot take the output name in one step" while quoting
+# the system saying "Permission denied" two lines below it, on the boot disk,
+# which does hard links and exclusive renames both.
+# ---------------------------------------------------------------------------
+
+mkdir -p "$WORK/denied"
+cp "$WORK/photo.png" "$WORK/denied/"
+chmod +a "$(id -un) deny add_file" "$WORK/denied"
+run 20260907_090909 "$WORK/denied/photo.png"
+
+grep -q 'Permission denied' "$WORK/error.txt" ||
+    fail "the system's own words are missing: $(cat "$WORK/error.txt")"
+grep -qiE 'drive|volume' "$WORK/error.txt" &&
+    fail "a cause was named that was not established: $(cat "$WORK/error.txt")"
+test -z "$(find "$WORK/denied" -name '*.pdf')" ||
+    fail "something was left at the output path"
+assert_nothing_left_behind "$WORK/denied"
+
+DENIED_KEPT=$(sed -n 's/^\(\/var\/folders\/.*ImageFilesToPDF-recovered[^ ]*\.pdf\).*/\1/p' \
+    "$WORK/error.txt" | head -1)
+test -n "$DENIED_KEPT" || fail "no recovery path was named: $(cat "$WORK/error.txt")"
+assert_valid_pdf "$DENIED_KEPT"
+rm -rf "$(dirname "$DENIED_KEPT")"
+chmod -a# 0 "$WORK/denied"
 
 printf 'macOS publication integration passed\n'

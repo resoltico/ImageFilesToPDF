@@ -1,5 +1,5 @@
 /*
- * Image Files to PDF 1.2.6
+ * Image Files to PDF 1.2.7
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
@@ -18,7 +18,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.2.6";
+const VERSION = "1.2.7";
 
 /* ===== src/core/executables.js ===== */
 
@@ -2685,8 +2685,12 @@ function copyBeside(app, staged, area, expected) {
         : { reasons: mismatch(written.size, expected), made: true };
 }
 
-/* ===== src/runtime/transfer.js ===== */
+/* ===== src/runtime/claim.js ===== */
 
+
+const UNTAKEN = "the output name could not be created in one step, " +
+    "so the PDF was not put there";
+const NO_RENAME = "the other way of creating it was not available to this run";
 
 function published(from) {
     return { published: true, reasons: [], claimed: from };
@@ -2696,25 +2700,41 @@ function refused(reasons) {
     return { published: false, reasons };
 }
 
-function claim(app, from, finalPath) {
-    runArgv(app, [LN, from, finalPath], "claiming the output name");
+function linkFrom(app, from, finalPath) {
+    try {
+        runArgv(app, [LN, from, finalPath], "claiming the output name");
+
+        return "";
+    } catch (error) {
+        return errorMessage(error);
+    }
 }
 
-function whyRefused(app, finalPath) {
-    return pathIsTaken(app, finalPath)
-        ? "the output path was taken"
-        : "this drive cannot take the output name in one step, " +
-            "so the PDF was not put on it";
+function whyNot(app, finalPath, said, rename) {
+    if (pathIsTaken(app, finalPath)) {
+        return ["the output path was taken", said];
+    }
+
+    return rename ? [UNTAKEN, said] : [UNTAKEN, NO_RENAME, said];
 }
 
-function commitFromPlace(attempt) {
-    const { app, paths } = attempt;
-    const from = paths.area.file;
+function claimFrom(attempt, from) {
+    const { app, paths, rename } = attempt;
+    const said = linkFrom(app, from, paths.final);
 
-    return attempt.rename && attempt.rename.rename(from, paths.final)
-        ? published(from)
-        : refused([whyRefused(app, paths.final)]);
+    if (!said) {
+        return published(from);
+    }
+
+    if (rename && rename.rename(from, paths.final)) {
+        return published(from);
+    }
+
+    return refused(whyNot(app, paths.final, said, rename));
 }
+
+/* ===== src/runtime/transfer.js ===== */
+
 
 function throughStaging(attempt, facts, refusal) {
     const { app, paths } = attempt;
@@ -2725,11 +2745,8 @@ function throughStaging(attempt, facts, refusal) {
         return { published: false, reasons: [...copied.reasons, refusal], staging };
     }
 
-    const outcome = commitFromPlace(attempt);
-
     return {
-        ...outcome,
-        reasons: outcome.published ? [] : [...outcome.reasons, refusal],
+        ...claimFrom(attempt, paths.area.file),
         claimedIdentity: copied.identity,
         claimedSize: facts.size,
         staging
@@ -2737,24 +2754,20 @@ function throughStaging(attempt, facts, refusal) {
 }
 
 function deliver(app, paths, facts, rename) {
-    const attempt = { app, paths, rename };
+    const said = linkFrom(app, paths.staged, paths.final);
 
-    try {
-        claim(app, paths.staged, paths.final);
-
+    if (!said) {
         return {
             ...published(paths.staged),
             claimedIdentity: facts.identity,
             claimedSize: facts.size,
             staging: null
         };
-    } catch (error) {
-        const refusal = errorMessage(error);
-
-        return pathIsTaken(app, paths.final)
-            ? { ...refused(["the output path was taken", refusal]), staging: null }
-            : throughStaging(attempt, facts, refusal);
     }
+
+    return pathIsTaken(app, paths.final)
+        ? { ...refused(["the output path was taken", said]), staging: null }
+        : throughStaging({ app, paths, rename }, facts, said);
 }
 
 /* ===== src/runtime/recovery.js ===== */

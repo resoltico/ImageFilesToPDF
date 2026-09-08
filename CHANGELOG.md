@@ -4,6 +4,20 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-09-08
+
+### Fixed
+
+- A save that fails no longer guesses why. It says what could not be done and
+  then quotes the system's own explanation, so a folder that denies permission
+  and a drive that cannot do the job are told apart. Both used to produce the
+  same sentence, blaming the drive — including on a disk that was perfectly
+  capable and a folder that simply would not accept a new file.
+- Saving into a folder on another drive now works in cases where it used to
+  fail outright. The PDF is put onto its name there by the ordinary method
+  first, so a drive that supports it no longer depends on a system feature
+  that some hosts do not provide.
+
 ## [1.2.6] - 2026-09-08
 
 ### Changed

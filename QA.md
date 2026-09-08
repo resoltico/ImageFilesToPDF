@@ -295,16 +295,35 @@ move left 3,211,264 bytes of a 1,258,291,200-byte file under exactly the name
 the finished document was to have.
 
 When the link cannot be made -- another volume, a filesystem without hard
-links, or a host that refuses -- the PDF is copied into the output folder
-under a hidden name of its own and claimed from there. Which of those it was
-is decided by asking whether the output name is taken, not by reading the
+links, or a host that refuses -- the PDF is copied into a place of this run's
+own beside the destination and claimed from there. Which of those it was is
+decided by asking whether the output name is taken, not by reading the
 refusal: taken means publication stops, and free means the refusal was about
 the link.
+
+Both operations are tried from that place, the link first, because the copy is
+now on the destination's own volume and a link is possible there even where
+one from the workspace was not. Measured from beside the destination: APFS and
+HFS Plus take the link, FAT32 refuses it with "Operation not supported" and
+takes the rename, exFAT refuses both.
+
+The link goes first for two reasons. It needs no bridge, and a volume that has
+hard links must not be refused because a bridge is missing -- which is what
+used to happen: the rename was the only thing tried from that place, so a
+host without the `stdio` import could not publish to an attached APFS drive at
+all, and was told the drive could not take the name. And a refused link says
+something, where a refused rename says nothing at all.
+
+Which operation may be used where is decided by what a failure would cost. `ln`
+does not give up its source, so it can be used on the finished PDF itself. An
+exclusive rename does give it up, so it is used only on the copy -- with the
+original still in the workspace, which is the whole of what makes a copy
+expendable. Claiming from the workspace is therefore offered no rename.
 
 Where neither exists -- exFAT, measurably, where plain rename works and the
 exclusive form is not implemented -- there is no operation that takes a name
 and carries contents, and publication stops there. Nothing is written to the
-destination, the message says the drive cannot take the output name in one
+destination, the message says the output name could not be created in one
 step, and the finished PDF is kept and its location given.
 
 That is a reversal, and the reasoning is worth keeping. Three releases took
@@ -328,8 +347,36 @@ the name of somebody's document.
 Network filesystems are unmeasured here. SMB and NFS answer for themselves
 what they can do, and the code does not assume: it attempts the link, and
 where that is refused it attempts the exclusive rename, and where that is
-refused too it stops and says so. A volume that supports neither behaves like
-exFAT, which is the honest failure rather than a guess.
+refused too it stops and quotes what it was told. A volume that supports
+neither behaves like exFAT, which is the honest failure rather than a guess --
+and one that supports hard links publishes by link, whether or not the
+exclusive rename is implemented on it.
+
+## Saying only what was established
+
+A refusal is not a diagnosis. Two things are known when the output name could
+not be created: whether the name is taken, which is an answer to a question
+actually put, and what the system said about the operation it refused. Nothing
+else is, because errno does not reach here and a refused link reports itself
+only in a message.
+
+Anything beyond those two is invention, and the invented one named the drive.
+Measured, on the boot disk, with an ACL denying `add_file` and allowing
+`add_subdirectory`: the place beside the destination was made and copied into,
+both ways of creating the name were refused, and the message said "this drive
+cannot take the output name in one step" while quoting the system saying
+"Permission denied" two lines below it -- on a disk that does hard links and
+exclusive renames both. The same sentence was shown when the bridge to the
+rename had not loaded, which is a fact about the run rather than about any
+drive.
+
+So the plain words say what happened -- the name could not be created in one
+step, and the PDF was not put there -- and the system's own words follow them.
+That a run had no exclusive rename to try is said too, because that is
+something it can establish about itself. The capability statement a person
+needs on exFAT is still there, and it is the kernel's: "Operation not
+supported". The fixture is `tests/integration/publication.sh`, which fails if
+the message names a drive or a volume at all.
 
 "Is the name taken" is one question with one answer: `test -e X -o -L X`. `-e`
 follows a symbolic link and reports on its target, so a link whose target is
@@ -383,7 +430,9 @@ links; another writer's file at the output name being reported as ours; a
 publication claimed without anything to prove it by; a link whose target is
 gone being replaced; a name this run could not take being written to or
 removed; a destination that can take a name by neither operation being
-published to anyway, rather than told about; a document inside a folder that appeared at the output path being
+published to anyway, rather than told about; a cause being named that was not
+established; a volume that can take a hard link being refused because the
+bridge to the exclusive rename was missing; a document inside a folder that appeared at the output path being
 removed for having a familiar name; a staging copy this run did make being
 left behind after a failed copy; a PDF pushed inside a folder being reported
 as published; a recovery that deletes or disowns the finished PDF because a
@@ -718,7 +767,12 @@ mentions a file URL not being read as one, a URL disagreement naming which
 file each value came from, the file being prepared counted from one rather
 than zero.
 
-The last run found no wrong behaviour and two pieces of dead weight. Six of
+The last run found nothing new: every survivor in the publication path was
+gone, and the one that remains there is equivalent -- a `catch` that returns
+`false` to callers that only ask whether the answer is truthy, which is the
+group already written down above.
+
+The run before that found no wrong behaviour and two pieces of dead weight. Six of
 its survivors were one finding wearing six faces: a label passed to `runArgv`
 describes a failure for somebody to read, and six of them were attached to
 commands whose failure is discarded where it happens -- text written for a
@@ -740,7 +794,7 @@ does not become part of an identity that is compared for equality; and that
 the anchor on the file-URL prefix is load-bearing for a path already in POSIX
 form.
 
-The run before that found a cost rather than a wrongness, which is the same
+The run before those found a cost rather than a wrongness, which is the same
 thing at a distance: the batching measures the fixed part of the import
 command so it knows how much room is left for pages, and measuring it with
 every page already in it leaves nothing of the budget. The PDF still comes out
@@ -847,9 +901,9 @@ file under `tests/unit/`.
 ## macOS integration gate
 
 `npm run test:integration:macos` requires macOS, `vips`, `pdfcpu`, qpdf, libtiff,
-Poppler, and `osascript`. It runs four suites: `tests/integration/macos.sh`,
-`tests/integration/selection.sh`, `tests/integration/publication.sh` and
-`tests/integration/volumes.sh`.
+Poppler, and `osascript`. It runs five suites: `tests/integration/macos.sh`,
+`tests/integration/selection.sh`, `tests/integration/publication.sh`,
+`tests/integration/volumes.sh` and `tests/integration/cards.sh`.
 
 The first exercises:
 
@@ -910,25 +964,38 @@ The third takes the finished PDF from the workspace to the output folder:
 - an output folder `chmod 555` denies, where every way of getting the PDF in
   there fails: the message must name a recovery path that exists and holds a
   PDF that passes strict validation, and nothing may be left at the output
-  path — neither a partial nor the staging file.
+  path — neither a partial nor the staging file;
+- a folder whose ACL denies `add_file` and allows `add_subdirectory`, on the
+  boot disk, which does both operations: the place beside the destination is
+  made and copied into and both ways of creating the name are refused, for a
+  reason that is nothing to do with what the disk can do. The message must
+  carry the system's "Permission denied" and must not name a drive or a
+  volume at all.
 
-The fourth publishes to volumes attached for the test, which is the only way
-to reach two paths at all. Each is skipped, loudly, where a volume cannot be
-attached, because that is the machine's decision rather than the code's:
+The fourth and fifth publish to volumes attached for the test, which is the
+only way to reach these paths at all. Each is skipped, loudly, where a volume
+cannot be attached, because that is the machine's decision rather than the
+code's.
+
+The fourth is the cross-volume case:
 
 - an APFS image, where the finished PDF and the output folder are on different
-  filesystems, so the PDF is copied in and claimed from there;
+  filesystems, so the PDF is copied in and claimed from beside its
+  destination — by a hard link, which is possible there even though one from
+  the workspace was not.
+
+The fifth is a camera card, which is formatted one of two ways:
+
 - an MS-DOS image, where hard links do not exist — measured: `ln` refuses with
   "Operation not supported" — so the PDF is moved onto its name by the
   exclusive rename;
 - an exFAT image, where neither exists, so publication stops: the volume must
   be left with nothing of the run's on it at all, the message must say the
-  drive cannot take the name, and the finished PDF must be recoverable from
-  the path the message gives and pass strict validation. On the first two the
-  PDF must validate, nothing of the run's may be left, and a name already
-  holding another document must be stepped around with that document
-  untouched. A camera card is formatted FAT32 or exFAT, which is why neither
-  path is hypothetical.
+  name could not be created and carry the system's own "Operation not
+  supported", and the finished PDF must be recoverable from the path the
+  message gives and pass strict validation. On FAT32 the PDF must validate,
+  nothing of the run's may be left, and a name already holding another
+  document must be stepped around with that document untouched.
 
 One half of the unexaminable-entry case is unit-level only: producing a
 directory that lists but will not let its entries be inspected takes either a
@@ -996,6 +1063,8 @@ to fail when the fix is reverted:
 | A name created before the PDF could be put in it, and cleaned up by inspection | publication stops instead + exFAT volume integration |
 | A link at the staging name adopted, and then deleted, as this run's | staging-area tests |
 | A named pipe at the staging name hanging the run with no timeout | staging-area tests |
+| A refusal explained by a cause that was never established | refusal tests + ACL folder integration |
+| A volume with hard links refused because a bridge was missing | claim-order tests |
 | Tests that stop catching bugs | mutation testing with a break threshold |
 
 ## Acceptance boundary

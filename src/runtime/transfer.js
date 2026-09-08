@@ -1,81 +1,44 @@
 "use strict";
 
-const { LN } = require("../core/executables.js");
-const { errorMessage } = require("../core/errors.js");
-const { runArgv } = require("./shell.js");
 const { pathIsTaken } = require("./asking.js");
+const { linkFrom, claimFrom, published, refused } = require("./claim.js");
 const { stagingArea } = require("./staging-area.js");
 const { copyBeside } = require("./output-copy.js");
 
 /*
  * Getting the finished PDF from the workspace to the name the user will see.
  *
- * One rule, and nothing is allowed to bend it: the output name is created
- * only by an operation that puts the finished PDF there in one step. Nothing
- * else ever writes to that name.
+ * Claiming the name is claim.js's business, and both ways of doing it need
+ * their source on the destination's own volume. This is about getting the PDF
+ * there, and about doing it without ever letting go of the finished file.
  *
- * Two operations do that, and which is used depends on what the destination
- * can do. ln creates the directory entry and fails if anything is there --
- * measured, including that what is there is left exactly as it was, and that
- * a link whose target is gone still counts as there. It is made from the
- * workspace file itself whenever the two are on one volume, which is the
- * ordinary case: the whole publication is then one operation, no file of ours
- * appears in the output folder under any other name, and the workspace copy
- * is never given up.
+ * The claim is made from the workspace itself whenever it can be, which is
+ * whenever the two are on one volume: the ordinary case, where the whole
+ * publication is one operation and no file of ours appears in the output
+ * folder under any other name. That claim is a link and only a link -- it
+ * must not give up the PDF, because a failure afterwards has to still have
+ * one to give back.
  *
- * An exclusive rename does the same for everywhere a hard link cannot go: the
- * PDF is copied into a place this run made and moved out of it in one step
- * that refuses an occupied name. FAT32 -- a camera card -- can do this even
- * though it has no hard links.
+ * Otherwise the PDF is copied into a place this run makes beside the
+ * destination and claimed from there, where both operations are allowed
+ * because the original is still in the workspace behind them.
  *
- * Where a destination can do neither, this stops. It used to take the name as
- * an empty file and fill it, which meant the name existed before the PDF was
- * in it, and meant a later move and a later removal acting on whatever was at
- * that name by then rather than on the file this run made. No guard fixes
- * that: proving the entry matches something measured a moment ago is not
- * proving it is the file that was created, and there is no compare-and-delete
- * to close the gap. So the name is not created until it can be created whole,
- * and a destination that cannot do that is told about instead.
+ * Renaming straight to the final name is what the copy replaced, and it is
+ * atomic only when both ends are on one volume. Across volumes Apple's mv
+ * copies to the pathname it is given: measured on an attached test volume, an
+ * interrupted move left 3,211,264 bytes of a 1,258,291,200-byte file under
+ * exactly the name the finished document was to have.
  *
  * What none of this decides is whether publication succeeded. That is settled
  * afterwards, by asking the output path which file it holds.
  */
 
-function published(from) {
-    return { published: true, reasons: [], claimed: from };
-}
-
-function refused(reasons) {
-    return { published: false, reasons };
-}
-
-function claim(app, from, finalPath) {
-    runArgv(app, [LN, from, finalPath], "claiming the output name");
-}
-
 /*
- * Why an attempt was refused is not something this can read: the reason a
- * hard link failed comes back as a message, and the exclusive rename's does
- * not come back at all -- errno is not reachable through the bridge. So it is
- * asked of the filesystem instead. A name that is taken is one answer, and
- * every other refusal is the destination being unable to take it.
+ * Why the link from the workspace was refused is half the story when the copy
+ * cannot even be made. Once the copy is there it is not: what happens at the
+ * destination speaks for itself, and a cross-volume link that was never going
+ * to work explains nothing about it.
  */
-function whyRefused(app, finalPath) {
-    return pathIsTaken(app, finalPath)
-        ? "the output path was taken"
-        : "this drive cannot take the output name in one step, " +
-            "so the PDF was not put on it";
-}
-
-function commitFromPlace(attempt) {
-    const { app, paths } = attempt;
-    const from = paths.area.file;
-
-    return attempt.rename && attempt.rename.rename(from, paths.final)
-        ? published(from)
-        : refused([whyRefused(app, paths.final)]);
-}
-
 function throughStaging(attempt, facts, refusal) {
     const { app, paths } = attempt;
     const copied = copyBeside(app, paths.staged, paths.area, facts.size);
@@ -85,14 +48,8 @@ function throughStaging(attempt, facts, refusal) {
         return { published: false, reasons: [...copied.reasons, refusal], staging };
     }
 
-    const outcome = commitFromPlace(attempt);
-
     return {
-        ...outcome,
-        // Why the link was refused is half the story when the way round
-        // it fails too -- but it is the system's own words, and those go
-        // after the plain ones rather than in front of them.
-        reasons: outcome.published ? [] : [...outcome.reasons, refusal],
+        ...claimFrom(attempt, paths.area.file),
         claimedIdentity: copied.identity,
         claimedSize: facts.size,
         staging
@@ -100,29 +57,25 @@ function throughStaging(attempt, facts, refusal) {
 }
 
 /*
- * The claim, and what to do when it is refused: stop if the output name is
- * taken, and otherwise go the long way round, because the refusal was about
- * the link rather than about the name.
+ * The claim from the workspace, and what to do when it is refused: stop if
+ * the output name is taken, and otherwise take the PDF over to the
+ * destination and claim it from beside it.
  */
 function deliver(app, paths, facts, rename) {
-    const attempt = { app, paths, rename };
+    const said = linkFrom(app, paths.staged, paths.final);
 
-    try {
-        claim(app, paths.staged, paths.final);
-
+    if (!said) {
         return {
             ...published(paths.staged),
             claimedIdentity: facts.identity,
             claimedSize: facts.size,
             staging: null
         };
-    } catch (error) {
-        const refusal = errorMessage(error);
-
-        return pathIsTaken(app, paths.final)
-            ? { ...refused(["the output path was taken", refusal]), staging: null }
-            : throughStaging(attempt, facts, refusal);
     }
+
+    return pathIsTaken(app, paths.final)
+        ? { ...refused(["the output path was taken", said]), staging: null }
+        : throughStaging({ app, paths, rename }, facts, said);
 }
 
 module.exports = { deliver, stagingArea };

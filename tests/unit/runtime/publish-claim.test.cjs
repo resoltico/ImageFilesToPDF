@@ -69,7 +69,7 @@ test("another writer's file at the output name is never written to", () => {
     host.sizes.set("/a/out.pdf", 4096);
 
     assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /this drive cannot take the output name/u);
+        assert.match(error.message, /the output name could not be created in one step/u);
 
         return true;
     });

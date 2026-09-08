@@ -179,16 +179,19 @@ pipe, not even a link whose target is gone. When the finished PDF is on the
 same drive as the folder it belongs in, which is the ordinary case, taking the
 name *is* the whole publication and no other file of ours ever appears there.
 Otherwise the PDF is copied into a hidden folder this action makes for itself
-beside the destination and moved onto its final name in one step that refuses
-a name already in use — including on a card formatted for cameras, which is
-tested against real ones.
+beside the destination, and put onto its final name from there in one step
+that refuses a name already in use — including on a card formatted for
+cameras, which is tested against real ones.
 
 A few drives can do neither, exFAT being the one you are likely to meet: some
 large camera cards are formatted that way. Saving to one of those stops rather
-than working around it. Nothing is written to the drive, the message says the
-drive cannot take the output name in one step, and the finished PDF is kept —
-the message says where. Saving into any other folder, on any Mac-formatted
-disk, is unaffected.
+than working around it. Nothing is written to the drive, the finished PDF is
+kept, and the message says what could not be done and where your PDF is.
+
+When a save does fail, the message says what happened and then quotes the
+system's own explanation of it. It does not guess: a folder that denies
+permission and a drive that cannot do the job are different problems, and you
+are told which one you have rather than being sent to look at the drive.
 
 A saved PDF is checked for being the one that was made: the output path is
 asked which file it holds, and only the file this run put there counts. Some

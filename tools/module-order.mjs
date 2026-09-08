@@ -51,6 +51,7 @@ export const moduleOrder = [
     "src/runtime/exclusive-rename.js",
     "src/runtime/staging-area.js",
     "src/runtime/output-copy.js",
+    "src/runtime/claim.js",
     "src/runtime/transfer.js",
     "src/runtime/recovery.js",
     "src/runtime/publish.js",
