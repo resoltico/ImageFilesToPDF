@@ -2,8 +2,7 @@
 
 const { basename } = require("../core/paths.js");
 const { keep, clearAway } = require("./recovery.js");
-const { deliver } = require("./transfer.js");
-const { stagingPath } = require("./output-copy.js");
+const { deliver, stagingArea } = require("./transfer.js");
 const { fileFacts } = require("./file-facts.js");
 const { pathIsTaken, removeFile } = require("./shell.js");
 
@@ -64,7 +63,7 @@ function confirm(job, paths, outcome) {
     if (!isPublished(published, outcome)) {
         throw keep(job, paths, {
             ...outcome,
-            mine: [...outcome.mine, ...strayInside(job.app, paths, outcome)],
+            mine: strayInside(job.app, paths, outcome),
             reasons: [
                 `the output path does not hold the PDF this run published:\n\n${paths.final}`
             ]
@@ -102,7 +101,7 @@ function attempt(job, paths) {
     const refusal = refuseBefore(job.app, paths, facts);
 
     if (refusal) {
-        throw keep(job, paths, { reasons: [refusal], mine: [] });
+        throw keep(job, paths, { reasons: [refusal], staging: null });
     }
 
     const outcome = deliver(job.app, paths, facts);
@@ -117,7 +116,7 @@ function attempt(job, paths) {
 function publishPdf(job, stagedPath, finalPath) {
     const paths = {
         staged: stagedPath,
-        incoming: stagingPath(finalPath),
+        area: stagingArea(finalPath),
         final: finalPath
     };
 

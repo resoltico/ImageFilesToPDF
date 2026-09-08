@@ -4,13 +4,12 @@ const { produceOutput } = require("./fake-producing.cjs");
 const { testPath } = require("./fake-testing.cjs");
 const { createIdentities } = require("./fake-identity.cjs");
 const { stat } = require("./fake-measuring.cjs");
+const { move, copy, link, remove } = require("./fake-writing.cjs");
 const {
-    move,
-    copy,
-    link,
-    reserve,
-    remove
-} = require("./fake-writing.cjs");
+    makeDirectory,
+    removeDirectory,
+    shell
+} = require("./fake-taking.cjs");
 
 /*
  * The in-memory filesystem behind the fake host.
@@ -36,7 +35,9 @@ function createFilesystem(seed, executables, empty, settings = {}) {
         files: state.files,
         sizes: state.sizes,
         test: (rest) => testPath(state, rest),
-        reserve: (rest) => reserve(state, rest),
+        makeDirectory: (rest) => makeDirectory(state, rest),
+        removeDirectory: (rest) => removeDirectory(state, rest),
+        shell: (rest) => shell(state, rest),
         move: (rest) => move(state, rest),
         copy: (rest) => copy(state, rest),
         link: (rest) => link(state, rest),

@@ -17,22 +17,28 @@
 const CAT = "/bin/cat";
 const CP = "/bin/cp";
 const LN = "/bin/ln";
+const MKDIR = "/bin/mkdir";
 const MV = "/bin/mv";
 const RM = "/bin/rm";
+const RMDIR = "/bin/rmdir";
 const SH = "/bin/sh";
 const TEST = "/bin/test";
 const MKTEMP = "/usr/bin/mktemp";
 const PRINTENV = "/usr/bin/printenv";
 const STAT = "/usr/bin/stat";
 
-const EXECUTABLES = [CAT, CP, LN, MV, RM, SH, TEST, MKTEMP, PRINTENV, STAT];
+const EXECUTABLES = [
+    CAT, CP, LN, MKDIR, MV, RM, RMDIR, SH, TEST, MKTEMP, PRINTENV, STAT
+];
 
 module.exports = {
     CAT,
     CP,
     LN,
+    MKDIR,
     MV,
     RM,
+    RMDIR,
     SH,
     TEST,
     MKTEMP,

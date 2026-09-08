@@ -40,12 +40,14 @@ test("a name that could not be taken says which name it was", () => {
         return true;
     });
     assert.ok(host.files.has("/a/out.pdf"), "and their file is still there");
-    // The copy this run made is cleared away, and nothing else is: the
+    // The place this run made is cleared away, and nothing else is: the
     // output name was never taken, so there is nothing of ours there.
-    const removed = host.commands.filter((command) => command.includes("/bin/rm"));
+    const removed = host.commands.filter((command) =>
+        (/'\/bin\/rm(?:dir)?'/u).test(command));
 
-    assert.equal(removed.length, 1, removed.join("\n"));
-    assert.match(removed[0], /\.ImageFilesToPDF-[^']+\.part/u);
+    assert.equal(removed.length, 2, removed.join("\n"));
+    assert.match(removed[0], /'\/bin\/rm' '-f' '\/a\/\.ImageFilesToPDF-[^']+\/ready\.pdf'/u);
+    assert.match(removed[1], /'\/bin\/rmdir' '\/a\/\.ImageFilesToPDF-[^']+'/u);
 });
 
 test("a rename that was refused says which step it was", () => {
@@ -55,12 +57,12 @@ test("a rename that was refused says which step it was", () => {
     // person reading it no better off.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
-        failures: [["/bin/ln", new Error("ln: unsupported")], ["/bin/mv", new Error(DENIED)]]
+        failures: [["/bin/ln", new Error("ln: unsupported")], ["/bin/sh", new Error(DENIED)]]
     });
 
     assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
         assert.match(error.message, /claiming the output name/u);
-        assert.match(error.message, /putting the PDF in place/u);
+        assert.match(error.message, /taking the output name and putting the PDF in it/u);
 
         return true;
     });
@@ -77,7 +79,7 @@ test("a rename that quietly did nothing is not a publication", () => {
         files: ["/a/p.pdf"],
         failures: [
             ["/bin/ln", new Error(DENIED)],
-            ["mv' '/a/.ImageFilesToPDF", ""]
+            ["/bin/sh", ""]
         ]
     });
 

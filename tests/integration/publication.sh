@@ -40,12 +40,12 @@ run() {
 
 # assert_nothing_left_behind <folder>
 #
-# The staging file is hidden and named for the attempt that made it, so it is
-# that attempt's to remove -- and a folder holding one afterwards means a
-# publication that did not finish tidying up after itself.
+# The place a publication makes for itself is hidden and named for the attempt
+# that made it, so a folder still holding one afterwards means a publication
+# that did not finish tidying up after itself.
 assert_nothing_left_behind() {
     test -z "$(find "$1" -maxdepth 1 -name '.ImageFilesToPDF-*')" ||
-        fail "a staging file was left in $1: $(ls -a "$1")"
+        fail "a staging place was left in $1: $(ls -a "$1")"
 }
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 /*
- * Image Files to PDF 1.2.3
+ * Image Files to PDF 1.2.4
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
@@ -18,7 +18,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.2.3";
+const VERSION = "1.2.4";
 
 /* ===== src/core/executables.js ===== */
 
@@ -26,15 +26,19 @@ const VERSION = "1.2.3";
 const CAT = "/bin/cat";
 const CP = "/bin/cp";
 const LN = "/bin/ln";
+const MKDIR = "/bin/mkdir";
 const MV = "/bin/mv";
 const RM = "/bin/rm";
+const RMDIR = "/bin/rmdir";
 const SH = "/bin/sh";
 const TEST = "/bin/test";
 const MKTEMP = "/usr/bin/mktemp";
 const PRINTENV = "/usr/bin/printenv";
 const STAT = "/usr/bin/stat";
 
-const EXECUTABLES = [CAT, CP, LN, MV, RM, SH, TEST, MKTEMP, PRINTENV, STAT];
+const EXECUTABLES = [
+    CAT, CP, LN, MKDIR, MV, RM, RMDIR, SH, TEST, MKTEMP, PRINTENV, STAT
+];
 
 /* ===== src/core/numbers.js ===== */
 
@@ -2584,15 +2588,6 @@ function setAside(app, stagedPath) {
     }
 }
 
-/* ===== src/runtime/reserve.js ===== */
-
-
-const CLAIM_EMPTY = 'set -C; : > "$0"';
-
-function reserveName(app, path, label) {
-    runArgv(app, [SH, "-c", CLAIM_EMPTY, path], label);
-}
-
 /* ===== src/runtime/file-facts.js ===== */
 
 
@@ -2618,100 +2613,113 @@ function fileFacts(app, path) {
     }
 }
 
+/* ===== src/runtime/staging-area.js ===== */
+
+
+const READY = "ready.pdf";
+
+function stagingArea(finalPath) {
+    const directory = `${dirname(finalPath)}.ImageFilesToPDF-${nonce()}`;
+
+    return { directory, file: `${directory}/${READY}` };
+}
+
+function openStaging(app, area) {
+    runArgv(
+        app,
+        [MKDIR, area.directory],
+        "making a place for the PDF in the output folder"
+    );
+}
+
+function closeStaging(app, area) {
+    removeFile(app, area.file);
+
+    try {
+        runArgv(app, [RMDIR, area.directory], "clearing the place it was in");
+    } catch {
+    }
+}
+
 /* ===== src/runtime/output-copy.js ===== */
 
-
-function stagingPath(finalPath) {
-    return `${dirname(finalPath)}.ImageFilesToPDF-${nonce()}.part`;
-}
 
 function mismatch(written, expected) {
     return [`the staged file is ${written} bytes where ${expected} were expected`];
 }
 
-function copyBeside(app, staged, incoming, expected) {
+function copyBeside(app, staged, area, expected) {
     try {
-        reserveName(app, incoming, "taking a name for the PDF in the output folder");
+        openStaging(app, area);
     } catch (error) {
-        return { reasons: [errorMessage(error)], mine: [] };
+        return { reasons: [errorMessage(error)], made: false };
     }
 
     try {
-        runArgv(app, [CP, staged, incoming], "copying the PDF into the output folder");
+        runArgv(app, [CP, staged, area.file], "copying the PDF into the output folder");
     } catch (error) {
-        return { reasons: [errorMessage(error)], mine: [incoming] };
+        return { reasons: [errorMessage(error)], made: true };
     }
 
-    const written = fileFacts(app, incoming);
+    const written = fileFacts(app, area.file);
 
     return expected !== SIZE_UNKNOWN && written.size === expected
-        ? { reasons: [], mine: [incoming], identity: written.identity }
-        : { reasons: mismatch(written.size, expected), mine: [incoming] };
+        ? { reasons: [], made: true, identity: written.identity }
+        : { reasons: mismatch(written.size, expected), made: true };
 }
 
 /* ===== src/runtime/transfer.js ===== */
 
 
+const TAKE_AND_FILL =
+    '[ ! -e "$1" ] || exit 1; set -C; : > "$1" || exit 1; ' +
+    'mv "$0" "$1" || { rm -f "$1"; exit 1; }';
+
 function claim(app, from, finalPath) {
     runArgv(app, [LN, from, finalPath], "claiming the output name");
 }
 
-function reserveAndRename(app, incoming, finalPath, refused) {
+function takeAndFill(app, from, finalPath, refused) {
     try {
-        reserveName(app, finalPath, "taking the output name");
+        runArgv(
+            app,
+            [SH, "-c", TAKE_AND_FILL, from, finalPath],
+            "taking the output name and putting the PDF in it"
+        );
     } catch (error) {
-        return { published: false, reasons: [refused, errorMessage(error)], mine: [] };
+        return { published: false, reasons: [refused, errorMessage(error)] };
     }
 
-    try {
-        runArgv(app, [MV, incoming, finalPath], "putting the PDF in place");
-    } catch (error) {
-        return {
-            published: false,
-            reasons: [refused, errorMessage(error)],
-            mine: [finalPath]
-        };
-    }
-
-    return { published: true, reasons: [], claimed: incoming, mine: [] };
+    return { published: true, reasons: [], claimed: from };
 }
 
-function claimFromStaging(app, incoming, finalPath) {
+function claimFromStaging(app, from, finalPath) {
     try {
-        claim(app, incoming, finalPath);
+        claim(app, from, finalPath);
 
-        return { published: true, reasons: [], claimed: incoming, mine: [] };
+        return { published: true, reasons: [], claimed: from };
     } catch (error) {
         const refused = errorMessage(error);
 
         return pathIsTaken(app, finalPath)
-            ? {
-                published: false,
-                reasons: [refused, "the output path was taken"],
-                mine: []
-            }
-            : reserveAndRename(app, incoming, finalPath, refused);
+            ? { published: false, reasons: [refused, "the output path was taken"] }
+            : takeAndFill(app, from, finalPath, refused);
     }
 }
 
 function throughStaging(app, paths, facts, refused) {
-    const copied = copyBeside(app, paths.staged, paths.incoming, facts.size);
+    const copied = copyBeside(app, paths.staged, paths.area, facts.size);
+    const staging = copied.made ? paths.area : null;
 
     if (copied.reasons.length > 0) {
-        return {
-            published: false,
-            reasons: [refused, ...copied.reasons],
-            mine: copied.mine
-        };
+        return { published: false, reasons: [refused, ...copied.reasons], staging };
     }
 
-    const outcome = claimFromStaging(app, paths.incoming, paths.final);
-
     return {
-        ...outcome,
+        ...claimFromStaging(app, paths.area.file, paths.final),
         claimedIdentity: copied.identity,
         claimedSize: facts.size,
-        mine: [...copied.mine, ...outcome.mine]
+        staging
     };
 }
 
@@ -2725,13 +2733,17 @@ function deliver(app, paths, facts) {
             claimed: paths.staged,
             claimedIdentity: facts.identity,
             claimedSize: facts.size,
-            mine: []
+            staging: null
         };
     } catch (error) {
         const refused = errorMessage(error);
 
         return pathIsTaken(app, paths.final)
-            ? { published: false, reasons: [refused, "the output path was taken"], mine: [] }
+            ? {
+                published: false,
+                reasons: [refused, "the output path was taken"],
+                staging: null
+            }
             : throughStaging(app, paths, facts, refused);
     }
 }
@@ -2748,7 +2760,11 @@ function describeFailure(reasons, whereabouts) {
 }
 
 function clearAway(job, outcome) {
-    for (const path of outcome.mine) {
+    if (outcome.staging) {
+        closeStaging(job.app, outcome.staging);
+    }
+
+    for (const path of outcome.mine ?? []) {
         removeFile(job.app, path);
     }
 }
@@ -2791,7 +2807,7 @@ function confirm(job, paths, outcome) {
     if (!isPublished(published, outcome)) {
         throw keep(job, paths, {
             ...outcome,
-            mine: [...outcome.mine, ...strayInside(job.app, paths, outcome)],
+            mine: strayInside(job.app, paths, outcome),
             reasons: [
                 `the output path does not hold the PDF this run published:\n\n${paths.final}`
             ]
@@ -2819,7 +2835,7 @@ function attempt(job, paths) {
     const refusal = refuseBefore(job.app, paths, facts);
 
     if (refusal) {
-        throw keep(job, paths, { reasons: [refusal], mine: [] });
+        throw keep(job, paths, { reasons: [refusal], staging: null });
     }
 
     const outcome = deliver(job.app, paths, facts);
@@ -2834,7 +2850,7 @@ function attempt(job, paths) {
 function publishPdf(job, stagedPath, finalPath) {
     const paths = {
         staged: stagedPath,
-        incoming: stagingPath(finalPath),
+        area: stagingArea(finalPath),
         final: finalPath
     };
 

@@ -25,21 +25,11 @@ function resolveDestination(state, source, destination) {
     return `${destination}/${source.slice(source.lastIndexOf("/") + 1)}`;
 }
 
-/*
- * sh -c 'set -C; : > "$0"' path: the shell's exclusive create. It takes a
- * free name and refuses a file, a folder, or a link whose target is gone --
- * measured, on APFS and on a FAT-formatted volume alike.
- */
-function reserve(state, rest) {
-    const target = rest.at(-1);
-
-    if (state.files.has(target) || state.directories.has(target) ||
-        state.danglingLinks.has(target)) {
-        throw new Error(`sh: ${target}: cannot overwrite existing file`);
-    }
-
-    state.files.add(target);
-    state.sizes.set(target, 0);
+function remove(state, rest) {
+    operands(rest).forEach((target) => {
+        state.files.delete(target);
+        state.identities.forget(target);
+    });
 
     return "";
 }
@@ -112,13 +102,4 @@ function link(state, rest) {
     return "";
 }
 
-function remove(state, rest) {
-    operands(rest).forEach((target) => {
-        state.files.delete(target);
-        state.identities.forget(target);
-    });
-
-    return "";
-}
-
-module.exports = { move, copy, link, reserve, remove };
+module.exports = { move, copy, link, remove };

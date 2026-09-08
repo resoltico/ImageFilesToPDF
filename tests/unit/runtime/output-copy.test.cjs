@@ -4,8 +4,10 @@
  * Copying the PDF into the output folder, which happens when it cannot be
  * linked there from the workspace.
  *
- * What ends up under the staging name has to be this run's own file, because
- * the claim that follows publishes whatever is under it.
+ * It goes into a place this run made rather than a name this run found: mkdir
+ * either creates the directory or fails, and it fails for anything already at
+ * that name. So what is inside it is this attempt's, which is what makes
+ * copying into it and clearing it away afterwards safe.
  */
 
 const assert = require("node:assert/strict");
@@ -16,62 +18,68 @@ const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob } = require("./fake-job.cjs");
 
 const DIRECT_CLAIM = "ln' '/a/p.pdf'";
-const STAGING_FACTS = "stat' '-f%d:%i:%z' '/a/.ImageFilesToPDF";
-const INCOMING = "/a/.ImageFilesToPDF-test.part";
+const STAGED_FACTS = "stat' '-f%d:%i:%z' '/a/.ImageFilesToPDF";
+const AREA = {
+    directory: "/a/.ImageFilesToPDF-test",
+    file: "/a/.ImageFilesToPDF-test/ready.pdf"
+};
 
-test("a name that is already taken is not written to, and is not ours", () => {
-    // Taking the name is what says whose it is. Checking that it looked free
-    // and then inferring ownership from how the copy turned out meant a file
-    // another program had put there was copied over or deleted as though this
-    // run had made it.
-    const host = createFakeHost({ files: ["/a/p.pdf", INCOMING] });
-    const outcome = copyBeside(host, "/a/p.pdf", INCOMING, 1024);
+test("a place that cannot be made is not one this run may clear away", () => {
+    // Anything at all at that name -- a file, a folder, a link, a named pipe
+    // -- and mkdir fails. Opening a name instead accepted a link pointing at
+    // something that is not a regular file, and the run went on to record a
+    // name it did not own.
+    for (const settings of [
+        { files: ["/a/p.pdf", AREA.directory] },
+        { files: ["/a/p.pdf"], directories: [AREA.directory] },
+        { files: ["/a/p.pdf"], danglingLinks: [AREA.directory] }
+    ]) {
+        const host = createFakeHost(settings);
+        const outcome = copyBeside(host, "/a/p.pdf", AREA, 1024);
 
-    assert.deepEqual(outcome.mine, [], "nothing of it is this run's to remove");
-    assert.match(outcome.reasons[0], /cannot overwrite existing file/u);
-    assert.match(
-        outcome.reasons[0],
-        /taking a name for the PDF in the output folder/u,
-        "and which name it was"
-    );
-    assert.equal(
-        host.commands.filter((command) => command.includes("/bin/cp")).length,
-        0,
-        "and nothing was written over it"
-    );
-    assert.ok(host.files.has(INCOMING), "their file is still there");
+        assert.equal(outcome.made, false, "nothing of it is this run's");
+        assert.match(outcome.reasons[0], /File exists/u);
+        assert.match(
+            outcome.reasons[0],
+            /making a place for the PDF in the output folder/u,
+            "and which step it was"
+        );
+        assert.equal(
+            host.commands.filter((command) => command.includes("/bin/cp")).length,
+            0,
+            "and nothing was written into it"
+        );
+    }
 });
 
-test("a copy that failed still made whatever is under the name", () => {
+test("a copy that failed still made the place it was going into", () => {
     // cp leaves the destination in place after an error and can fail after
-    // writing part of the file or all of it. From the moment it runs, the
-    // name -- which was free -- is this attempt's to clear away.
+    // writing part of the file or all of it. The place was made before it
+    // ran, so it is this attempt's to clear away either way.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
         failures: [["/bin/cp", new Error("cp: no space left on device")]]
     });
-    const outcome = copyBeside(host, "/a/p.pdf", INCOMING, 1024);
+    const outcome = copyBeside(host, "/a/p.pdf", AREA, 1024);
 
-    assert.deepEqual(outcome.mine, [INCOMING], "the name was taken before it ran");
+    assert.equal(outcome.made, true);
     assert.match(outcome.reasons[0], /no space left/u);
 });
 
 test("a copy is checked against the size it should have", () => {
     const host = createFakeHost({
         files: ["/a/p.pdf"],
-        failures: [[`stat' '-f%d:%i:%z' '${INCOMING}'`, "16777232:5:7"]]
+        failures: [[`stat' '-f%d:%i:%z' '${AREA.file}'`, "16777232:5:7"]]
     });
-    const outcome = copyBeside(host, "/a/p.pdf", INCOMING, 1024);
+    const outcome = copyBeside(host, "/a/p.pdf", AREA, 1024);
 
-    assert.deepEqual(outcome.mine, [INCOMING], "and it is still this run's to remove");
+    assert.equal(outcome.made, true, "and it is still this run's to clear away");
     assert.match(outcome.reasons[0], /7 bytes where 1024 were expected/u);
 });
 
 test("a source that could not be measured is never copied successfully", () => {
-    // With no size to check against there is nothing to say the copy is
-    // whole, so it cannot be treated as safely in the folder.
     const host = createFakeHost({ files: ["/a/p.pdf"] });
-    const outcome = copyBeside(host, "/a/p.pdf", INCOMING, -1);
+    const outcome = copyBeside(host, "/a/p.pdf", AREA, -1);
 
     assert.match(outcome.reasons[0], /-1 were expected/u);
 });
@@ -83,19 +91,17 @@ test("neither file being measurable is not a match", () => {
         files: ["/a/p.pdf"],
         failures: [["/usr/bin/stat", new Error("stat: denied")]]
     });
-    const outcome = copyBeside(host, "/a/p.pdf", INCOMING, -1);
+    const outcome = copyBeside(host, "/a/p.pdf", AREA, -1);
 
     assert.deepEqual(outcome.reasons, ["the staged file is -1 bytes where -1 were expected"]);
 });
 
 test("a truncated copy never wears the finished PDF's name", () => {
-    // The copy goes to a name of its own, so a copy that stopped half way
-    // leaves nothing that looks like the finished document.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
         failures: [
             [DIRECT_CLAIM, new Error("Operation not permitted")],
-            [STAGING_FACTS, "16777232:5:7"]
+            [STAGED_FACTS, "16777232:5:7"]
         ]
     });
 
@@ -105,8 +111,8 @@ test("a truncated copy never wears the finished PDF's name", () => {
     );
     assert.ok(!host.files.has("/a/out.pdf"), "and nothing is at the output name");
     assert.deepEqual(
-        [...host.files].filter((file) => file.includes(".part")),
+        [...host.files].filter((file) => file.includes(".ImageFilesToPDF")),
         [],
-        "and the half-written copy is gone"
+        "and the place it was copied into is gone"
     );
 });

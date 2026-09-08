@@ -4,6 +4,23 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-09-08
+
+### Fixed
+
+- Nothing that was already in your output folder is mistaken for this
+  action's own working file. It makes a folder of its own to work in, which
+  either gets made or does not — before, it took a name by opening it, and
+  some things answer to that without being created: a shortcut pointing
+  somewhere else was adopted that way and then deleted during cleanup.
+- The action can no longer be left waiting forever by something occupying the
+  name it wanted. Opening certain kinds of file waits for another program to
+  read from it; making a folder never waits.
+- Saving to a card or a drive formatted for cameras leaves the finished name
+  unfinished for a much shorter moment: taking the name and putting the PDF
+  into it are now one step rather than two, and if the second half fails the
+  name is given back immediately.
+
 ## [1.2.3] - 2026-09-08
 
 ### Fixed

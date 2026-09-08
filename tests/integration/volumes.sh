@@ -44,12 +44,12 @@ run() {
         2>"$WORK/error.txt" || true
 }
 
-# The staging file is hidden and named for the attempt that made it, so a
-# folder holding one afterwards means a publication that did not finish
-# tidying up after itself.
+# The place a publication makes for itself is hidden and named for the attempt
+# that made it, so a folder still holding one afterwards means a publication
+# that did not finish tidying up after itself.
 assert_nothing_left_behind() {
     test -z "$(find "$1" -maxdepth 1 -name '.ImageFilesToPDF-*')" ||
-        fail "a staging file was left in $1: $(ls -a "$1")"
+        fail "a staging place was left in $1: $(ls -a "$1")"
 }
 
 # ---------------------------------------------------------------------------
@@ -90,7 +90,9 @@ if attach_test_volume "MS-DOS FAT32" "$FAT_NAME"; then
     assert_valid_pdf "$FLAT"
     assert_nothing_left_behind "$FAT_VOLUME"
 
-    # A name already held by something else is stepped around, not taken.
+    # A name already held by something else is stepped around, not taken --
+    # and neither is one held by a link with nothing at the end of it, which
+    # is the shape that reads as free to everything except the taking.
     printf 'someone elses document' > "$FAT_VOLUME/output_20260907_060606.pdf"
     run 20260907_060606 "$FAT_VOLUME/photo.png"
 

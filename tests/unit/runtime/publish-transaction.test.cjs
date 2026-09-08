@@ -63,7 +63,7 @@ test("the staging copy is only reached when the link cannot be made", () => {
     publishPdf(makeJob(copied), "/a/p.pdf", "/a/out.pdf");
     assert.match(
         copied.commands.find((command) => command.includes("/bin/cp")),
-        /'\/a\/\.ImageFilesToPDF-[^']+\.part'/u
+        /'\/a\/\.ImageFilesToPDF-[^']+\/ready\.pdf'/u
     );
 });
 

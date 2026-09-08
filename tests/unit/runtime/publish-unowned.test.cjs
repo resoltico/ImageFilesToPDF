@@ -24,21 +24,21 @@ function recovered(host) {
     return [...host.files].filter((file) => file.includes("recovered"));
 }
 
-test("a staging name this run could not take is left alone", () => {
-    // Whatever is under a name this run did not take is not this run's to
-    // write over or to remove. Publication stops instead.
+test("a place this run could not make is not one it may use", () => {
+    // Whatever is at a name this run did not make is not this run's to write
+    // into or to remove. Publication stops instead.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
         failures: [
             [DIRECT_CLAIM, new Error(DENIED)],
             // Whatever name this attempt asks for is already occupied.
-            ["/bin/sh", new Error("sh: cannot overwrite existing file")]
+            ["/bin/mkdir", new Error("mkdir: File exists")]
         ]
     });
     const job = makeJob(host);
 
     assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /cannot overwrite existing file/u);
+        assert.match(error.message, /File exists/u);
 
         return true;
     });

@@ -1,6 +1,7 @@
 "use strict";
 
 const { setAside } = require("./rescue.js");
+const { closeStaging } = require("./staging-area.js");
 const { removeFile } = require("./shell.js");
 
 /*
@@ -29,14 +30,17 @@ function describeFailure(reasons, whereabouts) {
 }
 
 /*
- * The names this attempt took and does not need: the staging copy, a
- * reservation nothing was moved into, and -- when a folder was standing at
- * the output path, which ln links into rather than refusing -- the link left
- * inside it, which publish.js adds once it has confirmed the file there is
- * the one this run published.
+ * What this attempt made and does not need: the place it made in the output
+ * folder, and -- when a folder was standing at the output path, which ln
+ * links into rather than refusing -- the link left inside it, which publish.js
+ * adds once it has confirmed the file there is the one this run published.
  */
 function clearAway(job, outcome) {
-    for (const path of outcome.mine) {
+    if (outcome.staging) {
+        closeStaging(job.app, outcome.staging);
+    }
+
+    for (const path of outcome.mine ?? []) {
         removeFile(job.app, path);
     }
 }

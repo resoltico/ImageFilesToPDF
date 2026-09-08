@@ -32,7 +32,7 @@ test("a claim refused because the name is taken does not become a rename", () =>
 
     const outcome = deliver(host, {
         staged: "/a/p.pdf",
-        incoming: "/a/.ImageFilesToPDF-test.part",
+        incoming: "/a/.ImageFilesToPDF-test.ImageFilesToPDF",
         final: "/a/theirs.pdf"
     });
 
@@ -110,7 +110,7 @@ test("a name taken while the copy was being made is not renamed over", () => {
         "nothing renamed over it"
     );
     assert.deepEqual(
-        [...host.files].filter((file) => file.includes(".part")),
+        [...host.files].filter((file) => file.includes(".ImageFilesToPDF")),
         [],
         "and the copy this run made is gone"
     );

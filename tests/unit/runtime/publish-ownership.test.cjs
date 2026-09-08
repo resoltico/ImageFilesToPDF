@@ -55,7 +55,7 @@ test("a failure after the copy leaves the workspace copy untouched", () => {
         failures: [
             [DIRECT_CLAIM, new Error(DENIED)],
             ["ln' '/a/.ImageFilesToPDF", new Error(DENIED)],
-            ["mv' '/a/.ImageFilesToPDF", new Error(DENIED)],
+            ["/bin/sh", new Error(DENIED)],
             // And the check on the staging copy cannot answer either.
             ["test' '-e' '/a/.ImageFilesToPDF", new Error(DENIED)]
         ]
@@ -65,7 +65,7 @@ test("a failure after the copy leaves the workspace copy untouched", () => {
     assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), /could not be published/u);
     assert.equal(recovered(host).length, 1, "the finished PDF survived");
     assert.deepEqual(
-        [...host.files].filter((file) => file.includes(".part")),
+        [...host.files].filter((file) => file.includes(".ImageFilesToPDF")),
         [],
         "and the copy this run made was cleared away"
     );

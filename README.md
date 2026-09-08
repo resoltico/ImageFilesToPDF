@@ -174,13 +174,13 @@ For every source image, the runtime:
 Publishing is all or nothing. Every name this action writes to is one it
 takes first, in a single operation that either creates the name or leaves it
 alone — so nothing half finished appears under the name of your document, and
-an existing file is never replaced: not a file, not a folder, not even a link
-whose target is gone. When the finished PDF is on the same drive as the folder
-it belongs in, which is the ordinary case, taking the name *is* the whole
-publication and no other file of ours ever appears there. Otherwise it is
-copied in under a hidden name of its own and given the final one from there —
-including on a card or stick formatted for cameras, where that last step works
-differently and is tested against a real one.
+an existing file is never replaced: not a file, not a folder, not a named
+pipe, not even a link whose target is gone. When the finished PDF is on the
+same drive as the folder it belongs in, which is the ordinary case, taking the
+name *is* the whole publication and no other file of ours ever appears there.
+Otherwise the PDF is copied into a hidden folder this action makes for itself
+beside the destination, and given its final name from there — including on a
+card or stick formatted for cameras, which is tested against a real one.
 
 A saved PDF is checked for being the one that was made: the output path is
 asked which file it holds, and only the file this run put there counts. Some

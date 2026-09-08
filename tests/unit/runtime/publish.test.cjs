@@ -70,20 +70,22 @@ test("a refused link falls back to a copy, and the PDF is published", () => {
     assert.ok(host.files.has("/a/out.pdf"), "the user must get their PDF");
     assert.equal(commandsFor(host, "/bin/cp").length, 1);
     assert.deepEqual(
-        [...host.files].filter((file) => file.includes(".part")),
+        [...host.files].filter((file) => file.includes(".ImageFilesToPDF")),
         [],
         "and the copy it was claimed from is gone"
     );
-    assert.equal(
-        commandsFor(host, "/bin/rm").length,
-        2,
-        "the staging copy and the workspace copy, and nothing else"
+    assert.deepEqual(
+        host.commands.filter((command) => (/'\/bin\/rm(?:dir)?'/u).test(command))
+            .map((command) => command.split("' '")[0].replace(/'/gu, "")),
+        ["/bin/rm", "/bin/rmdir", "/bin/rm"],
+        "the copy, the place it was in, and the workspace copy"
     );
 });
 
 test("a filesystem that cannot make links at all still publishes", () => {
-    // FAT-formatted drives and some network shares refuse hard links. A
-    // rename within one directory is atomic wherever it works at all.
+    // FAT and exFAT -- which is what a camera card is -- have no hard links
+    // and no exclusive rename to reach from here, so the name is taken empty
+    // and filled by one shell, which refuses a name that is already there.
     const host = createFakeHost({
         files: ["/a/p.pdf"],
         failures: refusing("/bin/ln")
@@ -92,13 +94,15 @@ test("a filesystem that cannot make links at all still publishes", () => {
     publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf");
 
     assert.ok(host.files.has("/a/out.pdf"));
-    assert.deepEqual([...host.files].filter((file) => file.includes(".part")), []);
-    // The staging copy and the workspace copy, and nothing else. Removing
-    // the first is a no-op here -- the rename took it -- and it is still
-    // this run's to ask about.
-    assert.equal(commandsFor(host, "/bin/rm").length, 2);
-    assert.match(commandsFor(host, "/bin/rm")[0], /\.ImageFilesToPDF-[^']+\.part/u);
-    assert.match(commandsFor(host, "/bin/rm")[1], /'\/a\/p\.pdf'/u);
+    assert.deepEqual([...host.files].filter((file) => file.includes(".ImageFilesToPDF")), []);
+    // The place this run made, and then the workspace copy. Removing the
+    // copy inside it is a no-op here -- the rename took it -- and the place
+    // is still this run's to clear away.
+    assert.deepEqual(
+        host.commands.filter((command) => (/'\/bin\/rm(?:dir)?'/u).test(command))
+            .map((command) => command.split("' '")[0].replace(/'/gu, "")),
+        ["/bin/rm", "/bin/rmdir", "/bin/rm"]
+    );
 });
 
 test("the workspace copy goes only after the output path is checked", () => {

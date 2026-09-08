@@ -235,20 +235,28 @@ One rule covers it, and it is about ownership rather than about inspection:
 recorded taking, and the finished PDF stays in the workspace until the output
 path has been checked.**
 
-Taking a name is the whole of the no-overwrite promise, and there are exactly
-two ways to do it. `ln` creates a directory entry and fails if anything is
-there. The shell's noclobber redirection -- `sh -c 'set -C; : > "$0"' path`,
-which is `O_CREAT|O_EXCL` -- creates an empty entry the same way, and is the
-only exclusive create there is on a filesystem that cannot make hard links.
-Measured, on APFS and on an attached FAT volume alike: both take a free name
-and refuse a file, a folder, and a link whose target is gone.
+Taking a name is the whole of the no-overwrite promise. `ln` does it for the
+publication itself: it creates a directory entry and fails if anything is
+there. `mkdir` does it for the place a publication needs when it cannot link
+-- it creates the directory or fails, and it fails for anything already at
+that name.
 
-Checking that a name looked free is not the same thing, and the difference is
-not academic. It left whose file it was to be inferred from how the next
-command turned out: a copy refused because another program had taken the name
-in between was read as this run having made it, so cleanup deleted their file.
-Nothing is inferred now -- `mine` is the list of names this attempt took, and
-cleanup removes those and nothing else.
+Measured against a regular file, a link pointing at `/dev/null`, a directory
+and a named pipe: `mkdir` refuses all four. The shell's noclobber redirection,
+which used to take that name, refuses only two of them. It *accepts* a link
+pointing at something that is not a regular file -- creating nothing, so the
+run recorded a name it did not own and cleanup deleted the link -- and on a
+named pipe it waits for a reader that never comes, with no timeout above it to
+end the wait. mkdir never opens anything, so it cannot be made to wait.
+
+Checking that a name looked free was worse still, and the difference is not
+academic. It left whose file it was to be inferred from how the next command
+turned out: a copy refused because another program had taken the name in
+between was read as this run having made it, so cleanup deleted their file.
+Nothing is inferred now. What a run may clear away is the place it made --
+first what is inside it, then the place itself, with `rmdir`, which refuses a
+directory that has anything else in it, so clearing away can never take
+something with it.
 
 The output name is claimed, never written into. `/bin/ln` creates the
 directory entry in one step and fails if anything is already there --
@@ -277,17 +285,28 @@ refusal: taken means publication stops, and free means the refusal was about
 the link.
 
 Where hard links do not exist at all -- FAT and exFAT, which is what a camera
-card is formatted as -- the output name is taken as an empty file and the PDF
-is renamed onto that reservation. The rename replaces this run's own empty
-file, so it cannot replace anybody else's. `mv -n` is what this replaced: it
+card is formatted as -- there is no exclusive create that also carries the
+contents, and no exclusive rename to reach from here: `renamex_np` is not
+bridged into JXA, measured. So the name is taken empty and filled by one
+shell, in one step:
+
+```sh
+[ ! -e "$1" ] || exit 1; set -C; : > "$1" || exit 1; \
+    mv "$0" "$1" || { rm -f "$1"; exit 1; }
+```
+
+It refuses a name that is there, takes it exclusively, puts the PDF in it, and
+gives the name back if that last step fails. `mv -n` is what this replaced: it
 checks whether the destination exists and then renames, which are two
 operations, and a competing writer between them was overwritten while the
 check could not see a link whose target was gone.
 
-What that leaves is a name existing as an empty file for the length of a
-rename, on those volumes only. It is removed if anything fails, so only a hard
-kill in that window leaves it -- and an obviously empty PDF under the right
-name is a better failure than another program's document silently replaced.
+What it leaves is the name existing empty for the length of two adjacent
+system calls in one process, on those volumes only, and the shell removes it
+itself if the rename fails. Refusing to publish there instead -- which is the
+alternative -- would mean a camera card's photographs could never be converted
+where they are, which is a worse answer to a narrower problem. It is stated
+here rather than traded away quietly.
 
 "Is the name taken" is one question with one answer: `test -e X -o -L X`. `-e`
 follows a symbolic link and reports on its target, so a link whose target is
@@ -296,13 +315,12 @@ without complaint while `ln` refuses it. The same question decides the output
 filename, so a name occupied that way is stepped around rather than collided
 with.
 
-The staging copy goes to a name this run took, so it is this run's by
-construction: the copy is made over its own empty file, and whatever is under
-that name afterwards -- a whole copy, half of one, or nothing -- is this
-attempt's to clear away. `cp` is documented to leave the destination in place
-after an error and can fail after writing part of the file or all of it, which
-is why "did the copy report success" was never the right question to ask about
-ownership.
+The staging copy goes into a place this run made, so it is this run's by
+construction, and whatever is in that place afterwards -- a whole copy, half
+of one, or nothing -- is this attempt's to clear away. `cp` is documented to
+leave the destination in place after an error and can fail after writing part
+of the file or all of it, which is why "did the copy report success" was never
+the right question to ask about ownership.
 
 What is at the output path is then checked for *which file it is*, and only
 then is anything let go. The output path is asked for the volume and file
@@ -332,8 +350,10 @@ asking whether files existed, through a check that answers "no" when it cannot
 tell -- so a refused check deleted the only copy and then reported the PDF
 missing.
 
-Verified to fail: a transfer that stops part way leaving an incomplete file at
-the final name; a copy whose size does not match the source being reported as
+Verified to fail: a place this run did not make being used or cleared away,
+whatever kind of thing is at that name; a place something else has written
+into being emptied; a transfer that stops part way leaving an incomplete file
+at the final name; a copy whose size does not match the source being reported as
 published; a name another run took being overwritten, whether it is taken
 before the claim, while the copy is being made, or on a volume without hard
 links; another writer's file at the output name being reported as ours; a
@@ -682,8 +702,13 @@ right — every page, in order — but a job of four thousand pages becomes four
 thousand invocations of pdfcpu. The test now says a command carries more than
 one page.
 
-The run after the three-defect audit found four more, all about a message or a
-list that nothing was reading: which of the two names a publication takes was
+The run after the two-defect audit found nothing this code gets wrong: every
+survivor fell into a group already written down here -- a description whose
+command swallows it, a defensive conversion, and a list nothing reads on the
+path that returns it.
+
+The run before that found four, all about a message or a list that nothing was
+reading: which of the two names a publication takes was
 the one it could not take, and what a run removes -- on the ordinary path, on
 the path through a staging copy, on a volume without hard links, and when it
 refused before making anything. The last of those is the whole ownership rule
@@ -911,7 +936,9 @@ to fail when the fix is reverted:
 | A failed copy leaving a hidden file nothing tracks | output-copy tests |
 | A file another program put at the staging name being written over or removed | reservation tests |
 | A document inside a folder at the output path removed for its name | unowned-file tests |
-| A competing writer's file replaced by the rename fallback | reservation tests + MS-DOS volume integration |
+| A competing writer's file replaced by the rename fallback | staging-area tests + MS-DOS volume integration |
+| A link at the staging name adopted, and then deleted, as this run's | staging-area tests |
+| A named pipe at the staging name hanging the run with no timeout | staging-area tests |
 | Tests that stop catching bugs | mutation testing with a break threshold |
 
 ## Acceptance boundary

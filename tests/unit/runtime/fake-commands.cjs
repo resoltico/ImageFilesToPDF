@@ -41,7 +41,9 @@ function dispatch(fs, argv, command, host) {
             throw new Error("unset");
         },
         "/bin/test": () => fs.test(rest),
-        "/bin/sh": () => fs.reserve(rest),
+        "/bin/sh": () => fs.shell(rest),
+        "/bin/mkdir": () => fs.makeDirectory(rest),
+        "/bin/rmdir": () => fs.removeDirectory(rest),
         "/bin/mv": () => fs.move(rest),
         "/bin/cp": () => fs.copy(rest),
         "/bin/ln": () => fs.link(rest),
