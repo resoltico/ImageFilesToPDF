@@ -4,7 +4,7 @@ const { parseInteger } = require("./numbers.js");
 const {
     MINIMUM_QUALITY,
     MAXIMUM_QUALITY,
-    backgroundDefinition
+    backgroundVector
 } = require("./settings.js");
 
 /*
@@ -60,7 +60,7 @@ function buildFlattenArgv(vipsPath, inputPath, outputPath, background) {
         "flatten",
         inputPath,
         outputPath,
-        `--background=${backgroundDefinition(background).vipsVector}`
+        `--background=${backgroundVector(background)}`
     ];
 }
 
@@ -82,14 +82,22 @@ function buildGravityArgv(vipsPath, inputPath, outputPath, options) {
         String(geometry.widthPixels),
         String(geometry.heightPixels),
         "--extend=background",
-        `--background=${backgroundDefinition(background).vipsVector}`
+        `--background=${backgroundVector(background)}`
     ];
 }
 
 /*
- * After the thumbnail stage every image is sRGB, so an even band count means
- * an alpha channel is present. The JPEG page saver cannot represent alpha, so
- * those must be flattened onto the chosen background first.
+ * After the thumbnail stage every image is sRGB with three bands or four, so
+ * an even count means an alpha channel is present. The JPEG page saver cannot
+ * represent alpha, so those must be flattened onto the chosen background
+ * first.
+ *
+ * Two bands should not arise at all: measured, --export-profile=srgb turns a
+ * one-band source into three and a two-band one into four, so a greyscale
+ * photograph with transparency arrives here as RGBA. It is still answered,
+ * because that measurement is of one version of vips on one machine and the
+ * cost of it being wrong is an alpha channel reaching a saver that cannot
+ * hold one.
  *
  * This deliberately ignores the file extension: what matters is what the
  * decoded image actually holds.

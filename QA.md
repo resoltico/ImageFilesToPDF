@@ -783,9 +783,10 @@ and reads as a choice already made rather than a value to edit. It also made
 an edit of it a mistake: replacing the code inside those brackets is a
 perfectly good colour and was refused.
 
-Everything in that control is a colour now, presets included, and what it
-takes is on the screen above the form. No headless check could have found
-that, and none of the ones listed above failed while it was true.
+Everything in that control is a colour now, presets included, and it says
+`or type #RRGGBB` beside itself, where the number rows state their range. No
+headless check could have found that, and none of the ones listed above failed
+while it was true.
 
 It is checked by hand, on the real Shortcut, against this list:
 
@@ -914,12 +915,14 @@ The last run found nothing in the reworked prompts: no survivor in any file
 this round changed.
 
 The run before that found one thing that would have painted the wrong colour
-on a page. The rule deciding whether vips is given one number or three is that all
-three channels agree, and nothing distinguished it from either channel pair
-agreeing on its own: `#C7C7E8` would have been sent as a single 199 and come
-out grey, silently, while still looking like a colour. Three colours, one for
-each pair, now say so. The rest of its survivors were the wording of the
-colour prompt and the buttons on it, which are what a person answers.
+on a page. The rule deciding whether vips was given one number or three was
+that all three channels agree, and nothing distinguished it from either
+channel pair agreeing on its own: `#C7C7E8` would have been sent as a single
+199 and come out grey, silently, while still looking like a colour. Both the
+rule and the shorter form it chose between are gone now — the one-band image
+they existed for cannot reach the flatten — so the trap is closed by there
+being nothing to choose. The rest of that run's survivors were the wording of
+the colour prompt and the buttons on it, which are what a person answers.
 
 The run before that found nothing new: every survivor in the publication path
 was gone, and the one that remains there is equivalent -- a `catch` that returns
@@ -1089,7 +1092,10 @@ Pixel assertions compare against expected values with an explicit tolerance
 rather than matching formatted strings, so a check cannot silently stop
 discriminating.
 
-The second exercises what the action decides to convert, which turns on what
+The second is what colour ends up on the page, in `background.sh`, which the
+section above describes.
+
+The third exercises what the action decides to convert, which turns on what
 macOS itself answers and so cannot be settled by a fake:
 
 - a selected folder walked through Foundation, with a subfolder `chmod 000`
@@ -1108,7 +1114,7 @@ macOS itself answers and so cannot be settled by a fake:
   and a real symbolic link beside its target: each photograph once, the
   unsupported name answered rather than swallowed, and the link refused.
 
-The third takes the finished PDF from the workspace to the output folder:
+The fourth takes the finished PDF from the workspace to the output folder:
 
 - on one volume, where the whole publication is taking the name and clearing
   up: the PDF validates, the folder holds no staging file, and the published
@@ -1127,19 +1133,19 @@ The third takes the finished PDF from the workspace to the output folder:
   carry the system's "Permission denied" and must not name a drive or a
   volume at all.
 
-The fourth and fifth publish to volumes attached for the test, which is the
+The fifth and sixth publish to volumes attached for the test, which is the
 only way to reach these paths at all. Each is skipped, loudly, where a volume
 cannot be attached, because that is the machine's decision rather than the
 code's.
 
-The fourth is the cross-volume case:
+The fifth is the cross-volume case:
 
 - an APFS image, where the finished PDF and the output folder are on different
   filesystems, so the PDF is copied in and claimed from beside its
   destination — by a hard link, which is possible there even though one from
   the workspace was not.
 
-The fifth is a camera card, which is formatted one of two ways:
+The sixth is a camera card, which is formatted one of two ways:
 
 - an MS-DOS image, where hard links do not exist — measured: `ln` refuses with
   "Operation not supported" — so the PDF is moved onto its name by the
@@ -1221,7 +1227,6 @@ to fail when the fix is reverted:
 | A refusal explained by a cause that was never established | refusal tests + ACL folder integration |
 | A volume with hard links refused because a bridge was missing | claim-order tests |
 | A colour accepted by the settings and shown as no colour by the swatch | one colour parser, shared |
-| A colour grey in two channels painted as a grey | vips vector tests, each pair in turn |
 | A value typed and submitted without leaving the field being read as the one before it | field-editor commit tests |
 | An answer being corrected replaced by the default when the question is asked again | retry-state tests |
 | One rule stated in different words by the form and by the dialogs | shared reader tests |

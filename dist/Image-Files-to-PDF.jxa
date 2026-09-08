@@ -482,14 +482,10 @@ function assertChoice(value, choices, label) {
     return text;
 }
 
-function vipsVectorOf({ red, green, blue }) {
-    return red === green && green === blue
-        ? String(red)
-        : [red, green, blue].join(",");
-}
+function backgroundVector(background) {
+    const { red, green, blue } = rgbOf(background);
 
-function backgroundDefinition(background) {
-    return { vipsVector: vipsVectorOf(rgbOf(background)) };
+    return [red, green, blue].join(",");
 }
 
 function normalizeSettings(settings) {
@@ -920,7 +916,7 @@ function buildFlattenArgv(vipsPath, inputPath, outputPath, background) {
         "flatten",
         inputPath,
         outputPath,
-        `--background=${backgroundDefinition(background).vipsVector}`
+        `--background=${backgroundVector(background)}`
     ];
 }
 
@@ -942,7 +938,7 @@ function buildGravityArgv(vipsPath, inputPath, outputPath, options) {
         String(geometry.widthPixels),
         String(geometry.heightPixels),
         "--extend=background",
-        `--background=${backgroundDefinition(background).vipsVector}`
+        `--background=${backgroundVector(background)}`
     ];
 }
 

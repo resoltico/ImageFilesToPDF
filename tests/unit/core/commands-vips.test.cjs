@@ -68,7 +68,7 @@ test("flatten composites onto the chosen background", () => {
         "flatten",
         "a.v",
         "b.v",
-        "--background=255"
+        "--background=255,255,255"
     ]);
 });
 
@@ -88,7 +88,7 @@ test("gravity centres on the page and strips metadata", () => {
             "2480",
             "3508",
             "--extend=background",
-            "--background=255"
+            "--background=255,255,255"
         ]
     );
 });

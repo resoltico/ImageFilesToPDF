@@ -74,25 +74,24 @@ function assertChoice(value, choices, label) {
 }
 
 /*
- * What vips is given for --background: one number for a grey and three for a
- * colour, which is exactly what the table of four backgrounds held while
- * there were only four. vips broadcasts a single value across however many
- * bands an image has, and at the flatten stage an image can still be one band
- * and an alpha -- a greyscale photograph with transparency is two, and takes
- * the first number of a triple. Measured on both: "255" and "199,218,232" are
- * each accepted by a two-band and a four-band image.
+ * What vips is given for --background: the three components, always.
  *
- * Derived rather than tabulated, now that any colour is allowed. A table
- * would have to be written out for a value the user has just typed.
+ * It used to be one number for a grey and three for a colour, which is what
+ * the table of four backgrounds held while there were only four. The reason
+ * was that a one-band image could reach the flatten and take a single value
+ * across its one band. It cannot. The resize stage converts to sRGB before
+ * anything is flattened onto it, and measured, --export-profile=srgb turns a
+ * one-band source into three bands and a two-band one into four. vips
+ * broadcasts a single value across every band in any case, so the two forms
+ * were the same instruction written two ways, and one of them is enough.
+ *
+ * Derived rather than tabulated, now that any colour is allowed: a table
+ * would have to hold an entry for a value the user typed a moment ago.
  */
-function vipsVectorOf({ red, green, blue }) {
-    return red === green && green === blue
-        ? String(red)
-        : [red, green, blue].join(",");
-}
+function backgroundVector(background) {
+    const { red, green, blue } = rgbOf(background);
 
-function backgroundDefinition(background) {
-    return { vipsVector: vipsVectorOf(rgbOf(background)) };
+    return [red, green, blue].join(",");
 }
 
 function normalizeSettings(settings) {
@@ -145,6 +144,6 @@ module.exports = {
     MAXIMUM_DPI,
     MINIMUM_QUALITY,
     MAXIMUM_QUALITY,
-    backgroundDefinition,
+    backgroundVector,
     normalizeSettings
 };

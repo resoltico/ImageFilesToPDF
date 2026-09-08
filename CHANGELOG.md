@@ -4,7 +4,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
-## [1.3.0] - 2026-09-08
+## [1.3.0] - 2026-09-09
 
 ### Added
 
@@ -12,8 +12,8 @@ Notable changes to this project are documented in this file. The format is based
   The control is a list you can also type into: pick one of the presets, or
   write a colour of your own. `#C7DAE8`, `c7dae8` and `C7DAE8` are all
   accepted, and six hexadecimal digits is the whole rule; colours with
-  transparency are not supported. What the background takes is written above
-  the form, and a value that is not a colour is reported with everything else
+  transparency are not supported. The control says `or type #RRGGBB` beside
+  itself, and a value that is not a colour is reported with everything else
   that needs correcting, with your other answers left in place.
 - Headless configurations accept the same colours, written the same way. The
   four existing values keep working exactly as before.

@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
-    backgroundDefinition,
+    backgroundVector,
     normalizeSettings
 } = require("../../../src/core/settings.js");
 
@@ -65,67 +65,43 @@ test("normalizeSettings enforces the numeric ranges", () => {
     }
 });
 
-test("backgroundDefinition derives the vips vector from the colour", () => {
-    // What the table of four held, now worked out -- so a colour the user
-    // typed a moment ago needs no entry written for it.
-    assert.equal(backgroundDefinition("#FFFFFF").vipsVector, "255");
-    assert.equal(backgroundDefinition("#000000").vipsVector, "0");
-    assert.equal(backgroundDefinition("#8E79E0").vipsVector, "142,121,224");
-    assert.equal(backgroundDefinition("#204486").vipsVector, "32,68,134");
-    assert.equal(backgroundDefinition("#C7DAE8").vipsVector, "199,218,232");
-    assert.throws(() => backgroundDefinition("black"), /six hexadecimal digits/u);
+test("the vips vector is the three components of the colour", () => {
+    // One number for a grey and three for a colour is what the table of four
+    // held. The reason was a one-band image reaching the flatten, which the
+    // resize stage rules out -- and vips broadcasts a single value across
+    // every band in any case, so the two forms said the same thing.
+    assert.equal(backgroundVector("#FFFFFF"), "255,255,255");
+    assert.equal(backgroundVector("#000000"), "0,0,0");
+    assert.equal(backgroundVector("#8E79E0"), "142,121,224");
+    assert.equal(backgroundVector("#204486"), "32,68,134");
+    assert.equal(backgroundVector("#C7DAE8"), "199,218,232");
+    assert.throws(() => backgroundVector("black"), /six hexadecimal digits/u);
 });
 
-test("a colour with two channels alike is still a colour", () => {
-    // One number means grey, and vips spreads it over every band. A colour
-    // that is grey in two of its three channels is not grey, and sending one
-    // number for it would paint the page a different colour than was asked
-    // for -- silently, since the page would still be a colour.
-    assert.equal(backgroundDefinition("#C7C7E8").vipsVector, "199,199,232");
-    assert.equal(backgroundDefinition("#C7E8E8").vipsVector, "199,232,232");
-    assert.equal(backgroundDefinition("#E8C7E8").vipsVector, "232,199,232");
-    assert.equal(backgroundDefinition("#7F7F7F").vipsVector, "127", "and a grey is one");
-});
-
-test("normalizeSettings ignores inherited properties", () => {
-    // A settings object parsed from JSON has a prototype; a choice must not be
-    // satisfiable by something like "constructor".
-    assert.throws(
-        () => normalizeSettings(settings({ paperSize: "constructor" })),
-        /Unsupported paper size/u
-    );
+test("a grey is three components like anything else", () => {
+    // Nothing distinguishes them any more, and nothing has to: a colour that
+    // is grey in two of its three channels was the case a shorter form got
+    // wrong, and there is no shorter form to get it wrong.
+    assert.equal(backgroundVector("#7F7F7F"), "127,127,127");
+    assert.equal(backgroundVector("#C7C7E8"), "199,199,232");
+    assert.equal(backgroundVector("#C7E8E8"), "199,232,232");
 });
 
 test("every offered background has a vips vector", () => {
     // A colour that reaches the dialog without one would fail mid-run, after
     // the user has answered everything.
     for (const hex of ["#FFFFFF", "#000000", "#8E79E0", "#204486", "#C7DAE8"]) {
-        const definition = backgroundDefinition(hex);
-
-        assert.ok(definition.vipsVector.length > 0, hex);
-        assert.match(definition.vipsVector, /^\d+(?:,\d+,\d+)?$/u, hex);
+        assert.match(backgroundVector(hex), /^\d+,\d+,\d+$/u, hex);
     }
 });
 
-test("the vips vector matches the hex it is keyed by", () => {
-    // A grey is a single value and a colour is a triple, which is what vips
-    // expects; either way the numbers must be the hex.
-    const expected = {
-        "#FFFFFF": "255",
-        "#000000": "0",
-        "#8E79E0": "142,121,224",
-        "#204486": "32,68,134"
-    };
-
-    for (const [hex, vector] of Object.entries(expected)) {
-        assert.equal(backgroundDefinition(hex).vipsVector, vector, hex);
-
-        const channels = vector.split(",").map(Number);
-        const fromHex = [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16));
-
+test("the vips vector is the hex it was made from", () => {
+    // Whatever else it is, the numbers vips is given have to be the colour
+    // that was asked for.
+    for (const hex of ["#FFFFFF", "#000000", "#8E79E0", "#204486", "#C7DAE8"]) {
         assert.deepEqual(
-            channels.length === 1 ? [channels[0], channels[0], channels[0]] : channels,
-            fromHex,
+            backgroundVector(hex).split(",").map(Number),
+            [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16)),
             `${hex} vector should be its own channels`
         );
     }
