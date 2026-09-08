@@ -1,6 +1,6 @@
 "use strict";
 
-const { CHOICE_ROWS, COLOUR_ROW, NUMBER_ROWS } = require("./form.js");
+const { CHOICE_ROWS, COLOUR_ROW, NUMBER_ROWS } = require("./form-rows.js");
 const { valueOfLabel } = require("./choices.js");
 const { normalizeColour } = require("./colour.js");
 const { errorMessage } = require("./errors.js");
@@ -32,7 +32,7 @@ const DIGITS = /^\d+$/u;
  * reads "0x12C" and "3e2" as 300, and turning either of those into a
  * resolution would be guessing rather than reading.
  */
-function readNumber(control, answer) {
+function readNumber(answer, control) {
     const text = String(answer).trim();
     const value = parseInt(text, 10);
 
@@ -47,23 +47,19 @@ function readNumber(control, answer) {
 }
 
 /*
- * One control, two kinds of answer: the exact label of a preset, or a colour
- * typed in. The labels stay here at the edge and never reach the settings --
- * a headless configuration asking for "White (#FFFFFF)" is asking in the
- * language of a menu, and renaming a preset would change that language.
+ * A colour, whether it was chosen or typed. There is nothing to tell apart:
+ * the list the form offers holds the presets as the colours they are, so
+ * picking one puts a colour in the field exactly as typing one does.
  *
- * Only an exact label counts. A hex code is not fished out of whatever else
- * was typed around it: "use #C7DAE8 please" is a mistake worth reporting, not
- * an instruction worth obeying.
+ * It used to have to recognise a menu's wording, "White (#FFFFFF)", and turn
+ * that back into a colour -- which meant the wording of a menu was part of
+ * what the program accepted, and renaming a preset would have changed it.
  */
-function readColour(control, answer) {
-    const text = String(answer);
-    const preset = control.choices.find((choice) => choice.label === text);
-
-    return normalizeColour(preset ? preset.value : text);
+function readColour(answer) {
+    return normalizeColour(answer);
 }
 
-function readChoice(control, answer) {
+function readChoice(answer, control) {
     try {
         return valueOfLabel(control, answer);
     } catch {
@@ -88,18 +84,18 @@ function readAnswers(answers) {
     const problems = [];
 
     for (const { key, control } of CHOICE_ROWS) {
-        collect(settings, problems, key, () => readChoice(control, answers[key]));
+        collect(settings, problems, key, () => readChoice(answers[key], control));
     }
 
     collect(
         settings,
         problems,
         COLOUR_ROW.key,
-        () => readColour(COLOUR_ROW.control, answers[COLOUR_ROW.key])
+        () => readColour(answers[COLOUR_ROW.key])
     );
 
     for (const { key, control } of NUMBER_ROWS) {
-        collect(settings, problems, key, () => readNumber(control, answers[key]));
+        collect(settings, problems, key, () => readNumber(answers[key], control));
     }
 
     return problems.length > 0 ? { problems } : { settings };

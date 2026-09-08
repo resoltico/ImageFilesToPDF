@@ -28,13 +28,30 @@ test("the default answers produce settings the validator accepts", () => {
 test("labels are translated to the values the pipeline stores", () => {
     const { settings } = answering({
         paperSize: "US Letter",
-        mode: "A separate PDF for each image",
-        background: "Dark blue (#204486)"
+        mode: "A separate PDF for each image"
     });
 
     assert.equal(settings.paperSize, "Letter");
     assert.equal(settings.mode, "Separate PDFs");
-    assert.equal(settings.background, "#204486");
+});
+
+test("a colour arrives as a colour, chosen or typed", () => {
+    // There is nothing to translate here any more. The list the form offers
+    // holds the presets as the colours they are, so picking one puts a colour
+    // in the field exactly as typing one does -- and a menu's wording is no
+    // longer part of what the program accepts.
+    assert.equal(answering({ background: "#204486" }).settings.background, "#204486");
+    assert.equal(answering({ background: " c7dae8 " }).settings.background, "#C7DAE8");
+    assert.deepEqual(
+        answering({ background: "Dark blue (#204486)" }).problems,
+        [{
+            key: "background",
+            message: "Page background must be six hexadecimal digits, for " +
+                "example #C7DAE8. The # is optional, and transparency is " +
+                "not supported."
+        }],
+        "and the wording of a menu is not a colour"
+    );
 });
 
 test("numbers are accepted at both ends of their range", () => {

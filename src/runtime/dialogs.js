@@ -42,12 +42,10 @@ function chooseRequired(app, control) {
 const CUSTOM_COLOUR = "Custom colour...";
 
 /*
- * A colour typed rather than chosen. It carries the preset list with it so
- * one reader serves both front ends, and its own wording, because "Page
- * background:" is the question a list answers and not this one.
+ * A colour typed rather than chosen, with its own wording: "Page background:"
+ * is the question a list answers, and not this one.
  */
 const COLOUR_QUESTION = {
-    ...BACKGROUND,
     prompt: "Page background as six hexadecimal digits:",
     defaultAnswer: "#"
 };
@@ -86,7 +84,7 @@ function askUntil(app, control, read) {
         answer = String(response.textReturned);
 
         try {
-            return read(control, answer);
+            return read(answer, control);
         } catch (error) {
             problem = errorMessage(error);
         }

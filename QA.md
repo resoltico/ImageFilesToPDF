@@ -757,10 +757,25 @@ What is not tested and matters most for the background row: that an
 `NSComboBox` in an alert's accessory view renders, opens its list, and can be
 typed into inside the Shortcuts helper. Every check listed above passes
 against a fake that cannot render anything, so the risk in that row sits
-almost entirely outside them. It is checked by hand, on the real Shortcut,
-against this list:
+almost entirely outside them.
 
-- the row shows the current colour and opens a list of the four presets;
+That was checked by hand on the real Shortcut, and it found both things such a
+check is for. The control works — a colour typed over the value is accepted,
+including when Create PDF is clicked immediately, without leaving the field —
+and nobody could find that it could be typed into at all. The instruction was
+in a tooltip, and the field read "White (#FFFFFF)", which is a menu's wording
+and reads as a choice already made rather than a value to edit. It also made
+an edit of it a mistake: replacing the code inside those brackets is a
+perfectly good colour and was refused.
+
+Everything in that control is a colour now, presets included, and what it
+takes is on the screen above the form. No headless check could have found
+that, and none of the ones listed above failed while it was true.
+
+It is checked by hand, on the real Shortcut, against this list:
+
+- the row shows the current colour as a code, and opens a list of the four
+  presets as codes;
 - a preset can be chosen with the mouse and with the keyboard;
 - the text can be selected and replaced by typing or pasting;
 - a pasted colour is accepted by pressing Create PDF immediately, without

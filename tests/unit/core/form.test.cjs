@@ -31,10 +31,12 @@ test("every setting the pipeline needs has exactly one row", () => {
 
 test("the form offers the same choices as the stepwise dialogs", () => {
     // Two front ends that disagree about what may be chosen would be two
-    // different tools wearing the same name.
+    // different tools wearing the same name. They present them differently --
+    // the form's list holds the colours, the dialog's holds their names --
+    // but they are the same four.
     assert.deepEqual(
         rowFor("background").options.map((option) => option.label),
-        BACKGROUND.choices.map((choice) => choice.label)
+        BACKGROUND.choices.map((choice) => choice.value)
     );
     assert.deepEqual(
         rowFor("paperSize").options.map((option) => option.label),
@@ -42,17 +44,19 @@ test("the form offers the same choices as the stepwise dialogs", () => {
     );
 });
 
-test("the background is a row of its own, offering the presets", () => {
-    // Neither a closed list nor a number: the four colours are presets, and
-    // any opaque sRGB colour may be typed instead.
+test("everything in the background control is a colour", () => {
+    // The list held a menu's wording, "White (#FFFFFF)", which is what made a
+    // control you can type into look like one you cannot -- and made editing
+    // what it put there a mistake, since a person replacing the code inside
+    // those brackets has written a perfectly good colour.
     const row = rowFor("background");
 
     assert.equal(row.kind, "colour");
     assert.deepEqual(
         row.options.map((option) => option.label),
-        BACKGROUND.choices.map((choice) => choice.label)
+        ["#FFFFFF", "#000000", "#8E79E0", "#204486"]
     );
-    assert.equal(row.value, "White (#FFFFFF)");
+    assert.equal(row.value, "#FFFFFF");
     assert.match(row.tooltip, /six hex digits/u);
     assert.match(row.tooltip, /#C7DAE8/u, "and shows one, since a shape is easier to copy");
 });
@@ -69,7 +73,7 @@ test("the defaults are the ones the dialogs would have offered first", () => {
         paperSize: "A4",
         orientation: "Portrait",
         mode: "One PDF with all images",
-        background: "White (#FFFFFF)",
+        background: "#FFFFFF",
         dpi: "300",
         quality: "92"
     });

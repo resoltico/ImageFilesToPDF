@@ -71,9 +71,14 @@ test("the background is a control that is a list and a field at once", () => {
     assert.equal(background.kind, "combo");
     assert.deepEqual(
         background.items,
-        ["White (#FFFFFF)", "Black (#000000)", "Purple (#8E79E0)", "Dark blue (#204486)"]
+        ["#FFFFFF", "#000000", "#8E79E0", "#204486"],
+        "the presets as the colours they are"
     );
-    assert.equal(background.stringValue, "White (#FFFFFF)", "showing the current one");
+    assert.equal(
+        background.stringValue,
+        "#FFFFFF",
+        "and the field showing a value, which is what makes it look like one"
+    );
     assert.equal(background.editable, true, "and it can be typed into");
     assert.equal(background.completes, false, "without finishing the word for you");
     assert.match(background.toolTip, /six hex digits/u);

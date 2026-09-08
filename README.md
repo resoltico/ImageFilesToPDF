@@ -108,12 +108,14 @@ job rather than a conversion.
 - page background: any colour, given as six hexadecimal digits, with white,
   black, purple `#8E79E0` and dark blue `#204486` offered as presets
 
-All six are asked on one form. The background is a menu you can also type
+All six are asked on one form. The background is a list you can also type
 into: pick one of the four presets, or write a colour of your own — `#C7DAE8`,
-`c7dae8` and ` C7DAE8 ` are all the same colour, and all accepted. A mistyped
-number or colour is reported alongside every other problem, with the answers
-already given left in place, so correcting it does not mean answering the rest
-again.
+`c7dae8` and ` C7DAE8 ` are all the same colour, and all accepted. Everything
+in that control is a colour, the presets included, so what it shows is
+`#FFFFFF` rather than the word for it, and what it takes is written above the
+form. A mistyped number or colour is reported alongside every other problem,
+with the answers already given left in place, so correcting it does not mean
+answering the rest again.
 
 The page background fills the area around an image and shows behind
 transparent pixels. It does not recolour anything opaque: a screenshot with a

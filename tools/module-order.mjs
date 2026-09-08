@@ -15,6 +15,7 @@ export const moduleOrder = [
     "src/core/settings.js",
     "src/core/geometry.js",
     "src/core/choices.js",
+    "src/core/form-rows.js",
     "src/core/form.js",
     "src/core/answers.js",
     "src/core/naming.js",

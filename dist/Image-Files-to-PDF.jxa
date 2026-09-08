@@ -641,6 +641,10 @@ function defaultLabelOf(control) {
     return control.choices[0].label;
 }
 
+function defaultValueOf(control) {
+    return control.choices[0].value;
+}
+
 function valueOfLabel(control, label) {
     const chosen = control.choices.find((choice) => choice.label === label);
 
@@ -651,11 +655,8 @@ function valueOfLabel(control, label) {
     return chosen.value;
 }
 
-/* ===== src/core/form.js ===== */
+/* ===== src/core/form-rows.js ===== */
 
-
-const CREATE_BUTTON = "Create PDF";
-const CANCEL_BUTTON = "Cancel";
 
 const CHOICE_ROWS = [
     { key: "paperSize", control: PAPER_SIZE },
@@ -676,9 +677,11 @@ const NUMBER_ROWS = [
 function defaultAnswers() {
     const answers = {};
 
-    for (const { key, control } of [...CHOICE_ROWS, COLOUR_ROW]) {
+    for (const { key, control } of CHOICE_ROWS) {
         answers[key] = defaultLabelOf(control);
     }
+
+    answers[COLOUR_ROW.key] = defaultValueOf(COLOUR_ROW.control);
 
     for (const { key, control } of NUMBER_ROWS) {
         answers[key] = control.defaultAnswer;
@@ -705,7 +708,7 @@ function formRows(answers, invalid) {
         value: String(answers[COLOUR_ROW.key]),
         invalid: invalid.has(COLOUR_ROW.key),
         options: COLOUR_ROW.control.choices.map((choice) => ({
-            label: choice.label
+            label: choice.value
         }))
     };
 
@@ -723,11 +726,22 @@ function formRows(answers, invalid) {
     return [...choices, colour, ...numbers];
 }
 
+/* ===== src/core/form.js ===== */
+
+
+const CREATE_BUTTON = "Create PDF";
+const CANCEL_BUTTON = "Cancel";
+
+const BACKGROUND_NOTE = "Page background takes any six hex digits: " +
+    "#FFFFFF white, #000000 black, #8E79E0 purple, #204486 dark blue.";
+
 function invitation(count) {
-    return count > 0
+    const opening = count > 0
         ? `${count} ${count === 1 ? "image" : "images"}. Choose how the ` +
             "pages are built, then create the PDF."
         : "Choose how the pages are built, then create the PDF.";
+
+    return `${opening}\n${BACKGROUND_NOTE}`;
 }
 
 function formSpec(answers = defaultAnswers(), problems = [], count = 0) {
@@ -746,7 +760,7 @@ function formSpec(answers = defaultAnswers(), problems = [], count = 0) {
 
 const DIGITS = /^\d+$/u;
 
-function readNumber(control, answer) {
+function readNumber(answer, control) {
     const text = String(answer).trim();
     const value = parseInt(text, 10);
 
@@ -760,14 +774,11 @@ function readNumber(control, answer) {
     return value;
 }
 
-function readColour(control, answer) {
-    const text = String(answer);
-    const preset = control.choices.find((choice) => choice.label === text);
-
-    return normalizeColour(preset ? preset.value : text);
+function readColour(answer) {
+    return normalizeColour(answer);
 }
 
-function readChoice(control, answer) {
+function readChoice(answer, control) {
     try {
         return valueOfLabel(control, answer);
     } catch {
@@ -788,18 +799,18 @@ function readAnswers(answers) {
     const problems = [];
 
     for (const { key, control } of CHOICE_ROWS) {
-        collect(settings, problems, key, () => readChoice(control, answers[key]));
+        collect(settings, problems, key, () => readChoice(answers[key], control));
     }
 
     collect(
         settings,
         problems,
         COLOUR_ROW.key,
-        () => readColour(COLOUR_ROW.control, answers[COLOUR_ROW.key])
+        () => readColour(answers[COLOUR_ROW.key])
     );
 
     for (const { key, control } of NUMBER_ROWS) {
-        collect(settings, problems, key, () => readNumber(control, answers[key]));
+        collect(settings, problems, key, () => readNumber(answers[key], control));
     }
 
     return problems.length > 0 ? { problems } : { settings };
@@ -1637,7 +1648,6 @@ function chooseRequired(app, control) {
 const CUSTOM_COLOUR = "Custom colour...";
 
 const COLOUR_QUESTION = {
-    ...BACKGROUND,
     prompt: "Page background as six hexadecimal digits:",
     defaultAnswer: "#"
 };
@@ -1661,7 +1671,7 @@ function askUntil(app, control, read) {
         answer = String(response.textReturned);
 
         try {
-            return read(control, answer);
+            return read(answer, control);
         } catch (error) {
             problem = errorMessage(error);
         }

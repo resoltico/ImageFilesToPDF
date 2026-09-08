@@ -9,19 +9,26 @@ Notable changes to this project are documented in this file. The format is based
 ### Added
 
 - The page background can be any colour, not only the four that were offered.
-  Choose a preset from the list as before, or type a colour into the same
-  control: `#C7DAE8`, `c7dae8` and `C7DAE8` are all accepted, and six
-  hexadecimal digits is the whole rule. Colours with transparency are not
-  supported, and a value that is not a colour is reported with everything else
+  The control is a list you can also type into: pick one of the presets, or
+  write a colour of your own. `#C7DAE8`, `c7dae8` and `C7DAE8` are all
+  accepted, and six hexadecimal digits is the whole rule; colours with
+  transparency are not supported. What the background takes is written above
+  the form, and a value that is not a colour is reported with everything else
   that needs correcting, with your other answers left in place.
 - Headless configurations accept the same colours, written the same way. The
   four existing values keep working exactly as before.
 
 ### Changed
 
-- The background list no longer shows a colour swatch beside each preset. A
-  control you can type into cannot carry them, and a swatch that stayed put
-  while you typed a different colour would be showing you the wrong one.
+- The background control shows colours rather than names. Its list holds
+  `#FFFFFF`, `#000000`, `#8E79E0` and `#204486`, and the field shows the one
+  in force; the names are above the form instead. Showing "White (#FFFFFF)"
+  made a control you can type into look like one you can only choose from, and
+  editing what it put there was refused even when what you had written was a
+  perfectly good colour.
+- The colour swatches beside each preset are gone with the names. A control
+  you can type into cannot carry them, and a swatch that stayed put while you
+  typed a different colour would be showing you the wrong one.
 - Where the settings are asked one question at a time — the fallback used when
   the form cannot be shown — the background list ends with "Custom colour...",
   which asks for the colour you want.

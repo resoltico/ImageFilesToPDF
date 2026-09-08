@@ -93,6 +93,10 @@ function defaultLabelOf(control) {
     return control.choices[0].label;
 }
 
+function defaultValueOf(control) {
+    return control.choices[0].value;
+}
+
 function valueOfLabel(control, label) {
     const chosen = control.choices.find((choice) => choice.label === label);
 
@@ -112,5 +116,6 @@ module.exports = {
     QUALITY,
     labelsOf,
     defaultLabelOf,
+    defaultValueOf,
     valueOfLabel
 };
