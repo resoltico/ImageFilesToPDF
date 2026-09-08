@@ -22,7 +22,8 @@ Notable changes to this project are documented in this file. The format is based
 
 - The background control shows colours rather than names. Its list holds
   `#FFFFFF`, `#000000`, `#8E79E0` and `#204486`, and the field shows the one
-  in force; the names are above the form instead. Showing "White (#FFFFFF)"
+  in force, with `or type #RRGGBB` beside it; the names are above the form
+  instead. Showing "White (#FFFFFF)"
   made a control you can type into look like one you can only choose from, and
   editing what it put there was refused even when what you had written was a
   perfectly good colour.

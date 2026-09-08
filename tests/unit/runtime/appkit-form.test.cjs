@@ -2,13 +2,14 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { buildForm } = require("../../../src/runtime/appkit-form.js");
 const {
     FORM_WIDTH,
     ROW_HEIGHT,
     NUMBER_WIDTH,
-    PADDING,
-    buildForm
-} = require("../../../src/runtime/appkit-form.js");
+    COLOUR_WIDTH,
+    PADDING
+} = require("../../../src/runtime/appkit-geometry.js");
 const { WIDGETS } = require("../../../src/runtime/appkit.js");
 const { formSpec, defaultAnswers } = require("../../../src/core/form.js");
 const { createFakeObjC } = require("./fake-objc.cjs");
@@ -25,7 +26,7 @@ test("every row becomes a label, a control, and a hint where it has one", () => 
 
     assert.equal(view.subviews.length, spec.rows.length * 2 + withHints);
     assert.equal(Object.keys(controls).length, spec.rows.length);
-    assert.equal(withHints, 2, "the two numeric settings state their bounds");
+    assert.equal(withHints, 3, "every row that is typed into states its rule");
 
     for (const row of spec.rows) {
         assert.ok(controls[row.key], `${row.key} has no control`);
@@ -81,7 +82,7 @@ test("the background is a control that is a list and a field at once", () => {
     );
     assert.equal(background.editable, true, "and it can be typed into");
     assert.equal(background.completes, false, "without finishing the word for you");
-    assert.match(background.toolTip, /six hex digits/u);
+    assert.equal(background.rect.width, COLOUR_WIDTH, "as wide as a colour needs");
     assert.equal(background.accessibilityLabel, "Page background:");
 });
 

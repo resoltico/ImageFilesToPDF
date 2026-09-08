@@ -27,15 +27,14 @@ test("the form says how many images were found", () => {
     );
 });
 
-test("what the background takes is on the screen, not in a tooltip", () => {
-    // The one instruction that separates a control holding four colours from
-    // a control that takes any colour was hidden in a tooltip, and a person
-    // looking at the form could not tell the second from the first. The
-    // presets are named here because the list itself no longer names them.
+test("the codes are named here, because the list no longer names them", () => {
+    // A list of four codes says nothing about which is the purple. That the
+    // row can be typed into is said beside the row itself, so this only has
+    // to name them.
     const { detail } = formSpec(defaultAnswers(), [], 3);
 
-    assert.match(detail, /any six hex digits/u);
     assert.match(detail, /#FFFFFF white/u);
+    assert.match(detail, /#000000 black/u);
     assert.match(detail, /#8E79E0 purple/u);
     assert.match(detail, /#204486 dark blue/u);
 });

@@ -46,10 +46,8 @@ assert_pixel "$WORK/first.png" 30 42 223 41 53 28 \
     "natural order (page 2 must precede page 10, so page one is red)"
 
 # ---------------------------------------------------------------------------
-# Separate PDFs, Letter landscape, alpha flattening, and a background that is
-# not one of the four presets -- typed in lower case and without its hash, as
-# a person or a script may supply it. What the presets had written down for
-# them is worked out for whatever arrives, so this is the same path they take.
+# Separate PDFs, Letter landscape, alpha flattening. What colour ends up on a
+# page is background.sh; this is about the mode and the paper.
 # ---------------------------------------------------------------------------
 
 write_config "$WORK/separate.json" Letter Landscape "Separate PDFs" "c7dae8" 20260904_020304
@@ -66,20 +64,6 @@ assert_pixel "$WORK/custom.png" 0 0 199 218 232 6 \
 # No-clobber: a second run must not overwrite the first.
 run_headless "$WORK/separate.json" "$WORK/alpha image.png"
 test -s "$WORK/alpha image_20260904_020304_2.pdf"
-
-# ---------------------------------------------------------------------------
-# A black background, which vips is given as one number rather than three.
-# Getting that wrong would silently produce the wrong colour.
-# ---------------------------------------------------------------------------
-
-write_config "$WORK/black.json" A4 Portrait "Single PDF" "#000000" 20260904_060708
-run_headless "$WORK/black.json" "$WORK/tiny.png"
-
-BLACK="$WORK/output_20260904_060708.pdf"
-assert_valid_pdf "$BLACK"
-pdftoppm -f 1 -singlefile -r 10 -png "$BLACK" "$WORK/black" >/dev/null 2>&1
-assert_pixel "$WORK/black.png" 0 0 0 0 0 6 \
-    "black page background"
 
 # ---------------------------------------------------------------------------
 # Colour management: a Display P3 source must be ICC-converted, not passed

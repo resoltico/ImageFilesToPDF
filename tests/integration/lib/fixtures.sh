@@ -15,6 +15,26 @@ solid_svg() {
 SVG
 }
 
+# grey_alpha_png <path>
+#
+# A greyscale image with an alpha channel, which is two bands rather than
+# four: half of it opaque grey, half of it clear. Rendering an SVG cannot
+# produce one -- it always gives RGBA -- and two bands is the case where a
+# colour could be reduced to its first component, so the fixture has to be
+# built by hand and checked for being what it claims.
+grey_alpha_png() {
+    local work
+    work=$(dirname "$1")
+
+    vips black "$work/ga-base.png" 400 200 --bands 1
+    vips linear "$work/ga-base.png" "$work/ga-grey.png" 1 200 --uchar
+    vips black "$work/ga-patch.png" 200 200 --bands 1
+    vips linear "$work/ga-patch.png" "$work/ga-opaque.png" 1 255 --uchar
+    vips insert "$work/ga-base.png" "$work/ga-opaque.png" "$work/ga-alpha.png" 0 0
+    vips bandjoin "$work/ga-grey.png $work/ga-alpha.png" "$1"
+    rm -f "$work"/ga-*.png
+}
+
 require_tools() {
     local tool
     for tool in osascript vips vipsheader pdfcpu pdfinfo pdftoppm qpdf tiffcp; do

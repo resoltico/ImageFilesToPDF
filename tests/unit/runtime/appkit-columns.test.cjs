@@ -2,11 +2,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    FORM_WIDTH,
-    NUMBER_WIDTH,
-    buildForm
-} = require("../../../src/runtime/appkit-form.js");
+const { buildForm } = require("../../../src/runtime/appkit-form.js");
+const { FORM_WIDTH } = require("../../../src/runtime/appkit-geometry.js");
 const { WIDGETS } = require("../../../src/runtime/appkit.js");
 const { formSpec } = require("../../../src/core/form.js");
 const { createFakeObjC } = require("./fake-objc.cjs");
@@ -19,6 +16,7 @@ function build(spec = formSpec()) {
 
 function columnsOf(view) {
     const editable = view.subviews.filter((child) => child.kind === "popup"
+        || child.kind === "combo"
         || (child.kind === "field" && child.editable !== false));
     const [first] = editable;
 
@@ -46,20 +44,26 @@ test("labels end before the controls begin", () => {
     }
 });
 
-test("hints sit past their field and inside the form", () => {
-    const { view } = build();
-    const { hints, first } = columnsOf(view);
+test("a hint sits past the control it belongs to, whatever its width", () => {
+    // Two rows are typed into now and they are not the same width, so a hint
+    // placed a fixed distance along would sit on top of one of them.
+    const { view, controls, spec } = build();
+    const { hints } = columnsOf(view);
 
-    assert.equal(hints.length, 2);
+    assert.equal(hints.length, 3, "the colour and the two numbers");
 
-    for (const hint of hints) {
+    for (const row of spec.rows.filter((candidate) => candidate.hint)) {
+        const control = controls[row.key];
+        const hint = hints.find((candidate) => candidate.stringValue === row.hint);
+
+        assert.ok(hint, `${row.key} has no hint on the form`);
         assert.ok(
-            hint.rect.left >= first.rect.left + NUMBER_WIDTH,
-            `${hint.stringValue} overlaps the field it describes`
+            hint.rect.left >= control.rect.left + control.rect.width,
+            `${row.key}: the hint overlaps the control it describes`
         );
         assert.ok(
             hint.rect.left + hint.rect.width <= FORM_WIDTH,
-            `${hint.stringValue} runs off the form`
+            `${row.key}: the hint runs off the form`
         );
     }
 });

@@ -30,6 +30,7 @@ export const moduleOrder = [
     "src/runtime/preflight.js",
     "src/runtime/appkit-widgets.js",
     "src/runtime/appkit-fields.js",
+    "src/runtime/appkit-geometry.js",
     "src/runtime/appkit-form.js",
     "src/runtime/appkit.js",
     "src/runtime/dialogs.js",

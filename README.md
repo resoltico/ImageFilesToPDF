@@ -112,8 +112,8 @@ All six are asked on one form. The background is a list you can also type
 into: pick one of the four presets, or write a colour of your own — `#C7DAE8`,
 `c7dae8` and ` C7DAE8 ` are all the same colour, and all accepted. Everything
 in that control is a colour, the presets included, so what it shows is
-`#FFFFFF` rather than the word for it, and what it takes is written above the
-form. A mistyped number or colour is reported alongside every other problem,
+`#FFFFFF` rather than the word for it, it says `or type #RRGGBB` beside
+itself, and the line above the form says which code is which colour. A mistyped number or colour is reported alongside every other problem,
 with the answers already given left in place, so correcting it does not mean
 answering the rest again.
 

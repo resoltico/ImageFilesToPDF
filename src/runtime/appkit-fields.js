@@ -27,8 +27,9 @@ function makeField(ns, text, rect) {
  *
  * What it costs is the colour swatch the four presets carried in their menu.
  * A combo box list holds strings, and a swatch beside the field instead would
- * be telling the truth only until the next keystroke -- so the names and hex
- * codes are the whole of what the list shows now.
+ * be telling the truth only until the next keystroke -- so the colours
+ * themselves are the whole of what the list shows now, and what they are
+ * called is said in the form around it.
  *
  * Completion is off deliberately. With it on, typing over a selected preset
  * offers to finish the word, and what the field holds is then something the
@@ -47,7 +48,6 @@ function makeColourCombo(ns, row, rect) {
         ns(row.options.map((option) => option.label))
     );
     combo.stringValue = row.value;
-    combo.toolTip = row.tooltip;
     combo.setAccessibilityLabel(row.label);
 
     return combo;

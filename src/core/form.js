@@ -15,17 +15,13 @@ const CREATE_BUTTON = "Create PDF";
 const CANCEL_BUTTON = "Cancel";
 
 /*
- * What the background takes, said on the screen rather than in a tooltip. A
- * tooltip is a place to put something nobody reads: the one instruction that
- * made the difference between a control with four colours in it and a control
- * that takes any colour at all was hidden in one, and a person looking at the
- * form could not tell the second from the first.
- *
- * The presets are named here, in the order the list holds them, because that
- * is what the list stopped saying when its items became codes.
+ * What the four codes mean, in the order the list holds them, because that is
+ * what the list stopped saying when its items became colours. That the row
+ * can be typed into is said beside the row itself; this only has to name
+ * them, so it does.
  */
-const BACKGROUND_NOTE = "Page background takes any six hex digits: " +
-    "#FFFFFF white, #000000 black, #8E79E0 purple, #204486 dark blue.";
+const BACKGROUND_NOTE = "Page background presets: #FFFFFF white, " +
+    "#000000 black, #8E79E0 purple, #204486 dark blue.";
 
 function invitation(count) {
     const opening = count > 0

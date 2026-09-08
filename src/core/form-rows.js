@@ -46,12 +46,17 @@ const CHOICE_ROWS = [
  *
  * The names are not lost, they are moved: a list of four codes says nothing
  * about which is the purple, so the line above the form says it instead,
- * where it can be read without opening anything.
+ * where it can be read without opening anything. Between the two of them the
+ * row says what it takes and the line says what the codes mean, and neither
+ * says it in a tooltip -- which is where the last one was, and is why nobody
+ * could find that this control takes anything at all.
  */
 const COLOUR_ROW = { key: "background", control: BACKGROUND };
 
-const COLOUR_TOOLTIP = "Choose a preset or type six hex digits, " +
-    "for example #C7DAE8.";
+// Beside the control, where the numbers state their range. It says the shape
+// and that there is somewhere to type it, which is what a list of four codes
+// cannot say for itself.
+const COLOUR_HINT = "or type #RRGGBB";
 
 const NUMBER_ROWS = [
     { key: "dpi", control: RESOLUTION },
@@ -88,7 +93,7 @@ function formRows(answers, invalid) {
         key: COLOUR_ROW.key,
         kind: "colour",
         label: COLOUR_ROW.control.label,
-        tooltip: COLOUR_TOOLTIP,
+        hint: COLOUR_HINT,
         value: String(answers[COLOUR_ROW.key]),
         invalid: invalid.has(COLOUR_ROW.key),
         // What each item reads as, which for this row is the colour itself.

@@ -1,5 +1,14 @@
 "use strict";
 
+const {
+    COLOUR_WIDTH,
+    NUMBER_WIDTH,
+    formSize,
+    labelRect,
+    controlRect,
+    hintRect
+} = require("./appkit-geometry.js");
+
 /*
  * Turning the form description from src/core/form.js into a view.
  *
@@ -8,43 +17,6 @@
  * allows. The widget primitives arrive as a parameter, which is what lets
  * this be tested without AppKit.
  */
-
-/*
- * Three columns: the name of the setting, the control, and — for the two that
- * take a number — the bounds it accepts.
- *
- * Widths were measured rather than guessed. At the 13 point system font the
- * longest label renders 110 points wide and the longest menu item 187, so a
- * number field needs only enough room for four digits and the rest of its
- * column can carry the hint.
- */
-const ROW_HEIGHT = 32;
-const LABEL_WIDTH = 140;
-const CONTROL_WIDTH = 230;
-const NUMBER_WIDTH = 70;
-const CONTROL_HEIGHT = 24;
-const HINT_HEIGHT = 16;
-const GAP = 10;
-const HINT_GAP = 8;
-const PADDING = 6;
-
-// Padding sits above and below; a hint is centred against its field.
-const BOTH_EDGES = 2;
-const HALVES = 2;
-
-const CONTROL_LEFT = LABEL_WIDTH + GAP;
-const HINT_LEFT = CONTROL_LEFT + NUMBER_WIDTH + HINT_GAP;
-const FORM_WIDTH = CONTROL_LEFT + CONTROL_WIDTH;
-const HINT_WIDTH = FORM_WIDTH - HINT_LEFT;
-
-function rowRect(index, rowCount, left, width) {
-    return {
-        left,
-        bottom: PADDING + (rowCount - index - 1) * ROW_HEIGHT,
-        width,
-        height: CONTROL_HEIGHT
-    };
-}
 
 function addChoice(context, row, rect) {
     const { ns, widgets, view } = context;
@@ -65,41 +37,18 @@ function addChoice(context, row, rect) {
 }
 
 /*
- * The one control that is a list and a field at once, so the presets stay
- * available without a second control to keep in step with them. It takes the
- * whole control column: the guidance that a number row shows beside itself is
- * the combo box's tooltip instead.
+ * A row that is typed into: the control, only as wide as what it holds, and
+ * the space that would have been wasted carrying the rule it accepts.
+ *
+ * The colour row and the number rows differ in the control and in how wide it
+ * is, and in nothing else -- so they differ here in the control and in how
+ * wide it is, and in nothing else.
  */
-function addColour(context, row, rect) {
+function addTyped(context, row, rect, control) {
     const { ns, widgets, view } = context;
-    const combo = widgets.makeColourCombo(ns, row, rect);
-
-    view.addSubview(combo);
-
-    if (row.invalid) {
-        widgets.markInvalid(ns, combo);
-    }
-
-    return combo;
-}
-
-/*
- * The field is only as wide as the number it holds; the space that would have
- * been wasted carries the bounds instead.
- */
-function addNumber(context, row, rect) {
-    const { ns, widgets, view } = context;
-    const field = widgets.makeField(ns, row.value, {
-        ...rect,
-        width: NUMBER_WIDTH
-    });
-
-    const hint = widgets.makeHint(ns, row.hint, {
-        left: HINT_LEFT,
-        bottom: rect.bottom + (CONTROL_HEIGHT - HINT_HEIGHT) / HALVES,
-        width: HINT_WIDTH,
-        height: HINT_HEIGHT
-    });
+    const { width, make } = control;
+    const field = make({ ...rect, width });
+    const hint = widgets.makeHint(ns, row.hint, hintRect(rect, width));
 
     view.addSubview(field);
     view.addSubview(hint);
@@ -113,6 +62,24 @@ function addNumber(context, row, rect) {
     return field;
 }
 
+/*
+ * The one control that is a list and a field at once, so the presets stay
+ * available without a second control to keep in step with them.
+ */
+function addColour(context, row, rect) {
+    return addTyped(context, row, rect, {
+        width: COLOUR_WIDTH,
+        make: (frame) => context.widgets.makeColourCombo(context.ns, row, frame)
+    });
+}
+
+function addNumber(context, row, rect) {
+    return addTyped(context, row, rect, {
+        width: NUMBER_WIDTH,
+        make: (frame) => context.widgets.makeField(context.ns, row.value, frame)
+    });
+}
+
 const ADD_ROW = {
     choice: addChoice,
     colour: addColour,
@@ -121,11 +88,8 @@ const ADD_ROW = {
 
 function buildForm(bridge, spec, widgets) {
     const rowCount = spec.rows.length;
-    const view = widgets.makeView(
-        bridge.ns,
-        FORM_WIDTH,
-        rowCount * ROW_HEIGHT + PADDING * BOTH_EDGES
-    );
+    const { width, height } = formSize(rowCount);
+    const view = widgets.makeView(bridge.ns, width, height);
     const context = { ns: bridge.ns, widgets, view };
     const controls = {};
 
@@ -133,15 +97,17 @@ function buildForm(bridge, spec, widgets) {
         view.addSubview(widgets.makeLabel(
             bridge.ns,
             row.label,
-            rowRect(index, rowCount, 0, LABEL_WIDTH)
+            labelRect(index, rowCount)
         ));
 
-        const rect = rowRect(index, rowCount, CONTROL_LEFT, CONTROL_WIDTH);
-
-        controls[row.key] = ADD_ROW[row.kind](context, row, rect);
+        controls[row.key] = ADD_ROW[row.kind](
+            context,
+            row,
+            controlRect(index, rowCount)
+        );
     });
 
     return { view, controls };
 }
 
-module.exports = { FORM_WIDTH, ROW_HEIGHT, NUMBER_WIDTH, PADDING, buildForm };
+module.exports = { buildForm };

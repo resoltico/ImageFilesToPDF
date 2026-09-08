@@ -23,9 +23,9 @@ const COLOUR_ROW = {
     key: "background",
     kind: "colour",
     label: "Page background:",
-    tooltip: "Choose a preset or type six hex digits, for example #C7DAE8.",
-    value: "White (#FFFFFF)",
-    options: [{ label: "White (#FFFFFF)" }, { label: "Black (#000000)" }]
+    hint: "or type #RRGGBB",
+    value: "#FFFFFF",
+    options: [{ label: "#FFFFFF" }, { label: "#000000" }]
 };
 
 function bridge() {
@@ -43,8 +43,8 @@ test("a field keeps its value and its place", () => {
 test("the colour control offers the presets and takes a typed value", () => {
     const combo = makeColourCombo(bridge().ns, COLOUR_ROW, RECT);
 
-    assert.deepEqual(combo.items, ["White (#FFFFFF)", "Black (#000000)"]);
-    assert.equal(combo.stringValue, "White (#FFFFFF)");
+    assert.deepEqual(combo.items, ["#FFFFFF", "#000000"]);
+    assert.equal(combo.stringValue, "#FFFFFF");
     assert.equal(combo.editable, true, "or it is a pop-up with extra steps");
     assert.deepEqual(combo.rect, RECT);
 });
@@ -58,11 +58,10 @@ test("completion is off, so what the field holds is what was typed", () => {
     assert.equal(combo.usesDataSource, false, "four static items need no source");
 });
 
-test("the list is as long as it has presets, and says what it is", () => {
+test("the list is as long as it has presets, and says what it is for", () => {
     const combo = makeColourCombo(bridge().ns, COLOUR_ROW, RECT);
 
     assert.equal(combo.numberOfVisibleItems, COLOUR_ROW.options.length);
-    assert.match(combo.toolTip, /six hex digits/u);
     assert.equal(
         combo.accessibilityLabel,
         "Page background:",

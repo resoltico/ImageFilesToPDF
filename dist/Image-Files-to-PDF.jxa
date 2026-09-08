@@ -666,8 +666,7 @@ const CHOICE_ROWS = [
 
 const COLOUR_ROW = { key: "background", control: BACKGROUND };
 
-const COLOUR_TOOLTIP = "Choose a preset or type six hex digits, " +
-    "for example #C7DAE8.";
+const COLOUR_HINT = "or type #RRGGBB";
 
 const NUMBER_ROWS = [
     { key: "dpi", control: RESOLUTION },
@@ -704,7 +703,7 @@ function formRows(answers, invalid) {
         key: COLOUR_ROW.key,
         kind: "colour",
         label: COLOUR_ROW.control.label,
-        tooltip: COLOUR_TOOLTIP,
+        hint: COLOUR_HINT,
         value: String(answers[COLOUR_ROW.key]),
         invalid: invalid.has(COLOUR_ROW.key),
         options: COLOUR_ROW.control.choices.map((choice) => ({
@@ -732,8 +731,8 @@ function formRows(answers, invalid) {
 const CREATE_BUTTON = "Create PDF";
 const CANCEL_BUTTON = "Cancel";
 
-const BACKGROUND_NOTE = "Page background takes any six hex digits: " +
-    "#FFFFFF white, #000000 black, #8E79E0 purple, #204486 dark blue.";
+const BACKGROUND_NOTE = "Page background presets: #FFFFFF white, " +
+    "#000000 black, #8E79E0 purple, #204486 dark blue.";
 
 function invitation(count) {
     const opening = count > 0
@@ -1447,19 +1446,19 @@ function makeColourCombo(ns, row, rect) {
         ns(row.options.map((option) => option.label))
     );
     combo.stringValue = row.value;
-    combo.toolTip = row.tooltip;
     combo.setAccessibilityLabel(row.label);
 
     return combo;
 }
 
-/* ===== src/runtime/appkit-form.js ===== */
-
+/* ===== src/runtime/appkit-geometry.js ===== */
 
 const ROW_HEIGHT = 32;
 const LABEL_WIDTH = 140;
 const CONTROL_WIDTH = 230;
 const NUMBER_WIDTH = 70;
+
+const COLOUR_WIDTH = 100;
 const CONTROL_HEIGHT = 24;
 const HINT_HEIGHT = 16;
 const GAP = 10;
@@ -1470,9 +1469,18 @@ const BOTH_EDGES = 2;
 const HALVES = 2;
 
 const CONTROL_LEFT = LABEL_WIDTH + GAP;
-const HINT_LEFT = CONTROL_LEFT + NUMBER_WIDTH + HINT_GAP;
 const FORM_WIDTH = CONTROL_LEFT + CONTROL_WIDTH;
-const HINT_WIDTH = FORM_WIDTH - HINT_LEFT;
+
+function hintRect(rect, controlWidth) {
+    const left = CONTROL_LEFT + controlWidth + HINT_GAP;
+
+    return {
+        left,
+        bottom: rect.bottom + (CONTROL_HEIGHT - HINT_HEIGHT) / HALVES,
+        width: FORM_WIDTH - left,
+        height: HINT_HEIGHT
+    };
+}
 
 function rowRect(index, rowCount, left, width) {
     return {
@@ -1482,6 +1490,24 @@ function rowRect(index, rowCount, left, width) {
         height: CONTROL_HEIGHT
     };
 }
+
+function formSize(rowCount) {
+    return {
+        width: FORM_WIDTH,
+        height: rowCount * ROW_HEIGHT + PADDING * BOTH_EDGES
+    };
+}
+
+function labelRect(index, rowCount) {
+    return rowRect(index, rowCount, 0, LABEL_WIDTH);
+}
+
+function controlRect(index, rowCount) {
+    return rowRect(index, rowCount, CONTROL_LEFT, CONTROL_WIDTH);
+}
+
+/* ===== src/runtime/appkit-form.js ===== */
+
 
 function addChoice(context, row, rect) {
     const { ns, widgets, view } = context;
@@ -1501,32 +1527,11 @@ function addChoice(context, row, rect) {
     return popup;
 }
 
-function addColour(context, row, rect) {
+function addTyped(context, row, rect, control) {
     const { ns, widgets, view } = context;
-    const combo = widgets.makeColourCombo(ns, row, rect);
-
-    view.addSubview(combo);
-
-    if (row.invalid) {
-        widgets.markInvalid(ns, combo);
-    }
-
-    return combo;
-}
-
-function addNumber(context, row, rect) {
-    const { ns, widgets, view } = context;
-    const field = widgets.makeField(ns, row.value, {
-        ...rect,
-        width: NUMBER_WIDTH
-    });
-
-    const hint = widgets.makeHint(ns, row.hint, {
-        left: HINT_LEFT,
-        bottom: rect.bottom + (CONTROL_HEIGHT - HINT_HEIGHT) / HALVES,
-        width: HINT_WIDTH,
-        height: HINT_HEIGHT
-    });
+    const { width, make } = control;
+    const field = make({ ...rect, width });
+    const hint = widgets.makeHint(ns, row.hint, hintRect(rect, width));
 
     view.addSubview(field);
     view.addSubview(hint);
@@ -1539,6 +1544,20 @@ function addNumber(context, row, rect) {
     return field;
 }
 
+function addColour(context, row, rect) {
+    return addTyped(context, row, rect, {
+        width: COLOUR_WIDTH,
+        make: (frame) => context.widgets.makeColourCombo(context.ns, row, frame)
+    });
+}
+
+function addNumber(context, row, rect) {
+    return addTyped(context, row, rect, {
+        width: NUMBER_WIDTH,
+        make: (frame) => context.widgets.makeField(context.ns, row.value, frame)
+    });
+}
+
 const ADD_ROW = {
     choice: addChoice,
     colour: addColour,
@@ -1547,11 +1566,8 @@ const ADD_ROW = {
 
 function buildForm(bridge, spec, widgets) {
     const rowCount = spec.rows.length;
-    const view = widgets.makeView(
-        bridge.ns,
-        FORM_WIDTH,
-        rowCount * ROW_HEIGHT + PADDING * BOTH_EDGES
-    );
+    const { width, height } = formSize(rowCount);
+    const view = widgets.makeView(bridge.ns, width, height);
     const context = { ns: bridge.ns, widgets, view };
     const controls = {};
 
@@ -1559,12 +1575,14 @@ function buildForm(bridge, spec, widgets) {
         view.addSubview(widgets.makeLabel(
             bridge.ns,
             row.label,
-            rowRect(index, rowCount, 0, LABEL_WIDTH)
+            labelRect(index, rowCount)
         ));
 
-        const rect = rowRect(index, rowCount, CONTROL_LEFT, CONTROL_WIDTH);
-
-        controls[row.key] = ADD_ROW[row.kind](context, row, rect);
+        controls[row.key] = ADD_ROW[row.kind](
+            context,
+            row,
+            controlRect(index, rowCount)
+        );
     });
 
     return { view, controls };

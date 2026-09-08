@@ -57,8 +57,11 @@ test("everything in the background control is a colour", () => {
         ["#FFFFFF", "#000000", "#8E79E0", "#204486"]
     );
     assert.equal(row.value, "#FFFFFF");
-    assert.match(row.tooltip, /six hex digits/u);
-    assert.match(row.tooltip, /#C7DAE8/u, "and shows one, since a shape is easier to copy");
+    assert.equal(
+        row.hint,
+        "or type #RRGGBB",
+        "stated beside the row, where the numbers state their range"
+    );
 });
 
 test("the background sits where it always sat, between mode and resolution", () => {

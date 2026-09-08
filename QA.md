@@ -479,17 +479,32 @@ colour nobody asked for, while still looking like a colour — so the rule is
 that all three must agree, and the tests say so with each pair in turn.
 
 The background fills the page around an image and shows behind transparent
-pixels. It recolours nothing opaque. Measured end to end, through the built
-artifact: a typed `c7dae8` reaches both the margin and the flattened
-transparency of a greyscale-plus-alpha source as 199, 218, 232 within JPEG
-tolerance.
+pixels. It recolours nothing opaque.
 
-The preset labels never reach the settings. `White (#FFFFFF)` is the wording
-of a menu, and a headless configuration asking in it would be depending on
-display text that renaming a preset would change. An exact label is
-recognised at the form's edge and turned into a colour there; a hex code is
-not fished out of whatever else was typed around it, so `use #C7DAE8 please`
-is a mistake worth reporting rather than an instruction worth obeying.
+A two-band image — a greyscale photograph with an alpha channel — takes only
+the first number of a background triple, which would deliver a colour as its
+red alone. It never gets one: the resize stage converts to sRGB before
+anything is flattened, and measured, `thumbnail --export-profile=srgb` turns a
+two-band source into four bands. So the flatten sees RGBA and the colour
+arrives whole.
+
+That is asserted rather than reasoned about, because it was reasoned about
+first and the reasoning is what a reader of `page-stages.js` cannot see: the
+promotion happens a stage earlier than the flatten. `tests/integration/background.sh`
+builds a genuine two-band source, refuses to run if it is not two bands, and
+checks the margin, the transparency and the opaque half of a rendered page.
+The suite's other alpha fixture is a rendered SVG, which is always RGBA, so
+this path went unexercised while being the one the comments warn about.
+
+A preset label is not a colour and is not accepted as one. `White (#FFFFFF)`
+is the wording of a menu, and it used to be recognised at the form's edge and
+turned into a colour there — which made display text part of what the program
+accepted, so renaming a preset would have changed it. Nothing sends a label
+any more: the form's list holds the colours themselves, and the stepwise
+dialogs map their own list through `valueOfLabel` before anything is read. A
+hex code is not fished out of whatever else was typed around it either, so
+`use #C7DAE8 please` is a mistake worth reporting rather than an instruction
+worth obeying.
 
 ## Reading an answer
 
@@ -774,8 +789,8 @@ that, and none of the ones listed above failed while it was true.
 
 It is checked by hand, on the real Shortcut, against this list:
 
-- the row shows the current colour as a code, and opens a list of the four
-  presets as codes;
+- the row shows the current colour as a code, states `or type #RRGGBB` beside
+  itself, and opens a list of the four presets as codes;
 - a preset can be chosen with the mouse and with the keyboard;
 - the text can be selected and replaced by typing or pasting;
 - a pasted colour is accepted by pressing Create PDF immediately, without
@@ -1040,9 +1055,10 @@ file under `tests/unit/`.
 ## macOS integration gate
 
 `npm run test:integration:macos` requires macOS, `vips`, `pdfcpu`, qpdf, libtiff,
-Poppler, and `osascript`. It runs five suites: `tests/integration/macos.sh`,
-`tests/integration/selection.sh`, `tests/integration/publication.sh`,
-`tests/integration/volumes.sh` and `tests/integration/cards.sh`.
+Poppler, and `osascript`. It runs six suites: `tests/integration/macos.sh`,
+`tests/integration/background.sh`, `tests/integration/selection.sh`,
+`tests/integration/publication.sh`, `tests/integration/volumes.sh` and
+`tests/integration/cards.sh`.
 
 The first exercises:
 
