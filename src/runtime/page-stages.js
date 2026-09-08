@@ -8,7 +8,8 @@ const {
 const { calculatePlacement } = require("../core/geometry.js");
 const { readBandCount, hasAlphaBand } = require("./source-image.js");
 const { readImageSize } = require("./image-size.js");
-const { runArgv, verifyFileWritten } = require("./shell.js");
+const { runArgv } = require("./shell.js");
+const { verifyFileWritten } = require("./asking.js");
 
 /*
  * The three vips stages one image goes through on its way to being a page.

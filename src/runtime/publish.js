@@ -4,7 +4,8 @@ const { basename } = require("../core/paths.js");
 const { keep, clearAway } = require("./recovery.js");
 const { deliver, stagingArea } = require("./transfer.js");
 const { fileFacts } = require("./file-facts.js");
-const { pathIsTaken, removeFile } = require("./shell.js");
+const { removeFile } = require("./shell.js");
+const { pathIsTaken } = require("./asking.js");
 
 /*
  * Who owns a finished PDF, and where it goes when it cannot be published.

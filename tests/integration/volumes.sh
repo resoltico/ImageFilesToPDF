@@ -2,12 +2,13 @@
 #
 # Publishing to a volume of its own.
 #
-# Two cases a fake cannot reach: one where the finished PDF and the folder it
-# belongs in are not on the same filesystem, and one where the filesystem
-# cannot make hard links at all -- which is what a camera card is. Both are
-# exercised against real volumes attached for the test, and skipped, loudly,
-# where a volume cannot be attached: whether that is possible is the
-# machine's decision rather than the code's.
+# Three cases a fake cannot reach: one where the finished PDF and the folder
+# it belongs in are not on the same filesystem, one where the filesystem
+# cannot make hard links at all -- which is what a camera card is -- and one
+# where it can neither link nor rename exclusively, where publication stops
+# and has to stop well. All three are exercised against real volumes attached
+# for the test, and skipped, loudly, where a volume cannot be attached:
+# whether that is possible is the machine's decision rather than the code's.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -111,24 +112,34 @@ fi
 # And a volume that can do neither.
 #
 # exFAT, measurably: no hard links, and the exclusive rename is not
-# implemented there. The name is taken empty and filled instead, which is the
-# last resort, and it must still refuse a name that is already held.
+# implemented there. There is no operation left that takes a name and carries
+# contents, so publication stops -- and stopping has to be worth as much as
+# publishing. Nothing of the run may reach the card, the message has to say
+# why, and the finished PDF has to be somewhere the message names.
 # ---------------------------------------------------------------------------
 
 if attach_test_volume "ExFAT" "$EXFAT_NAME"; then
     cp "$WORK/photo.png" "$EXFAT_VOLUME/"
     run 20260907_070707 "$EXFAT_VOLUME/photo.png"
 
-    assert_valid_pdf "$EXFAT_VOLUME/output_20260907_070707.pdf"
+    test ! -e "$EXFAT_VOLUME/output_20260907_070707.pdf" ||
+        fail "a name was created on a volume that cannot take one whole"
+    test -z "$(find "$EXFAT_VOLUME" -maxdepth 1 -name '*.pdf')" ||
+        fail "something of the run reached the card: $(ls -a "$EXFAT_VOLUME")"
     assert_nothing_left_behind "$EXFAT_VOLUME"
 
-    printf 'someone elses document' > "$EXFAT_VOLUME/output_20260907_080808.pdf"
-    run 20260907_080808 "$EXFAT_VOLUME/photo.png"
+    grep -q 'cannot take the output name in one step' "$WORK/error.txt" ||
+        fail "the message does not say why: $(cat "$WORK/error.txt")"
+    grep -q 'so the PDF was not put on it' "$WORK/error.txt" ||
+        fail "the message does not say what became of the PDF"
 
-    test "$(cat "$EXFAT_VOLUME/output_20260907_080808.pdf")" = "someone elses document" ||
-        fail "a file that was already there was overwritten"
-    assert_valid_pdf "$EXFAT_VOLUME/output_20260907_080808_2.pdf"
-    assert_nothing_left_behind "$EXFAT_VOLUME"
+    # The whole point of stopping is that the work survives it.
+    KEPT=$(sed -n 's/^\(\/var\/folders\/.*ImageFilesToPDF-recovered[^ ]*\.pdf\).*/\1/p' \
+        "$WORK/error.txt" | head -1)
+    test -n "$KEPT" || fail "no recovery path was named: $(cat "$WORK/error.txt")"
+    assert_valid_pdf "$KEPT"
+    rm -rf "$(dirname "$KEPT")"
+
     hdiutil detach -quiet "$EXFAT_VOLUME"
 else
     printf 'exFAT publication skipped: no exFAT volume could be attached\n'

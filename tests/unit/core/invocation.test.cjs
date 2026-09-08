@@ -71,6 +71,14 @@ test("a name that contains file:// is not truncated", () => {
         decodeFileUrl("file:///a/see-file://localhost-here.png"),
         "/a/see-file://localhost-here.png"
     );
+
+    // A path handed over already in POSIX form, with nothing to strip from
+    // the front of it: unanchored, the pattern finds the one further along
+    // and cuts the middle out of the name.
+    assert.equal(
+        decodeFileUrl("/a/see-file://here.png"),
+        "/a/see-file://here.png"
+    );
 });
 
 test("the host form is stripped whole, not down to a slash", () => {

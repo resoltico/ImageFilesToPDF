@@ -21,14 +21,13 @@ const MKDIR = "/bin/mkdir";
 const MV = "/bin/mv";
 const RM = "/bin/rm";
 const RMDIR = "/bin/rmdir";
-const SH = "/bin/sh";
 const TEST = "/bin/test";
 const MKTEMP = "/usr/bin/mktemp";
 const PRINTENV = "/usr/bin/printenv";
 const STAT = "/usr/bin/stat";
 
 const EXECUTABLES = [
-    CAT, CP, LN, MKDIR, MV, RM, RMDIR, SH, TEST, MKTEMP, PRINTENV, STAT
+    CAT, CP, LN, MKDIR, MV, RM, RMDIR, TEST, MKTEMP, PRINTENV, STAT
 ];
 
 module.exports = {
@@ -39,7 +38,6 @@ module.exports = {
     MV,
     RM,
     RMDIR,
-    SH,
     TEST,
     MKTEMP,
     PRINTENV,

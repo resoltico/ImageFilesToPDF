@@ -22,6 +22,7 @@ export const moduleOrder = [
     "src/core/batching.js",
     "src/core/preflight.js",
     "src/runtime/shell.js",
+    "src/runtime/asking.js",
     "src/runtime/tools.js",
     "src/runtime/workspace.js",
     "src/runtime/preflight.js",

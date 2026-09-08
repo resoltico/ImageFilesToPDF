@@ -23,7 +23,7 @@ const { removeFile } = require("./shell.js");
 
 function describeFailure(reasons, whereabouts) {
     return [
-        "The PDF could not be published without overwriting another file.",
+        "The PDF could not be saved where it was meant to go.",
         ...reasons,
         whereabouts
     ].join("\n\n");

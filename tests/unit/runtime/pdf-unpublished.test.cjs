@@ -24,7 +24,7 @@ test("a PDF that was built but could not be published is kept", () => {
 
     assert.throws(
         () => createCombinedPdf(makeJob(app), images),
-        /could not be published/u
+        /could not be saved where it was meant to go/u
     );
 
     const kept = [...app.files].filter((file) => file.includes("staged"));

@@ -2,7 +2,8 @@
 
 const { PRINTENV } = require("../core/executables.js");
 const { shellQuote } = require("../core/shell.js");
-const { runArgv, isExecutable } = require("./shell.js");
+const { tryArgv } = require("./shell.js");
+const { isExecutable } = require("./asking.js");
 
 /*
  * Discovery of the external command-line tools.
@@ -25,14 +26,12 @@ const ENVIRONMENT_OVERRIDES = {
     pdfcpu: "IMAGE_FILES_TO_PDF_PDFCPU"
 };
 
+/*
+ * printenv fails for a name that is not set, which is the same answer as a
+ * name set to nothing.
+ */
 function optionalEnvironment(app, name) {
-    try {
-        return String(
-            runArgv(app, [PRINTENV, name], "reading environment")
-        ).trim();
-    } catch {
-        return "";
-    }
+    return String(tryArgv(app, [PRINTENV, name])).trim();
 }
 
 function searchPath(app, executableName) {

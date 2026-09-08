@@ -32,12 +32,11 @@ test("a claim refused because the name is taken does not become a rename", () =>
 
     const outcome = deliver(host, {
         staged: "/a/p.pdf",
-        incoming: "/a/.ImageFilesToPDF-test.ImageFilesToPDF",
         final: "/a/theirs.pdf"
     });
 
     assert.equal(outcome.published, false);
-    assert.match(outcome.reasons.at(-1), /the output path was taken/u);
+    assert.match(outcome.reasons.at(0), /the output path was taken/u);
     assert.equal(host.sizes.get("/a/theirs.pdf"), 99, "the other file is intact");
     assert.deepEqual(
         host.commands.filter((command) => command.includes("/bin/mv") ||
@@ -70,7 +69,7 @@ test("another writer's file at the output name is never written to", () => {
     host.sizes.set("/a/out.pdf", 4096);
 
     assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), (error) => {
-        assert.match(error.message, /cannot overwrite existing file/u);
+        assert.match(error.message, /this drive cannot take the output name/u);
 
         return true;
     });
@@ -78,8 +77,9 @@ test("another writer's file at the output name is never written to", () => {
     assert.equal(recovered(host).length, 1, "and ours was kept");
 });
 
-// A filesystem that can do neither a hard link nor an exclusive rename, which
-// is what exFAT measurably is: the last resort is all that is left.
+// A destination that can do neither a hard link nor an exclusive rename,
+// which is what exFAT measurably is: there is nowhere further to go, so
+// publication stops and the PDF is kept.
 function withoutExclusiveRename(settings) {
     const host = createFakeHost(settings);
 

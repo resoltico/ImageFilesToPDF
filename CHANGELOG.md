@@ -4,6 +4,21 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-09-08
+
+### Changed
+
+- Saving into a folder on an exFAT drive now stops rather than working around
+  what the drive cannot do. Nothing is written to the drive, the message says
+  the drive cannot take the output name in one step, and the finished PDF is
+  kept — the message says where. Putting the name on such a drive meant
+  creating it and then filling it, and a name that exists before your document
+  is in it can be left empty by an interrupted run, or taken by something else
+  in between. Some large camera cards are formatted this way; every other
+  drive, including FAT-formatted cards, is unaffected.
+- A failed save reads in the order you need it: what went wrong in plain words
+  first, and the system's own message after it.
+
 ## [1.2.5] - 2026-09-08
 
 ### Fixed

@@ -90,6 +90,15 @@ test("a file already taken is not taken again", () => {
     );
 });
 
+test("a folder whose images are all in the run already is not called empty", () => {
+    // Selecting a folder and the folder above it. There is nothing new to
+    // take, which is not the same as there being nothing there: "contains no
+    // supported images", said about a folder of photographs, is untrue.
+    const tree = treeOf({ "/t": ["a.png"] });
+
+    assert.equal(imagesInFolder(tree, "/t", new Set(["/t/a.png"])).reason, "");
+});
+
 test("a file taken under another of its names is not taken again", () => {
     const tree = treeOf(
         { "/t": ["A.png", "b.png"] },

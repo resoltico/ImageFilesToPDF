@@ -2,7 +2,7 @@
 
 const { MKDIR, RMDIR } = require("../core/executables.js");
 const { dirname } = require("../core/paths.js");
-const { runArgv, removeFile } = require("./shell.js");
+const { runArgv, tryArgv, removeFile } = require("./shell.js");
 const { nonce } = require("./workspace.js");
 
 /*
@@ -49,11 +49,8 @@ function openStaging(app, area) {
 function closeStaging(app, area) {
     removeFile(app, area.file);
 
-    try {
-        runArgv(app, [RMDIR, area.directory], "clearing the place it was in");
-    } catch {
-        // A directory that cannot be removed is not a failure of the run.
-    }
+    // A directory that cannot be removed is not a failure of the run.
+    tryArgv(app, [RMDIR, area.directory]);
 }
 
 module.exports = { stagingArea, openStaging, closeStaging };

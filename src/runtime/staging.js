@@ -7,7 +7,8 @@ const {
     buildPdfcpuValidateArgv
 } = require("../core/pdfcpu.js");
 const { batchPages } = require("../core/batching.js");
-const { runArgv, verifyFileWritten, removeFile } = require("./shell.js");
+const { runArgv, removeFile } = require("./shell.js");
+const { verifyFileWritten } = require("./asking.js");
 
 /*
  * Turning prepared pages into a PDF in the workspace, and satisfying this

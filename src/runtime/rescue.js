@@ -21,12 +21,11 @@ function setAside(app, stagedPath) {
     try {
         const folder = String(runArgv(
             app,
-            [MKTEMP, "-d", "-t", RECOVERY_PREFIX],
-            "making a folder for the unpublished PDF"
+            [MKTEMP, "-d", "-t", RECOVERY_PREFIX]
         )).trim();
         const recovered = `${folder}/${basename(stagedPath)}`;
 
-        runArgv(app, [MV, stagedPath, recovered], "setting the PDF aside");
+        runArgv(app, [MV, stagedPath, recovered]);
 
         return recovered;
     } catch {

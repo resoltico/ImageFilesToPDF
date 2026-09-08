@@ -183,6 +183,13 @@ beside the destination and moved onto its final name in one step that refuses
 a name already in use — including on a card formatted for cameras, which is
 tested against real ones.
 
+A few drives can do neither, exFAT being the one you are likely to meet: some
+large camera cards are formatted that way. Saving to one of those stops rather
+than working around it. Nothing is written to the drive, the message says the
+drive cannot take the output name in one step, and the finished PDF is kept —
+the message says where. Saving into any other folder, on any Mac-formatted
+disk, is unaffected.
+
 A saved PDF is checked for being the one that was made: the output path is
 asked which file it holds, and only the file this run put there counts. Some
 other file of the right shape is not evidence — another program's PDF is one

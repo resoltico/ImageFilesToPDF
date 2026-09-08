@@ -101,10 +101,9 @@ test("a document inside whatever replaced the output name is not removed", () =>
         "the document this run did not put there survives"
     );
     assert.deepEqual(
-        host.commands.filter((command) => command.includes("/bin/rm") &&
-            command.includes("/a/out.pdf/")),
+        host.commands.filter((command) => command.includes("/bin/rm")),
         [],
-        "and nothing inside it was even aimed at"
+        "and nothing was aimed at, here or anywhere else"
     );
     assert.equal(recovered(host).length, 1, "and ours was kept");
 });

@@ -47,8 +47,9 @@ test("a check that cannot answer never costs the finished PDF", () => {
     assert.ok(!host.files.has("/a/out.pdf"), "and nothing was published");
 });
 
-// A filesystem that can do neither a hard link nor an exclusive rename, which
-// is what exFAT measurably is: the last resort is all that is left.
+// A destination that can do neither a hard link nor an exclusive rename,
+// which is what exFAT measurably is: there is nowhere further to go, so
+// publication stops and the PDF is kept.
 function withoutExclusiveRename(settings) {
     const host = createFakeHost(settings);
 
@@ -65,14 +66,13 @@ test("a failure after the copy leaves the workspace copy untouched", () => {
         failures: [
             [DIRECT_CLAIM, new Error(DENIED)],
             ["ln' '/a/.ImageFilesToPDF", new Error(DENIED)],
-            ["/bin/sh", new Error(DENIED)],
             // And the check on the staging copy cannot answer either.
             ["test' '-e' '/a/.ImageFilesToPDF", new Error(DENIED)]
         ]
     });
     const job = makeJob(host);
 
-    assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), /could not be published/u);
+    assert.throws(() => publishPdf(job, "/a/p.pdf", "/a/out.pdf"), /could not be saved where it was meant to go/u);
     assert.equal(recovered(host).length, 1, "the finished PDF survived");
     assert.deepEqual(
         [...host.files].filter((file) => file.includes(".ImageFilesToPDF")),

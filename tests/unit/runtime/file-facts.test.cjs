@@ -86,3 +86,13 @@ test("two names for one file give one identity, and a copy gives another", () =>
     assert.equal(fileFacts(host, "/a/renamed.pdf").identity, original, "the same file");
     assert.notEqual(fileFacts(host, "/a/copied.pdf").identity, original, "another file");
 });
+
+test("what surrounds the answer does not become part of the identity", () => {
+    // Identity is compared for equality, and that is what publication is
+    // proved by. A reading that carried the whitespace around it would not
+    // equal the same file read another way.
+    assert.deepEqual(
+        factsFrom(" 16777232:481:9 \n"),
+        { identity: "16777232:481", size: 9 }
+    );
+});

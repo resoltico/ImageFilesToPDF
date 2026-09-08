@@ -1,7 +1,7 @@
 "use strict";
 
 const { STAT } = require("../core/executables.js");
-const { runArgv } = require("./shell.js");
+const { tryArgv } = require("./shell.js");
 
 /*
  * Which file this is, and how large.
@@ -33,12 +33,12 @@ function factsFrom(text) {
         : UNIDENTIFIED;
 }
 
+/*
+ * A stat that could not be made comes back as no text, which is no identity:
+ * the same answer, by the same route, as a stat that named nothing.
+ */
 function fileFacts(app, path) {
-    try {
-        return factsFrom(runArgv(app, [STAT, FORMAT, path], "measuring the PDF"));
-    } catch {
-        return UNIDENTIFIED;
-    }
+    return factsFrom(tryArgv(app, [STAT, FORMAT, path]));
 }
 
 module.exports = { fileFacts, factsFrom, SIZE_UNKNOWN };

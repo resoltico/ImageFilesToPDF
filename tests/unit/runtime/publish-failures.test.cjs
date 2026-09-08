@@ -133,7 +133,7 @@ test("the failure reads as paragraphs, not as one run-on line", () => {
 
     assert.throws(() => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"), (error) => {
         assert.ok(error.message.startsWith(
-            "The PDF could not be published without overwriting another file.\n\n"
+            "The PDF could not be saved where it was meant to go.\n\n"
         ), error.message);
 
         return true;

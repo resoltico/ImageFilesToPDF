@@ -302,35 +302,34 @@ refusal: taken means publication stops, and free means the refusal was about
 the link.
 
 Where neither exists -- exFAT, measurably, where plain rename works and the
-exclusive form is not implemented -- there is no operation at all that takes a
-name and carries contents. Only there is the name taken empty and filled, by
-one shell, in one step:
+exclusive form is not implemented -- there is no operation that takes a name
+and carries contents, and publication stops there. Nothing is written to the
+destination, the message says the drive cannot take the output name in one
+step, and the finished PDF is kept and its location given.
 
-```sh
-[ ! -e "$1" ] || exit 1; set -C; : > "$1" || exit 1; \
-    mv "$0" "$1" || { rm -f "$1"; exit 1; }
-```
+That is a reversal, and the reasoning is worth keeping. Three releases took
+the name empty and filled it, in one shell, and guarded the cleanup by
+checking that what was at the name was still the file the shell had just
+made. The guard cannot do what it appears to do: it proves the entry matches
+something measured a moment earlier, which is not proof that it is the entry
+this run created. A process can be stopped between those two calls for any
+length of time, and POSIX offers no compare-and-delete to close the gap. The
+same hole is in every design that creates the public name before it can
+commit the contents, so no such design is used -- the name is not created
+until it can be created whole.
 
-It refuses a name that is there, takes it, puts the PDF in it, and gives the
-name back if that last step fails -- and only if what is at the name is still
-the file it made, because by then it may not be. `mv -n` is what this
-replaced: it checks whether the destination exists and then renames, which are
-two operations, and a competing writer between them was overwritten while the
-check could not see a link whose target was gone.
+What that costs is stated rather than traded away quietly: photographs on an
+exFAT card cannot be converted into the folder they sit in. Any other
+destination takes them, including every Mac-formatted disk and every FAT32
+camera card, and the PDF is kept either way. What it buys is that no run of
+this action can leave a nought-byte file, or another program's file, under
+the name of somebody's document.
 
-Two things are left there, and they are properties of the filesystem rather
-than of this code. The name exists empty for the length of two adjacent system
-calls, so a process killed in that window leaves a nought-byte file under it --
-litter that the next run steps around, since it counts as a name that is
-taken. And a file created at that name inside the same window would be
-replaced by the move; nothing reachable from here can prevent that, since the
-one operation that would is what exFAT does not implement. The only program
-realistically able to create that name is another run of this action, and it
-cannot: its own creation is exclusive too.
-
-Refusing to publish there instead -- which is the alternative -- would mean
-the photographs on an exFAT card could never be converted where they are. It
-is stated here rather than traded away quietly.
+Network filesystems are unmeasured here. SMB and NFS answer for themselves
+what they can do, and the code does not assume: it attempts the link, and
+where that is refused it attempts the exclusive rename, and where that is
+refused too it stops and says so. A volume that supports neither behaves like
+exFAT, which is the honest failure rather than a guess.
 
 "Is the name taken" is one question with one answer: `test -e X -o -L X`. `-e`
 follows a symbolic link and reports on its target, so a link whose target is
@@ -354,7 +353,7 @@ measured -- so the same pair is proof, and nothing else is. A nonempty regular
 file is not: another writer's PDF is one too, and taking it as ours published
 their document, deleted both copies of ours, and reported success.
 
-Which is what the rename fallback used to do. It asked whether the staging
+Which is what asking after the staging copy used to do. It asked whether that
 copy was still there, to tell a rename that happened from one that had
 declined -- and that question answers "gone" when it cannot be put at all, so
 a refused inspection read as a publication. Nothing infers a result from a
@@ -383,7 +382,8 @@ before the claim, while the copy is being made, or on a volume without hard
 links; another writer's file at the output name being reported as ours; a
 publication claimed without anything to prove it by; a link whose target is
 gone being replaced; a name this run could not take being written to or
-removed; a document inside a folder that appeared at the output path being
+removed; a destination that can take a name by neither operation being
+published to anyway, rather than told about; a document inside a folder that appeared at the output path being
 removed for having a familiar name; a staging copy this run did make being
 left behind after a failed copy; a PDF pushed inside a folder being reported
 as published; a recovery that deletes or disowns the finished PDF because a
@@ -718,7 +718,29 @@ mentions a file URL not being read as one, a URL disagreement naming which
 file each value came from, the file being prepared counted from one rather
 than zero.
 
-The last run also found a cost rather than a wrongness, which is the same
+The last run found no wrong behaviour and two pieces of dead weight. Six of
+its survivors were one finding wearing six faces: a label passed to `runArgv`
+describes a failure for somebody to read, and six of them were attached to
+commands whose failure is discarded where it happens -- text written for a
+reader who does not exist. They are gone, along with the ad-hoc `try`/`catch`
+around each one, in favour of `tryArgv`, which runs a command and takes
+silence for an answer. Splitting that from the questions put to the
+filesystem, which return an answer rather than fail, gave `asking.js` its own
+module and left a dead predicate behind: `fileExists`, used by nothing but its
+own tests, the leftover of a check that says "no" both when a file is absent
+and when the question could not be put. The other dead weight was a counter
+compared only against zero -- a flag wearing a number -- and the behaviour it
+guarded, that a folder whose images are all already in the run is not called
+empty, had nothing asserting it. The rest were assertions worth having: that a
+publication which succeeded carries no reasons to explain itself, on both
+routes to the name; that the drive-cannot-take-it message says what became of
+the PDF and not only what failed; that a run whose output path holds another
+program's file removes nothing at all; that whitespace around a `stat` answer
+does not become part of an identity that is compared for equality; and that
+the anchor on the file-URL prefix is load-bearing for a path already in POSIX
+form.
+
+The run before that found a cost rather than a wrongness, which is the same
 thing at a distance: the batching measures the fixed part of the import
 command so it knows how much room is left for pages, and measuring it with
 every page already in it leaves nothing of the budget. The PDF still comes out
@@ -899,11 +921,14 @@ attached, because that is the machine's decision rather than the code's:
 - an MS-DOS image, where hard links do not exist — measured: `ln` refuses with
   "Operation not supported" — so the PDF is moved onto its name by the
   exclusive rename;
-- an exFAT image, where neither exists, so the last resort publishes. In both,
-  the PDF must validate, nothing of the run's may be left, and a name already
+- an exFAT image, where neither exists, so publication stops: the volume must
+  be left with nothing of the run's on it at all, the message must say the
+  drive cannot take the name, and the finished PDF must be recoverable from
+  the path the message gives and pass strict validation. On the first two the
+  PDF must validate, nothing of the run's may be left, and a name already
   holding another document must be stepped around with that document
-  untouched. A camera card is formatted one of these two ways, which is why
-  neither path is hypothetical.
+  untouched. A camera card is formatted FAT32 or exFAT, which is why neither
+  path is hypothetical.
 
 One half of the unexaminable-entry case is unit-level only: producing a
 directory that lists but will not let its entries be inspected takes either a
@@ -960,15 +985,15 @@ to fail when the fix is reverted:
 | One photograph converted twice because a Mac is case-insensitive | identity tests + integration |
 | A newline in a folder name stopping the output numbering | naming tests + integration |
 | Another writer's file reported as this run's published PDF | identity confirmation tests |
-| A publication inferred from a file's absence | rename fallback tests |
+| A publication inferred from a file's absence | identity confirmation tests |
 | An ineligible name for a file suppressing an eligible one | alias tests + integration |
 | A symbolic link converting its target a second time | alias tests + integration |
 | A failed copy leaving a hidden file nothing tracks | output-copy tests |
 | A file another program put at the staging name being written over or removed | reservation tests |
 | A document inside a folder at the output path removed for its name | unowned-file tests |
-| A competing writer's file replaced by the rename fallback | staging-area tests + MS-DOS volume integration |
-| A publication left as an empty name where an exclusive rename exists | exclusive-rename tests + MS-DOS volume integration |
-| Cleanup removing a file that replaced this run's own placeholder | identity-guarded last resort |
+| A competing writer's file replaced by a refused claim becoming a rename | claim tests + MS-DOS volume integration |
+| A publication left as an empty name | exclusive-rename tests + MS-DOS volume integration |
+| A name created before the PDF could be put in it, and cleaned up by inspection | publication stops instead + exFAT volume integration |
 | A link at the staging name adopted, and then deleted, as this run's | staging-area tests |
 | A named pipe at the staging name hanging the run with no timeout | staging-area tests |
 | Tests that stop catching bugs | mutation testing with a break threshold |

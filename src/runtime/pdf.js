@@ -8,7 +8,8 @@ const {
     stagedPdfPath
 } = require("../core/naming.js");
 const { createAndValidatePdf } = require("./staging.js");
-const { pathIsTaken, removeFile } = require("./shell.js");
+const { removeFile } = require("./shell.js");
+const { pathIsTaken } = require("./asking.js");
 const { publishPdf } = require("./publish.js");
 const { nonce } = require("./workspace.js");
 const { preparePage, preparePages, withImageName } = require("./pages.js");

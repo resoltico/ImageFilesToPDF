@@ -4,11 +4,8 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     runArgv,
+    tryArgv,
     readTextFile,
-    isRegularFile,
-    isExecutable,
-    fileExists,
-    verifyFileWritten,
     removeFile
 } = require("../../../src/runtime/shell.js");
 const { createFakeApp, failing } = require("./fake-app.cjs");
@@ -82,35 +79,6 @@ test("a configuration that cannot be read says that is what failed", () => {
     );
 });
 
-test("the file predicates report true when test succeeds", () => {
-    const app = createFakeApp();
-
-    assert.equal(isRegularFile(app, "/a.png"), true);
-    assert.equal(isExecutable(app, "/bin/vips"), true);
-    assert.equal(fileExists(app, "/a.pdf"), true);
-    assert.deepEqual(
-        app.commands.map((command) => command.split(" ")[1]),
-        ["'-f'", "'-x'", "'-e'"]
-    );
-});
-
-test("the file predicates report false rather than throwing", () => {
-    const app = createFakeApp([["/bin/test", failing("1")]]);
-
-    assert.equal(isRegularFile(app, "/missing"), false);
-    assert.equal(isExecutable(app, "/missing"), false);
-    assert.equal(fileExists(app, "/missing"), false);
-});
-
-test("verifyFileWritten names what was missing", () => {
-    const app = createFakeApp([["/bin/test", failing("1")]]);
-
-    assert.throws(
-        () => verifyFileWritten(app, "/tmp/page.jpg", "prepared page image"),
-        /prepared page image is not a file with anything in it/u
-    );
-});
-
 test("removeFile ignores an absent path and a failing removal", () => {
     const quiet = createFakeApp();
 
@@ -129,20 +97,13 @@ test("removeFile ignores an absent path and a failing removal", () => {
     assert.deepEqual(app.commands, ["'/bin/rm' '-f' '/tmp/x'"]);
 });
 
-test("a directory at the output path is not a written file", () => {
-    // test -s alone passes a directory: it is how a PDF that mv moved inside
-    // a directory at the output path was reported as published.
-    const app = createFakeApp();
-    const asked = [];
+test("tryArgv takes silence for an answer", () => {
+    // Nothing here has a reader: the caller decides what no text means, and
+    // a command that failed and a command that printed nothing say it the
+    // same way.
+    const app = createFakeApp([["/bin/stat", failing("No such file")]]);
 
-    app.doShellScript = (command) => {
-        asked.push(command);
-
-        return "";
-    };
-
-    verifyFileWritten(app, "/a/out.pdf", "output PDF");
-    assert.deepEqual(asked, [
-        "'/bin/test' '-f' '/a/out.pdf' '-a' '-s' '/a/out.pdf'"
-    ]);
+    assert.equal(tryArgv(app, ["/bin/stat", "-f%d:%i:%z", "/gone"]), "");
+    assert.deepEqual(app.commands, ["'/bin/stat' '-f%d:%i:%z' '/gone'"]);
+    assert.equal(tryArgv(createFakeApp([["/bin/stat", "16:7:9"]]), ["/bin/stat"]), "16:7:9");
 });

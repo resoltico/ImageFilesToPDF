@@ -64,9 +64,10 @@ function consider(path, entry, taken, outcome) {
     }
 
     if (taken.has(entry.identity)) {
-        // Another selection already has this file. Counted, because a folder
-        // whose images are all already taken is not one to complain about.
-        outcome.skipped += 1;
+        // Another selection already has this file. Noted rather than counted:
+        // whether a folder has anything new in it is the only question asked
+        // of this, and how many it had is nobody's.
+        outcome.alreadyTaken = true;
 
         return;
     }
@@ -103,7 +104,7 @@ function walk(tree, folder, taken, outcome) {
  * the run because a folder above it was selected too.
  */
 function emptiness(outcome) {
-    return outcome.found.length === 0 && outcome.skipped === 0
+    return outcome.found.length === 0 && !outcome.alreadyTaken
         ? "contains no supported images"
         : "";
 }
@@ -114,7 +115,7 @@ function emptiness(outcome) {
  * of one run, and the walk adds to it as it goes.
  */
 function imagesInFolder(tree, folder, taken) {
-    const outcome = { found: [], problems: [], skipped: 0 };
+    const outcome = { found: [], problems: [], alreadyTaken: false };
 
     if (!walk(tree, folder, taken, outcome)) {
         // The folder that was selected, which is reported as itself rather
