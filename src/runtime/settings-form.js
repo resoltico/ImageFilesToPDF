@@ -126,21 +126,23 @@ function collectSettings(
  * `false` or `0` got it wrong: a headless run opened a dialog and waited for
  * an answer nobody was there to give.
  */
-function settingsFor(app, invocation, count, openMemory = defaultMemory) {
+function settingsFor(app, invocation, count, injected = {}) {
     if (invocation.headless) {
         return normalizeSettings(invocation.settings);
     }
 
+    const { openMemory = defaultMemory, bridge, present } = injected;
     const memory = openMemory();
+    const opening = { count, answers: rememberedAnswers(memory.recall()) };
     const settings = normalizeSettings(
-        collectSettings(app, { count, answers: memory && rememberedAnswers(memory.recall()) })
+        bridge || present
+            ? collectSettings(app, opening, bridge, present)
+            : collectSettings(app, opening)
     );
 
-    if (memory) {
-        // Confirmed and valid, and before any image is touched: a preference
-        // is not made wrong by a photograph that fails to convert later.
-        memory.remember(encode(settings));
-    }
+    // Confirmed and valid, and before any image is touched: a preference is
+    // not made wrong by a photograph that fails to convert later.
+    memory.remember(encode(settings));
 
     return settings;
 }

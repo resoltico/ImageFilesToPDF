@@ -94,20 +94,34 @@ test("a wrapped object that is not nil is one to use", () => {
     assert.deepEqual(state.wrote, [{ value: "{}", key: KEY }]);
 });
 
+/*
+ * Every way of failing to reach the defaults comes back as a memory that
+ * recalls nothing and keeps nothing -- never as nothing, which a caller has
+ * to remember to ask about at every place it uses it. Forgetting once put a
+ * null where answers belonged, and a machine that merely could not save its
+ * settings was answering six questions one at a time instead.
+ */
+function forgetful(memory) {
+    assert.ok(memory, "there is always something to ask");
+    assert.equal(memory.recall(), "", "which remembers nothing");
+    assert.doesNotThrow(() => memory.remember("{}"), "and keeps nothing");
+}
+
 test("a wrapped nil is not an object to send messages to", () => {
     // An Objective-C nil arrives as a JavaScript object, and a truthy one:
     // asking whether it is there is answered yes, and the first message sent
     // to it fails. It is asked whether it is nil instead.
     const { objc, ns, state } = bridge({ nilSuite: true });
 
-    assert.equal(createMemory(objc, ns), null);
+    forgetful(createMemory(objc, ns));
+    assert.deepEqual(state.wrote, [], "nothing was written anywhere");
     assert.ok(!state.reachedForStandard);
 });
 
 test("a suite that raises does not take the conversion with it", () => {
     const { objc, ns } = bridge({ suiteThrows: true });
 
-    assert.equal(createMemory(objc, ns), null);
+    forgetful(createMemory(objc, ns));
 });
 
 test("a suite that cannot be made is not replaced by somebody else's", () => {
@@ -115,14 +129,14 @@ test("a suite that cannot be made is not replaced by somebody else's", () => {
     // opens on the compiled defaults and converts the images.
     const withoutSuite = bridge({ noSuite: true });
 
-    assert.equal(createMemory(withoutSuite.objc, withoutSuite.ns), null);
+    forgetful(createMemory(withoutSuite.objc, withoutSuite.ns));
     assert.ok(!withoutSuite.state.reachedForStandard);
 
     const withoutFoundation = bridge({ importThrows: true });
 
-    assert.equal(createMemory(withoutFoundation.objc, withoutFoundation.ns), null);
-    assert.equal(createMemory(null, {}), null);
-    assert.equal(createMemory({ import: () => true }, null), null);
+    forgetful(createMemory(withoutFoundation.objc, withoutFoundation.ns));
+    forgetful(createMemory(null, {}));
+    forgetful(createMemory({ import: () => true }, null));
 });
 
 test("a write that will not stick does not fail the run", () => {

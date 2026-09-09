@@ -1306,9 +1306,18 @@ function memoryOn(objc, ns, suite) {
     };
 }
 
+const FORGETFUL = Object.freeze({
+    recall() {
+        return "";
+    },
+    remember() {
+        return undefined;
+    }
+});
+
 function createMemory(objc, ns) {
     if (!objc || !ns) {
-        return null;
+        return FORGETFUL;
     }
 
     try {
@@ -1316,9 +1325,9 @@ function createMemory(objc, ns) {
 
         const suite = ns.NSUserDefaults.alloc.initWithSuiteName(ns(DOMAIN));
 
-        return present(suite) ? memoryOn(objc, ns, suite) : null;
+        return present(suite) ? memoryOn(objc, ns, suite) : FORGETFUL;
     } catch {
-        return null;
+        return FORGETFUL;
     }
 }
 
@@ -2082,19 +2091,21 @@ function collectSettings(
     return collectDialogSettings(app, opening.answers ?? defaultAnswers());
 }
 
-function settingsFor(app, invocation, count, openMemory = defaultMemory) {
+function settingsFor(app, invocation, count, injected = {}) {
     if (invocation.headless) {
         return normalizeSettings(invocation.settings);
     }
 
+    const { openMemory = defaultMemory, bridge, present } = injected;
     const memory = openMemory();
+    const opening = { count, answers: rememberedAnswers(memory.recall()) };
     const settings = normalizeSettings(
-        collectSettings(app, { count, answers: memory && rememberedAnswers(memory.recall()) })
+        bridge || present
+            ? collectSettings(app, opening, bridge, present)
+            : collectSettings(app, opening)
     );
 
-    if (memory) {
-        memory.remember(encode(settings));
-    }
+    memory.remember(encode(settings));
 
     return settings;
 }
@@ -2154,6 +2165,16 @@ function collectInvocation(app, input, headless) {
     }
 
     const configuration = JSON.parse(readTextFile(app, String(items[1])));
+
+    if (
+        !configuration ||
+        typeof configuration !== "object" ||
+        Array.isArray(configuration)
+    ) {
+        throw new Error(
+            "The headless configuration must be a JSON object of settings."
+        );
+    }
 
     return {
         headless: true,

@@ -12,7 +12,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { settingsFor } = require("../../../src/runtime/settings-form.js");
-const { encode } = require("../../../src/core/preferences.js");
+const { encode, rememberedAnswers } = require("../../../src/core/preferences.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 const { defaultAnswers } = require("../../../src/core/form-rows.js");
 const { readAnswers } = require("../../../src/core/answers.js");
@@ -65,7 +65,7 @@ function acceptingHost() {
 
 test("an interactive run opens on the last one and remembers this one", () => {
     const memory = memoryHolding(encode(LAST_RUN));
-    const settings = settingsFor(acceptingHost(), {}, 1, memory.open);
+    const settings = settingsFor(acceptingHost(), {}, 1, { openMemory: memory.open });
 
     assert.deepEqual(settings, LAST_RUN, "the last run's answers were offered back");
     assert.deepEqual(
@@ -77,7 +77,7 @@ test("an interactive run opens on the last one and remembers this one", () => {
 
 test("a run with nothing to remember opens on the compiled defaults", () => {
     const memory = memoryHolding("");
-    const settings = settingsFor(acceptingHost(), {}, 1, memory.open);
+    const settings = settingsFor(acceptingHost(), {}, 1, { openMemory: memory.open });
 
     assert.deepEqual(
         settings,
@@ -86,10 +86,31 @@ test("a run with nothing to remember opens on the compiled defaults", () => {
     assert.equal(memory.state.wrote.length, 1);
 });
 
-test("a run with nowhere to remember still converts", () => {
-    const settings = settingsFor(acceptingHost(), {}, 1, () => null);
+test("a run with nowhere to remember still gets the form", () => {
+    // This is the shape the bug took: nothing to remember became a null where
+    // a set of answers belonged, the form could not read it, and a machine
+    // that merely could not save its settings was quietly dropped into six
+    // sequential dialogs instead. The host below has a working form, so if it
+    // is not used the answers never reached it.
+    const forgetful = { recall: () => "", remember: () => undefined };
+    const host = acceptingHost();
+    const bridge = { objc: { import: () => true, unwrap: (value) => value }, ns: {} };
+    const shown = [];
+    const present = (unused, spec) => {
+        shown.push(spec);
 
-    assert.ok(settings.paperSize, "the run has its settings");
+        return { answers: rememberedAnswers(encode(LAST_RUN)) };
+    };
+
+    const settings = settingsFor(host, {}, 1, {
+        openMemory: () => forgetful,
+        bridge,
+        present
+    });
+
+    assert.equal(shown.length, 1, "the form was presented");
+    assert.deepEqual(settings, LAST_RUN);
+    assert.deepEqual(host.listPrompts, [], "and nobody was asked six questions");
 });
 
 test("a cancelled run leaves the last run's settings alone", () => {
@@ -100,7 +121,7 @@ test("a cancelled run leaves the last run's settings alone", () => {
 
     host.chooseFromList = () => false;
 
-    assert.throws(() => settingsFor(host, {}, 1, memory.open), /User cancelled/u);
+    assert.throws(() => settingsFor(host, {}, 1, { openMemory: memory.open }), /User cancelled/u);
     assert.deepEqual(memory.state.wrote, []);
 });
 
@@ -117,7 +138,7 @@ test("a remembered colour that is no preset is offered back as a colour", () => 
         return options.defaultItems;
     };
 
-    settingsFor(host, {}, 1, memory.open);
+    settingsFor(host, {}, 1, { openMemory: memory.open });
     assert.ok(
         asked.includes("Custom colour..."),
         `the colour list opened on ${JSON.stringify(asked)}`

@@ -541,6 +541,15 @@ which matters because people keep more than one copy pasted about, at more
 than one version. A later version can still read this one's key and bring it
 forward, which is more than a number in the record ever offered.
 
+Being unable to remember is a way of behaving rather than an absence. Every
+way of failing to reach the defaults comes back as a memory that recalls
+nothing and keeps nothing, never as nothing at all: a caller given nothing has
+to remember to ask whether it got something, at every place it uses it, and
+forgetting once put a null where a set of answers belonged. The form could not
+read that, so a machine which merely could not save its settings was quietly
+dropped into six sequential dialogs instead — the policy says convert anyway
+and say nothing, and it is now written once instead of at each use.
+
 Headless runs do not open it at all, and that is structural rather than a rule
 to remember: the memory arrives as something to open rather than something
 already open, and the branch that takes settings from a configuration file
@@ -548,7 +557,10 @@ returns before it can be. A file that also depended on what somebody chose in
 a window last week would mean two different things on two machines.
 
 Which branch that is comes from the invocation, which knows what kind of run
-it is, and never from what the settings look like. Deciding by "there are no
+it is and says so, and never from what the settings look like. Valid JSON is
+not yet a configuration either: `null`, `false`, `0`, a bare string and a list
+all parse, and each is refused where the file is read rather than somewhere
+further along, in words about the failure instead of about the file. Deciding by "there are no
 settings, so somebody must be here to ask" is a guess, and a configuration
 file holding `false` or `0` got it wrong: measured, a headless run took the
 interactive branch, opened a dialog, and waited for an answer nobody was there
@@ -953,7 +965,7 @@ happens to have the tool.
 ### Survivors
 
 The mutants that remain alive are equivalent: they describe a program that
-cannot behave differently from this one. They fall into six groups.
+cannot behave differently from this one. They fall into seven groups.
 
 - A description passed to a command whose failure is deliberately swallowed —
   `removeFile`, `setAside`, the environment probe. The message is

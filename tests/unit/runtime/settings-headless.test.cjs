@@ -75,7 +75,7 @@ test("a headless run does not open the memory at all", () => {
         quality: 92
     };
     const invocation = { headless: true, settings: given };
-    const settings = settingsFor(acceptingHost(), invocation, 1, memory.open);
+    const settings = settingsFor(acceptingHost(), invocation, 1, { openMemory: memory.open });
 
     assert.deepEqual(settings, normalizeSettings(given));
     assert.equal(memory.state.opened, 0, "nothing was opened");
@@ -101,7 +101,7 @@ test("a headless configuration that is not settings is refused, not asked about"
         const memory = memoryHolding(encode(LAST_RUN));
 
         assert.throws(
-            () => settingsFor(host, { headless: true, settings: configuration }, 1, memory.open),
+            () => settingsFor(host, { headless: true, settings: configuration }, 1, { openMemory: memory.open }),
             /Unsupported|must be/u,
             JSON.stringify(configuration)
         );

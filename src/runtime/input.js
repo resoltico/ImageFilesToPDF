@@ -90,6 +90,23 @@ function collectInvocation(app, input, headless) {
 
     const configuration = JSON.parse(readTextFile(app, String(items[1])));
 
+    /*
+     * Valid JSON is not yet a configuration. `null`, `false`, `0` and a bare
+     * string all parse, and asking any of them for a setting fails somewhere
+     * further along in words about the failure rather than about the file --
+     * "null is not an object", or an unsupported paper size that was never
+     * supported because there was never a paper size.
+     */
+    if (
+        !configuration ||
+        typeof configuration !== "object" ||
+        Array.isArray(configuration)
+    ) {
+        throw new Error(
+            "The headless configuration must be a JSON object of settings."
+        );
+    }
+
     return {
         headless: true,
         settings: configuration,

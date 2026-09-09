@@ -97,3 +97,38 @@ test("a value that mentions a file URL is not a file URL", () => {
 
     assert.equal(inputItemToPosixPath("file:///a/b.png"), "/a/b.png");
 });
+
+test("the invocation says which kind of run it is", () => {
+    // Which settings a run uses turns on this, and the consumer must not have
+    // to work it out for itself: reading it off the settings -- "there are
+    // none, so somebody must be here to ask" -- is what sent a headless run
+    // to the dialogs, where it waited for an answer nobody was there to give.
+    const app = createFakeApp([["/bin/cat", '{"dpi":300}']]);
+
+    assert.equal(
+        collectInvocation(app, ["/a/photo.png"], false).headless,
+        false,
+        "a Quick Action has somebody in front of it"
+    );
+    assert.equal(
+        collectInvocation(app, ["--headless", "/a/c.json", "/a/photo.png"], true).headless,
+        true,
+        "and a configuration file does not"
+    );
+});
+
+test("valid JSON is not yet a configuration", () => {
+    // null, false, 0, a bare string and a list all parse. Asking any of them
+    // for a setting fails further along, in words about the failure rather
+    // than about the file: "null is not an object", or an unsupported paper
+    // size that was never supported because there was never a paper size.
+    for (const text of ["null", "false", "0", '""', '"text"', "[]"]) {
+        const app = createFakeApp([["/bin/cat", text]]);
+
+        assert.throws(
+            () => collectInvocation(app, ["--headless", "/a/c.json", "/a/p.png"], true),
+            /must be a JSON object of settings/u,
+            text
+        );
+    }
+});

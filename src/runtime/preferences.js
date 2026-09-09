@@ -68,13 +68,34 @@ function memoryOn(objc, ns, suite) {
 }
 
 /*
+ * A memory with nowhere to keep anything, which is what every way of failing
+ * to reach the defaults comes back as.
+ *
+ * Not null. A caller given nothing has to remember to ask whether it got
+ * something, at every place it uses it, and forgetting once put a null where
+ * a set of answers belonged -- which the form could not read, so a machine
+ * that merely could not save its settings was answering six questions one at
+ * a time instead. Being unable to remember is a way of behaving, and it says
+ * what this policy has said all along: recall nothing, keep nothing, and let
+ * the conversion get on with it.
+ */
+const FORGETFUL = Object.freeze({
+    recall() {
+        return "";
+    },
+    remember() {
+        return undefined;
+    }
+});
+
+/*
  * Everything the bridge is asked to do is inside the attempt, not only the
  * import: a suite that cannot be made is documented to come back as nothing,
  * and one that raises instead must not take the conversion down with it.
  */
 function createMemory(objc, ns) {
     if (!objc || !ns) {
-        return null;
+        return FORGETFUL;
     }
 
     try {
@@ -82,9 +103,9 @@ function createMemory(objc, ns) {
 
         const suite = ns.NSUserDefaults.alloc.initWithSuiteName(ns(DOMAIN));
 
-        return present(suite) ? memoryOn(objc, ns, suite) : null;
+        return present(suite) ? memoryOn(objc, ns, suite) : FORGETFUL;
     } catch {
-        return null;
+        return FORGETFUL;
     }
 }
 
