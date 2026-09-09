@@ -8,11 +8,11 @@ const {
     describeForLog
 } = require("../core/errors.js");
 const { isHeadlessInput } = require("../core/invocation.js");
-const { normalizeSettings } = require("../core/settings.js");
+const { createMemory } = require("./preferences.js");
 const { makeTimestamp } = require("../core/naming.js");
 const { checkTools } = require("./preflight.js");
 const { reportNoImages, reportResult } = require("./reporting.js");
-const { collectSettings } = require("./settings-form.js");
+const { settingsFor } = require("./settings-form.js");
 const { collectInvocation } = require("./input.js");
 const { collectImageFiles } = require("./admission.js");
 const { createTree } = require("./tree.js");
@@ -52,7 +52,7 @@ function prepare(app, input, headless) {
 function prepareJob(app, invocation, tools, count) {
     return createJob(
         app,
-        normalizeSettings(invocation.settings ?? collectSettings(app, count)),
+        settingsFor(app, invocation, count, createMemory(globalThis.ObjC, globalThis.$)),
         invocation.timestamp || makeTimestamp(new Date()),
         tools
     );

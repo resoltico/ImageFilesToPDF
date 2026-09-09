@@ -17,7 +17,7 @@ test("the default answers produce settings the validator accepts", () => {
     assert.deepEqual(settings, {
         paperSize: "A4",
         orientation: "Portrait",
-        mode: "Single PDF",
+        mode: "single",
         background: "#FFFFFF",
         dpi: 300,
         quality: 92
@@ -32,7 +32,7 @@ test("labels are translated to the values the pipeline stores", () => {
     });
 
     assert.equal(settings.paperSize, "Letter");
-    assert.equal(settings.mode, "Separate PDFs");
+    assert.equal(settings.mode, "separate");
 });
 
 test("a colour arrives as a colour, chosen or typed", () => {

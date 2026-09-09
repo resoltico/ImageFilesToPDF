@@ -506,6 +506,70 @@ hex code is not fished out of whatever else was typed around it either, so
 `use #C7DAE8 please` is a mistake worth reporting rather than an instruction
 worth obeying.
 
+## What a run remembers
+
+Six settings, kept as one record under one key in a defaults domain of this
+action's own. One record rather than six keys, because two runs finishing at
+once can leave a paper size from one beside a background from the other; with
+one record the last run to confirm its settings is the one whose settings are
+there.
+
+Not the standard defaults. "Standard" means the defaults of the application
+that is running, and the application running a pasted script is Apple's
+Shortcuts helper — so writing there would put this action's settings in
+somebody else's domain, beside whatever every other script in that helper had
+left behind. There is also no fallback to it when a named suite cannot be
+made: a run that cannot remember opens on the compiled defaults, converts the
+images, and says nothing about it. The completion dialog is about the
+documents.
+
+The record holds settings, not answers — what the pipeline stores, not what a
+control was showing. A label is display text that renaming a preset would
+change, and a record written last month should not depend on this month's
+wording. It is read back through `normalizeSettings`, the same function that
+validates a headless configuration rather than a second one that agrees with
+it today: it has been on disk, where anything can edit it. Anything
+unreadable, unrecognised or out of range is no answer at all. A record written
+by a later version is left exactly where it is, because this one cannot know
+what it means and deleting it would cost somebody their settings the next time
+they ran the newer one.
+
+Headless runs neither read nor write it, and that is structural rather than a
+rule to remember: the branch that takes settings from a configuration file
+returns before it can reach any of this. A file that also depended on what
+somebody chose in a window last week would mean two different things on two
+different machines.
+
+What makes remembering safe rather than surprising is that the form shows
+every remembered value before a single image is touched. Nothing is applied
+invisibly; a run that opens on last week's dark blue says so, in the control,
+where it can be changed like anything else.
+
+The round trip is the invariant. `answersFromSettings` is the exact inverse of
+reading the form, and the two are in one file because inverses kept apart
+drift: the tests put all 192 combinations of the settings through a record and
+back, because the way this breaks is one setting quietly failing to survive
+while the other five prove nothing. It is also why every choice control's
+value is now what `normalizeSettings` produces — the output mode used to offer
+`Single PDF` while the pipeline stored `single`, and an inverse of that would
+have needed a table to undo a mapping that had no reason to exist. The two
+older spellings are still accepted from a configuration file, because one
+written against an earlier release has to keep working.
+
+What is not tested, and cannot be: that a named suite is writable inside the
+Shortcuts helper. This is the second such surface, alongside the AppKit form,
+and that is the honest cost of the feature. It is checked by hand, on the real
+Shortcut:
+
+- convert something with settings that are not the defaults;
+- run the action again and confirm the form opens on them;
+- quit and relaunch Shortcuts, run again, and confirm they are still there;
+- confirm nothing appears in the helper's own domain — `defaults read` for the
+  helper must not show these settings, because a silent fall-through to the
+  standard defaults is the one failure this design exists to prevent;
+- run a headless conversion with a configuration file and confirm the
+  interactive defaults are unchanged afterwards.
+
 ## Reading an answer
 
 Both front ends read their answers through `src/core/answers.js`, and that is

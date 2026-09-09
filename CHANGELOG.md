@@ -4,6 +4,24 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-09
+
+### Added
+
+- The settings you chose last time are what the next run opens on — all six of
+  them, not just some. Every value is shown before anything is converted, so
+  nothing is applied that you have not seen, and changing one is the same as
+  it ever was.
+- If the settings are asked one question at a time, they are remembered there
+  too, including a colour of your own: the list opens on "Custom colour..."
+  with your colour already in the prompt behind it.
+
+### Changed
+
+- Headless runs are unaffected in both directions. A configuration file says
+  everything about the run it describes, so it neither reads what you chose in
+  a window nor changes it.
+
 ## [1.3.0] - 2026-09-09
 
 ### Added

@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { promptInteger } = require("../../../src/runtime/dialogs.js");
+const { promptInteger } = require("../../../src/runtime/prompts.js");
 const { RESOLUTION } = require("../../../src/core/choices.js");
 const { createFakeApp } = require("./fake-app.cjs");
 
@@ -10,7 +10,7 @@ test("promptInteger accepts a value inside the range", () => {
     const app = createFakeApp();
 
     app.nextAnswer = " 300 ";
-    assert.equal(promptInteger(app, RESOLUTION), 300);
+    assert.equal(promptInteger(app, RESOLUTION, "300"), 300);
     assert.match(app.dialogs[0].message, /Resolution in DPI \(72–1041\)/u);
 });
 
@@ -35,7 +35,7 @@ test("promptInteger re-asks until the answer is valid", () => {
         return { textReturned: answer };
     };
 
-    assert.equal(promptInteger(app, RESOLUTION), 600);
+    assert.equal(promptInteger(app, RESOLUTION, "300"), 600);
     // Three rejections, each followed by an explanatory dialog.
     assert.equal(app.dialogs.filter((dialog) => /whole number/u.test(dialog.message)).length, 3);
 });
@@ -47,7 +47,7 @@ test("promptInteger accepts the exact ends of the range", () => {
         const app = createFakeApp();
 
         app.nextAnswer = answer;
-        assert.equal(promptInteger(app, RESOLUTION), Number(answer));
+        assert.equal(promptInteger(app, RESOLUTION, "300"), Number(answer));
     }
 });
 
@@ -71,7 +71,7 @@ test("promptInteger rejects a number with anything attached to it", () => {
         return { textReturned: answer };
     };
 
-    assert.equal(promptInteger(app, RESOLUTION), 300);
+    assert.equal(promptInteger(app, RESOLUTION, "300"), 300);
     assert.equal(
         app.dialogs.filter((dialog) => /whole number/u.test(dialog.message)).length,
         5,
@@ -83,7 +83,7 @@ test("the number prompt identifies the app and can be cancelled", () => {
     const app = createFakeApp();
 
     app.nextAnswer = "300";
-    promptInteger(app, RESOLUTION);
+    promptInteger(app, RESOLUTION, "300");
 
     const [{ options }] = app.dialogs;
 
@@ -115,7 +115,7 @@ test("a number outside the range is refused, not accepted", () => {
         return { textReturned: answer };
     };
 
-    assert.equal(promptInteger(app, RESOLUTION), 300);
+    assert.equal(promptInteger(app, RESOLUTION, "300"), 300);
     assert.equal(
         app.dialogs.filter((dialog) => /whole number/u.test(dialog.message)).length,
         2,

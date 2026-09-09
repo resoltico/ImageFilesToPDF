@@ -30,7 +30,7 @@ test("the form's answers become the settings", () => {
     assert.deepEqual(collectViaForm(BRIDGE, present), {
         paperSize: "A4",
         orientation: "Portrait",
-        mode: "Single PDF",
+        mode: "single",
         background: "#FFFFFF",
         dpi: 300,
         quality: 92
@@ -79,4 +79,23 @@ test("cancelling the form cancels the run", () => {
 
 test("a form that could not be presented is not an answer", () => {
     assert.equal(collectViaForm(BRIDGE, scripted([null])), null);
+});
+
+test("a remembered run is what the form opens on", () => {
+    // The same answers the stepwise path is given, in the control each one
+    // belongs to -- so which front end asked is not something a person's
+    // settings depend on.
+    const present = scripted([{ answers: defaultAnswers() }]);
+    const answers = {
+        ...defaultAnswers(),
+        background: "#C7DAE8",
+        dpi: "600"
+    };
+
+    collectViaForm(BRIDGE, present, { count: 3, answers });
+
+    const [{ rows }] = present.seen;
+
+    assert.equal(rows.find((row) => row.key === "background").value, "#C7DAE8");
+    assert.equal(rows.find((row) => row.key === "dpi").value, "600");
 });

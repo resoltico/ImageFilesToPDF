@@ -15,7 +15,7 @@ const {
     PDFCPU_PIXEL_LIMIT,
     MINIMUM_DPI,
     MAXIMUM_DPI
-} = require("../../../src/core/settings.js");
+} = require("../../../src/core/limits.js");
 
 test("the DPI ceiling is the one pdfcpu will actually accept", () => {
     // A page rendered at N DPI is an image, and pdfcpu refuses images over

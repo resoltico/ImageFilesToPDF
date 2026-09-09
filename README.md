@@ -121,6 +121,18 @@ The page background fills the area around an image and shows behind
 transparent pixels. It does not recolour anything opaque: a screenshot with a
 white background stays white.
 
+What you chose last time is what the next run opens on — all six settings,
+kept together under a preferences domain of this action's own rather than the
+Shortcuts helper's. Every remembered value is shown on the form before
+anything is converted, so nothing is applied that you have not seen. Runs
+driven by a configuration file are unaffected in both directions: that file
+says everything about the run it describes. To forget everything and start
+from the defaults again:
+
+```
+defaults delete com.resoltico.ImageFilesToPDF
+```
+
 The form is drawn with AppKit through the JXA ObjC bridge. That it displays
 at all inside a Shortcuts action is measured rather than assumed: a probe run
 inside `ShortcutsMacHelper` showed a real `NSAlert` with an accessory view

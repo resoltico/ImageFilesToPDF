@@ -35,7 +35,7 @@ test("without AppKit the stepwise dialogs still collect the settings", () => {
 
         throw new Error("the form must not be reached without a bridge");
     };
-    const settings = collectSettings(host, 0, null, refuse);
+    const settings = collectSettings(host, {}, null, refuse);
 
     assert.equal(settings.paperSize, "A4");
     assert.ok(host.listPrompts.length > 0, "the dialogs must have been used");
@@ -47,7 +47,7 @@ test("without AppKit the stepwise dialogs still collect the settings", () => {
 test("a form that cannot present falls back rather than failing the run", () => {
     const host = createFakeHost({});
 
-    assert.ok(collectSettings(host, 0, BRIDGE, scripted([null])).paperSize);
+    assert.ok(collectSettings(host, {}, BRIDGE, scripted([null])).paperSize);
     assert.ok(host.listPrompts.length > 0);
 });
 
@@ -57,7 +57,7 @@ test("a form that throws falls back too", () => {
         throw new Error("NSAlert exploded");
     };
 
-    assert.ok(collectSettings(host, 0, BRIDGE, broken).paperSize);
+    assert.ok(collectSettings(host, {}, BRIDGE, broken).paperSize);
     assert.ok(host.listPrompts.length > 0);
 });
 
@@ -67,7 +67,7 @@ test("but a cancellation is honoured, not turned into dialogs", () => {
     const host = createFakeHost({});
 
     assert.throws(
-        () => collectSettings(host, 0, BRIDGE, scripted([{ cancelled: true }])),
+        () => collectSettings(host, {}, BRIDGE, scripted([{ cancelled: true }])),
         /User cancelled/u
     );
     assert.equal(host.listPrompts.length, 0);
@@ -77,7 +77,7 @@ test("the form is preferred when it works", () => {
     const host = createFakeHost({});
     const settings = collectSettings(
         host,
-        0,
+        {},
         BRIDGE,
         scripted([{ answers: { ...defaultAnswers(), paperSize: "US Letter" } }])
     );
@@ -91,7 +91,7 @@ test("the image count reaches the form that asks the questions", () => {
     // decision, and Cancel is the escape hatch.
     const present = scripted([{ answers: defaultAnswers() }]);
 
-    collectSettings(createFakeHost({}), 231, BRIDGE, present);
+    collectSettings(createFakeHost({}), { count: 231 }, BRIDGE, present);
 
     assert.match(present.seen[0].detail, /^231 images\. /u);
 });

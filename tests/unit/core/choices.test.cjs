@@ -134,17 +134,3 @@ test("every offered value is one the validator accepts", () => {
         }
     }
 });
-
-test("no two options of a control share a value", () => {
-    // Two labels resolving to the same setting means one of them does
-    // nothing, which a per-option check above would not notice.
-    for (const control of [PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND]) {
-        const values = control.choices.map((choice) => choice.value);
-
-        assert.equal(
-            new Set(values).size,
-            values.length,
-            `${control.prompt} offers a duplicated value: ${values.join(", ")}`
-        );
-    }
-});

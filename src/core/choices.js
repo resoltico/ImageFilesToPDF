@@ -5,7 +5,7 @@ const {
     MAXIMUM_DPI,
     MINIMUM_QUALITY,
     MAXIMUM_QUALITY
-} = require("./settings.js");
+} = require("./limits.js");
 
 /*
  * What the settings dialogs say, and what each answer means.
@@ -49,8 +49,8 @@ const OUTPUT_MODE = {
     prompt: "Output:",
     label: "Output:",
     choices: [
-        { label: "One PDF with all images", value: "Single PDF" },
-        { label: "A separate PDF for each image", value: "Separate PDFs" }
+        { label: "One PDF with all images", value: "single" },
+        { label: "A separate PDF for each image", value: "separate" }
     ]
 };
 
@@ -97,6 +97,22 @@ function defaultValueOf(control) {
     return control.choices[0].value;
 }
 
+/*
+ * The other way round, for a value coming back into the form: which of the
+ * offered answers is this one? Every choice control's value is what
+ * normalizeSettings produces, so a remembered setting finds its own label
+ * without anything in between.
+ */
+function labelOfValue(control, value) {
+    const chosen = control.choices.find((choice) => choice.value === value);
+
+    if (!chosen) {
+        throw new Error(`Unrecognised value: ${value}`);
+    }
+
+    return chosen.label;
+}
+
 function valueOfLabel(control, label) {
     const chosen = control.choices.find((choice) => choice.label === label);
 
@@ -117,5 +133,6 @@ module.exports = {
     labelsOf,
     defaultLabelOf,
     defaultValueOf,
-    valueOfLabel
+    valueOfLabel,
+    labelOfValue
 };

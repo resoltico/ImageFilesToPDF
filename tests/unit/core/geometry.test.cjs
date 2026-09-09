@@ -3,7 +3,9 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
-const { MAXIMUM_DPI } = require("../../../src/core/settings.js");
+const {
+    MAXIMUM_DPI
+} = require("../../../src/core/limits.js");
 const { fixed2 } = require("../../../src/core/numbers.js");
 
 function settings(overrides) {

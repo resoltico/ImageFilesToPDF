@@ -1,5 +1,5 @@
 /*
- * Image Files to PDF 1.3.0
+ * Image Files to PDF 1.4.0
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
@@ -18,7 +18,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.3.0";
+const VERSION = "1.4.0";
 
 /* ===== src/core/executables.js ===== */
 
@@ -173,6 +173,32 @@ function truncateToBytes(text, budget) {
 
     return kept;
 }
+
+/* ===== src/core/limits.js ===== */
+
+const PAGE_DEFINITIONS = {
+    A4: { widthPoints: 595.2756, heightPoints: 841.8898 },
+    Letter: { widthPoints: 612, heightPoints: 792 }
+};
+
+const MINIMUM_DPI = 72;
+
+const PDFCPU_PIXEL_LIMIT = 104857600;
+const POINTS_PER_INCH = 72;
+
+function squareInchesOf({ widthPoints, heightPoints }) {
+    return (widthPoints / POINTS_PER_INCH) * (heightPoints / POINTS_PER_INCH);
+}
+
+function largestPageArea() {
+    return Math.max(...Object.values(PAGE_DEFINITIONS).map(squareInchesOf));
+}
+
+const MAXIMUM_DPI = Math.floor(
+    Math.sqrt(PDFCPU_PIXEL_LIMIT / largestPageArea())
+);
+const MINIMUM_QUALITY = 1;
+const MAXIMUM_QUALITY = 100;
 
 /* ===== src/core/errors.js ===== */
 
@@ -437,36 +463,13 @@ function decodeFileUrl(value) {
 
 /* ===== src/core/settings.js ===== */
 
-const PAGE_DEFINITIONS = {
-    A4: { widthPoints: 595.2756, heightPoints: 841.8898 },
-    Letter: { widthPoints: 612, heightPoints: 792 }
-};
 
 const MODE_MAP = {
-    "Single PDF": "single",
-    "Separate PDFs": "separate",
     single: "single",
-    separate: "separate"
+    separate: "separate",
+    "Single PDF": "single",
+    "Separate PDFs": "separate"
 };
-
-const MINIMUM_DPI = 72;
-
-const PDFCPU_PIXEL_LIMIT = 104857600;
-const POINTS_PER_INCH = 72;
-
-function squareInchesOf({ widthPoints, heightPoints }) {
-    return (widthPoints / POINTS_PER_INCH) * (heightPoints / POINTS_PER_INCH);
-}
-
-function largestPageArea() {
-    return Math.max(...Object.values(PAGE_DEFINITIONS).map(squareInchesOf));
-}
-
-const MAXIMUM_DPI = Math.floor(
-    Math.sqrt(PDFCPU_PIXEL_LIMIT / largestPageArea())
-);
-const MINIMUM_QUALITY = 1;
-const MAXIMUM_QUALITY = 100;
 
 function own(object, key) {
     return Object.hasOwn(object, key);
@@ -593,8 +596,8 @@ const OUTPUT_MODE = {
     prompt: "Output:",
     label: "Output:",
     choices: [
-        { label: "One PDF with all images", value: "Single PDF" },
-        { label: "A separate PDF for each image", value: "Separate PDFs" }
+        { label: "One PDF with all images", value: "single" },
+        { label: "A separate PDF for each image", value: "separate" }
     ]
 };
 
@@ -639,6 +642,16 @@ function defaultLabelOf(control) {
 
 function defaultValueOf(control) {
     return control.choices[0].value;
+}
+
+function labelOfValue(control, value) {
+    const chosen = control.choices.find((choice) => choice.value === value);
+
+    if (!chosen) {
+        throw new Error(`Unrecognised value: ${value}`);
+    }
+
+    return chosen.label;
 }
 
 function valueOfLabel(control, label) {
@@ -809,6 +822,55 @@ function readAnswers(answers) {
     }
 
     return problems.length > 0 ? { problems } : { settings };
+}
+
+function answersFromSettings(settings) {
+    const answers = {};
+
+    for (const { key, control } of CHOICE_ROWS) {
+        answers[key] = labelOfValue(control, settings[key]);
+    }
+
+    answers[COLOUR_ROW.key] = settings[COLOUR_ROW.key];
+
+    for (const { key } of NUMBER_ROWS) {
+        answers[key] = String(settings[key]);
+    }
+
+    return answers;
+}
+
+/* ===== src/core/preferences.js ===== */
+
+
+const DOMAIN = "com.resoltico.ImageFilesToPDF";
+const KEY = "lastSettings";
+const SCHEMA = 1;
+
+function encode(settings) {
+    return JSON.stringify({ schema: SCHEMA, settings });
+}
+
+function held(text) {
+    try {
+        return JSON.parse(String(text));
+    } catch {
+        return null;
+    }
+}
+
+function rememberedAnswers(text) {
+    const record = held(text);
+
+    if (!record || record.schema !== SCHEMA) {
+        return null;
+    }
+
+    try {
+        return answersFromSettings(normalizeSettings(record.settings ?? {}));
+    } catch {
+        return null;
+    }
 }
 
 /* ===== src/core/naming.js ===== */
@@ -1227,6 +1289,44 @@ function findTool(app, executableName) {
     return searchPath(app, executableName);
 }
 
+/* ===== src/runtime/preferences.js ===== */
+
+
+function createMemory(objc, ns) {
+    if (!objc || !ns) {
+        return null;
+    }
+
+    try {
+        objc.import("Foundation");
+    } catch {
+        return null;
+    }
+
+    const suite = ns.NSUserDefaults.alloc.initWithSuiteName(ns(DOMAIN));
+
+    if (!suite) {
+        return null;
+    }
+
+    return {
+        recall() {
+            try {
+                return String(objc.unwrap(suite.stringForKey(ns(KEY))) ?? "");
+            } catch {
+                return "";
+            }
+        },
+
+        remember(text) {
+            try {
+                suite.setObjectForKey(ns(text), ns(KEY));
+            } catch {
+            }
+        }
+    };
+}
+
 /* ===== src/runtime/workspace.js ===== */
 
 
@@ -1599,6 +1699,20 @@ const WIDGETS = {
     makeAlert
 };
 
+function appkitBridge(objc, ns) {
+    if (!objc || !ns) {
+        return null;
+    }
+
+    try {
+        objc.import("AppKit");
+
+        return { objc, ns };
+    } catch {
+        return null;
+    }
+}
+
 
 
 const RESPONSE_ABORT = -1001;
@@ -1641,15 +1755,14 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
         : { cancelled: true };
 }
 
-/* ===== src/runtime/dialogs.js ===== */
+/* ===== src/runtime/prompts.js ===== */
 
 
-
-function chooseRequired(app, control) {
+function chooseRequired(app, control, opening) {
     const choice = app.chooseFromList(labelsOf(control), {
         withTitle: APP_NAME,
         withPrompt: control.prompt,
-        defaultItems: [defaultLabelOf(control)]
+        defaultItems: [opening]
     });
 
     if (!choice) {
@@ -1659,20 +1772,13 @@ function chooseRequired(app, control) {
     return valueOfLabel(control, choice[0]);
 }
 
-const CUSTOM_COLOUR = "Custom colour...";
-
-const COLOUR_QUESTION = {
-    prompt: "Page background as six hexadecimal digits:",
-    defaultAnswer: "#"
-};
-
-function askUntil(app, control, read) {
-    let answer = control.defaultAnswer;
+function askUntil(app, question, read) {
+    let answer = question.defaultAnswer;
     let problem = "";
 
     for (;;) {
         const response = app.displayDialog(
-            problem ? `${problem}\n\n${control.prompt}` : control.prompt,
+            problem ? `${problem}\n\n${question.prompt}` : question.prompt,
             {
                 withTitle: APP_NAME,
                 defaultAnswer: answer,
@@ -1685,24 +1791,42 @@ function askUntil(app, control, read) {
         answer = String(response.textReturned);
 
         try {
-            return read(answer, control);
+            return read(answer, question);
         } catch (error) {
             problem = errorMessage(error);
         }
     }
 }
 
-function promptColour(app) {
-    return askUntil(app, COLOUR_QUESTION, readColour);
+function promptInteger(app, control, opening) {
+    return askUntil(app, { ...control, defaultAnswer: opening }, readNumber);
 }
 
-function chooseColour(app) {
+/* ===== src/runtime/dialogs.js ===== */
+
+
+
+const CUSTOM_COLOUR = "Custom colour...";
+
+const COLOUR_QUESTION = { prompt: "Page background as six hexadecimal digits:" };
+
+function openingChoice(opening) {
+    const preset = BACKGROUND.choices.find((choice) => choice.value === opening);
+
+    return preset ? preset.label : CUSTOM_COLOUR;
+}
+
+function promptColour(app, opening) {
+    return askUntil(app, { ...COLOUR_QUESTION, defaultAnswer: opening }, readColour);
+}
+
+function chooseColour(app, opening) {
     const choice = app.chooseFromList(
         [...labelsOf(BACKGROUND), CUSTOM_COLOUR],
         {
             withTitle: APP_NAME,
             withPrompt: BACKGROUND.prompt,
-            defaultItems: [defaultLabelOf(BACKGROUND)]
+            defaultItems: [openingChoice(opening)]
         }
     );
 
@@ -1711,22 +1835,18 @@ function chooseColour(app) {
     }
 
     return String(choice[0]) === CUSTOM_COLOUR
-        ? promptColour(app)
+        ? promptColour(app, opening)
         : valueOfLabel(BACKGROUND, choice[0]);
 }
 
-function promptInteger(app, control) {
-    return askUntil(app, control, readNumber);
-}
-
-function collectDialogSettings(app) {
+function collectDialogSettings(app, answers = defaultAnswers()) {
     return {
-        paperSize: chooseRequired(app, PAPER_SIZE),
-        orientation: chooseRequired(app, ORIENTATION),
-        dpi: promptInteger(app, RESOLUTION),
-        quality: promptInteger(app, QUALITY),
-        mode: chooseRequired(app, OUTPUT_MODE),
-        background: chooseColour(app)
+        paperSize: chooseRequired(app, PAPER_SIZE, answers.paperSize),
+        orientation: chooseRequired(app, ORIENTATION, answers.orientation),
+        dpi: promptInteger(app, RESOLUTION, answers.dpi),
+        quality: promptInteger(app, QUALITY, answers.quality),
+        mode: chooseRequired(app, OUTPUT_MODE, answers.mode),
+        background: chooseColour(app, answers.background)
     };
 }
 
@@ -1895,20 +2015,6 @@ function showCompletion(app, mode, result, pageCount) {
 /* ===== src/runtime/settings-form.js ===== */
 
 
-function appkitBridge(objc, ns) {
-    if (!objc || !ns) {
-        return null;
-    }
-
-    try {
-        objc.import("AppKit");
-
-        return { objc, ns };
-    } catch {
-        return null;
-    }
-}
-
 function formRound(bridge, present, state) {
     const outcome = present(
         bridge,
@@ -1930,8 +2036,8 @@ function formRound(bridge, present, state) {
         : { answers: outcome.answers, problems: read.problems };
 }
 
-function collectViaForm(bridge, present, count = 0) {
-    let state = { count };
+function collectViaForm(bridge, present, opening = {}) {
+    let state = { ...opening };
 
     for (;;) {
         const round = formRound(bridge, present, state);
@@ -1944,13 +2050,13 @@ function collectViaForm(bridge, present, count = 0) {
             return round.settings;
         }
 
-        state = { ...round, count };
+        state = { ...round, count: opening.count };
     }
 }
 
-function attemptForm(bridge, present, count) {
+function attemptForm(bridge, present, opening) {
     try {
-        return collectViaForm(bridge, present, count);
+        return collectViaForm(bridge, present, opening);
     } catch (error) {
         if (isUserCancelled(error)) {
             throw error;
@@ -1962,19 +2068,36 @@ function attemptForm(bridge, present, count) {
 
 function collectSettings(
     app,
-    count = 0,
+    opening = {},
     bridge = appkitBridge(globalThis.ObjC, globalThis.$),
     present = presentForm
 ) {
     if (bridge) {
-        const settings = attemptForm(bridge, present, count);
+        const settings = attemptForm(bridge, present, opening);
 
         if (settings) {
             return settings;
         }
     }
 
-    return collectDialogSettings(app);
+    return collectDialogSettings(app, opening.answers ?? defaultAnswers());
+}
+
+function settingsFor(app, invocation, count, memory) {
+    if (invocation.settings) {
+        return normalizeSettings(invocation.settings);
+    }
+
+    const answers = memory ? rememberedAnswers(memory.recall()) : null;
+    const settings = normalizeSettings(
+        collectSettings(app, { count, answers: answers ?? undefined })
+    );
+
+    if (memory) {
+        memory.remember(encode(settings));
+    }
+
+    return settings;
 }
 
 /* ===== src/runtime/input.js ===== */
@@ -3189,7 +3312,7 @@ function prepare(app, input, headless) {
 function prepareJob(app, invocation, tools, count) {
     return createJob(
         app,
-        normalizeSettings(invocation.settings ?? collectSettings(app, count)),
+        settingsFor(app, invocation, count, createMemory(globalThis.ObjC, globalThis.$)),
         invocation.timestamp || makeTimestamp(new Date()),
         tools
     );

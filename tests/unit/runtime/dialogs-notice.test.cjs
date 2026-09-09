@@ -14,7 +14,7 @@ const {
     completionMessage,
     showCompletion
 } = require("../../../src/runtime/completion.js");
-const { promptInteger } = require("../../../src/runtime/dialogs.js");
+const { promptInteger } = require("../../../src/runtime/prompts.js");
 const { RESOLUTION } = require("../../../src/core/choices.js");
 const { readAnswers } = require("../../../src/core/answers.js");
 const { defaultAnswers } = require("../../../src/core/form.js");
@@ -63,7 +63,7 @@ test("a rejected answer is explained where it is corrected", () => {
     const app = createFakeApp();
 
     app.nextAnswer = ["3O0", "600"];
-    assert.equal(promptInteger(app, RESOLUTION), 600);
+    assert.equal(promptInteger(app, RESOLUTION, "300"), 600);
     assert.equal(app.dialogs.length, 2, "one dialog per attempt, not two");
 
     const [, again] = app.dialogs;
@@ -82,7 +82,7 @@ test("the first time of asking has nothing to explain", () => {
     const app = createFakeApp();
 
     app.nextAnswer = ["600"];
-    promptInteger(app, RESOLUTION);
+    promptInteger(app, RESOLUTION, "300");
     assert.equal(app.dialogs[0].message, RESOLUTION.prompt);
     assert.equal(
         app.dialogs[0].options.defaultAnswer,
@@ -97,7 +97,7 @@ test("the sentence a person reads is the same in either front end", () => {
     const app = createFakeApp();
 
     app.nextAnswer = ["1500", "600"];
-    promptInteger(app, RESOLUTION);
+    promptInteger(app, RESOLUTION, "300");
 
     const { problems } = readAnswers({ ...defaultAnswers(), dpi: "1500" });
 

@@ -17,7 +17,7 @@ test("the fallback offers the four presets and a colour of your own", () => {
     const app = createFakeApp();
 
     app.nextChoice = ["Dark blue (#204486)"];
-    assert.equal(chooseColour(app), "#204486");
+    assert.equal(chooseColour(app, "#FFFFFF"), "#204486");
     assert.deepEqual(app.listPrompts[0].options, [
         "White (#FFFFFF)",
         "Black (#000000)",
@@ -38,7 +38,7 @@ test("a colour of your own is prompted for and read like any other", () => {
 
     app.nextChoice = ["Custom colour..."];
     app.nextAnswer = [" c7dae8 "];
-    assert.equal(chooseColour(app), "#C7DAE8");
+    assert.equal(chooseColour(app, "#FFFFFF"), "#C7DAE8");
     assert.match(app.dialogs[0].message, /six hexadecimal digits/u);
 });
 
@@ -47,11 +47,15 @@ test("the colour prompt is a question, with an answer and a way out", () => {
 
     app.nextChoice = ["Custom colour..."];
     app.nextAnswer = ["#C7DAE8"];
-    chooseColour(app);
+    chooseColour(app, "#FFFFFF");
 
     const [prompt] = app.dialogs;
 
-    assert.equal(prompt.options.defaultAnswer, "#", "a field, showing the shape");
+    assert.equal(
+        prompt.options.defaultAnswer,
+        "#FFFFFF",
+        "opening on the colour in force, which shows the shape and is one"
+    );
     assert.equal(prompt.message, "Page background as six hexadecimal digits:");
     assert.deepEqual(prompt.options.buttons, ["Cancel", "OK"]);
     assert.equal(prompt.options.defaultButton, "OK");
@@ -66,10 +70,10 @@ test("a colour that cannot be read is asked again, holding what was typed", () =
 
     app.nextChoice = ["Custom colour..."];
     app.nextAnswer = ["#C7DAEG", "#C7DAE", "#C7DAE8"];
-    assert.equal(chooseColour(app), "#C7DAE8");
+    assert.equal(chooseColour(app, "#FFFFFF"), "#C7DAE8");
     assert.deepEqual(
         app.dialogs.map((dialog) => dialog.options.defaultAnswer),
-        ["#", "#C7DAEG", "#C7DAE"],
+        ["#FFFFFF", "#C7DAEG", "#C7DAE"],
         "each attempt is offered back for correction"
     );
 });
@@ -82,7 +86,7 @@ test("the reason is on the screen that asks again, not on one before it", () => 
 
     app.nextChoice = ["Custom colour..."];
     app.nextAnswer = ["#C7DAEG", "#C7DAE8"];
-    chooseColour(app);
+    chooseColour(app, "#FFFFFF");
     assert.equal(app.dialogs.length, 2, "one dialog per attempt, not two");
     assert.equal(
         app.dialogs[1].message,

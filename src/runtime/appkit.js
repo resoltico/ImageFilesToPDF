@@ -28,6 +28,25 @@ const WIDGETS = {
 };
 
 /*
+ * Whether AppKit can be reached at all. A bridge that will not take the
+ * framework is one that cannot draw a form, and the caller falls back to the
+ * stepwise dialogs rather than failing the run over a widget.
+ */
+function appkitBridge(objc, ns) {
+    if (!objc || !ns) {
+        return null;
+    }
+
+    try {
+        objc.import("AppKit");
+
+        return { objc, ns };
+    } catch {
+        return null;
+    }
+}
+
+/*
  * One window instead of six sequential prompts.
  *
  * The ObjC namespace and the widget primitives are both parameters, so the
@@ -113,4 +132,4 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
         : { cancelled: true };
 }
 
-module.exports = { presentForm, WIDGETS };
+module.exports = { presentForm, appkitBridge, WIDGETS };

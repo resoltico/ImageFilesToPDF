@@ -1,11 +1,11 @@
 "use strict";
 
 const { parseInteger } = require("./numbers.js");
+const { backgroundVector } = require("./settings.js");
 const {
     MINIMUM_QUALITY,
-    MAXIMUM_QUALITY,
-    backgroundVector
-} = require("./settings.js");
+    MAXIMUM_QUALITY
+} = require("./limits.js");
 
 /*
  * Construction of the exact argument vectors handed to vips and pdfcpu.

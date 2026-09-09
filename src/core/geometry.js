@@ -1,10 +1,10 @@
 "use strict";
 
+const { normalizeSettings } = require("./settings.js");
 const {
     POINTS_PER_INCH,
-    PAGE_DEFINITIONS,
-    normalizeSettings
-} = require("./settings.js");
+    PAGE_DEFINITIONS
+} = require("./limits.js");
 
 /*
  * The page keeps its exact point dimensions at every DPI; only the pixel

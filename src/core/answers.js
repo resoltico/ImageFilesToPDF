@@ -1,7 +1,7 @@
 "use strict";
 
 const { CHOICE_ROWS, COLOUR_ROW, NUMBER_ROWS } = require("./form-rows.js");
-const { valueOfLabel } = require("./choices.js");
+const { valueOfLabel, labelOfValue } = require("./choices.js");
 const { normalizeColour } = require("./colour.js");
 const { errorMessage } = require("./errors.js");
 
@@ -101,4 +101,37 @@ function readAnswers(answers) {
     return problems.length > 0 ? { problems } : { settings };
 }
 
-module.exports = { readAnswers, readNumber, readColour };
+/*
+ * Settings the form could have produced, which is what a remembered run is
+ * given back as. The exact inverse of reading the form: a closed choice
+ * becomes the label it is offered under, a number becomes the text of itself,
+ * and a colour is already what the control holds.
+ *
+ * Every choice control's value is what normalizeSettings produces, so this is
+ * one loop and not three special cases. It was not always: the output mode
+ * offered "Single PDF" while the pipeline stored "single", and an inverse of
+ * that would have needed a table of its own to undo a mapping that had no
+ * reason to exist.
+ */
+function answersFromSettings(settings) {
+    const answers = {};
+
+    for (const { key, control } of CHOICE_ROWS) {
+        answers[key] = labelOfValue(control, settings[key]);
+    }
+
+    answers[COLOUR_ROW.key] = settings[COLOUR_ROW.key];
+
+    for (const { key } of NUMBER_ROWS) {
+        answers[key] = String(settings[key]);
+    }
+
+    return answers;
+}
+
+module.exports = {
+    readAnswers,
+    answersFromSettings,
+    readNumber,
+    readColour
+};

@@ -2,10 +2,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    chooseRequired,
-    collectDialogSettings
-} = require("../../../src/runtime/dialogs.js");
+const { collectDialogSettings } = require("../../../src/runtime/dialogs.js");
+const { chooseRequired } = require("../../../src/runtime/prompts.js");
 const { PAPER_SIZE } = require("../../../src/core/choices.js");
 const { createFakeApp } = require("./fake-app.cjs");
 
@@ -15,7 +13,7 @@ test("chooseRequired returns the value behind the chosen label", () => {
     const app = createFakeApp();
 
     app.nextChoice = ["US Letter"];
-    assert.equal(chooseRequired(app, PAPER_SIZE), "Letter");
+    assert.equal(chooseRequired(app, PAPER_SIZE, "A4"), "Letter");
     assert.deepEqual(app.listPrompts[0].options, ["A4", "US Letter"]);
     assert.deepEqual(app.listPrompts[0].settings.defaultItems, ["A4"]);
 });
@@ -24,14 +22,14 @@ test("chooseRequired rejects a label it did not offer", () => {
     const app = createFakeApp();
 
     app.nextChoice = ["Legal"];
-    assert.throws(() => chooseRequired(app, PAPER_SIZE), /Unrecognised choice: Legal/u);
+    assert.throws(() => chooseRequired(app, PAPER_SIZE, "A4"), /Unrecognised choice: Legal/u);
 });
 
 test("chooseRequired treats a dismissed list as cancellation", () => {
     const app = createFakeApp();
 
     app.nextChoice = false;
-    assert.throws(() => chooseRequired(app, PAPER_SIZE), /User cancelled/u);
+    assert.throws(() => chooseRequired(app, PAPER_SIZE, "A4"), /User cancelled/u);
 });
 
 test("collectDialogSettings asks for every setting", () => {
@@ -99,7 +97,7 @@ test("list prompts identify the app and offer its options", () => {
     const app = createFakeApp();
 
     app.nextChoice = ["A4"];
-    chooseRequired(app, PAPER_SIZE);
+    chooseRequired(app, PAPER_SIZE, "A4");
 
     const [prompt] = app.listPrompts;
 
