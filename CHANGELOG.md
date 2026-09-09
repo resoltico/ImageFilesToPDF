@@ -22,6 +22,12 @@ Notable changes to this project are documented in this file. The format is based
   everything about the run it describes, so it neither reads what you chose in
   a window nor changes it.
 
+### Fixed
+
+- A headless configuration file that is valid JSON but is not a set of
+  settings — `null`, a number, a string, a list — now says so, instead of
+  failing later with a message about the failure rather than about the file.
+
 ## [1.3.0] - 2026-09-09
 
 ### Added
