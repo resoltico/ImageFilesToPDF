@@ -529,16 +529,36 @@ change, and a record written last month should not depend on this month's
 wording. It is read back through `normalizeSettings`, the same function that
 validates a headless configuration rather than a second one that agrees with
 it today: it has been on disk, where anything can edit it. Anything
-unreadable, unrecognised or out of range is no answer at all. A record written
-by a later version is left exactly where it is, because this one cannot know
-what it means and deleting it would cost somebody their settings the next time
-they ran the newer one.
+unreadable, unrecognised or out of range is no answer at all.
 
-Headless runs neither read nor write it, and that is structural rather than a
-rule to remember: the branch that takes settings from a configuration file
-returns before it can reach any of this. A file that also depended on what
-somebody chose in a window last week would mean two different things on two
-different machines.
+The version is in the name of the key, `lastSettings.v1`, rather than in the
+record. A record this version cannot read is one it must not overwrite either,
+and a number inside the record cannot stop that: by the time the number is
+read the run is already pointed at the key it is about to write, and it writes
+there. Naming the key for the version means an older copy of this action
+cannot reach what a newer one wrote, because it asks for a different key —
+which matters because people keep more than one copy pasted about, at more
+than one version. A later version can still read this one's key and bring it
+forward, which is more than a number in the record ever offered.
+
+Headless runs do not open it at all, and that is structural rather than a rule
+to remember: the memory arrives as something to open rather than something
+already open, and the branch that takes settings from a configuration file
+returns before it can be. A file that also depended on what somebody chose in
+a window last week would mean two different things on two machines.
+
+Which branch that is comes from the invocation, which knows what kind of run
+it is, and never from what the settings look like. Deciding by "there are no
+settings, so somebody must be here to ask" is a guess, and a configuration
+file holding `false` or `0` got it wrong: measured, a headless run took the
+interactive branch, opened a dialog, and waited for an answer nobody was there
+to give until it was killed.
+
+Every copy of the action shares the domain, so a workflow kept for testing and
+one used for real remember the same settings. That is deliberate — a pasted
+script has no identity to tell copies apart by, and one tool with one set of
+settings is what a person would expect — but it means testing with a spare
+workflow changes what the real one opens on.
 
 What makes remembering safe rather than surprising is that the form shows
 every remembered value before a single image is touched. Nothing is applied
@@ -953,6 +973,12 @@ cannot behave differently from this one. They fall into six groups.
   exist to be called and do nothing, so emptying them changes nothing; the
   same goes for a `catch` that returns `false` to a caller that only asks
   whether the answer is truthy.
+- A guard the surrounding `catch` would answer identically. The bridge
+  factories refuse a missing namespace before touching it, and removing that
+  refusal only means the first message sent raises instead — caught two lines
+  below, with the same result. The guard states a precondition where a reader
+  needs it rather than leaving them to find the catch, and every one of these
+  factories states it the same way.
 - A field nothing downstream reads: the empty output path returned alongside a
   failure, where the caller takes one or the other and never both. Settled by
   running the caller with the mutated field in place.

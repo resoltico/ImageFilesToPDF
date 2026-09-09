@@ -126,8 +126,11 @@ kept together under a preferences domain of this action's own rather than the
 Shortcuts helper's. Every remembered value is shown on the form before
 anything is converted, so nothing is applied that you have not seen. Runs
 driven by a configuration file are unaffected in both directions: that file
-says everything about the run it describes. To forget everything and start
-from the defaults again:
+says everything about the run it describes.
+
+Every copy of the action shares one set of remembered settings, so a workflow
+you keep for testing and one you use for real will change each other's. To
+forget everything and start from the defaults again:
 
 ```
 defaults delete com.resoltico.ImageFilesToPDF

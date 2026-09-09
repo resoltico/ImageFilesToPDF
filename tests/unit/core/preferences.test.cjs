@@ -14,7 +14,6 @@ const test = require("node:test");
 const {
     DOMAIN,
     KEY,
-    SCHEMA,
     encode,
     rememberedAnswers
 } = require("../../../src/core/preferences.js");
@@ -57,7 +56,7 @@ test("a remembered run comes back as the settings it was", () => {
     // other five prove nothing.
     const all = everySettings();
 
-    assert.equal(all.length, 192, "the whole settings space, not a sample");
+    assert.equal(all.length, 192, "every combination of these values, not one of them");
 
     for (const settings of all) {
         const answers = rememberedAnswers(encode(settings));
@@ -91,9 +90,9 @@ test("what comes back is answers the form could have been given", () => {
     });
 });
 
-test("anything that is not a record of this schema is no answer at all", () => {
-    // It has been on disk. A run opens on the compiled defaults rather than
-    // on whatever was found there.
+test("anything that is not a record this version can read is no answer", () => {
+    // It has been on disk, where anything can edit it. A run opens on the
+    // compiled defaults rather than on whatever was found there.
     const settings = normalizeSettings({
         paperSize: "A4",
         orientation: "Portrait",
@@ -106,32 +105,26 @@ test("anything that is not a record of this schema is no answer at all", () => {
     for (const refused of [
         "",
         "not json at all",
+        "false",
+        "0",
         "[]",
         "{}",
         JSON.stringify({ settings }),
-        JSON.stringify({ schema: SCHEMA }),
-        JSON.stringify({ schema: SCHEMA, settings: { dpi: 99999 } }),
-        JSON.stringify({ schema: SCHEMA, settings: { ...settings, background: "puce" } }),
-        JSON.stringify({ schema: SCHEMA, settings: { ...settings, paperSize: "Legal" } })
+        JSON.stringify({ dpi: 99999 }),
+        JSON.stringify({ ...settings, background: "puce" }),
+        JSON.stringify({ ...settings, paperSize: "Legal" })
     ]) {
-        assert.equal(rememberedAnswers(refused), null, refused);
+        assert.equal(rememberedAnswers(refused), undefined, refused);
     }
 });
 
-test("a record from a later version is left where it is", () => {
-    // This version cannot know what it means. Reading it as though it were
-    // this schema would open the form on somebody's guess; deleting it would
-    // cost them their settings the next time they ran the newer one.
-    const later = JSON.stringify({ schema: SCHEMA + 1, settings: { anything: true } });
-
-    assert.equal(rememberedAnswers(later), null);
-});
-
-test("the domain and the key are what is already on people's disks", () => {
-    // Written out rather than referred to. These two strings are where every
-    // existing record lives: change either and nobody's settings are lost
-    // loudly, they are simply never found again.
+test("the version is in the name of the key, so an older run cannot reach it", () => {
+    // A record this version cannot read is one it must not overwrite either,
+    // and a number inside the record cannot stop that: by the time it is read
+    // the run is already pointed at the key it is about to write. People keep
+    // more than one copy of this action pasted about, at more than one
+    // version, so this is the ordinary case rather than a remote one.
+    assert.match(KEY, /\.v1$/u);
     assert.equal(DOMAIN, "com.resoltico.ImageFilesToPDF");
-    assert.equal(KEY, "lastSettings");
-    assert.equal(SCHEMA, 1);
+    assert.equal(KEY, "lastSettings.v1");
 });

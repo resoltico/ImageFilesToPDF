@@ -8,6 +8,11 @@ const { collectDialogSettings } = require("./dialogs.js");
 const { defaultAnswers } = require("../core/form-rows.js");
 const { normalizeSettings } = require("../core/settings.js");
 const { encode, rememberedAnswers } = require("../core/preferences.js");
+const { createMemory } = require("./preferences.js");
+
+function defaultMemory() {
+    return createMemory(globalThis.ObjC, globalThis.$);
+}
 
 /*
  * Which front end asks for the settings.
@@ -111,17 +116,24 @@ function collectSettings(
 /*
  * A configuration file is the whole of what a headless run is told, and it
  * has to mean the same thing every time it is used. So nothing is read from
- * the last run and nothing is written for the next: remembering belongs to
- * the runs that ask, and this branch returns before it can reach any of it.
+ * the last run and nothing is written for the next -- and nothing is even
+ * opened: the memory arrives as something to open rather than something
+ * already open, and this branch returns before it can be.
+ *
+ * Which branch is taken is what the invocation says it is, never what the
+ * settings look like. Reading it off them -- "there are none, so somebody
+ * must be here to ask" -- is a guess, and a configuration file holding
+ * `false` or `0` got it wrong: a headless run opened a dialog and waited for
+ * an answer nobody was there to give.
  */
-function settingsFor(app, invocation, count, memory) {
-    if (invocation.settings) {
+function settingsFor(app, invocation, count, openMemory = defaultMemory) {
+    if (invocation.headless) {
         return normalizeSettings(invocation.settings);
     }
 
-    const answers = memory ? rememberedAnswers(memory.recall()) : null;
+    const memory = openMemory();
     const settings = normalizeSettings(
-        collectSettings(app, { count, answers: answers ?? undefined })
+        collectSettings(app, { count, answers: memory && rememberedAnswers(memory.recall()) })
     );
 
     if (memory) {

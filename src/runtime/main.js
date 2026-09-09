@@ -8,7 +8,6 @@ const {
     describeForLog
 } = require("../core/errors.js");
 const { isHeadlessInput } = require("../core/invocation.js");
-const { createMemory } = require("./preferences.js");
 const { makeTimestamp } = require("../core/naming.js");
 const { checkTools } = require("./preflight.js");
 const { reportNoImages, reportResult } = require("./reporting.js");
@@ -52,7 +51,7 @@ function prepare(app, input, headless) {
 function prepareJob(app, invocation, tools, count) {
     return createJob(
         app,
-        settingsFor(app, invocation, count, createMemory(globalThis.ObjC, globalThis.$)),
+        settingsFor(app, invocation, count),
         invocation.timestamp || makeTimestamp(new Date()),
         tools
     );

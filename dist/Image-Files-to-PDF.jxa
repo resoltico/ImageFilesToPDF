@@ -844,32 +844,17 @@ function answersFromSettings(settings) {
 
 
 const DOMAIN = "com.resoltico.ImageFilesToPDF";
-const KEY = "lastSettings";
-const SCHEMA = 1;
+const KEY = "lastSettings.v1";
 
 function encode(settings) {
-    return JSON.stringify({ schema: SCHEMA, settings });
-}
-
-function held(text) {
-    try {
-        return JSON.parse(String(text));
-    } catch {
-        return null;
-    }
+    return JSON.stringify(settings);
 }
 
 function rememberedAnswers(text) {
-    const record = held(text);
-
-    if (!record || record.schema !== SCHEMA) {
-        return null;
-    }
-
     try {
-        return answersFromSettings(normalizeSettings(record.settings ?? {}));
+        return answersFromSettings(normalizeSettings(JSON.parse(String(text))));
     } catch {
-        return null;
+        return undefined;
     }
 }
 
@@ -1292,27 +1277,21 @@ function findTool(app, executableName) {
 /* ===== src/runtime/preferences.js ===== */
 
 
-function createMemory(objc, ns) {
-    if (!objc || !ns) {
-        return null;
+function present(value) {
+    if (!value) {
+        return false;
     }
 
-    try {
-        objc.import("Foundation");
-    } catch {
-        return null;
-    }
+    return typeof value.isNil !== "function" || !value.isNil();
+}
 
-    const suite = ns.NSUserDefaults.alloc.initWithSuiteName(ns(DOMAIN));
-
-    if (!suite) {
-        return null;
-    }
-
+function memoryOn(objc, ns, suite) {
     return {
         recall() {
             try {
-                return String(objc.unwrap(suite.stringForKey(ns(KEY))) ?? "");
+                const held = suite.stringForKey(ns(KEY));
+
+                return present(held) ? String(objc.unwrap(held)) : "";
             } catch {
                 return "";
             }
@@ -1325,6 +1304,22 @@ function createMemory(objc, ns) {
             }
         }
     };
+}
+
+function createMemory(objc, ns) {
+    if (!objc || !ns) {
+        return null;
+    }
+
+    try {
+        objc.import("Foundation");
+
+        const suite = ns.NSUserDefaults.alloc.initWithSuiteName(ns(DOMAIN));
+
+        return present(suite) ? memoryOn(objc, ns, suite) : null;
+    } catch {
+        return null;
+    }
 }
 
 /* ===== src/runtime/workspace.js ===== */
@@ -2014,6 +2009,10 @@ function showCompletion(app, mode, result, pageCount) {
 
 /* ===== src/runtime/settings-form.js ===== */
 
+function defaultMemory() {
+    return createMemory(globalThis.ObjC, globalThis.$);
+}
+
 
 function formRound(bridge, present, state) {
     const outcome = present(
@@ -2083,14 +2082,14 @@ function collectSettings(
     return collectDialogSettings(app, opening.answers ?? defaultAnswers());
 }
 
-function settingsFor(app, invocation, count, memory) {
-    if (invocation.settings) {
+function settingsFor(app, invocation, count, openMemory = defaultMemory) {
+    if (invocation.headless) {
         return normalizeSettings(invocation.settings);
     }
 
-    const answers = memory ? rememberedAnswers(memory.recall()) : null;
+    const memory = openMemory();
     const settings = normalizeSettings(
-        collectSettings(app, { count, answers: answers ?? undefined })
+        collectSettings(app, { count, answers: memory && rememberedAnswers(memory.recall()) })
     );
 
     if (memory) {
@@ -2145,7 +2144,7 @@ function collectInvocation(app, input, headless) {
     const items = normalizeInvocationInput(input);
 
     if (!headless) {
-        return { settings: null, timestamp: "", inputItems: items };
+        return { headless: false, settings: null, timestamp: "", inputItems: items };
     }
 
     if (items.length < HEADLESS_MINIMUM_ARGUMENTS) {
@@ -2157,6 +2156,7 @@ function collectInvocation(app, input, headless) {
     const configuration = JSON.parse(readTextFile(app, String(items[1])));
 
     return {
+        headless: true,
         settings: configuration,
         timestamp: configuration.timestamp
             ? String(configuration.timestamp)
@@ -3312,7 +3312,7 @@ function prepare(app, input, headless) {
 function prepareJob(app, invocation, tools, count) {
     return createJob(
         app,
-        settingsFor(app, invocation, count, createMemory(globalThis.ObjC, globalThis.$)),
+        settingsFor(app, invocation, count),
         invocation.timestamp || makeTimestamp(new Date()),
         tools
     );

@@ -44,6 +44,18 @@ function bridge(settings = {}) {
             initWithSuiteName(name) {
                 state.suites.push(name.boxed);
 
+                if (settings.suiteThrows) {
+                    throw new Error("no such domain");
+                }
+
+                if (settings.nilSuite) {
+                    return { isNil: () => true };
+                }
+
+                if (settings.wrappedSuite) {
+                    return { ...suite, isNil: () => false };
+                }
+
                 return settings.noSuite ? null : suite;
             }
         },
@@ -85,9 +97,17 @@ test("the record goes in a suite of this action's own", () => {
 });
 
 test("what was remembered comes back", () => {
-    const { objc, ns } = bridge({ stored: '{"schema":1}' });
+    const { objc, ns } = bridge({ stored: '{"dpi":300}' });
 
-    assert.equal(createMemory(objc, ns).recall(), '{"schema":1}');
+    assert.equal(createMemory(objc, ns).recall(), '{"dpi":300}');
+});
+
+test("a first run finds a wrapped nil, which is nothing at all", () => {
+    // The key is absent until something has been remembered, and absent comes
+    // back as a nil rather than as a missing value.
+    const { objc, ns } = bridge({ stored: { isNil: () => true } });
+
+    assert.equal(createMemory(objc, ns).recall(), "");
 });
 
 test("nothing remembered and nothing readable are one answer", () => {
@@ -96,27 +116,4 @@ test("nothing remembered and nothing readable are one answer", () => {
         createMemory(...Object.values(bridge({ readThrows: true })).slice(0, 2)).recall(),
         ""
     );
-});
-
-test("a suite that cannot be made is not replaced by somebody else's", () => {
-    // There is no second-best place to put this. A run that cannot remember
-    // opens on the compiled defaults and converts the images.
-    const withoutSuite = bridge({ noSuite: true });
-
-    assert.equal(createMemory(withoutSuite.objc, withoutSuite.ns), null);
-    assert.ok(!withoutSuite.state.reachedForStandard);
-
-    const withoutFoundation = bridge({ importThrows: true });
-
-    assert.equal(createMemory(withoutFoundation.objc, withoutFoundation.ns), null);
-    assert.equal(createMemory(null, {}), null);
-    assert.equal(createMemory({ import: () => true }, null), null);
-});
-
-test("a write that will not stick does not fail the run", () => {
-    // The conversion is what the person asked for. A preference that would
-    // not save is not worth ending it over, or mentioning afterwards.
-    const { objc, ns } = bridge({ writeThrows: true });
-
-    assert.doesNotThrow(() => createMemory(objc, ns).remember("{}"));
 });

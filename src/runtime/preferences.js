@@ -22,28 +22,32 @@ const { DOMAIN, KEY } = require("../core/preferences.js");
  * and what the check has to cover.
  */
 
-function createMemory(objc, ns) {
-    if (!objc || !ns) {
-        return null;
+/*
+ * Whether the bridge handed back an object or nothing.
+ *
+ * A wrapped Objective-C nil is a JavaScript object, and a truthy one: asking
+ * `if (suite)` about it is answered yes, and the first message sent to it
+ * fails. It is asked whether it is nil instead -- defensively, because a
+ * plain value has no such question to answer.
+ */
+function present(value) {
+    if (!value) {
+        return false;
     }
 
-    try {
-        objc.import("Foundation");
-    } catch {
-        return null;
-    }
+    return typeof value.isNil !== "function" || !value.isNil();
+}
 
-    const suite = ns.NSUserDefaults.alloc.initWithSuiteName(ns(DOMAIN));
-
-    if (!suite) {
-        return null;
-    }
-
+function memoryOn(objc, ns, suite) {
     return {
-        // Nothing there and nothing readable are the same answer.
+        // Nothing there and nothing readable are the same answer -- and on a
+        // first run there is nothing there, which comes back as a wrapped nil
+        // rather than as a missing value.
         recall() {
             try {
-                return String(objc.unwrap(suite.stringForKey(ns(KEY))) ?? "");
+                const held = suite.stringForKey(ns(KEY));
+
+                return present(held) ? String(objc.unwrap(held)) : "";
             } catch {
                 return "";
             }
@@ -61,6 +65,27 @@ function createMemory(objc, ns) {
             }
         }
     };
+}
+
+/*
+ * Everything the bridge is asked to do is inside the attempt, not only the
+ * import: a suite that cannot be made is documented to come back as nothing,
+ * and one that raises instead must not take the conversion down with it.
+ */
+function createMemory(objc, ns) {
+    if (!objc || !ns) {
+        return null;
+    }
+
+    try {
+        objc.import("Foundation");
+
+        const suite = ns.NSUserDefaults.alloc.initWithSuiteName(ns(DOMAIN));
+
+        return present(suite) ? memoryOn(objc, ns, suite) : null;
+    } catch {
+        return null;
+    }
 }
 
 module.exports = { createMemory };

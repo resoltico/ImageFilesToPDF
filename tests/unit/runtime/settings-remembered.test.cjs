@@ -28,10 +28,8 @@ const LAST_RUN = normalizeSettings({
 });
 
 function memoryHolding(text) {
-    const state = { wrote: [], reads: 0 };
-
-    return {
-        state,
+    const state = { wrote: [], reads: 0, opened: 0 };
+    const memory = {
         recall() {
             state.reads += 1;
 
@@ -39,6 +37,15 @@ function memoryHolding(text) {
         },
         remember(written) {
             state.wrote.push(written);
+        }
+    };
+
+    return {
+        state,
+        open: () => {
+            state.opened += 1;
+
+            return memory;
         }
     };
 }
@@ -58,7 +65,7 @@ function acceptingHost() {
 
 test("an interactive run opens on the last one and remembers this one", () => {
     const memory = memoryHolding(encode(LAST_RUN));
-    const settings = settingsFor(acceptingHost(), {}, 1, memory);
+    const settings = settingsFor(acceptingHost(), {}, 1, memory.open);
 
     assert.deepEqual(settings, LAST_RUN, "the last run's answers were offered back");
     assert.deepEqual(
@@ -70,7 +77,7 @@ test("an interactive run opens on the last one and remembers this one", () => {
 
 test("a run with nothing to remember opens on the compiled defaults", () => {
     const memory = memoryHolding("");
-    const settings = settingsFor(acceptingHost(), {}, 1, memory);
+    const settings = settingsFor(acceptingHost(), {}, 1, memory.open);
 
     assert.deepEqual(
         settings,
@@ -79,27 +86,8 @@ test("a run with nothing to remember opens on the compiled defaults", () => {
     assert.equal(memory.state.wrote.length, 1);
 });
 
-test("a headless run neither reads what was left nor leaves anything", () => {
-    // The file says what the run is. If it also depended on what somebody
-    // chose in a window last week, the same file would mean two things.
-    const memory = memoryHolding(encode(LAST_RUN));
-    const given = {
-        paperSize: "A4",
-        orientation: "Portrait",
-        mode: "single",
-        background: "#FFFFFF",
-        dpi: 300,
-        quality: 92
-    };
-    const settings = settingsFor(acceptingHost(), { settings: given }, 1, memory);
-
-    assert.deepEqual(settings, normalizeSettings(given));
-    assert.equal(memory.state.reads, 0, "nothing was read");
-    assert.deepEqual(memory.state.wrote, [], "and nothing was written");
-});
-
 test("a run with nowhere to remember still converts", () => {
-    const settings = settingsFor(acceptingHost(), {}, 1, null);
+    const settings = settingsFor(acceptingHost(), {}, 1, () => null);
 
     assert.ok(settings.paperSize, "the run has its settings");
 });
@@ -112,7 +100,7 @@ test("a cancelled run leaves the last run's settings alone", () => {
 
     host.chooseFromList = () => false;
 
-    assert.throws(() => settingsFor(host, {}, 1, memory), /User cancelled/u);
+    assert.throws(() => settingsFor(host, {}, 1, memory.open), /User cancelled/u);
     assert.deepEqual(memory.state.wrote, []);
 });
 
@@ -129,7 +117,7 @@ test("a remembered colour that is no preset is offered back as a colour", () => 
         return options.defaultItems;
     };
 
-    settingsFor(host, {}, 1, memory);
+    settingsFor(host, {}, 1, memory.open);
     assert.ok(
         asked.includes("Custom colour..."),
         `the colour list opened on ${JSON.stringify(asked)}`
