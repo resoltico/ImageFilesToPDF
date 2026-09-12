@@ -1,28 +1,29 @@
 "use strict";
 
-const { isSeparateMode } = require("../core/settings.js");
+const { isUserCancelled } = require("../core/errors.js");
 
 /*
  * Saying what the run is doing while it does it: the counting and the wording,
- * with no knowledge of where either is displayed. What displays them is
- * surfaces.js, and there is more than one.
+ * with no knowledge of where either is displayed. That is surfaces.js.
  *
  * Two numbers are reported side by side and they are not the same number.
  * `done` is work that has finished, which is what Apple says
- * completedUnitCount holds; the label counts images, because "2 of 1" in front
- * of somebody waiting is nonsense whatever the counter underneath it means. A
- * combined run of one photograph has two units in it -- the image, and the PDF
- * it becomes -- and one image.
+ * completedUnitCount holds; the label counts images, because "2 of 1" in
+ * front of somebody waiting is nonsense whatever the counter underneath it
+ * means.
  *
- * Who moves the count is one rule, and it is the rule the old code did not
- * have: the loop that owns an image opens and closes its unit, and nothing
- * else counts. Publication used to be the only thing that advanced it, so a
- * separate run whose second image failed ended at 2 of 3, and one where all
- * three failed ended at 0 of 3 with the label reading "3 of 3".
+ * Who moves the count is one rule: the loop that owns an image opens and
+ * closes its unit, and nothing else counts. Publication used to be the only
+ * thing that advanced it, so a separate run whose second image failed ended
+ * at 2 of 3, and one where all three failed ended at 0 of 3.
  */
 
 function nothing() {
     return undefined;
+}
+
+function never() {
+    return false;
 }
 
 /*
@@ -30,6 +31,7 @@ function nothing() {
  * known, a host with nothing at all to report to.
  */
 const SILENT = Object.freeze({
+    stopped: never,
     expect: nothing,
     beginning: nothing,
     about: nothing,
@@ -40,28 +42,28 @@ const SILENT = Object.freeze({
 });
 
 /*
- * What this run has to finish. Separate mode publishes one PDF per image, so
- * an image is a unit of work; combined mode prepares every image and then
- * publishes one PDF, which is a unit of its own -- and counting only the
- * images made a combined run report more finished work than it had.
- */
-function unitsOf(settings, images) {
-    return isSeparateMode(settings) ? images : images + 1;
-}
-
-/*
  * Every surface gets every report, and one that refuses does not stop the
- * others. They are not alternatives: the host's own Progress object is
- * presented by Script Editor and by an applet, and the panel is what a
- * Shortcut can show, and a run may be either.
+ * others: they are presented by different hosts, not by one host twice.
+ *
+ * A surface can report two things by throwing and only one is about the
+ * surface. "I could not show this" is not news. "The person asked you to
+ * stop" is not about the display at all -- that is merely where it arrived --
+ * and it used to be discarded along with it.
  */
-function broadcast(sinks) {
+function broadcast(sinks, state) {
     return (use) => {
         for (const sink of sinks) {
             try {
                 use(sink);
-            } catch {
-                // A report about the work must not become part of the work.
+            } catch (error) {
+                /*
+                 * Recorded rather than thrown on: letting it out would unwind
+                 * the run from wherever the report was made, and one of those
+                 * places is the middle of a publication, which owns a
+                 * finished PDF and a name it has claimed. The loops ask
+                 * between images, where stopping is safe.
+                 */
+                state.stopped ||= isUserCancelled(error);
             }
         }
     };
@@ -82,11 +84,8 @@ function reporting(state, say) {
             headline("Preparing");
         },
 
-        /*
-         * The detail line, replaced by something that is not a file. The last
-         * stages of a combined run are about the PDF, and they used to be
-         * reported beside whichever image happened to be prepared last.
-         */
+        // The detail line, replaced by something that is not a file: the
+        // last stages of a combined run are about the PDF.
         about(summary) {
             state.detail = summary;
             say();
@@ -103,6 +102,11 @@ function reporting(state, say) {
 
 function lifecycle(state, each) {
     return {
+        // Asked by the loops, between images; nothing else may act on it.
+        stopped() {
+            return state.stopped;
+        },
+
         /*
          * The second half of this object's life. It is alive before the images
          * have been counted, because finding them is itself worth saying, and
@@ -133,8 +137,9 @@ function createProgress(sinks) {
         return SILENT;
     }
 
-    const state = { images: 0, done: 0, description: "", detail: "", closed: false };
-    const each = broadcast(sinks);
+    const state =
+        { images: 0, done: 0, description: "", detail: "", stopped: false, closed: false };
+    const each = broadcast(sinks, state);
     const say = () => each(
         (sink) => sink.report(state.done, state.description, state.detail)
     );
@@ -142,4 +147,4 @@ function createProgress(sinks) {
     return { ...reporting(state, say), ...lifecycle(state, each) };
 }
 
-module.exports = { createProgress, unitsOf, SILENT };
+module.exports = { createProgress, SILENT };

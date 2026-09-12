@@ -53,17 +53,49 @@ function isHeadlessInput(input) {
 
 /*
  * Finder hands over file URLs rather than POSIX paths.
+ *
+ * Parsed rather than stripped of a prefix. Taking "file://" off the front and
+ * keeping the rest treats the authority as though it were part of the path:
+ * "file://remotehost/tmp/a.png" became "remotehost/tmp/a.png", which is a
+ * relative path, and the filesystem answers a relative path against whatever
+ * the process's working directory happens to be. Matching the longer prefix
+ * "file://localhost" first made it worse rather than better --
+ * "file://localhostevil/tmp/a.png" became "evil/tmp/a.png".
+ *
+ * A file URL denotes a local absolute path or it denotes nothing this action
+ * can open. "" is the existing answer for an item that is not a path, and
+ * selection.js turns it into a stated rejection naming the URL, which is what
+ * somebody who selected it needs to read.
  */
-function decodeFileUrl(value) {
-    const stripped = String(value)
-        .replace(/^file:\/\/localhost/iu, "")
-        .replace(/^file:\/\//iu, "");
+const FILE_URL = /^file:\/\/(?<authority>[^/]*)(?<path>\/.*)$/iu;
+const LOCAL_HOST = "localhost";
 
+function isLocalAuthority(authority) {
+    return authority === "" || authority.toLowerCase() === LOCAL_HOST;
+}
+
+/*
+ * An escape that will not decode is left as it was found, deliberately. A
+ * host that hands over "file:///Users/x/100%.png" unencoded raises here, and
+ * the undecoded string is the correct path: refusing it would turn a file
+ * that converts today into a rejection. The authority was the defect.
+ */
+function decodePath(path) {
     try {
-        return decodeURIComponent(stripped);
+        return decodeURIComponent(path);
     } catch {
-        return stripped;
+        return path;
     }
+}
+
+function decodeFileUrl(value) {
+    const match = FILE_URL.exec(String(value));
+
+    if (!match || !isLocalAuthority(match.groups.authority)) {
+        return "";
+    }
+
+    return decodePath(match.groups.path);
 }
 
 module.exports = { normalizeInvocationInput, isHeadlessInput, decodeFileUrl };

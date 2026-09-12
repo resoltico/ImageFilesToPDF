@@ -62,6 +62,27 @@ function versionLine() {
 }
 
 /*
+ * A run that was asked to stop says so, and says what it did not get to.
+ *
+ * Only a separate run can reach this: it publishes as it goes, so stopping
+ * leaves real PDFs on disk and saying nothing about them is the one thing
+ * this dialog exists to prevent. A combined run that stops has produced
+ * nothing, and ends in silence like every other cancellation.
+ *
+ * The images that were never started are counted rather than listed. The
+ * person stopped them; reading four hundred filenames back is not news.
+ */
+function stoppedLine(result, pageCount) {
+    if (!result.stopped) {
+        return "";
+    }
+
+    const started = result.outputs.length + result.failures.length;
+
+    return `Stopped. ${plural(pageCount - started, "image")} not started.`;
+}
+
+/*
  * Every completion says the same three things in the same order: what was
  * produced, where it went, and how long it took. Producing files without
  * saying where they are is the one thing this dialog exists to prevent.
@@ -71,12 +92,14 @@ function completionMessage(mode, result, pageCount) {
     const notConverted = rejected.length > 0
         ? `\n${describeRejections(rejected)}`
         : "";
+    const stopped = stoppedLine(result, pageCount);
 
     if (result.failures.length > 0) {
         return [
             `Finished with errors.\n`,
             `Created: ${plural(result.outputs.length, "PDF")}`,
             `Failed: ${result.failures.length + rejected.length}`,
+            stopped,
             `Elapsed: ${result.elapsed}\n`,
             // Where the PDFs that were created actually went.
             result.outputs.length > 0
@@ -102,6 +125,7 @@ function completionMessage(mode, result, pageCount) {
         `Created ${plural(result.outputs.length, "PDF")}.\n`,
         describeDestinations(result.outputs),
         notConverted,
+        stopped && `\n${stopped}`,
         `\nElapsed: ${result.elapsed}`,
         versionLine()
     ].filter(Boolean).join("\n");

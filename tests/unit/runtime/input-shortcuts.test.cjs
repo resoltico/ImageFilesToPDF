@@ -101,3 +101,4 @@ test("unsupported files in the selection are still filtered out", () => {
 
     assert.deepEqual(records.map((record) => record.path), ["/a/1.jpg", "/a/2.png"]);
 });
+

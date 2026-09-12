@@ -1,7 +1,7 @@
 "use strict";
 
 const { zeroPad } = require("../core/numbers.js");
-const { errorMessage } = require("../core/errors.js");
+const { errorMessage, UserCancelled } = require("../core/errors.js");
 const { assertSinglePage } = require("./source-image.js");
 const {
     resizeToPage,
@@ -75,6 +75,17 @@ function withImageName(imageFile, produce) {
  */
 function preparePages(job, imageFiles) {
     return imageFiles.map((imageFile, index) => {
+        /*
+         * Asked between images, which is the only place stopping is safe.
+         * Nothing has been published yet and nothing will be -- a combined run
+         * that stops before its PDF exists produces nothing -- so this ends
+         * the run the way every other cancellation in this action does, in
+         * silence.
+         */
+        if (job.progress.stopped()) {
+            throw new UserCancelled();
+        }
+
         job.progress.beginning(index + 1, imageFile.originalName);
 
         const page = withImageName(
@@ -88,4 +99,4 @@ function preparePages(job, imageFiles) {
     });
 }
 
-module.exports = { preparePage, preparePages, withImageName };
+module.exports = { preparePage, preparePages };

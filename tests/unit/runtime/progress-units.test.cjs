@@ -18,7 +18,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { createProgress, unitsOf } = require("../../../src/runtime/progress.js");
+const { createProgress } = require("../../../src/runtime/progress.js");
+const { unitsOf } = require("../../../src/runtime/job.js");
 const { createCombinedPdf } = require("../../../src/runtime/pdf.js");
 const {
     createSeparatePdfs

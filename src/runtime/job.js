@@ -2,11 +2,11 @@
 
 const { calculatePageGeometry } = require("../core/geometry.js");
 const { isSeparateMode } = require("../core/settings.js");
-const { makeTimestamp } = require("../core/naming.js");
+const { makeTimestamp } = require("../core/timestamps.js");
 const { createWorkspace, removeWorkspace } = require("./workspace.js");
 const { createRenamer } = require("./exclusive-rename.js");
 const { settingsFor } = require("./settings-form.js");
-const { unitsOf, SILENT } = require("./progress.js");
+const { SILENT } = require("./progress.js");
 const { createCombinedPdf } = require("./pdf.js");
 const { createSeparatePdfs } = require("./pdf-separate.js");
 
@@ -14,6 +14,16 @@ const { createSeparatePdfs } = require("./pdf-separate.js");
  * Assembling a run and carrying it out, which is a separate job from deciding
  * what to run and reporting it: main.js does that.
  */
+
+/*
+ * What this run has to finish. Separate mode publishes one PDF per image, so
+ * an image is a unit of work; combined mode prepares every image and then
+ * publishes one PDF, which is a unit of its own -- and counting only the
+ * images made a combined run report more finished work than it had.
+ */
+function unitsOf(settings, images) {
+    return isSeparateMode(settings) ? images : images + 1;
+}
 
 /*
  * The invariants of a run, gathered once and passed as a unit.
@@ -80,4 +90,4 @@ function runJob(job, imageFiles) {
     }
 }
 
-module.exports = { createJob, prepareJob, reportingJob, runJob };
+module.exports = { unitsOf, createJob, prepareJob, reportingJob, runJob };

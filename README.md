@@ -165,6 +165,18 @@ their own way. The two are not alternatives: they are different hosts, and a
 run may be either. If neither can be shown, the conversion is exactly the
 same — a report about the work never becomes part of the work.
 
+## When an image is damaged
+
+A photograph that is cut short — an interrupted download, a card that was
+pulled out mid-write — is refused rather than converted into whatever could be
+read from it. It is named in the report, and in Separate PDFs mode the rest of
+the selection still converts.
+
+This is a deliberate trade. Such a file used to produce a page with part of a
+picture on it and a PDF that said nothing was wrong, which is worse than being
+told: a conversion you can see failed is a conversion you can do something
+about.
+
 ## When the tools are missing
 
 Nothing is asked of the user until the tools have been checked. A machine that

@@ -21,6 +21,7 @@ globalThis.Application = () => ({ selection: () => [] });
 
 function recordingReport(done) {
     return {
+        stopped: () => false,
         expect: ({ units, images }) => done.push(`expect ${units}/${images}`),
         beginning: (index, name) => done.push(`beginning ${index} ${name}`),
         about: (summary) => done.push(`about ${summary}`),

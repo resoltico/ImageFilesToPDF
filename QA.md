@@ -882,6 +882,134 @@ Establishment is measured in either case: a panel that could not be built
 returns null and is left out, and a run with no surface at all reaches
 `SILENT` as a fact about the host rather than an assumption about it.
 
+## A stop is a request, not a failure
+
+A progress surface can report two different things by throwing, and only one
+of them is about the surface. "I could not show this" is not news. "The person
+asked you to stop" is not about the display at all -- the display is merely
+where it arrived -- and it used to be discarded along with it, by the one
+`catch {}` in `src/runtime/progress.js`.
+
+**What is not established:** that any host actually raises one. Apple
+documents a user-cancelled error for a script progress dialog, and it does not
+follow that Script Editor, a script applet and the system script menu each
+raise a catchable `-128` at the next `completedUnitCount` assignment rather
+than terminating the script outright. There is no Stop button to press from a
+shell, so this is unmeasured here and the branch is inert if nothing raises
+one. It cannot arise inside a Shortcut at all: no progress object is
+presented, and the panel is deliberately inert.
+
+What is true regardless of the host, and is what carries the change: a
+cancellation must never be recorded as a per-image failure, because it is not
+a property of the photograph; and `isUserCancelled` must agree with
+`commandOf`, twelve lines below it, which has always read the cause chain.
+
+**Recorded, not thrown on.** Letting it out of the broadcast would unwind the
+run from wherever the report happened to be made, and one of those places is
+the middle of a publication -- which owns a finished PDF and a name it has
+claimed, and whose header spends twenty lines on what happens when either is
+let go at the wrong moment. The loops ask between images instead.
+
+The two modes then answer differently, and the asymmetry is the honest one. A
+separate run has published real PDFs by the time it stops, so it keeps them
+and says what it did not reach; saying nothing would break the rule
+`completion.js` states about itself. A combined run that stops before its PDF
+exists has produced nothing, and ends in silence like every other
+cancellation. Once the pages are prepared a combined run is one indivisible
+operation and finishes: there is no safe boundary inside it, and discarding a
+nearly-finished PDF to honour a button is not a service.
+
+## What a tool's exit status is not evidence of
+
+`page-stages.js` has always said that "vips can exit zero having produced
+nothing", and checked its own outputs accordingly. The same scepticism stopped
+one level short: nothing asked whether the *source* had been read.
+
+Measured on vips 8.18.6, a JPEG cut off inside its image data:
+
+| | without a policy | with `--fail-on=error` |
+| --- | --- | --- |
+| truncated JPEG | exit 0, 362 KB salvaged | exit 1, refused |
+| truncated PNG | exit 0, salvaged | refused |
+| valid JPEG, PNG, TIFF, WebP | converts | converts |
+
+Every check after the thumbnail passed on the salvaged file -- the output
+exists, the page is written, pdfcpu validates strictly -- so half a photograph
+was published as a finished conversion, silently. `error` is the level that
+covers truncation and serious decoding errors; `truncated` catches only a
+short file, and `warning` would also refuse files that merely have a quirk,
+which is a different decision about what counts as a photograph.
+
+The preflight probe carries the flag too. A flag the run depends on that the
+probe does not exercise is how a vips too old to accept it fails in the middle
+of a conversion instead of before one; measured, the probe still reaches
+`VipsForeignLoad`, so `isVipsUsable` is unchanged.
+
+This is the one finding in the round with an end-to-end proof available, and
+`tests/integration/damaged.sh` is it: the unit suite cannot reach vips.
+
+## Values from outside are read where they arrive
+
+Two places took a string at face value and turned it into a path.
+
+**A headless timestamp** went straight into `output_${timestamp}.pdf` with no
+sanitizing, while the stem beside it had always been sanitized. `"2026/09/12"`
+is a perfectly good string and is not a timestamp; interpolated, it is a PDF
+in a folder nobody asked for, and it also defeats the byte budget that
+measures the suffix precisely because a caller supplies it. Read at the
+boundary now, in `src/core/timestamps.js`, where the rule lives beside the
+thing that produces it -- so `readTimestamp(makeTimestamp(anyDate))` is a
+property that can be asserted rather than a coincidence. Refused rather than
+repaired: sanitizing an unusable value into a usable one would name the output
+something the caller did not ask for and say nothing about it.
+
+The name builders sanitize what they interpolate as well, the way
+`stagedPdfPath` already sanitizes a token it generated itself. Not
+belt-and-braces: `outputNameForCombined` returning a string with a separator
+in it is a bug in that function's contract, whoever called it.
+
+**A file URL** was a prefix strip rather than a parse, so the authority was
+treated as part of the path. `file://remotehost/tmp/a.png` became the relative path
+"remotehost/tmp/a.png", which the filesystem answers against whatever the
+process's working directory happens to be -- and matching the longer prefix
+first made it worse rather than better, turning
+`file://localhostevil/tmp/a.png` into "evil/tmp/a.png". A file URL denotes a local absolute path or it
+denotes nothing this action can open, and `""` is the existing answer for an
+item that is not a path -- `selection.js` turns it into a stated rejection
+naming the URL.
+
+The leniency in percent-decoding stays, deliberately. A host that hands over
+`file:///Users/x/100%.png` unencoded makes `decodeURIComponent` throw, and the
+undecoded string is the correct path; refusing it would turn a file that
+converts today into a rejection. The authority was the defect.
+
+## The name appeared twice
+
+Every separate-mode failure read:
+
+```
+photo.png: photo.png: Command failed while preparing the image.
+```
+
+`createSeparatePdf` wrapped its work in `withImageName`, which prefixes the
+message with the image's name, and `failureRecord` carries the name beside it
+-- so the dialog and the `message` field of the headless receipt both said it
+twice. `withImageName`'s own comment says this cannot happen: "a separate run
+does the same at its own boundary, so the name appears exactly once either
+way". The boundary was there; the wrapper was left on top of it. A combined
+run has nowhere else to say which image it was and still wraps.
+
+## A temporary belongs to whoever asked for it
+
+`preparePage` removes its two intermediates and returns the third, because the
+caller needs it. A combined run holds every page until its single PDF is
+built and must. A separate run needs one at a time, and was keeping all of
+them until the workspace went at the end of the batch, so scratch storage grew
+with every image converted. Each attempt takes its page with it now.
+
+Deliberately not the rule the staged PDF follows: a validated PDF that could
+not be published is kept for recovery, and a page is not.
+
 ## The counter has one owner
 
 The loop that owns an image opens and closes its unit, and nothing else
@@ -1417,6 +1545,14 @@ to fail when the fix is reverted:
 | A partial PDF under the document's own name, across volumes | claim-not-write protocol + cross-volume integration |
 | Two runs both publishing to one name | exclusive claim tests |
 | A completed count passing the total it was given | progress unit tests |
+| A cancellation discarded by the surface it arrived through | stop tests |
+| A cancellation recorded as the photograph's failure | separate-mode stop tests |
+| A cancellation hidden by the context wrapped over it | cause-chain tests |
+| A caller's timestamp naming a folder instead of a file | timestamp tests + integration |
+| A file URL resolving to a path relative to the working directory | file-URL tests |
+| Half a damaged photograph published as a finished conversion | damaged-source integration |
+| A failure naming the file it happened to twice | separate-mode failure tests + integration |
+| Scratch storage growing with every image a separate run converts | page-lifetime tests |
 | An image that failed never being counted as attempted | separate-mode counting tests |
 | A conversion that says nothing because nobody presents the surface it writes to | two surfaces, and a hand test for the one that matters |
 | A progress window left on screen in front of the completion dialog | run lifecycle tests |

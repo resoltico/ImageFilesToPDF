@@ -13,6 +13,7 @@ export const moduleOrder = [
     "src/core/paths.js",
     "src/core/ordering.js",
     "src/core/invocation.js",
+    "src/core/timestamps.js",
     "src/core/settings.js",
     "src/core/geometry.js",
     "src/core/choices.js",

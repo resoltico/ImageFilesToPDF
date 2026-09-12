@@ -1,5 +1,7 @@
 "use strict";
 
+const { FAIL_ON_DAMAGE } = require("./commands.js");
+
 /*
  * Capability probes for the external tools.
  *
@@ -29,7 +31,8 @@ function buildVipsProbeArgv(vipsPath) {
         PROBE_WIDTH,
         "--size=down",
         "--export-profile",
-        "srgb"
+        "srgb",
+        FAIL_ON_DAMAGE
     ];
 }
 

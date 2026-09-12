@@ -43,7 +43,7 @@ const CAPABILITY_PROBES = {
     vips: {
         build: buildVipsProbeArgv,
         usable: isVipsUsable,
-        flags: "--size=down and --export-profile"
+        flags: "--size=down, --export-profile and --fail-on"
     },
     pdfcpu: {
         build: buildPdfcpuProbeArgv,

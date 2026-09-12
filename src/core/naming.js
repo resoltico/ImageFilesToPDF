@@ -1,32 +1,27 @@
 "use strict";
 
-const { zeroPad, utf8Length, truncateToBytes } = require("./numbers.js");
+const { utf8Length, truncateToBytes } = require("./numbers.js");
 const { fileStem, sanitizeFilename } = require("./paths.js");
 
 /*
  * Output filename construction and collision avoidance.
  */
 
-const TIMESTAMP_FIELD_WIDTH = 2;
 const FIRST_SUFFIX = 2;
 const MAXIMUM_SUFFIX = 10000;
 
-function makeTimestamp(date) {
-    const pad = (value) => zeroPad(value, TIMESTAMP_FIELD_WIDTH);
-
-    return [
-        date.getFullYear(),
-        pad(date.getMonth() + 1),
-        pad(date.getDate()),
-        "_",
-        pad(date.getHours()),
-        pad(date.getMinutes()),
-        pad(date.getSeconds())
-    ].join("");
-}
-
+/*
+ * A name is one path component, whoever supplied the parts of it.
+ *
+ * The stem has always gone through sanitizing and the timestamp never did, so
+ * a headless caller's "2026/09/12" put a separator inside a filename and the
+ * PDF went somewhere else. Read where it arrives as well -- src/runtime/
+ * input.js -- which is where the caller gets told why; this is the invariant
+ * that holds whatever reaches it, the same way stagedPdfPath sanitizes a
+ * token it generated itself.
+ */
 function outputNameForCombined(timestamp) {
-    return `output_${timestamp}.pdf`;
+    return `output_${sanitizeFilename(timestamp)}.pdf`;
 }
 
 /*
@@ -58,7 +53,7 @@ function boundedStem(stem, suffix) {
 }
 
 function outputNameForSeparate(record, timestamp) {
-    const suffix = `_${timestamp}.pdf`;
+    const suffix = `_${sanitizeFilename(timestamp)}.pdf`;
     const stem = sanitizeFilename(fileStem(record.originalName));
 
     return `${boundedStem(stem, suffix)}${suffix}`;
@@ -122,7 +117,6 @@ function stagedPdfPath(workspace, token) {
 }
 
 module.exports = {
-    makeTimestamp,
     outputNameForCombined,
     outputNameForSeparate,
     nextUniquePath,

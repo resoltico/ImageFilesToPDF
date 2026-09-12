@@ -33,7 +33,23 @@ const RGB_ALPHA_BANDS = 4;
  * The placement is already capped at the image's natural size, so refusing to
  * enlarge here would only reintroduce the dependence on resolution that the
  * placement exists to remove.
+ *
+ * --fail-on=error is the one stage that reads the photograph, and it is where
+ * this action stops taking a tool's exit status as evidence of what it was
+ * asked to do. libvips is permissive by default: measured, a JPEG cut off
+ * inside its image data is salvaged into a partial picture, vips exits zero,
+ * and every check after this one passes -- the file exists, the page is
+ * written, the PDF validates strictly -- so half a photograph is published as
+ * a finished conversion. The level named is the one that covers truncation
+ * and serious decoding errors; "warning" would also refuse files that merely
+ * have a quirk, which is a different decision about what a photograph is.
+ *
+ * Checked in preflight as well. A flag the run depends on that the probe does
+ * not exercise is how a vips too old to accept it fails in the middle of a
+ * conversion instead of before one.
  */
+const FAIL_ON_DAMAGE = "--fail-on=error";
+
 function buildThumbnailArgv(vipsPath, inputPath, outputPath, placement) {
     return [
         vipsPath,
@@ -42,7 +58,8 @@ function buildThumbnailArgv(vipsPath, inputPath, outputPath, placement) {
         outputPath,
         String(placement.widthPixels),
         `--height=${placement.heightPixels}`,
-        "--export-profile=srgb"
+        "--export-profile=srgb",
+        FAIL_ON_DAMAGE
     ];
 }
 
@@ -109,6 +126,7 @@ function hasAlphaBand(bandCount) {
 }
 
 module.exports = {
+    FAIL_ON_DAMAGE,
     buildThumbnailArgv,
     buildPageCountArgv,
     buildFlattenArgv,

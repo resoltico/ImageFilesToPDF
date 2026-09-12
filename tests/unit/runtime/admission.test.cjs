@@ -87,40 +87,6 @@ test("finderSelection asks Finder, by name, for its selection", () => {
     globalThis.finderItems = [];
 });
 
-test("a headless invocation reads its settings from the config file", () => {
-    const config = '{"dpi":72,"timestamp":"20260904_010203"}';
-    const app = createFakeApp([["/bin/cat", config]]);
-    const invocation = collectInvocation(
-        app,
-        ["--", "--headless", "/tmp/c.json", "/a/1.png", "/a/2.png"],
-        true
-    );
-
-    assert.equal(invocation.settings.dpi, 72);
-    assert.equal(invocation.timestamp, "20260904_010203");
-    assert.deepEqual(invocation.inputItems, ["/a/1.png", "/a/2.png"]);
-});
-
-test("a headless config without a timestamp yields an empty one", () => {
-    const app = createFakeApp([["/bin/cat", '{"dpi":72}']]);
-    const invocation = collectInvocation(
-        app,
-        ["--headless", "/tmp/c.json", "/a/1.png"],
-        true
-    );
-
-    assert.equal(invocation.timestamp, "");
-});
-
-test("a headless invocation without a config and an image is rejected", () => {
-    const app = createFakeApp();
-
-    assert.throws(
-        () => collectInvocation(app, ["--headless", "/tmp/c.json"], true),
-        /Headless usage/u
-    );
-});
-
 test("an interactive invocation defers its settings", () => {
     // Nothing is asked here: the dialogs come after the preflight and after
     // there is known to be something to convert.

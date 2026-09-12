@@ -3,17 +3,36 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
-    makeTimestamp,
     outputNameForCombined,
     outputNameForSeparate,
     nextUniquePath,
     stagedPdfPath
 } = require("../../../src/core/naming.js");
+const { makeTimestamp } = require("../../../src/core/timestamps.js");
 
 test("makeTimestamp is fixed width and sorts chronologically", () => {
     assert.equal(makeTimestamp(new Date(2026, 8, 4, 7, 5, 9)), "20260904_070509");
     assert.equal(makeTimestamp(new Date(2026, 11, 31, 23, 59, 59)), "20261231_235959");
     assert.equal(makeTimestamp(new Date(2026, 0, 1, 0, 0, 0)), "20260101_000000");
+});
+
+test("an output name is one path component, whatever it is handed", () => {
+    // The stem has always been sanitized and the timestamp never was, so a
+    // headless caller's "2026/09/12" put a separator inside a filename and
+    // the PDF went somewhere other than the folder it was promised. Read at
+    // the boundary as well; this is the invariant that holds regardless.
+    const escaping = "/../../elsewhere/result";
+    const combined = outputNameForCombined(escaping);
+    const separate = outputNameForSeparate({ originalName: "a.png" }, escaping);
+
+    // A separator is what would move the file. Dots left inside the name are
+    // an odd filename in the right folder, which is not the same thing.
+    for (const name of [combined, separate]) {
+        assert.ok(!name.includes("/"), name);
+        assert.ok(name.endsWith(".pdf"), name);
+    }
+
+    assert.equal(combined, "output_.._.._elsewhere_result.pdf");
 });
 
 test("output names are derived from the mode", () => {

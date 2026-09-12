@@ -1,6 +1,7 @@
 "use strict";
 
 const { normalizeInvocationInput, decodeFileUrl } = require("../core/invocation.js");
+const { readTimestamp } = require("../core/timestamps.js");
 const { readTextFile } = require("./shell.js");
 
 /*
@@ -110,8 +111,13 @@ function collectInvocation(app, input, headless) {
     return {
         headless: true,
         settings: configuration,
+        // Read rather than taken. It goes straight into an output filename,
+        // and a filename is one path component: "2026/09/12" is a perfectly
+        // good string and put the PDF in a folder nobody asked for. Refused
+        // here, before an image is touched, so the caller is told which value
+        // was wrong rather than finding the output somewhere else.
         timestamp: configuration.timestamp
-            ? String(configuration.timestamp)
+            ? readTimestamp(configuration.timestamp)
             : "",
         inputItems: items.slice(HEADLESS_FIRST_IMAGE_INDEX)
     };

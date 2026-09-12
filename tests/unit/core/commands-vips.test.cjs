@@ -34,7 +34,11 @@ test("the thumbnail stage is ICC aware and never upscales", () => {
         "/tmp/stage.v",
         "1240",
         "--height=827",
-        "--export-profile=srgb"
+        "--export-profile=srgb",
+        // Damaged sources are refused rather than silently salvaged: libvips
+        // is permissive by default, and a truncated JPEG becomes half a
+        // picture that every later check passes.
+        "--fail-on=error"
     ]);
 });
 

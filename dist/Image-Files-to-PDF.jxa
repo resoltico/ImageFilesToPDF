@@ -204,6 +204,7 @@ const MAXIMUM_QUALITY = 100;
 
 
 const CANCEL_ERROR_NUMBER = -128;
+const MAXIMUM_CAUSE_DEPTH = 8;
 const MAX_COMMAND_LENGTH = 4000;
 const COMMAND_HEAD_LENGTH = 2000;
 const COMMAND_TAIL_LENGTH = 1000;
@@ -228,8 +229,18 @@ class UserCancelled extends Error {
 }
 
 function isUserCancelled(error) {
-    return error instanceof UserCancelled ||
-        Boolean(error && error.errorNumber === CANCEL_ERROR_NUMBER);
+    let current = error;
+
+    for (let depth = 0; current && depth < MAXIMUM_CAUSE_DEPTH; depth += 1) {
+        if (current instanceof UserCancelled ||
+            current.errorNumber === CANCEL_ERROR_NUMBER) {
+            return true;
+        }
+
+        current = current.cause;
+    }
+
+    return false;
 }
 
 function summarizeCommand(command) {
@@ -245,8 +256,6 @@ function summarizeCommand(command) {
         text.slice(text.length - COMMAND_TAIL_LENGTH)
     ].join("\n\n");
 }
-
-const MAXIMUM_CAUSE_DEPTH = 8;
 
 function commandOf(error) {
     let current = error;
@@ -449,16 +458,69 @@ function isHeadlessInput(input) {
     return items.length > 0 && String(items[0]) === HEADLESS_FLAG;
 }
 
-function decodeFileUrl(value) {
-    const stripped = String(value)
-        .replace(/^file:\/\/localhost/iu, "")
-        .replace(/^file:\/\//iu, "");
+const FILE_URL = /^file:\/\/(?<authority>[^/]*)(?<path>\/.*)$/iu;
+const LOCAL_HOST = "localhost";
 
+function isLocalAuthority(authority) {
+    return authority === "" || authority.toLowerCase() === LOCAL_HOST;
+}
+
+function decodePath(path) {
     try {
-        return decodeURIComponent(stripped);
+        return decodeURIComponent(path);
     } catch {
-        return stripped;
+        return path;
     }
+}
+
+function decodeFileUrl(value) {
+    const match = FILE_URL.exec(String(value));
+
+    if (!match || !isLocalAuthority(match.groups.authority)) {
+        return "";
+    }
+
+    return decodePath(match.groups.path);
+}
+
+/* ===== src/core/timestamps.js ===== */
+
+
+const TIMESTAMP_FIELD_WIDTH = 2;
+
+const TIMESTAMP_FORM = "YYYYMMDD_HHMMSS";
+const TIMESTAMP_PATTERN = /^\d{8}_\d{6}$/u;
+
+function makeTimestamp(date) {
+    const pad = (value) => zeroPad(value, TIMESTAMP_FIELD_WIDTH);
+
+    return [
+        date.getFullYear(),
+        pad(date.getMonth() + 1),
+        pad(date.getDate()),
+        "_",
+        pad(date.getHours()),
+        pad(date.getMinutes()),
+        pad(date.getSeconds())
+    ].join("");
+}
+
+function isTimestamp(value) {
+    return TIMESTAMP_PATTERN.test(String(value));
+}
+
+function readTimestamp(value) {
+    const text = String(value);
+
+    if (!isTimestamp(text)) {
+        throw new Error(
+            `The timestamp must be ${TIMESTAMP_FORM}, for example ` +
+            `${makeTimestamp(new Date())}. It names one file and cannot ` +
+            `contain a path. Received: ${text}`
+        );
+    }
+
+    return text;
 }
 
 /* ===== src/core/settings.js ===== */
@@ -861,26 +923,11 @@ function rememberedAnswers(text) {
 /* ===== src/core/naming.js ===== */
 
 
-const TIMESTAMP_FIELD_WIDTH = 2;
 const FIRST_SUFFIX = 2;
 const MAXIMUM_SUFFIX = 10000;
 
-function makeTimestamp(date) {
-    const pad = (value) => zeroPad(value, TIMESTAMP_FIELD_WIDTH);
-
-    return [
-        date.getFullYear(),
-        pad(date.getMonth() + 1),
-        pad(date.getDate()),
-        "_",
-        pad(date.getHours()),
-        pad(date.getMinutes()),
-        pad(date.getSeconds())
-    ].join("");
-}
-
 function outputNameForCombined(timestamp) {
-    return `output_${timestamp}.pdf`;
+    return `output_${sanitizeFilename(timestamp)}.pdf`;
 }
 
 const FILENAME_BUDGET_BYTES = 255;
@@ -895,7 +942,7 @@ function boundedStem(stem, suffix) {
 }
 
 function outputNameForSeparate(record, timestamp) {
-    const suffix = `_${timestamp}.pdf`;
+    const suffix = `_${sanitizeFilename(timestamp)}.pdf`;
     const stem = sanitizeFilename(fileStem(record.originalName));
 
     return `${boundedStem(stem, suffix)}${suffix}`;
@@ -941,6 +988,8 @@ function stagedPdfPath(workspace, token) {
 const GREY_ALPHA_BANDS = 2;
 const RGB_ALPHA_BANDS = 4;
 
+const FAIL_ON_DAMAGE = "--fail-on=error";
+
 function buildThumbnailArgv(vipsPath, inputPath, outputPath, placement) {
     return [
         vipsPath,
@@ -949,7 +998,8 @@ function buildThumbnailArgv(vipsPath, inputPath, outputPath, placement) {
         outputPath,
         String(placement.widthPixels),
         `--height=${placement.heightPixels}`,
-        "--export-profile=srgb"
+        "--export-profile=srgb",
+        FAIL_ON_DAMAGE
     ];
 }
 
@@ -1084,7 +1134,8 @@ function buildVipsProbeArgv(vipsPath) {
         PROBE_WIDTH,
         "--size=down",
         "--export-profile",
-        "srgb"
+        "srgb",
+        FAIL_ON_DAMAGE
     ];
 }
 
@@ -1388,7 +1439,7 @@ const CAPABILITY_PROBES = {
     vips: {
         build: buildVipsProbeArgv,
         usable: isVipsUsable,
-        flags: "--size=down and --export-profile"
+        flags: "--size=down, --export-profile and --fail-on"
     },
     pdfcpu: {
         build: buildPdfcpuProbeArgv,
@@ -2143,7 +2194,12 @@ function nothing() {
     return undefined;
 }
 
+function never() {
+    return false;
+}
+
 const SILENT = Object.freeze({
+    stopped: never,
     expect: nothing,
     beginning: nothing,
     about: nothing,
@@ -2153,16 +2209,13 @@ const SILENT = Object.freeze({
     close: nothing
 });
 
-function unitsOf(settings, images) {
-    return isSeparateMode(settings) ? images : images + 1;
-}
-
-function broadcast(sinks) {
+function broadcast(sinks, state) {
     return (use) => {
         for (const sink of sinks) {
             try {
                 use(sink);
-            } catch {
+            } catch (error) {
+                state.stopped ||= isUserCancelled(error);
             }
         }
     };
@@ -2198,6 +2251,10 @@ function reporting(state, say) {
 
 function lifecycle(state, each) {
     return {
+        stopped() {
+            return state.stopped;
+        },
+
         expect({ units, images }) {
             state.images = images;
             each((sink) => sink.start(units));
@@ -2223,8 +2280,9 @@ function createProgress(sinks) {
         return SILENT;
     }
 
-    const state = { images: 0, done: 0, description: "", detail: "", closed: false };
-    const each = broadcast(sinks);
+    const state =
+        { images: 0, done: 0, description: "", detail: "", stopped: false, closed: false };
+    const each = broadcast(sinks, state);
     const say = () => each(
         (sink) => sink.report(state.done, state.description, state.detail)
     );
@@ -2315,17 +2373,29 @@ function versionLine() {
     return `\n${APP_NAME} ${VERSION}`;
 }
 
+function stoppedLine(result, pageCount) {
+    if (!result.stopped) {
+        return "";
+    }
+
+    const started = result.outputs.length + result.failures.length;
+
+    return `Stopped. ${plural(pageCount - started, "image")} not started.`;
+}
+
 function completionMessage(mode, result, pageCount) {
     const rejected = result.rejected ?? [];
     const notConverted = rejected.length > 0
         ? `\n${describeRejections(rejected)}`
         : "";
+    const stopped = stoppedLine(result, pageCount);
 
     if (result.failures.length > 0) {
         return [
             `Finished with errors.\n`,
             `Created: ${plural(result.outputs.length, "PDF")}`,
             `Failed: ${result.failures.length + rejected.length}`,
+            stopped,
             `Elapsed: ${result.elapsed}\n`,
             result.outputs.length > 0
                 ? `In: ${describeDestinations(result.outputs)}\n`
@@ -2350,6 +2420,7 @@ function completionMessage(mode, result, pageCount) {
         `Created ${plural(result.outputs.length, "PDF")}.\n`,
         describeDestinations(result.outputs),
         notConverted,
+        stopped && `\n${stopped}`,
         `\nElapsed: ${result.elapsed}`,
         versionLine()
     ].filter(Boolean).join("\n");
@@ -2527,7 +2598,7 @@ function collectInvocation(app, input, headless) {
         headless: true,
         settings: configuration,
         timestamp: configuration.timestamp
-            ? String(configuration.timestamp)
+            ? readTimestamp(configuration.timestamp)
             : "",
         inputItems: items.slice(HEADLESS_FIRST_IMAGE_INDEX)
     };
@@ -3145,6 +3216,10 @@ function withImageName(imageFile, produce) {
 
 function preparePages(job, imageFiles) {
     return imageFiles.map((imageFile, index) => {
+        if (job.progress.stopped()) {
+            throw new UserCancelled();
+        }
+
         job.progress.beginning(index + 1, imageFile.originalName);
 
         const page = withImageName(
@@ -3598,34 +3673,46 @@ function failureRecord(imageFile, error) {
     };
 }
 
-function createSeparatePdf(job, imageFile, index) {
-    let stagedPath = "";
-    let validated = false;
+function convertOne(job, imageFile, index, stagedPath) {
+    const pagePath = preparePage(job, imageFile, index);
 
     try {
-        const { finalPath, stagedPath: staged } = resolveOutputPaths(
+        createAndValidatePdf(job, stagedPath, [pagePath]);
+    } finally {
+        removeFile(job.app, pagePath);
+    }
+}
+
+function failed(job, imageFile, error, staged) {
+    if (!staged.validated) {
+        removeFile(job.app, staged.path);
+    }
+
+    if (isUserCancelled(error)) {
+        throw error;
+    }
+
+    return { failure: failureRecord(imageFile, error) };
+}
+
+function createSeparatePdf(job, imageFile, index) {
+    const staged = { path: "", validated: false };
+
+    try {
+        const { finalPath, stagedPath } = resolveOutputPaths(
             job,
             imageFile.folder,
             outputNameForSeparate(imageFile, job.timestamp)
         );
 
-        stagedPath = staged;
-
-        withImageName(imageFile, () => {
-            createAndValidatePdf(job, stagedPath, [
-                preparePage(job, imageFile, index)
-            ]);
-            validated = true;
-            publishPdf(job, stagedPath, finalPath);
-        });
+        staged.path = stagedPath;
+        convertOne(job, imageFile, index, stagedPath);
+        staged.validated = true;
+        publishPdf(job, stagedPath, finalPath);
 
         return { output: finalPath, failure: null };
     } catch (error) {
-        if (!validated) {
-            removeFile(job.app, stagedPath);
-        }
-
-        return { failure: failureRecord(imageFile, error) };
+        return failed(job, imageFile, error, staged);
     }
 }
 
@@ -3644,16 +3731,26 @@ function tally(job, results, outcome) {
 function createSeparatePdfs(job, imageFiles) {
     const results = { outputs: [], failures: [] };
 
-    imageFiles.forEach((imageFile, index) => {
+    for (const [index, imageFile] of imageFiles.entries()) {
+        if (job.progress.stopped()) {
+            results.stopped = true;
+
+            return results;
+        }
+
         job.progress.beginning(index + 1, imageFile.originalName);
         tally(job, results, createSeparatePdf(job, imageFile, index));
-    });
+    }
 
     return results;
 }
 
 /* ===== src/runtime/job.js ===== */
 
+
+function unitsOf(settings, images) {
+    return isSeparateMode(settings) ? images : images + 1;
+}
 
 function createJob(app, settings, timestamp, tools) {
     return {

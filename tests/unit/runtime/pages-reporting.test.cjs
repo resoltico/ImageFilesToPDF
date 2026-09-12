@@ -32,6 +32,7 @@ function watcher(job) {
     const said = [];
 
     job.progress = {
+        stopped: () => false,
         beginning: (index, name) => said.push(`begin ${index} ${name}`),
         about: (summary) => said.push(`about ${summary}`),
         finished: (description) => said.push(`done ${description}`),

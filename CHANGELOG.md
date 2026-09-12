@@ -30,6 +30,29 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Fixed
 
+- A damaged image is now refused instead of being half-converted. A photograph
+  cut short — an interrupted download, a failing card — used to be salvaged
+  into whatever could be read from it, and that partial picture was laid out,
+  written into a PDF and reported as a finished conversion, with nothing said.
+  It is now reported as a failure, by name. In Separate PDFs mode the rest of
+  the selection still converts.
+- A failure now names the file once. Every per-image failure used to read
+  "photo.jpg: photo.jpg: ..." in the message and in the headless receipt.
+- A `timestamp` in a headless configuration file must now be `YYYYMMDD_HHMMSS`.
+  Anything else is refused before a single image is converted, and says what
+  is expected. A value containing a `/` used to be accepted and put the PDF in
+  a folder nobody asked for.
+- A file URL that is not local is now reported as something that could not be
+  converted, instead of being read as a path relative to wherever the action
+  happened to be running.
+- Separate PDFs mode no longer keeps every page it has made until the run is
+  over. A long run used temporary space in proportion to the number of images
+  converted; it now uses it for one image at a time.
+- If the run is stopped part way, in a host that offers a Stop, what has
+  already been saved is kept and reported instead of the run ending with
+  nothing said about the PDFs on disk. Stopping takes effect between images,
+  so the one being converted finishes rather than being abandoned half
+  published.
 - In Separate PDFs mode, an image that could not be converted now counts
   towards the progress. Only a saved PDF used to move the count, so three
   images with the second failing stopped at two of three, three failures

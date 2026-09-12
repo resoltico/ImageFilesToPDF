@@ -80,7 +80,7 @@ test("an outdated vips is reported the same way", () => {
         // distinguishes "upgrade vips" from "something is wrong".
         assert.match(
             error.message,
-            /does not accept --size=down and --export-profile\./u
+            /does not accept --size=down, --export-profile and --fail-on\./u
         );
 
         return true;
