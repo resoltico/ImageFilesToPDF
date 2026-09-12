@@ -998,42 +998,79 @@ Everything above is about a stop arriving at a progress surface. It can also
 arrive at a shell command, and what to do there is the same rule applied to
 different circumstances:
 
-> **Unwind where nothing is lost. Record where something would be.**
+> **A stop takes effect wherever nothing has been produced at the
+> destination.**
 
 | Where | What exists then | Treatment |
 | --- | --- | --- |
 | a vips or pdfcpu stage | a stage that has failed anyway | unwinds -- `runArgv` keeps it as a cause and the loop asks `isUserCancelled` |
 | verifying a stage's output | the same | unwinds |
-| claiming the output name | a built, validated PDF | recorded; the ordinary path carries it through |
-| copying beside the destination | the same | recorded |
-| cleanup, and questions put to the filesystem | an error already on its way out | swallowed |
+| claiming the output name | a finished PDF in the workspace, nothing at the destination | unwinds; the attempt is **abandoned** |
+| copying beside the destination | a staging place, cleared on the way out | unwinds |
+| cleanup, and questions put to the filesystem | an error already on its way out | swallowed -- see below |
 
-The first row already worked and is now pinned by a test. The second was
-wrong in a way worth naming: a cancellation became `prepared page image is
-not a file with anything in it`, which is a wrong diagnosis rather than a late
-stop. `asking.js` has always warned that a test which could not be run says no
-in the same words; a cancellation is the one case it can tell apart, so it
-does.
+### Publication answers three ways, not two
 
-The third and fourth are where an audit asked for the opposite, and this is
-the load-bearing judgement. Its criterion was that a cancellation before
-publication should not start the ordinary fallback. Honouring that means
-discarding a PDF that has been built, validated, and is one operation from the
-person's folder, because a button was pressed a moment too late. **A stop must
-not destroy completed work** -- which is the same rule that puts no checkpoint
-inside a publication. So the cancellation is recorded and the run stops at the
-next image, with the image in hand published correctly.
+An outcome used to be published or refused. A cancellation is neither: it is
+**abandoned**, stopped before it could become either.
 
-Recording needed the reporter, and the publication layer took `app` and a
-`rename` bridge -- `{ app, paths, rename }`, a hand-assembled copy of three of
-the job's fields, made when the job had nothing else it needed. It does now.
-Passing the job is one parameter fewer at `deliver` and one field fewer in the
-attempt object.
+Two rounds got this wrong in the other direction, and the reasoning is worth
+keeping because it is easy to repeat. The argument for letting publication
+finish was that the PDF is built, validated and one operation from the
+person's folder, so stopping would throw finished work away. That is about the
+PDF and misses what the second route is. `deliver` tries a hard link; if the
+link fails it copies the PDF beside the destination and claims it from there,
+and that route exists because the link may be *impossible* -- another volume,
+a filesystem without hard links. Taking it is a diagnosis.
 
-`interrupted(error)` records a cancellation a caller caught for itself. It is
-called from inside a `catch` that is about to return an ordinary failure, so
-it must not raise -- it touches nothing but state, and a test pins that,
-because "cannot raise" is a property a later edit could take away silently.
+**A cancellation is not that diagnosis.** The link did not fail; it was
+interrupted. Falling back acts on a conclusion nobody reached, and it is not a
+cheap completion either: it makes a directory in the person's folder and
+copies the whole PDF into it, after they said stop.
+
+Nothing of this run is at the destination when a link is cancelled. The staged
+PDF is in the workspace, which the run removes on its way out. So stopping
+costs the person nothing they can see, and carrying on does visible work in
+their folder that they did not ask for.
+
+The mechanism needs no flag. `linkFrom` returns the failure rather than its
+message, because a cancellation and a refusal read the same once they are
+strings and mean opposite things here; `copyBeside` says which it was; and
+`deliver`, `throughStaging` and `claimFrom` each ask before choosing the next
+strategy. `publish.js` turns an abandoned outcome into `UserCancelled` after
+`clearAway` closes any staging place, and drops the staged path from
+`unpublished` -- which is what says there is nothing to recover, and is the
+one thing that differs from a refusal.
+
+**And it removes a hole that had nothing to do with publication.** The
+previous round recorded a cancellation and relied on the next image's report
+to act on it. On the last image, or on a run of one, there is no next report:
+the run published through the fallback and returned an ordinary success, which
+the headless receipt read as a request completely honoured. An abandoned
+outcome unwinds, so it reaches the catch that already asks whether it was a
+cancellation, and nothing depends on another image following.
+
+### Where a cancellation is still not looked for
+
+`asks` and `tryArgv` discard every error, so `pathIsTaken`, `isRegularFile`
+and `fileFacts` turn a cancellation into `false` or an unknown identity. They
+stay that way, and the boundary is statable rather than arbitrary:
+
+> A stop is honoured wherever the program is **told** about it. A question's
+> silence is not being told.
+
+`asking.js` has said from the start that every answer there is really "the
+test succeeded", that a test which could not be run says no in the same words,
+and that nothing may be deleted or given up on the strength of one. `tryArgv`
+is `removeFile`, called from `finally` blocks, where an escape would mask the
+error already on its way out. Both are also used before a run has a job at all
+-- `findTool`, `rejectionReason` during admission -- so there is nothing to
+tell.
+
+What it costs, said plainly: a Stop landing exactly on a `test`, a `stat` or
+an `rm` is not noticed. Those are sub-millisecond calls. vips and pdfcpu take
+seconds and are where a person actually presses the button, and every write
+publication makes is covered.
 
 ### The premise, which is the thing worth measuring
 
@@ -1734,8 +1771,9 @@ to fail when the fix is reverted:
 | A stopped run exiting zero with a success receipt | receipt tests |
 | A dialog calling an interrupted image one that was never started | stopped-completion tests |
 | A cancellation reported as a file that is missing | shell-cancellation tests |
-| A stop at publication running on to the end of the batch | publication-cancellation tests |
-| A stop at publication discarding a PDF that was already built | publication-cancellation tests |
+| A stop at publication copying into the folder anyway | publication-cancellation tests |
+| A stop on the last image never reaching the result | last-image stop tests |
+| A cancelled publication leaving its staging place behind | publication-cancellation tests |
 | A headless count naming refused inputs as everything unconverted | receipt tests |
 | A stopped run losing the report of what it had already published | separate-mode stop tests |
 | Two different file URLs resolving to one path | file-URL tests |

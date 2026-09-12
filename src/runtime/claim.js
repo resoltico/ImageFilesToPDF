@@ -1,7 +1,7 @@
 "use strict";
 
 const { LN } = require("../core/executables.js");
-const { errorMessage } = require("../core/errors.js");
+const { errorMessage, isUserCancelled } = require("../core/errors.js");
 const { runArgv } = require("./shell.js");
 const { pathIsTaken } = require("./asking.js");
 
@@ -53,29 +53,40 @@ function published(from) {
     return { published: true, reasons: [], claimed: from };
 }
 
+/*
+ * Stopped before it could be either published or refused.
+ *
+ * Neither of the other two: nothing of this run is at the destination, so
+ * there is nothing to report about a file that is not there and nothing to
+ * hand back. It carries no reasons for the same reason -- publish.js clears
+ * away whatever the attempt made and ends the run the way every other
+ * cancellation does, without a word about a file that was never written.
+ */
+function abandoned() {
+    return { published: false, abandoned: true };
+}
+
 function refused(reasons) {
     return { published: false, reasons };
 }
 
 /*
  * The link onto the final name: nothing at all when the name was created, and
- * what the system said when it was not.
+ * what went wrong when it was not.
  *
- * A cancellation is recorded rather than let out. By the time anything here
- * runs the PDF has been built and validated and is one operation from the
- * person's folder, and unwinding to honour a button would throw that away --
- * the same reason there is no checkpoint inside a publication. What it buys
- * is that the run stops at the next image instead of carrying on to the end.
+ * The failure rather than its message, because the callers have a question to
+ * ask of it before they reduce it to words. A cancellation and a refusal read
+ * the same once they are strings, and they mean opposite things here: one
+ * says this filesystem cannot do links, which is the reason the other route
+ * exists, and the other says nothing at all about the filesystem.
  */
 function linkFrom(job, from, finalPath) {
     try {
         runArgv(job.app, [LN, from, finalPath], "claiming the output name");
 
-        return "";
+        return null;
     } catch (error) {
-        job.progress.interrupted(error);
-
-        return errorMessage(error);
+        return error;
     }
 }
 
@@ -96,17 +107,23 @@ function whyNot(job, finalPath, said) {
  */
 function claimFrom(attempt, from) {
     const { job, paths } = attempt;
-    const said = linkFrom(job, from, paths.final);
+    const failure = linkFrom(job, from, paths.final);
 
-    if (!said) {
+    if (!failure) {
         return published(from);
+    }
+
+    // The rename is the other way of creating the name, tried because the
+    // link would not. A cancellation did not establish that.
+    if (isUserCancelled(failure)) {
+        return abandoned();
     }
 
     if (job.rename && job.rename.rename(from, paths.final)) {
         return published(from);
     }
 
-    return refused(whyNot(job, paths.final, said));
+    return refused(whyNot(job, paths.final, errorMessage(failure)));
 }
 
-module.exports = { linkFrom, claimFrom, published, refused };
+module.exports = { linkFrom, claimFrom, published, refused, abandoned };

@@ -3,28 +3,28 @@
 /*
  * A cancellation that arrives while the finished PDF is being published.
  *
- * By then it is built, validated, and one operation from the person's folder.
- * Unwinding to honour a button would throw finished work away -- the same
- * reason there is no checkpoint inside a publication -- so the cancellation
- * is recorded rather than let out, and the run stops at the next image.
+ * Two earlier rounds let it through, on the grounds that the PDF is built and
+ * validated and one operation from the person's folder, so stopping would
+ * throw finished work away. That argument was about the PDF and missed what
+ * the second route is: `deliver` copies beside the destination and claims
+ * from there only because the link was judged impossible -- another volume, a
+ * filesystem without hard links. A cancellation is not that judgement, and
+ * taking the route anyway makes a directory in the person's folder and copies
+ * the whole PDF into it after they said stop.
  *
- * An audit asked for the opposite: that a cancellation before publication
- * should not start the ordinary fallback. That would discard a PDF for an
- * image that was fully converted, which is what the design's own rule exists
- * to prevent.
+ * Nothing of this run is at the destination when a link is cancelled. The
+ * staged PDF is in the workspace, which the run removes on its way out.
  */
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    createSeparatePdfs
-} = require("../../../src/runtime/pdf-separate.js");
-const { createProgress } = require("../../../src/runtime/progress.js");
+const { isUserCancelled } = require("../../../src/core/errors.js");
+const { publishPdf } = require("../../../src/runtime/publish.js");
 const { createFakeHost } = require("./fake-host.cjs");
-const { makeJob, imageOf } = require("./fake-job.cjs");
+const { makeJob } = require("./fake-job.cjs");
 
-const THREE = ["/a/1.png", "/a/2.png", "/a/3.png"];
-const SECOND_OUTPUT = "/a/2_20260904_010203.pdf";
+// A finished PDF in the workspace, which is what publishPdf is handed.
+const STAGED = ["/a/staged.pdf"];
 
 function cancellation() {
     const error = new Error("User cancelled.");
@@ -34,103 +34,90 @@ function cancellation() {
     return error;
 }
 
-function shellSaying(decide) {
-    const host = createFakeHost({ files: THREE, failures: [["", decide]] });
-    const job = makeJob(host);
-    const said = [];
+function shellSaying(files, decide) {
+    const host = createFakeHost({ files, failures: [["", decide]] });
 
-    job.progress = createProgress([{
-        start: () => undefined,
-        report: (done, description, detail) => said.push(`${description} | ${detail}`),
-        pause: () => undefined,
-        close: () => undefined
-    }]);
-    job.progress.expect({ units: THREE.length, images: THREE.length });
-
-    return { host, job, said };
+    return { host, job: makeJob(host) };
 }
 
-function run(context) {
-    try {
-        return { results: createSeparatePdfs(context.job, THREE.map(imageOf)) };
-    } catch (error) {
-        return { threw: error };
-    }
+const cancelAt = (needle) => (command) =>
+    (command.includes(needle) ? cancellation() : undefined);
+
+function wroteInto(host, needle) {
+    return host.commands.filter((command) =>
+        command.includes(needle) && command.includes("/a/"));
 }
 
-function cancelWhen(matches) {
-    return (command) => (matches(command) ? cancellation() : undefined);
-}
-
+// What is at a name the person would look at: not the finished PDF where it
+// was built, which stays there until something claims it.
 function publishedIn(host) {
-    return [...host.files].filter(
-        (path) => path.startsWith("/a/") && path.endsWith(".pdf")
-    );
+    return [...host.files].filter((path) => path.startsWith("/a/") &&
+        path.endsWith(".pdf") && !path.includes("staged"));
 }
 
-test("a cancellation while claiming the name still publishes that image", () => {
-    /*
-     * By then the PDF is built, validated, and one operation from the
-     * person's folder. Unwinding to honour a button would throw finished work
-     * away -- the same reason there is no checkpoint inside a publication --
-     * so the ordinary path carries it through and the run stops afterwards.
-     */
-    const context = shellSaying(cancelWhen((command) =>
-        command.includes("/bin/ln") && command.includes(SECOND_OUTPUT)));
-    const { results } = run(context);
+test("a cancelled claim starts no second way of making the name", () => {
+    // The copy and the second link are a strategy, chosen because the first
+    // one was judged impossible. Nothing judged anything here.
+    const { host, job } = shellSaying(STAGED, cancelAt("/bin/ln"));
 
-    assert.equal(results.outputs.length, 2, "the image in hand was published too");
-    assert.equal(results.stopped, true, "and no third image was started");
-    assert.equal(publishedIn(context.host).length, 2);
+    assert.throws(
+        () => publishPdf(job, "/a/staged.pdf", "/a/out.pdf"),
+        isUserCancelled
+    );
+    assert.deepEqual(wroteInto(host, "/bin/mkdir"), [], "no place was made");
+    assert.deepEqual(wroteInto(host, "/bin/cp"), [], "nothing was copied");
+    assert.deepEqual(publishedIn(host), [], "and nothing was published");
 });
 
-test("a cancellation while copying beside the destination does the same", () => {
-    // The link has to be refused first, or nothing is ever copied.
-    const context = shellSaying((command) => {
-        if (command.includes("/bin/ln") && command.includes(SECOND_OUTPUT)) {
+test("a cancelled publication leaves nothing to recover", () => {
+    // Which is what lets the workspace go. A refusal keeps the PDF because
+    // the person needs it back; an abandonment has written nothing where they
+    // would look for it.
+    const { job } = shellSaying(STAGED, cancelAt("/bin/ln"));
+
+    assert.throws(() => publishPdf(job, "/a/staged.pdf", "/a/out.pdf"));
+    assert.equal(job.unpublished.size, 0);
+});
+
+test("a cancelled copy clears away the place it had made", () => {
+    const { host, job } = shellSaying(STAGED, (command) => {
+        if (command.includes("/bin/ln")) {
             return new Error("Operation not supported");
         }
 
         return command.includes("/bin/cp") ? cancellation() : undefined;
     });
-    const { results } = run(context);
 
-    assert.equal(results.stopped, true);
-
-    /*
-     * The third image's "Preparing" is in the log: a report says its piece
-     * and then stops the run, so the line that raised is the last one
-     * recorded. What matters is that nothing after it happened.
-     */
-    assert.ok(
-        !context.said.some((line) => line.startsWith("Creating PDF | 3 of 3")),
-        `the third image was never converted: ${context.said.join(", ")}`
+    assert.throws(
+        () => publishPdf(job, "/a/staged.pdf", "/a/out.pdf"),
+        isUserCancelled
     );
-
-    // The PDF that could not be copied is not lost: publication sets it aside
-    // and says where, which is what the person needs whether they stopped the
-    // run or the copy simply failed.
-    assert.equal(results.failures.length, 1);
-    assert.match(results.failures[0].message, /could not be saved/u);
+    assert.ok(
+        wroteInto(host, "/bin/rmdir").length > 0,
+        `the staging place was closed: ${host.commands.join(" | ")}`
+    );
+    assert.deepEqual(publishedIn(host), []);
 });
 
-test("a cancellation while making the place to copy into does the same", () => {
-    // The other half of copyBeside. Nothing of this run exists at the
-    // destination yet, so the finished PDF is set aside and reported, and the
-    // next image is never begun.
-    const context = shellSaying((command) => {
-        if (command.includes("/bin/ln") && command.includes(SECOND_OUTPUT)) {
-            return new Error("Operation not supported");
+test("a cancelled second claim does not reach the exclusive rename", () => {
+    // The rename is the other way of creating the name, and it is tried
+    // because the link would not. A cancellation did not establish that.
+    let links = 0;
+    const { host, job } = shellSaying(STAGED, (command) => {
+        if (!command.includes("/bin/ln")) {
+            return undefined;
         }
 
-        return command.includes("/bin/mkdir") ? cancellation() : undefined;
-    });
-    const { results } = run(context);
+        links += 1;
 
-    assert.equal(results.stopped, true);
-    assert.equal(results.outputs.length, 1, "the first image is still reported");
-    assert.ok(
-        !context.said.some((line) => line.startsWith("Creating PDF | 3 of 3")),
-        `the third image was never converted: ${context.said.join(", ")}`
+        return links === 1
+            ? new Error("Operation not supported")
+            : cancellation();
+    });
+
+    assert.throws(
+        () => publishPdf(job, "/a/staged.pdf", "/a/out.pdf"),
+        isUserCancelled
     );
+    assert.deepEqual(publishedIn(host), [], "the rename never ran");
 });

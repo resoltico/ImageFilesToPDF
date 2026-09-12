@@ -94,19 +94,6 @@ function reporting(state, say) {
 function lifecycle(state, each) {
     return {
         /*
-         * A cancellation a caller caught for itself. Publication catches its
-         * own: a claim that was cancelled belongs to a PDF already built and
-         * validated, and unwinding to honour a button would throw finished
-         * work away, so it is recorded and the run stops at the next image.
-         *
-         * Called from inside a catch that is about to return an ordinary
-         * failure, so it must not raise. It touches nothing but state.
-         */
-        interrupted(error) {
-            state.stopped ||= isUserCancelled(error);
-        },
-
-        /*
          * The second half of this object's life. It is alive before the images
          * have been counted, because finding them is itself worth saying, and
          * it has no total until they have been.

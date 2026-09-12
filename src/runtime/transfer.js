@@ -1,7 +1,14 @@
 "use strict";
 
+const { errorMessage, isUserCancelled } = require("../core/errors.js");
 const { pathIsTaken } = require("./asking.js");
-const { linkFrom, claimFrom, published, refused } = require("./claim.js");
+const {
+    linkFrom,
+    claimFrom,
+    published,
+    refused,
+    abandoned
+} = require("./claim.js");
 const { stagingArea } = require("./staging-area.js");
 const { copyBeside } = require("./output-copy.js");
 
@@ -44,6 +51,10 @@ function throughStaging(attempt, facts, refusal) {
     const copied = copyBeside(job, paths.staged, paths.area, facts.size);
     const staging = copied.made ? paths.area : null;
 
+    if (copied.cancelled) {
+        return { ...abandoned(), staging };
+    }
+
     if (copied.reasons.length > 0) {
         return { published: false, reasons: [...copied.reasons, refusal], staging };
     }
@@ -62,9 +73,9 @@ function throughStaging(attempt, facts, refusal) {
  * destination and claim it from beside it.
  */
 function deliver(job, paths, facts) {
-    const said = linkFrom(job, paths.staged, paths.final);
+    const failure = linkFrom(job, paths.staged, paths.final);
 
-    if (!said) {
+    if (!failure) {
         return {
             ...published(paths.staged),
             claimedIdentity: facts.identity,
@@ -72,6 +83,18 @@ function deliver(job, paths, facts) {
             staging: null
         };
     }
+
+    /*
+     * The route below is chosen because the link was judged impossible --
+     * another volume, a filesystem without hard links. A cancellation is not
+     * that judgement, and taking it anyway would make a directory in the
+     * person's folder and copy the whole PDF into it after they said stop.
+     */
+    if (isUserCancelled(failure)) {
+        return { ...abandoned(), staging: null };
+    }
+
+    const said = errorMessage(failure);
 
     return pathIsTaken(job.app, paths.final)
         ? { ...refused(["the output path was taken", said]), staging: null }

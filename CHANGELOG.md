@@ -67,10 +67,13 @@ Notable changes to this project are documented in this file. The format is based
   interrupted as one that was never started. It says how many images no PDF
   came out of, which is true of both.
 - Stopping now also takes effect when the request arrives while a command is
-  running rather than between them. An image being checked is abandoned; an
-  image being saved is finished and saved, because a PDF that is built and
-  one step from your folder should not be thrown away over a button — and then
-  the run stops rather than going on to the next image.
+  running rather than between them, including while the PDF is being saved.
+  Nothing further is written into your folder after you stop: the action does
+  not go on to copy the PDF there and try again, which is what it does when
+  saving genuinely fails.
+- Stopping a run of a single image, or one stopped while its last image was
+  being saved, now reports that it was stopped. It used to finish saving and
+  report success, because nothing after it was left to notice.
 - A stopped run no longer reports a missing file it never had. The request to
   stop used to reach the check that looks for the file a stage just wrote, and
   was reported as that file being absent.

@@ -1,7 +1,7 @@
 "use strict";
 
 const { CP } = require("../core/executables.js");
-const { errorMessage } = require("../core/errors.js");
+const { errorMessage, isUserCancelled } = require("../core/errors.js");
 const { runArgv } = require("./shell.js");
 const { openStaging } = require("./staging-area.js");
 const { fileFacts, SIZE_UNKNOWN } = require("./file-facts.js");
@@ -26,23 +26,29 @@ function mismatch(written, expected) {
  * after writing part of the file or all of it, which is why the size is
  * checked and why the place is this attempt's to clear away either way.
  */
+/*
+ * What went wrong, and whether it was the person stopping rather than the
+ * filesystem refusing. `made` says whether there is a place to clear away.
+ */
+function gaveUp(error, made) {
+    return {
+        reasons: [errorMessage(error)],
+        made,
+        cancelled: isUserCancelled(error)
+    };
+}
+
 function copyBeside(job, staged, area, expected) {
     try {
         openStaging(job.app, area);
     } catch (error) {
-        job.progress.interrupted(error);
-
-        return { reasons: [errorMessage(error)], made: false };
+        return gaveUp(error, false);
     }
 
     try {
         runArgv(job.app, [CP, staged, area.file], "copying the PDF into the output folder");
     } catch (error) {
-        // Recorded, not let out: the finished PDF is still in the workspace
-        // and the ordinary path knows how to keep it. See claim.js.
-        job.progress.interrupted(error);
-
-        return { reasons: [errorMessage(error)], made: true };
+        return gaveUp(error, true);
     }
 
     const written = fileFacts(job.app, area.file);

@@ -1,6 +1,7 @@
 "use strict";
 
 const { basename } = require("../core/paths.js");
+const { UserCancelled } = require("../core/errors.js");
 const { keep, clearAway } = require("./recovery.js");
 const { deliver, stagingArea } = require("./transfer.js");
 const { fileFacts } = require("./file-facts.js");
@@ -10,22 +11,16 @@ const { pathIsTaken } = require("./asking.js");
 /*
  * Who owns a finished PDF, and where it goes when it cannot be published.
  *
- * The bytes are transfer.js's business. This is the rule about the file, and
- * it is one rule: the job owns the PDF it built until the output path has
- * been checked, and this run removes only what this run made.
+ * The bytes are transfer.js's business. This is the rule about the file: the
+ * job owns the PDF it built until the output path has been checked, and this
+ * run removes only what this run made. Both halves were learned the hard way
+ * -- the workspace copy used to be moved into the output folder, so a failure
+ * afterwards had to work out where the bytes had got to through a check that
+ * answers "no" when it cannot tell, and a refused check deleted the finished
+ * PDF and reported it missing.
  *
- * Both halves were learned the hard way. The workspace copy used to be moved
- * into the output folder, so a failure after that had to work out where the
- * bytes had got to -- and it worked it out by asking whether files existed,
- * through a check that answers "no" when it cannot tell. A refused check
- * therefore deleted the finished PDF and reported it missing. Nothing is
- * moved out of the workspace any more, and nothing is removed on the strength
- * of a question about a file this run did not create.
- *
- * Nothing here counts. Publication used to be the one place a unit of work was
- * closed, which meant an image that failed on its way here was never counted
- * as attempted at all; saying what is happening is this module's business and
- * saying how much of it is done is the caller's.
+ * Nothing here counts either. Publication used to be the one place a unit of
+ * work was closed, so an image that failed on its way here was never counted.
  */
 
 /*
@@ -98,6 +93,28 @@ function refuseBefore(app, paths, facts) {
 }
 
 /*
+ * Stopped before it could be either published or refused.
+ *
+ * Whatever the attempt made in the output folder goes; the staging place is
+ * the only thing it can have made. Dropping the PDF from the unpublished set
+ * is what says there is nothing to recover -- nothing was written where the
+ * person would look, so the workspace takes it on the way out. That is the
+ * difference from a refusal, which keeps it because they need it back.
+ */
+function abandon(job, paths, outcome) {
+    clearAway(job, outcome);
+    job.unpublished.delete(paths.staged);
+
+    return new UserCancelled();
+}
+
+function refuse(job, paths, outcome) {
+    return outcome.abandoned
+        ? abandon(job, paths, outcome)
+        : keep(job, paths, outcome);
+}
+
+/*
  * What is about to be published is measured first, so that what was published
  * can be told apart from anything else that might be at the name afterwards.
  */
@@ -112,7 +129,7 @@ function attempt(job, paths) {
     const outcome = deliver(job, paths, facts);
 
     if (!outcome.published) {
-        throw keep(job, paths, outcome);
+        throw refuse(job, paths, outcome);
     }
 
     confirm(job, paths, outcome);
