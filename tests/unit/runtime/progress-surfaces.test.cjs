@@ -11,10 +11,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    createProgress,
-    SILENT
-} = require("../../../src/runtime/progress.js");
+const { createProgress } = require("../../../src/runtime/progress.js");
 
 function recorder() {
     const said = [];
@@ -47,15 +44,19 @@ test("a report about the work does not become part of the work", () => {
 });
 
 test("with nothing to report to, nothing is reported", () => {
-    assert.equal(createProgress([]), SILENT);
+    // A reporter with no surfaces is the only way this action says "nowhere":
+    // a headless run, and a job assembled before its count is known. It can
+    // never be stopped either, because nothing can tell it to be.
+    const silent = createProgress([]);
+
     assert.doesNotThrow(() => {
-        SILENT.expect({ units: 1, images: 1 });
-        SILENT.beginning(1, "x.png");
-        SILENT.about("1 image prepared");
-        SILENT.finished("Saved");
-        SILENT.phase("Saving PDF");
-        SILENT.pause();
-        SILENT.close();
+        silent.expect({ units: 1, images: 1 });
+        silent.beginning(1, "x.png");
+        silent.about("1 image prepared");
+        silent.finished("Saved");
+        silent.phase("Saving PDF");
+        silent.pause();
+        silent.close();
     });
 });
 

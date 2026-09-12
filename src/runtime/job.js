@@ -6,7 +6,7 @@ const { makeTimestamp } = require("../core/timestamps.js");
 const { createWorkspace, removeWorkspace } = require("./workspace.js");
 const { createRenamer } = require("./exclusive-rename.js");
 const { settingsFor } = require("./settings-form.js");
-const { SILENT } = require("./progress.js");
+const { createProgress } = require("./progress.js");
 const { createCombinedPdf } = require("./pdf.js");
 const { createSeparatePdfs } = require("./pdf-separate.js");
 
@@ -38,7 +38,8 @@ function createJob(app, settings, timestamp, tools) {
         workspace: createWorkspace(app),
         // Validated PDFs this run has produced and not yet published.
         unpublished: new Set(),
-        progress: SILENT,
+        // Reports nowhere until reportingJob hands over the run's own.
+        progress: createProgress([]),
         // The exclusive rename, where the host can reach it. reportingJob
         // supplies it for the same reason it supplies progress: the bridge
         // belongs to the run rather than to the job's shape.

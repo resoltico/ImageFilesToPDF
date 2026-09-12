@@ -28,12 +28,14 @@ test("a run that was asked to stop says so, and what it did not reach", () => {
     }, 20);
 
     assert.match(message, /Created 2 PDFs\./u);
-    assert.match(message, /Stopped\. 18 images not started\./u);
+    assert.match(message, /Stopped\. 18 images not converted\./u);
 });
 
-test("a stopped run counts what it tried, not only what it saved", () => {
-    // An image that failed was started. Counting only the successes would say
-    // more was left untouched than really was.
+test("a stopped run counts every image no PDF came out of", () => {
+    // "Not converted" rather than "not started", because one of them may have
+    // been: a stop takes effect at the next thing the run says it is about to
+    // do, and for the image being converted at the time that is partway
+    // through it. What is true of all of them is that no PDF came out.
     const message = completionMessage("separate", {
         outputs: ["/a/1.pdf"],
         failures: [{ name: "b.png", message: "broke" }],
@@ -42,7 +44,11 @@ test("a stopped run counts what it tried, not only what it saved", () => {
         stopped: true
     }, 20);
 
-    assert.match(message, /Stopped\. 18 images not started\./u);
+    // One published, one failed, eighteen never reached: nineteen images this
+    // run produced no PDF for, and the failure is accounted for separately on
+    // its own line.
+    assert.match(message, /Stopped\. 19 images not converted\./u);
+    assert.match(message, /Failed: 1/u);
     assert.match(message, /Finished with errors\./u);
 });
 
@@ -68,5 +74,5 @@ test("a stop with one image left says image, not images", () => {
         stopped: true
     }, 2);
 
-    assert.match(message, /Stopped\. 1 image not started\./u);
+    assert.match(message, /Stopped\. 1 image not converted\./u);
 });

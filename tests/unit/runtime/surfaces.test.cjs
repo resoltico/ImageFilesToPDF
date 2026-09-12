@@ -12,7 +12,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { jxaProgress, openProgress } = require("../../../src/runtime/surfaces.js");
-const { SILENT } = require("../../../src/runtime/progress.js");
 
 test("the host's own object is written to, in its own words", () => {
     const host = {};
@@ -47,17 +46,33 @@ test("no Progress on the host is no surface", () => {
     assert.equal(jxaProgress(undefined), null);
 });
 
+function reportsNowhere(progress) {
+    // A reporter with no surfaces: every verb is accepted and nothing can
+    // ever ask it to stop, because nothing is listening to ask.
+    progress.expect({ units: 1, images: 1 });
+    progress.beginning(1, "x.png");
+    progress.about("1 image prepared");
+    progress.phase("Saving PDF");
+    progress.finished("Saved");
+    progress.pause();
+    progress.close();
+
+    return true;
+}
+
 test("a headless run builds nothing and reports nothing", () => {
     // No AppKit, no activation policy, nothing to tear down: a caller reading
     // a receipt is not looking at a window.
     let built = 0;
 
-    assert.equal(openProgress(true, [() => {
+    const progress = openProgress(true, [() => {
         built += 1;
 
         return {};
-    }]), SILENT);
+    }]);
+
     assert.equal(built, 0);
+    assert.ok(reportsNowhere(progress));
 });
 
 test("the surfaces that can be established are the ones written to", () => {
@@ -88,27 +103,30 @@ test("the surfaces that can be established are the ones written to", () => {
 test("with no surface at all there is nothing to report to", () => {
     // Which is now something measured about the host rather than something
     // assumed about it: both surfaces were asked, and both refused.
-    assert.equal(openProgress(false, [() => null, () => null]), SILENT);
+    assert.ok(reportsNowhere(openProgress(false, [() => null, () => null])));
 });
 
 test("a surface that throws on the way up is a run with no progress, not a failure", () => {
     // openProgress is called before the try that turns an error into a
     // dialog, so it is the one thing here that cannot throw at all.
-    assert.equal(openProgress(false, [() => {
+    assert.ok(reportsNowhere(openProgress(false, [() => {
         throw new Error("no window server");
-    }]), SILENT);
+    }])));
 });
 
 test("the default surfaces are the panel and the host's own object", () => {
     // Under Node there is no ObjC bridge and no Progress, so both refuse and
     // the run is silent -- which is also what a machine with no window server
     // does, and it converts exactly the same either way.
-    assert.equal(openProgress(false), SILENT);
+    assert.ok(reportsNowhere(openProgress(false)));
 
-    globalThis.Progress = {};
+    const reported = {};
+
+    globalThis.Progress = reported;
 
     try {
-        assert.notEqual(openProgress(false), SILENT, "the host's object is found");
+        openProgress(false).phase("Preparing");
+        assert.equal(reported.description, "Preparing", "the host's object is found");
     } finally {
         delete globalThis.Progress;
     }

@@ -94,3 +94,20 @@ test("a complete run writes no receipt, because it returns one", () => {
     );
     assert.deepEqual(written, []);
 });
+
+test("a stopped run still writes its receipt before it fails", () => {
+    // Both halves: a caller gets what was produced and a non-zero exit.
+    const written = [];
+    const stopped = {
+        outputs: ["/a/1.pdf"],
+        failures: [],
+        rejected: [],
+        stopped: true
+    };
+
+    assert.throws(
+        () => reportHeadless(stopped, (line) => written.push(line)),
+        /The run was stopped/u
+    );
+    assert.deepEqual(written, [`${JSON.stringify(stopped)}\n`]);
+});

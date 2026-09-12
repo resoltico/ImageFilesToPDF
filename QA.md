@@ -911,36 +911,66 @@ claimed, and whose header spends twenty lines on what happens when either is
 let go at the wrong moment. So the run asks instead, at the places where
 stopping is safe.
 
-### A checkpoint is a place where stopping costs nothing
+### The reports are the checkpoints
 
-That is the whole rule, and it lives in `src/runtime/stopping.js`. The first
-attempt said "between images", which was too specific: what makes between
-images safe is not that it is between images but that nothing has been
-produced, so there is nothing to throw away.
+This is the third design for the same question and the first one that is not a
+list. The first said "between images". The second added "and once the pages
+are prepared, and once the PDF is built". Each time, an audit found the next
+place nobody had thought of -- most recently `phase("Saving PDF")`, where a
+stop was recorded and the PDF published anyway.
 
-| Where | Made so far | Asked |
+A list of places somebody thought of will never be finished. So look at what
+was on it. Here is every progress call in the program:
+
+| Call | Where | Relative to its work |
 | --- | --- | --- |
-| before each image | nothing | yes |
-| once every page is prepared | pages, in the workspace | yes |
-| once the PDF is built and validated | a staged PDF, in the workspace | yes |
-| inside publication | a claimed name, a published file | **no** |
+| `beginning` | `pages.js`, `pdf-separate.js` | before |
+| `about` | `pdf.js` | before |
+| `phase("Creating PDF")` | `staging.js` | before |
+| `phase("Validating PDF")` | `staging.js` | before |
+| `phase("Saving PDF")` | `publish.js` | before |
+| `phase(...)` twice | `main.js` | before |
+| `finished("Preparing")` | `pages.js` | after |
+| `finished("Saved")` | `pdf.js` | after |
+| `finished("Saved" / "Failed")` | `pdf-separate.js` | after |
 
-Reproduced before it was fixed: a stop recorded on the last image's own report
-reached none of those, because the loop had no further image to ask about it.
-The run went on through "Creating PDF", "Validating PDF" and "Saving PDF" and
-published a PDF it had already been told not to make.
+**The safe checkpoints and the "about to" reports are the same list**, and not
+by coincidence: a report made before the work is made before anything has been
+produced. So the rule is one sentence and needs no list at all:
 
-There is no checkpoint inside a publication and that is the point of having a
-rule rather than a reflex. Once publication starts it finishes, and the stop
-is honoured at the next checkpoint -- which is what lets `publish.js` keep its
-protocol intact.
+> A report of what is about to happen may stop the run. A report of what has
+> happened may not.
 
-Nor is there one inside a separate run's image. Stopping there would abandon
-it half converted and, worse, would carry the escape past the loop that holds
-the list of PDFs already published. One image is the bound on how long such a
-run ignores a stop, and that is the right trade: a combined run funnels
-everything into one operation at the end, so not asking costs the whole of it,
-while a separate run's unasked stretch is a single photograph.
+`beginning`, `about` and `phase` raise `UserCancelled`; `finished` never does,
+because the work is finished and unwinding past it throws away the account of
+it. Each `finished` is followed by the end of the run or by a `beginning`, so
+nothing continues past a recorded stop merely because it does not raise.
+
+**After saying rather than before**, which is the part that is easy to get
+wrong: a host raises at the assignment *following* the button, so the report
+that discovers a stop is the one being made. Checking first missed exactly
+that case and carried on into the work it had just announced.
+
+What the rule buys beyond correctness is that there is nothing to remember. A
+stage added later says what it is about to do, because that is what the panel
+exists to show, and in saying so it becomes a checkpoint. The default for a
+new stage used to be "carries on after a stop"; it is "stops" now, and when a
+rule is going to be got wrong occasionally it should be wrong in the direction
+of doing less.
+
+The inverted risk is real and is the thing to check: a report can now raise,
+so every call site must be somewhere a raise is safe. The table above is that
+check, and it is a minute's work to redo.
+
+The last row of it is worth spelling out. `phase("Saving PDF")` sits *above*
+the line that records the staged PDF in `job.unpublished`, so a raise there
+leaves that set empty and `runJob` removes the workspace with the staged file
+inside it. One line lower and the workspace would be retained with nothing
+said about it, because a cancellation is silent.
+
+There is no report at all inside a publication -- `confirm` says nothing --
+so the transaction `publish.js` protects cannot be unwound by any of this.
+That is a property of where the reports are, not a rule to keep.
 
 ### What the two modes say afterwards
 
@@ -948,11 +978,19 @@ A stop that produced nothing is a cancellation like any other and says
 nothing. A stop with something behind it is an outcome and must be reported,
 because producing files without saying where they are is the one thing
 `completion.js` exists to prevent. Nothing means nothing *attempted*: an image
-that failed still has to be shown, whether or not the run was stopped after
-it.
+that failed still has to be shown.
 
 A combined run reaches the first case by construction -- it publishes once, at
-the end -- and a separate run can reach either.
+the end -- and a separate run can reach either. A separate run now stops
+inside an image as well as between them, and the bound of "one image" that the
+previous design argued for is gone with the reason for it.
+
+Both places that read a result know about it: `isCompleteSuccess` treats a
+stopped run as incomplete, so a headless caller gets the receipt *and* a
+non-zero exit, and the completion message counts what it did not convert. Both
+were added late, with the outcome rather than with the code producing it, and
+both were wrong until an audit said so -- a stopped batch took the success
+branch, and the dialog called an interrupted image one that was never started.
 
 ### Where a cancellation is not propagated, and why that is the answer
 
@@ -1656,6 +1694,9 @@ to fail when the fix is reverted:
 | A failure naming the file it happened to twice | separate-mode failure tests + integration |
 | A stop recorded too late for any loop to notice it | checkpoint tests |
 | A PDF published after the run was asked to stop | checkpoint tests |
+| A stop discovered by the very report that announced the work | reporter stop tests |
+| A stopped run exiting zero with a success receipt | receipt tests |
+| A dialog calling an interrupted image one that was never started | stopped-completion tests |
 | A stopped run losing the report of what it had already published | separate-mode stop tests |
 | Two different file URLs resolving to one path | file-URL tests |
 | A page left behind by the check that rejected it | page-lifetime tests |

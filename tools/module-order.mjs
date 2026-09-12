@@ -45,7 +45,6 @@ export const moduleOrder = [
     "src/runtime/prompts.js",
     "src/runtime/dialogs.js",
     "src/runtime/progress.js",
-    "src/runtime/stopping.js",
     "src/runtime/surfaces.js",
     "src/runtime/completion.js",
     "src/runtime/settings-form.js",

@@ -46,10 +46,18 @@ function writeReceipt(text, ns = foundation(globalThis.ObjC, globalThis.$)) {
 
 /*
  * A run is completely successful only when every file that was asked for was
- * accounted for: nothing rejected before conversion, nothing failed during it.
+ * accounted for: nothing rejected before conversion, nothing failed during it,
+ * and nothing left undone because the run was asked to stop.
+ *
+ * The last of those was added with the outcome it describes and not with the
+ * code that produces it, so a stopped batch went down the success branch with
+ * its outputs and exited zero. What it had managed is not the same as what it
+ * was asked for.
  */
 function isCompleteSuccess(result) {
-    return result.failures.length === 0 && (result.rejected ?? []).length === 0;
+    return !result.stopped &&
+        result.failures.length === 0 &&
+        (result.rejected ?? []).length === 0;
 }
 
 function describeIncomplete(result) {
@@ -59,8 +67,10 @@ function describeIncomplete(result) {
         `${result.failures.length} failed`,
         `${rejected} not converted`
     ];
+    const stopped = result.stopped ? " The run was stopped." : "";
 
-    return `The request was not completely honoured: ${counts.join(", ")}.`;
+    return `The request was not completely honoured: ${
+        counts.join(", ")}.${stopped}`;
 }
 
 module.exports = {

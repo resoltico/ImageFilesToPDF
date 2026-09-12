@@ -122,3 +122,26 @@ test("the counts are readable as three, not run together", () => {
             "1 produced, 1 failed, 0 not converted."
     );
 });
+
+test("a run that was asked to stop is not a complete success", () => {
+    // The stopped outcome was added with the code that produces it and not
+    // with the two places that read a result, so a stopped batch went down
+    // the success branch with its outputs and exited zero. What it managed is
+    // not the same as what it was asked for.
+    const stopped = {
+        outputs: ["/a/1.pdf"],
+        failures: [],
+        rejected: [],
+        stopped: true
+    };
+
+    assert.equal(isCompleteSuccess(stopped), false);
+    assert.match(describeIncomplete(stopped), /The run was stopped\./u);
+});
+
+test("a run nobody stopped is judged on what it converted", () => {
+    const finished = { outputs: ["/a/1.pdf"], failures: [], rejected: [] };
+
+    assert.equal(isCompleteSuccess(finished), true);
+    assert.ok(!describeIncomplete(finished).includes("stopped"));
+});

@@ -9,7 +9,6 @@ const {
     layOutOnPage
 } = require("./page-stages.js");
 const { removeFile } = require("./shell.js");
-const { checkpoint } = require("./stopping.js");
 
 /*
  * Preparation of one source image into one page-sized JPEG.
@@ -108,10 +107,6 @@ function withImageName(imageFile, produce) {
  */
 function preparePages(job, imageFiles) {
     return imageFiles.map((imageFile, index) => {
-        // Nothing has been made yet, and a combined run that stops before
-        // its PDF exists produces nothing -- so this ends the run the way
-        // every other cancellation in this action does, in silence.
-        checkpoint(job.progress);
         job.progress.beginning(index + 1, imageFile.originalName);
 
         const page = withImageName(

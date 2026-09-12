@@ -1,116 +1,127 @@
 "use strict";
 
 /*
- * What a run does when it has been asked to stop.
+ * What a separate run does when it is asked to stop.
  *
- * Between images, which is the only place stopping is safe: a publication in
- * progress owns a finished PDF and a name it has claimed, and unwinding it
- * from a progress report is how both are lost. Once the pages are prepared, a
- * combined run is one indivisible operation and finishes.
+ * It publishes as it goes, so stopping leaves real PDFs on disk and saying
+ * nothing about them is the one thing completion.js exists to prevent. A stop
+ * that produced nothing is a cancellation like any other and says nothing.
  *
- * The two modes answer differently, and the asymmetry is the honest one. A
- * separate run has published real PDFs by the time it stops and must say so;
- * a combined run that stops before its PDF exists has produced nothing, and
- * ends in silence like every other cancellation in this action.
+ * A stop now takes effect inside an image as well as between them -- at
+ * "Creating PDF", "Validating PDF" or "Saving PDF" -- because each of those
+ * is said before the work it names. The previous design stopped only between
+ * images, on the grounds that there was nowhere safe inside one.
  */
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { isUserCancelled } = require("../../../src/core/errors.js");
-const { createCombinedPdf } = require("../../../src/runtime/pdf.js");
 const {
     createSeparatePdfs
 } = require("../../../src/runtime/pdf-separate.js");
 const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob, imageOf } = require("./fake-job.cjs");
-
-/*
- * A reporter that says stop once the given number of images have been begun,
- * which is how a person pressing a button partway through is modelled.
- */
-function stoppingAfter(images) {
-    let begun = 0;
-
-    return {
-        stopped: () => begun >= images,
-        expect: () => undefined,
-        beginning() {
-            begun += 1;
-        },
-        about: () => undefined,
-        phase: () => undefined,
-        finished: () => undefined,
-        pause: () => undefined,
-        close: () => undefined
-    };
-}
-
-function jobFor(paths, progress) {
-    const host = createFakeHost({ files: paths });
-    const job = makeJob(host);
-
-    job.progress = progress;
-
-    return { host, job };
-}
+const { stoppingWhen, atPhase } = require("./fake-stopping.cjs");
 
 const THREE = ["/a/1.png", "/a/2.png", "/a/3.png"];
 
-test("a separate run keeps what it published and starts nothing more", () => {
-    const { host, job } = jobFor(THREE, stoppingAfter(1));
-    const results = createSeparatePdfs(job, THREE.map(imageOf));
+function jobStoppedWhen(host, asked) {
+    const job = makeJob(host);
+    const { said, progress } = stoppingWhen(asked);
 
-    assert.equal(results.outputs.length, 1, "the first image was published");
-    assert.equal(results.failures.length, 0, "and nothing is blamed on a photograph");
+    job.settings.mode = "separate";
+    job.progress = progress;
+    job.progress.expect({ units: THREE.length, images: THREE.length });
+
+    return { job, said };
+}
+
+function separateStoppedWhen(asked) {
+    const host = createFakeHost({ files: THREE });
+    const { job, said } = jobStoppedWhen(host, asked);
+    const outcome = { host, said, threw: null, results: null };
+
+    try {
+        outcome.results = createSeparatePdfs(job, THREE.map(imageOf));
+    } catch (error) {
+        outcome.threw = error;
+    }
+
+    return outcome;
+}
+
+function publishedIn(host) {
+    return [...host.files].filter(
+        (path) => path.startsWith("/a/") && path.endsWith(".pdf")
+    );
+}
+
+test("a stop between images keeps what was published and starts no more", () => {
+    const { host, said, results } = separateStoppedWhen(
+        (description, detail) => detail === "2 of 3 — 2.png"
+    );
+
+    assert.equal(results.outputs.length, 1, "the first image is reported");
+    assert.equal(results.failures.length, 0, "nothing is blamed on a photograph");
     assert.equal(results.stopped, true);
+    assert.equal(publishedIn(host).length, 1, "and its PDF is on disk");
     assert.ok(
-        host.files.has(results.outputs[0]),
-        "the PDF that was made is on disk"
+        !said.some((line) => line.includes("3 of 3")),
+        `no third image: ${said.join(", ")}`
     );
 });
 
-test("a separate run that was never stopped does not say it was", () => {
-    const { job } = jobFor(THREE, stoppingAfter(THREE.length + 1));
-    const results = createSeparatePdfs(job, THREE.map(imageOf));
+test("a stop as an image is about to be saved abandons that image", () => {
+    // The second image is at the last thing it says before it claims a name.
+    // It publishes nothing, the first image's PDF is still reported, and the
+    // third is never begun.
+    const { host, said, results } = separateStoppedWhen(
+        (description, detail) => description === "Saving PDF" &&
+            detail === "2 of 3 — 2.png"
+    );
 
-    assert.equal(results.outputs.length, THREE.length);
-    assert.equal(results.stopped, undefined);
+    assert.equal(results.stopped, true);
+    assert.equal(results.outputs.length, 1, "the first image is still reported");
+    assert.equal(results.failures.length, 0, "and the second is not a failure");
+    assert.equal(publishedIn(host).length, 1, "only the first was published");
+    assert.ok(!said.some((line) => line.includes("3 of 3")), said.join(", "));
 });
 
-test("a stop during the last image does not stop a run that finished", () => {
-    // The flag is raised while the third image is converting. The loop has no
-    // fourth image to ask about, so nothing was cut short and nothing says so.
-    const { job } = jobFor(THREE, stoppingAfter(THREE.length));
-    const results = createSeparatePdfs(job, THREE.map(imageOf));
+test("a stop at the very first thing an image says produces nothing at all", () => {
+    const { host, threw, results } = separateStoppedWhen(atPhase("Saving PDF"));
 
-    assert.equal(results.outputs.length, THREE.length);
-    assert.equal(results.stopped, undefined);
+    assert.equal(results, null, "nothing was attempted, so nothing is reported");
+    assert.ok(isUserCancelled(threw));
+    assert.deepEqual(publishedIn(host), []);
+});
+
+test("a stop while an image's PDF is being built abandons only that image", () => {
+    const { host, results } = separateStoppedWhen(
+        (description, detail) => description === "Creating PDF" &&
+            detail === "2 of 3 — 2.png"
+    );
+
+    assert.equal(results.stopped, true);
+    assert.equal(results.outputs.length, 1, "the first image is still reported");
+    assert.equal(publishedIn(host).length, 1);
 });
 
 test("a stop before the first image says nothing, because nothing happened", () => {
-    // A stop can be recorded while the tools are checked and the folders are
-    // read, before any image is begun. Nothing was produced, so the run ends
-    // the way every other cancellation does rather than putting up a dialog
-    // saying it created no PDFs.
-    const { job } = jobFor(THREE, stoppingAfter(0));
-
-    assert.throws(
-        () => createSeparatePdfs(job, THREE.map(imageOf)),
-        (error) => isUserCancelled(error)
+    // Reachable: a stop can be recorded while the tools are checked and the
+    // folders are read, before any image is begun. Nothing was produced, so
+    // the run ends the way every other cancellation does.
+    const { threw, results } = separateStoppedWhen(
+        (description, detail) => detail === "1 of 3 — 1.png"
     );
+
+    assert.equal(results, null);
+    assert.ok(isUserCancelled(threw));
 });
 
-test("a combined run that stops produces nothing and says nothing", () => {
-    const { host, job } = jobFor(THREE, stoppingAfter(1));
+test("a run nobody stops reports no stopping", () => {
+    const { host, results } = separateStoppedWhen(() => false);
 
-    assert.throws(
-        () => createCombinedPdf(job, THREE.map(imageOf)),
-        (error) => isUserCancelled(error)
-    );
-
-    assert.deepEqual(
-        [...host.files].filter((path) => path.endsWith(".pdf")),
-        [],
-        "no PDF was published, and none was left staged"
-    );
+    assert.equal(results.outputs.length, THREE.length);
+    assert.equal(results.stopped, undefined);
+    assert.equal(publishedIn(host).length, THREE.length);
 });

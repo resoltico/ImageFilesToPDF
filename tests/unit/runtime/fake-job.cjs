@@ -6,7 +6,7 @@
  */
 
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
-const { SILENT } = require("../../../src/runtime/progress.js");
+const { createProgress } = require("../../../src/runtime/progress.js");
 
 const geometry = calculatePageGeometry({
     paperSize: "A4",
@@ -25,7 +25,7 @@ function makeJob(app) {
         timestamp: "20260904_010203",
         workspace: "/tmp/ImageFilesToPDF.X",
         unpublished: new Set(),
-        progress: SILENT,
+        progress: createProgress([]),
         rename: app.renamer ?? null,
         tools: { vips: "/v/vips", vipsheader: "/v/vipsheader", pdfcpu: "/v/pdfcpu" }
     };

@@ -38,9 +38,13 @@ function tally(job, results, outcome) {
  * else is not this function's to catch.
  */
 function carryOn(job, results, imageFile, index) {
-    job.progress.beginning(index + 1, imageFile.originalName);
-
     try {
+        /*
+         * Inside the boundary, because saying what is about to happen is
+         * where a stop takes effect: this is the checkpoint between one image
+         * and the next, and the batch report must survive it.
+         */
+        job.progress.beginning(index + 1, imageFile.originalName);
         tally(job, results, createSeparatePdf(job, imageFile, index));
 
         return true;
@@ -76,13 +80,7 @@ function createSeparatePdfs(job, imageFiles) {
     const results = { outputs: [], failures: [] };
 
     for (const [index, imageFile] of imageFiles.entries()) {
-        /*
-         * Asked between images, which is the only place stopping is safe
-         * here: a publication in progress owns a finished PDF and a name it
-         * has claimed, and an image abandoned half way is not an outcome
-         * anybody can act on.
-         */
-        if (job.progress.stopped() || !carryOn(job, results, imageFile, index)) {
+        if (!carryOn(job, results, imageFile, index)) {
             return stoppedResults(results);
         }
     }

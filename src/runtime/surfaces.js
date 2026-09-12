@@ -1,6 +1,6 @@
 "use strict";
 
-const { createProgress, SILENT } = require("./progress.js");
+const { createProgress } = require("./progress.js");
 const { openPanel } = require("./panel.js");
 
 /*
@@ -12,9 +12,9 @@ const { openPanel } = require("./panel.js");
  * is none of those, and the assignments succeeded and nobody saw anything.
  *
  * So there are two surfaces and they are both written to. A surface that
- * cannot be established returns null and is left out; if none can be, the run
- * reports to SILENT, and that is now something measured about the host rather
- * than something assumed about it.
+ * cannot be established returns null and is left out; a reporter with none
+ * left reports nowhere, and that is now something measured about the host
+ * rather than something assumed about it.
  */
 
 /*
@@ -63,13 +63,13 @@ function jxaProgress(host = globalThis.Progress) {
  */
 function openProgress(headless, build = [openPanel, jxaProgress]) {
     if (headless) {
-        return SILENT;
+        return createProgress([]);
     }
 
     try {
         return createProgress(build.map((open) => open()).filter(Boolean));
     } catch {
-        return SILENT;
+        return createProgress([]);
     }
 }
 

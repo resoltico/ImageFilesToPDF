@@ -1,62 +1,37 @@
 "use strict";
 
 /*
- * Where a stop takes effect.
+ * Where a stop takes effect in a combined run.
  *
- * A cancellation arriving through a progress surface is recorded rather than
- * thrown on, because the place it arrives is wherever a report happened to be
- * made and that is no guide to whether stopping there is safe. So the run
- * asks, at the places where it is: before an image is started, once every
- * page is prepared, and once the PDF is built but not yet published.
+ * Three rounds of this design were a list of places somebody had thought of,
+ * and each round an audit found the next one. The list is gone: a report of
+ * what is about to happen raises, and a report of what has happened does not.
+ * Those two lists were always the same list -- a report made before the work
+ * is made before anything has been produced.
  *
- * A stop recorded on the last image's own report used to reach none of those
- * -- the loop had no further image to ask about it -- so the run went on to
- * import, validate and publish a PDF it had already been told not to make.
+ * Reproduced before the fix: a stop recorded at "Saving PDF" published the
+ * PDF anyway and the run returned success.
  */
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { isUserCancelled } = require("../../../src/core/errors.js");
-const { checkpoint } = require("../../../src/runtime/stopping.js");
 const { createCombinedPdf } = require("../../../src/runtime/pdf.js");
 const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob, imageOf } = require("./fake-job.cjs");
+const { stoppingWhen, atPhase } = require("./fake-stopping.cjs");
 
 const TWO = ["/a/1.png", "/a/2.png"];
 
-/*
- * A reporter that says stop the moment the given description is reported,
- * which is how a button pressed at one particular instant is modelled.
- */
-function stoppingAt(description) {
-    const said = [];
-    let stopped = false;
-
-    const note = (text) => {
-        said.push(text);
-        stopped ||= text === description;
-    };
-
-    return {
-        said,
-        stopped: () => stopped,
-        expect: () => undefined,
-        beginning: (index) => note(`beginning ${index}`),
-        about: () => note("about"),
-        phase: (text) => note(text),
-        finished: (text) => note(`finished ${text}`),
-        pause: () => undefined,
-        close: () => undefined
-    };
-}
-
-function combinedStoppedAt(description, files = TWO) {
+function combinedStoppedWhen(asked, files = TWO) {
     const host = createFakeHost({ files });
     const job = makeJob(host);
+    const { said, progress } = stoppingWhen(asked);
 
-    job.progress = stoppingAt(description);
+    job.progress = progress;
+    job.progress.expect({ units: files.length + 1, images: files.length });
 
-    const outcome = { host, said: job.progress.said, threw: null };
+    const outcome = { host, job, said, threw: null };
 
     try {
         createCombinedPdf(job, files.map(imageOf));
@@ -67,78 +42,99 @@ function combinedStoppedAt(description, files = TWO) {
     return outcome;
 }
 
+// Published, rather than staged: the workspace copy is removed with the
+// workspace, by runJob, which is not what these exercise.
 function pdfsIn(host) {
-    return [...host.files].filter((path) => path.endsWith(".pdf"));
+    return [...host.files].filter(
+        (path) => path.startsWith("/a/") && path.endsWith(".pdf")
+    );
 }
 
-test("a checkpoint is a question, and only a stop answers it", () => {
-    assert.doesNotThrow(() => checkpoint({ stopped: () => false }));
-    assert.throws(() => checkpoint({ stopped: () => true }), isUserCancelled);
-});
-
-test("a stop on the last image's own report starts no PDF", () => {
-    // Reproduced before it was fixed: the run went on through "Creating PDF",
-    // "Validating PDF" and "Saving PDF" and published.
-    const { host, said, threw } = combinedStoppedAt("finished Preparing");
+test("a stop while saving publishes nothing", () => {
+    // The one that used to get through. The report sits above the line that
+    // records the staged PDF as unpublished and above the claim itself, so
+    // nothing is claimed and the workspace goes with the staged file in it.
+    const { host, said, threw } = combinedStoppedWhen(atPhase("Saving PDF"));
 
     assert.ok(isUserCancelled(threw), "the run ends as a cancellation");
-    assert.ok(!said.includes("Creating PDF"), `nothing was built: ${said.join(", ")}`);
-    assert.deepEqual(pdfsIn(host), [], "and nothing was published");
-});
-
-test("a stop on one image's report begins no further image", () => {
-    // The checkpoint at the top of the loop. Without it the run prepares
-    // every remaining photograph before anything asks again.
-    const { said, threw } = combinedStoppedAt("finished Preparing");
-
-    assert.ok(isUserCancelled(threw));
+    assert.deepEqual(pdfsIn(host), [], "nothing was published");
     assert.ok(
-        !said.includes("beginning 2"),
-        `the second image was never started: ${said.join(", ")}`
+        !said.some((line) => line.startsWith("Saved")),
+        `and nothing said it was: ${said.join(", ")}`
     );
 });
 
-test("a stop on the last image's report is asked about after the loop", () => {
-    // One image, so the loop has no further iteration to notice it in. This
-    // is the checkpoint that exists because the loop cannot be the only one.
-    const { said, threw } = combinedStoppedAt("finished Preparing", ["/a/only.png"]);
+test("a stop while saving leaves no workspace behind either", () => {
+    // The report sits above the line that records the staged PDF as
+    // unpublished. One line lower and the set would be non-empty, so runJob
+    // would keep the whole workspace -- and a cancellation is silent, so
+    // nobody would be told about the directory left on the disk.
+    const { job } = combinedStoppedWhen(atPhase("Saving PDF"));
 
-    assert.ok(isUserCancelled(threw));
-    assert.ok(
-        !said.includes("Creating PDF"),
-        `no import was started: ${said.join(", ")}`
-    );
-    assert.ok(!said.includes("about"), "and nothing was summarised");
+    assert.equal(job.unpublished.size, 0);
 });
 
-test("a stop while the PDF is being built publishes nothing", () => {
-    const { host, said, threw } = combinedStoppedAt("Creating PDF");
+test("a stop while the PDF is being built starts no import", () => {
+    const { host, said, threw } = combinedStoppedWhen(atPhase("Creating PDF"));
 
     assert.ok(isUserCancelled(threw));
-    assert.ok(!said.includes("Saving PDF"), `publication never began: ${said.join(", ")}`);
     assert.deepEqual(pdfsIn(host), []);
+    assert.ok(
+        !said.some((line) => line.startsWith("Validating PDF")),
+        `stopped there: ${said.join(", ")}`
+    );
 });
 
 test("a stop while the PDF is being validated publishes nothing", () => {
-    const { host, threw } = combinedStoppedAt("Validating PDF");
+    const { host, said, threw } = combinedStoppedWhen(atPhase("Validating PDF"));
 
     assert.ok(isUserCancelled(threw));
     assert.deepEqual(pdfsIn(host), []);
+    assert.ok(!said.some((line) => line.startsWith("Saving PDF")));
 });
 
-test("a stop once publication has started lets it finish", () => {
-    // There is no checkpoint inside a publication. It owns a finished PDF and
-    // a name it has claimed, and unwinding it from an unrelated signal is how
-    // both are lost.
-    const { host, said, threw } = combinedStoppedAt("Saving PDF");
+test("a stop on the summary of prepared images starts no import", () => {
+    const { host, said, threw } = combinedStoppedWhen(
+        (description, detail) => detail === "2 images prepared"
+    );
 
-    assert.equal(threw, null, "the run completes");
-    assert.ok(said.includes("finished Saved"));
-    assert.equal(pdfsIn(host).length, 1, "the PDF it had already claimed is there");
+    assert.ok(isUserCancelled(threw));
+    assert.deepEqual(pdfsIn(host), []);
+    assert.ok(
+        !said.some((line) => line.startsWith("Creating PDF")),
+        `stopped there: ${said.join(", ")}`
+    );
+});
+
+test("a stop on one image's report begins no further image", () => {
+    const { said, threw } = combinedStoppedWhen(
+        (description, detail) => detail === "1 of 2 — 1.png"
+    );
+
+    assert.ok(isUserCancelled(threw));
+    assert.ok(
+        !said.some((line) => line.includes("2 of 2")),
+        `the second image was never begun: ${said.join(", ")}`
+    );
+});
+
+test("a stop on the last image's report is caught by the next thing said", () => {
+    // One image, so the loop has no further iteration to notice it in.
+    const { host, said, threw } = combinedStoppedWhen(
+        (description, detail) => detail === "1 of 1 — only.png",
+        ["/a/only.png"]
+    );
+
+    assert.ok(isUserCancelled(threw));
+    assert.deepEqual(pdfsIn(host), []);
+    assert.ok(
+        !said.some((line) => line.startsWith("Creating PDF")),
+        `stopped there: ${said.join(", ")}`
+    );
 });
 
 test("a run nobody stops is untouched by any of this", () => {
-    const { host, threw } = combinedStoppedAt("never said");
+    const { host, threw } = combinedStoppedWhen(() => false);
 
     assert.equal(threw, null);
     assert.equal(pdfsIn(host).length, 1);

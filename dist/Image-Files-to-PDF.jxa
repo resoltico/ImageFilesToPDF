@@ -2194,25 +2194,6 @@ function collectDialogSettings(app, answers = defaultAnswers()) {
 /* ===== src/runtime/progress.js ===== */
 
 
-function nothing() {
-    return undefined;
-}
-
-function never() {
-    return false;
-}
-
-const SILENT = Object.freeze({
-    stopped: never,
-    expect: nothing,
-    beginning: nothing,
-    about: nothing,
-    phase: nothing,
-    finished: nothing,
-    pause: nothing,
-    close: nothing
-});
-
 function broadcast(sinks, state) {
     return (use) => {
         for (const sink of sinks) {
@@ -2225,10 +2206,18 @@ function broadcast(sinks, state) {
     };
 }
 
+function announce(state, say) {
+    say();
+
+    if (state.stopped) {
+        throw new UserCancelled();
+    }
+}
+
 function reporting(state, say) {
     const headline = (text) => {
         state.description = text;
-        say();
+        announce(state, say);
     };
 
     return {
@@ -2241,24 +2230,21 @@ function reporting(state, say) {
 
         about(summary) {
             state.detail = summary;
-            say();
+            announce(state, say);
         },
 
         phase: headline,
 
         finished(text) {
             state.done += 1;
-            headline(text);
+            state.description = text;
+            say();
         }
     };
 }
 
 function lifecycle(state, each) {
     return {
-        stopped() {
-            return state.stopped;
-        },
-
         expect({ units, images }) {
             state.images = images;
             each((sink) => sink.start(units));
@@ -2280,10 +2266,6 @@ function lifecycle(state, each) {
 }
 
 function createProgress(sinks) {
-    if (sinks.length === 0) {
-        return SILENT;
-    }
-
     const state =
         { images: 0, done: 0, description: "", detail: "", stopped: false, closed: false };
     const each = broadcast(sinks, state);
@@ -2292,14 +2274,6 @@ function createProgress(sinks) {
     );
 
     return { ...reporting(state, say), ...lifecycle(state, each) };
-}
-
-/* ===== src/runtime/stopping.js ===== */
-
-function checkpoint(progress) {
-    if (progress.stopped()) {
-        throw new UserCancelled();
-    }
 }
 
 /* ===== src/runtime/surfaces.js ===== */
@@ -2334,13 +2308,13 @@ function jxaProgress(host = globalThis.Progress) {
 
 function openProgress(headless, build = [openPanel, jxaProgress]) {
     if (headless) {
-        return SILENT;
+        return createProgress([]);
     }
 
     try {
         return createProgress(build.map((open) => open()).filter(Boolean));
     } catch {
-        return SILENT;
+        return createProgress([]);
     }
 }
 
@@ -2390,9 +2364,8 @@ function stoppedLine(result, pageCount) {
         return "";
     }
 
-    const started = result.outputs.length + result.failures.length;
-
-    return `Stopped. ${plural(pageCount - started, "image")} not started.`;
+    return `Stopped. ${
+        plural(pageCount - result.outputs.length, "image")} not converted.`;
 }
 
 function completionMessage(mode, result, pageCount) {
@@ -2954,7 +2927,9 @@ function writeReceipt(text, ns = foundation(globalThis.ObjC, globalThis.$)) {
 }
 
 function isCompleteSuccess(result) {
-    return result.failures.length === 0 && (result.rejected ?? []).length === 0;
+    return !result.stopped &&
+        result.failures.length === 0 &&
+        (result.rejected ?? []).length === 0;
 }
 
 function describeIncomplete(result) {
@@ -2964,8 +2939,10 @@ function describeIncomplete(result) {
         `${result.failures.length} failed`,
         `${rejected} not converted`
     ];
+    const stopped = result.stopped ? " The run was stopped." : "";
 
-    return `The request was not completely honoured: ${counts.join(", ")}.`;
+    return `The request was not completely honoured: ${
+        counts.join(", ")}.${stopped}`;
 }
 
 /* ===== src/runtime/reporting.js ===== */
@@ -3246,7 +3223,6 @@ function withImageName(imageFile, produce) {
 
 function preparePages(job, imageFiles) {
     return imageFiles.map((imageFile, index) => {
-        checkpoint(job.progress);
         job.progress.beginning(index + 1, imageFile.originalName);
 
         const page = withImageName(
@@ -3651,26 +3627,20 @@ function resolveOutputPaths(job, outputFolder, name) {
 function prepareCombined(job, imageFiles) {
     const pages = preparePages(job, imageFiles);
 
-    checkpoint(job.progress);
     job.progress.about(`${plural(pages.length, "image")} prepared`);
 
     return pages;
-}
-
-function buildCombined(job, paths, imageFiles) {
-    createAndValidatePdf(
-        job,
-        paths.stagedPath,
-        prepareCombined(job, imageFiles)
-    );
-    checkpoint(job.progress);
 }
 
 function produceCombined(job, paths, imageFiles) {
     let validated = false;
 
     try {
-        buildCombined(job, paths, imageFiles);
+        createAndValidatePdf(
+            job,
+            paths.stagedPath,
+            prepareCombined(job, imageFiles)
+        );
         validated = true;
         publishPdf(job, paths.stagedPath, paths.finalPath);
         job.progress.finished("Saved");
@@ -3765,9 +3735,8 @@ function tally(job, results, outcome) {
 }
 
 function carryOn(job, results, imageFile, index) {
-    job.progress.beginning(index + 1, imageFile.originalName);
-
     try {
+        job.progress.beginning(index + 1, imageFile.originalName);
         tally(job, results, createSeparatePdf(job, imageFile, index));
 
         return true;
@@ -3794,7 +3763,7 @@ function createSeparatePdfs(job, imageFiles) {
     const results = { outputs: [], failures: [] };
 
     for (const [index, imageFile] of imageFiles.entries()) {
-        if (job.progress.stopped() || !carryOn(job, results, imageFile, index)) {
+        if (!carryOn(job, results, imageFile, index)) {
             return stoppedResults(results);
         }
     }
@@ -3818,7 +3787,7 @@ function createJob(app, settings, timestamp, tools) {
         geometry: calculatePageGeometry(settings),
         workspace: createWorkspace(app),
         unpublished: new Set(),
-        progress: SILENT,
+        progress: createProgress([]),
         rename: null
     };
 }

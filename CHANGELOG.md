@@ -52,11 +52,20 @@ Notable changes to this project are documented in this file. The format is based
   already been saved is kept and reported instead of the run ending with
   nothing said about the PDFs on disk. A stop that arrived before anything was
   made says nothing, as a cancellation always has.
-- A Single PDF run that is stopped no longer goes on to build and save the PDF
-  anyway. A stop arriving while the last image was being prepared, or during
-  "Creating PDF" or "Validating PDF", used to reach nothing that would act on
-  it. Stopping now takes effect wherever nothing has been produced yet —
-  though never once saving has begun, so a PDF is never half published.
+- A run that is stopped no longer goes on to build and save a PDF anyway.
+  Stopping now takes effect at every point where the action says what it is
+  about to do next — preparing an image, creating the PDF, validating it,
+  saving it — because at each of those nothing has been produced yet. It never
+  takes effect once saving has begun, so a PDF is never half published.
+- In Separate PDFs mode a stop now takes effect within the image being
+  converted, rather than only before the next one. The image being worked on
+  produces nothing; the PDFs already saved are kept and reported.
+- A headless run that was stopped part way now reports that it did not do
+  everything it was asked, instead of exiting as though it had. The receipt is
+  unchanged and still lists what was produced.
+- The count in the stopped message no longer describes an image that was
+  interrupted as one that was never started. It says how many images no PDF
+  came out of, which is true of both.
 - A file URL that cannot be decoded is now reported as something that could
   not be converted, rather than being read as a literal filename. A malformed
   address and a correctly written one for a file whose name really contains

@@ -62,24 +62,27 @@ function versionLine() {
 }
 
 /*
- * A run that was asked to stop says so, and says what it did not get to.
+ * A run that was asked to stop says so, and how much it did not get to.
  *
- * Only a separate run can reach this: it publishes as it goes, so stopping
- * leaves real PDFs on disk and saying nothing about them is the one thing
- * this dialog exists to prevent. A combined run that stops has produced
- * nothing, and ends in silence like every other cancellation.
+ * Only a separate run reaches this: it publishes as it goes, so stopping
+ * leaves real PDFs on disk, and saying nothing about them is the one thing
+ * this dialog exists to prevent. A combined run that stops produced nothing
+ * and ends in silence, like every other cancellation.
  *
- * The images that were never started are counted rather than listed. The
- * person stopped them; reading four hundred filenames back is not news.
+ * Counted rather than listed: reading four hundred filenames back is not news.
+ *
+ * "Not converted" rather than "not started", because one of them may have
+ * been: a stop takes effect at the next thing the run says it is about to do,
+ * which for the image in hand is partway through it. What is true of all of
+ * them is that no PDF came out.
  */
 function stoppedLine(result, pageCount) {
     if (!result.stopped) {
         return "";
     }
 
-    const started = result.outputs.length + result.failures.length;
-
-    return `Stopped. ${plural(pageCount - started, "image")} not started.`;
+    return `Stopped. ${
+        plural(pageCount - result.outputs.length, "image")} not converted.`;
 }
 
 /*
