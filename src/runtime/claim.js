@@ -60,13 +60,21 @@ function refused(reasons) {
 /*
  * The link onto the final name: nothing at all when the name was created, and
  * what the system said when it was not.
+ *
+ * A cancellation is recorded rather than let out. By the time anything here
+ * runs the PDF has been built and validated and is one operation from the
+ * person's folder, and unwinding to honour a button would throw that away --
+ * the same reason there is no checkpoint inside a publication. What it buys
+ * is that the run stops at the next image instead of carrying on to the end.
  */
-function linkFrom(app, from, finalPath) {
+function linkFrom(job, from, finalPath) {
     try {
-        runArgv(app, [LN, from, finalPath], "claiming the output name");
+        runArgv(job.app, [LN, from, finalPath], "claiming the output name");
 
         return "";
     } catch (error) {
+        job.progress.interrupted(error);
+
         return errorMessage(error);
     }
 }
@@ -75,30 +83,30 @@ function linkFrom(app, from, finalPath) {
  * Why the name was not created, in the order it is worth reading: the plain
  * words first, the system's own after them.
  */
-function whyNot(app, finalPath, said, rename) {
-    if (pathIsTaken(app, finalPath)) {
+function whyNot(job, finalPath, said) {
+    if (pathIsTaken(job.app, finalPath)) {
         return ["the output path was taken", said];
     }
 
-    return rename ? [UNTAKEN, said] : [UNTAKEN, NO_RENAME, said];
+    return job.rename ? [UNTAKEN, said] : [UNTAKEN, NO_RENAME, said];
 }
 
 /*
  * Both operations, in turn, from a source that is expendable.
  */
 function claimFrom(attempt, from) {
-    const { app, paths, rename } = attempt;
-    const said = linkFrom(app, from, paths.final);
+    const { job, paths } = attempt;
+    const said = linkFrom(job, from, paths.final);
 
     if (!said) {
         return published(from);
     }
 
-    if (rename && rename.rename(from, paths.final)) {
+    if (job.rename && job.rename.rename(from, paths.final)) {
         return published(from);
     }
 
-    return refused(whyNot(app, paths.final, said, rename));
+    return refused(whyNot(job, paths.final, said));
 }
 
 module.exports = { linkFrom, claimFrom, published, refused };

@@ -26,20 +26,26 @@ function mismatch(written, expected) {
  * after writing part of the file or all of it, which is why the size is
  * checked and why the place is this attempt's to clear away either way.
  */
-function copyBeside(app, staged, area, expected) {
+function copyBeside(job, staged, area, expected) {
     try {
-        openStaging(app, area);
+        openStaging(job.app, area);
     } catch (error) {
+        job.progress.interrupted(error);
+
         return { reasons: [errorMessage(error)], made: false };
     }
 
     try {
-        runArgv(app, [CP, staged, area.file], "copying the PDF into the output folder");
+        runArgv(job.app, [CP, staged, area.file], "copying the PDF into the output folder");
     } catch (error) {
+        // Recorded, not let out: the finished PDF is still in the workspace
+        // and the ordinary path knows how to keep it. See claim.js.
+        job.progress.interrupted(error);
+
         return { reasons: [errorMessage(error)], made: true };
     }
 
-    const written = fileFacts(app, area.file);
+    const written = fileFacts(job.app, area.file);
 
     return expected !== SIZE_UNKNOWN && written.size === expected
         ? { reasons: [], made: true, identity: written.identity }

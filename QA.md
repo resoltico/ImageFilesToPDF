@@ -992,35 +992,71 @@ were added late, with the outcome rather than with the code producing it, and
 both were wrong until an audit said so -- a stopped batch took the success
 branch, and the dialog called an interrupted image one that was never started.
 
-### Where a cancellation is not propagated, and why that is the answer
+### A cancellation that arrives at a shell command
 
-An audit asked for cancellation to be carried out of `linkFrom` and the copy
-helpers, and in the same breath for it never to destroy an already-published
-PDF or its only recovery copy. Those are the same request pulling in opposite
-directions. Publication is a transaction -- measure the staged file, claim the
-name, confirm the identity, release both copies -- and an exception thrown out
-of a link attempt lands in the middle of it. Swallowing there is correct.
+Everything above is about a stop arriving at a progress surface. It can also
+arrive at a shell command, and what to do there is the same rule applied to
+different circumstances:
 
-The same goes for `tryArgv`, `asks` and `isRegularNonEmpty`. The first is
-`removeFile`, called from `finally` blocks, where an escape would mask the
-error already on its way out and abandon the rest of the cleanup. The others
-answer "the test succeeded", and `asking.js` has always said a "no" must not
-be read as a fact about the file.
+> **Unwind where nothing is lost. Record where something would be.**
 
-All of those findings need a `-128` to come out of `doShellScript`. Nothing
-establishes that it can -- exit statuses are 0 to 255 and positive -- and
-nothing disproves it either, because `do shell script` is an Apple Event.
-Making the shell layer aware of a stop means a run-scoped flag threaded
-through four helpers and every call site in five modules, or module-global
-mutable state in a codebase that has none.
+| Where | What exists then | Treatment |
+| --- | --- | --- |
+| a vips or pdfcpu stage | a stage that has failed anyway | unwinds -- `runArgv` keeps it as a cause and the loop asks `isUserCancelled` |
+| verifying a stage's output | the same | unwinds |
+| claiming the output name | a built, validated PDF | recorded; the ordinary path carries it through |
+| copying beside the destination | the same | recorded |
+| cleanup, and questions put to the filesystem | an error already on its way out | swallowed |
 
-**This is a decision against, not a deferral**, and the measurement that
-reopens it belongs in the same hand test as the Stop button: press Stop during
-a conversion and read whether what arrives is a cancellation or a shell error.
+The first row already worked and is now pinned by a test. The second was
+wrong in a way worth naming: a cancellation became `prepared page image is
+not a file with anything in it`, which is a wrong diagnosis rather than a late
+stop. `asking.js` has always warned that a test which could not be run says no
+in the same words; a cancellation is the one case it can tell apart, so it
+does.
 
-What was taken from that neighbourhood is the ten lines that stop a separate
-run from throwing its batch report away when a cancellation is raised from
-inside one of its images. That is cheap and right under either premise.
+The third and fourth are where an audit asked for the opposite, and this is
+the load-bearing judgement. Its criterion was that a cancellation before
+publication should not start the ordinary fallback. Honouring that means
+discarding a PDF that has been built, validated, and is one operation from the
+person's folder, because a button was pressed a moment too late. **A stop must
+not destroy completed work** -- which is the same rule that puts no checkpoint
+inside a publication. So the cancellation is recorded and the run stops at the
+next image, with the image in hand published correctly.
+
+Recording needed the reporter, and the publication layer took `app` and a
+`rename` bridge -- `{ app, paths, rename }`, a hand-assembled copy of three of
+the job's fields, made when the job had nothing else it needed. It does now.
+Passing the job is one parameter fewer at `deliver` and one field fewer in the
+attempt object.
+
+`interrupted(error)` records a cancellation a caller caught for itself. It is
+called from inside a `catch` that is about to return an ordinary failure, so
+it must not raise -- it touches nothing but state, and a test pins that,
+because "cannot raise" is a property a later edit could take away silently.
+
+### The premise, which is the thing worth measuring
+
+All of this rests on knowing where a Stop actually arrives, and nothing here
+knows. Three earlier rounds declined the shell-command cases on the grounds
+that the premise was unmeasured. That was one-sided, and the correction is
+worth stating: **`do shell script` is an Apple Event, and Apple Events are
+where `-128` conventionally arrives in this environment** -- `display dialog`,
+`choose file`, and the rest. The `Progress` object is a host property, not an
+event.
+
+So the premise threatens the progress-surface mechanism at least as much as it
+threatens the shell-command cases. If a Stop raises at the next Apple Event
+rather than at the next `completedUnitCount` assignment, the surface mechanism
+never records anything and the shell path is the only one that works. Both are
+built now, which is the right answer to not knowing, but the measurement is
+still the thing that settles it, and it is in the hand test: press Stop during
+a conversion and read whether what arrives is a cancellation at a progress
+assignment, a cancellation at a shell call, or nothing at all because the host
+killed the script.
+
+None of it can arise inside a Shortcut, which presents no progress object and
+no Stop button, and whose panel is deliberately inert.
 
 ## What a tool's exit status is not evidence of
 
@@ -1697,6 +1733,10 @@ to fail when the fix is reverted:
 | A stop discovered by the very report that announced the work | reporter stop tests |
 | A stopped run exiting zero with a success receipt | receipt tests |
 | A dialog calling an interrupted image one that was never started | stopped-completion tests |
+| A cancellation reported as a file that is missing | shell-cancellation tests |
+| A stop at publication running on to the end of the batch | publication-cancellation tests |
+| A stop at publication discarding a PDF that was already built | publication-cancellation tests |
+| A headless count naming refused inputs as everything unconverted | receipt tests |
 | A stopped run losing the report of what it had already published | separate-mode stop tests |
 | Two different file URLs resolving to one path | file-URL tests |
 | A page left behind by the check that rejected it | page-lifetime tests |

@@ -40,8 +40,8 @@ const { copyBeside } = require("./output-copy.js");
  * to work explains nothing about it.
  */
 function throughStaging(attempt, facts, refusal) {
-    const { app, paths } = attempt;
-    const copied = copyBeside(app, paths.staged, paths.area, facts.size);
+    const { job, paths } = attempt;
+    const copied = copyBeside(job, paths.staged, paths.area, facts.size);
     const staging = copied.made ? paths.area : null;
 
     if (copied.reasons.length > 0) {
@@ -61,8 +61,8 @@ function throughStaging(attempt, facts, refusal) {
  * the output name is taken, and otherwise take the PDF over to the
  * destination and claim it from beside it.
  */
-function deliver(app, paths, facts, rename) {
-    const said = linkFrom(app, paths.staged, paths.final);
+function deliver(job, paths, facts) {
+    const said = linkFrom(job, paths.staged, paths.final);
 
     if (!said) {
         return {
@@ -73,9 +73,9 @@ function deliver(app, paths, facts, rename) {
         };
     }
 
-    return pathIsTaken(app, paths.final)
+    return pathIsTaken(job.app, paths.final)
         ? { ...refused(["the output path was taken", said]), staging: null }
-        : throughStaging({ app, paths, rename }, facts, said);
+        : throughStaging({ job, paths }, facts, said);
 }
 
 module.exports = { deliver, stagingArea };

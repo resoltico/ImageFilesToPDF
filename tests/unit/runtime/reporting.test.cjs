@@ -55,7 +55,7 @@ test("a rejection alone is enough to fail a headless run", () => {
             failures: [],
             rejected: [{ name: "anim.gif", reason: "not a supported format" }]
         }, { headless: true }),
-        /1 not converted/u
+        /1 refused before conversion/u
     );
 });
 

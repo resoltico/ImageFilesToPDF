@@ -66,6 +66,17 @@ Notable changes to this project are documented in this file. The format is based
 - The count in the stopped message no longer describes an image that was
   interrupted as one that was never started. It says how many images no PDF
   came out of, which is true of both.
+- Stopping now also takes effect when the request arrives while a command is
+  running rather than between them. An image being checked is abandoned; an
+  image being saved is finished and saved, because a PDF that is built and
+  one step from your folder should not be thrown away over a button — and then
+  the run stops rather than going on to the next image.
+- A stopped run no longer reports a missing file it never had. The request to
+  stop used to reach the check that looks for the file a stage just wrote, and
+  was reported as that file being absent.
+- The headless failure message no longer says "0 not converted" for a run that
+  left images unconverted. That count is of files refused before conversion
+  began, and it is now named as such.
 - A file URL that cannot be decoded is now reported as something that could
   not be converted, rather than being read as a literal filename. A malformed
   address and a correctly written one for a file whose name really contains

@@ -30,7 +30,7 @@ test("a claim refused because the name is taken does not become a rename", () =>
 
     host.sizes.set("/a/theirs.pdf", 99);
 
-    const outcome = deliver(host, {
+    const outcome = deliver(makeJob(host), {
         staged: "/a/p.pdf",
         final: "/a/theirs.pdf"
     });

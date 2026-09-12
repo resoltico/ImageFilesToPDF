@@ -35,7 +35,7 @@ test("a place that cannot be made is not one this run may clear away", () => {
         { files: ["/a/p.pdf"], danglingLinks: [AREA.directory] }
     ]) {
         const host = createFakeHost(settings);
-        const outcome = copyBeside(host, "/a/p.pdf", AREA, 1024);
+        const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024);
 
         assert.equal(outcome.made, false, "nothing of it is this run's");
         assert.match(outcome.reasons[0], /File exists/u);
@@ -60,7 +60,7 @@ test("a copy that failed still made the place it was going into", () => {
         files: ["/a/p.pdf"],
         failures: [["/bin/cp", new Error("cp: no space left on device")]]
     });
-    const outcome = copyBeside(host, "/a/p.pdf", AREA, 1024);
+    const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024);
 
     assert.equal(outcome.made, true);
     assert.match(outcome.reasons[0], /no space left/u);
@@ -71,7 +71,7 @@ test("a copy is checked against the size it should have", () => {
         files: ["/a/p.pdf"],
         failures: [[`stat' '-f%d:%i:%z' '${AREA.file}'`, "16777232:5:7"]]
     });
-    const outcome = copyBeside(host, "/a/p.pdf", AREA, 1024);
+    const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024);
 
     assert.equal(outcome.made, true, "and it is still this run's to clear away");
     assert.match(outcome.reasons[0], /7 bytes where 1024 were expected/u);
@@ -79,7 +79,7 @@ test("a copy is checked against the size it should have", () => {
 
 test("a source that could not be measured is never copied successfully", () => {
     const host = createFakeHost({ files: ["/a/p.pdf"] });
-    const outcome = copyBeside(host, "/a/p.pdf", AREA, -1);
+    const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, -1);
 
     assert.match(outcome.reasons[0], /-1 were expected/u);
 });
@@ -91,7 +91,7 @@ test("neither file being measurable is not a match", () => {
         files: ["/a/p.pdf"],
         failures: [["/usr/bin/stat", new Error("stat: denied")]]
     });
-    const outcome = copyBeside(host, "/a/p.pdf", AREA, -1);
+    const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, -1);
 
     assert.deepEqual(outcome.reasons, ["the staged file is -1 bytes where -1 were expected"]);
 });

@@ -2,6 +2,7 @@
 
 const { TEST } = require("../core/executables.js");
 const { shellJoin } = require("../core/shell.js");
+const { isUserCancelled } = require("../core/errors.js");
 
 /*
  * Questions put to the filesystem, answered by whether a command succeeded.
@@ -16,6 +17,13 @@ const { shellJoin } = require("../core/shell.js");
  * answer here is really "the test succeeded", and a test that could not be
  * run at all says no in the same words. Nothing may be deleted or given up
  * on the strength of one.
+ *
+ * There is one failure this can tell apart, and it does. A cancellation is
+ * not an answer about a file: reported as one it became "prepared page image
+ * is not a file with anything in it", which is a wrong diagnosis rather than
+ * a late stop. It is let out instead, because the stage it was checking has
+ * produced nothing worth keeping and everything above already knows what a
+ * cancellation means.
  */
 
 function asks(app, argumentsList) {
@@ -73,7 +81,11 @@ function isRegularNonEmpty(app, path) {
         app.doShellScript(shellJoin([TEST, "-f", path, "-a", "-s", path]));
 
         return true;
-    } catch {
+    } catch (error) {
+        if (isUserCancelled(error)) {
+            throw error;
+        }
+
         return false;
     }
 }

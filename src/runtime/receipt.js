@@ -62,10 +62,16 @@ function isCompleteSuccess(result) {
 
 function describeIncomplete(result) {
     const rejected = (result.rejected ?? []).length;
+    /*
+     * Named for what each one counts. "not converted" read as a total, and
+     * `rejected` is not one: it holds what admission refused before any
+     * conversion began, so a stopped run of three images with one output
+     * reported "0 not converted" while two had produced nothing.
+     */
     const counts = [
         `${result.outputs.length} produced`,
         `${result.failures.length} failed`,
-        `${rejected} not converted`
+        `${rejected} refused before conversion`
     ];
     const stopped = result.stopped ? " The run was stopped." : "";
 

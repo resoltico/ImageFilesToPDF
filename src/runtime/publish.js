@@ -109,7 +109,7 @@ function attempt(job, paths) {
         throw keep(job, paths, { reasons: [refusal], staging: null });
     }
 
-    const outcome = deliver(job.app, paths, facts, job.rename);
+    const outcome = deliver(job, paths, facts);
 
     if (!outcome.published) {
         throw keep(job, paths, outcome);

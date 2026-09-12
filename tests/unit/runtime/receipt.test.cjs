@@ -65,7 +65,7 @@ test("the reason names every count, so nothing is implied", () => {
 
     assert.match(reason, /1 produced/u);
     assert.match(reason, /1 failed/u);
-    assert.match(reason, /2 not converted/u);
+    assert.match(reason, /2 refused before conversion/u);
 });
 
 test("the receipt is written as UTF-8 to standard output", () => {
@@ -110,7 +110,7 @@ test("the reason copes with a result that has no rejection list", () => {
         failures: [{ name: "a.png", message: "broke", command: "" }]
     });
 
-    assert.match(reason, /0 not converted/u);
+    assert.match(reason, /0 refused before conversion/u);
 });
 
 test("the counts are readable as three, not run together", () => {
@@ -119,7 +119,7 @@ test("the counts are readable as three, not run together", () => {
     assert.equal(
         describeIncomplete({ outputs: ["/a.pdf"], failures: [{ name: "b", message: "broke", command: "" }], rejected: [] }),
         "The request was not completely honoured: " +
-            "1 produced, 1 failed, 0 not converted."
+            "1 produced, 1 failed, 0 refused before conversion."
     );
 });
 

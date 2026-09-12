@@ -16,13 +16,13 @@ const { deliver } = require("../../../src/runtime/transfer.js");
 const { stagingArea } = require("../../../src/runtime/staging-area.js");
 const { fileFacts } = require("../../../src/runtime/file-facts.js");
 const { createFakeHost } = require("./fake-host.cjs");
+const { makeJob } = require("./fake-job.cjs");
 
 function publicationOf(host, staged, final) {
     return deliver(
-        host,
+        makeJob(host),
         { staged, area: stagingArea(final), final },
-        fileFacts(host, staged),
-        host.renamer
+        fileFacts(host, staged)
     );
 }
 
