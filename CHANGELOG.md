@@ -50,9 +50,20 @@ Notable changes to this project are documented in this file. The format is based
   converted; it now uses it for one image at a time.
 - If the run is stopped part way, in a host that offers a Stop, what has
   already been saved is kept and reported instead of the run ending with
-  nothing said about the PDFs on disk. Stopping takes effect between images,
-  so the one being converted finishes rather than being abandoned half
-  published.
+  nothing said about the PDFs on disk. A stop that arrived before anything was
+  made says nothing, as a cancellation always has.
+- A Single PDF run that is stopped no longer goes on to build and save the PDF
+  anyway. A stop arriving while the last image was being prepared, or during
+  "Creating PDF" or "Validating PDF", used to reach nothing that would act on
+  it. Stopping now takes effect wherever nothing has been produced yet —
+  though never once saving has begun, so a PDF is never half published.
+- A file URL that cannot be decoded is now reported as something that could
+  not be converted, rather than being read as a literal filename. A malformed
+  address and a correctly written one for a file whose name really contains
+  `%20` used to mean the same thing, so the wrong photograph could be picked
+  silently.
+- A page image left behind by the check that rejected it is now removed with
+  the rest of that image's working files, rather than at the end of the run.
 - In Separate PDFs mode, an image that could not be converted now counts
   towards the progress. Only a saved PDF used to move the count, so three
   images with the second failing stopped at two of three, three failures

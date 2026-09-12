@@ -1,7 +1,7 @@
 "use strict";
 
 const { zeroPad } = require("../core/numbers.js");
-const { errorMessage, UserCancelled } = require("../core/errors.js");
+const { errorMessage } = require("../core/errors.js");
 const { assertSinglePage } = require("./source-image.js");
 const {
     resizeToPage,
@@ -9,6 +9,7 @@ const {
     layOutOnPage
 } = require("./page-stages.js");
 const { removeFile } = require("./shell.js");
+const { checkpoint } = require("./stopping.js");
 
 /*
  * Preparation of one source image into one page-sized JPEG.
@@ -30,22 +31,54 @@ function workspacePaths(job, index) {
     };
 }
 
+/*
+ * The three vips stages one image goes through, in order, each writing a file
+ * and each verifying that it did.
+ */
+function renderPage(job, imageFile, paths) {
+    resizeToPage(job, imageFile, paths.preparedPath);
+
+    const sourcePath = flattenIfTransparent(
+        job,
+        paths.preparedPath,
+        paths.flattenedPath
+    );
+
+    layOutOnPage(job, sourcePath, paths.pagePath);
+}
+
+/*
+ * Everything this stage made except what it is handing back.
+ *
+ * The page is written before it is checked, and the check exists because vips
+ * can exit zero having produced nothing -- so the failure path is exactly the
+ * one where a page is already on disk. It used to stay there until the
+ * workspace went at the end of the run, so a batch of failures accumulated
+ * one page each.
+ */
+function sweepUp(job, paths, keeping) {
+    removeFile(job.app, paths.preparedPath);
+    removeFile(job.app, paths.flattenedPath);
+
+    if (!keeping) {
+        removeFile(job.app, paths.pagePath);
+    }
+}
+
+// A page, or nothing left behind.
 function preparePage(job, imageFile, index) {
-    const { preparedPath, flattenedPath, pagePath } = workspacePaths(job, index);
+    const paths = workspacePaths(job, index);
+    let made = false;
 
     assertSinglePage(job, imageFile);
 
     try {
-        resizeToPage(job, imageFile, preparedPath);
+        renderPage(job, imageFile, paths);
+        made = true;
 
-        const sourcePath = flattenIfTransparent(job, preparedPath, flattenedPath);
-
-        layOutOnPage(job, sourcePath, pagePath);
-
-        return pagePath;
+        return paths.pagePath;
     } finally {
-        removeFile(job.app, preparedPath);
-        removeFile(job.app, flattenedPath);
+        sweepUp(job, paths, made);
     }
 }
 
@@ -75,17 +108,10 @@ function withImageName(imageFile, produce) {
  */
 function preparePages(job, imageFiles) {
     return imageFiles.map((imageFile, index) => {
-        /*
-         * Asked between images, which is the only place stopping is safe.
-         * Nothing has been published yet and nothing will be -- a combined run
-         * that stops before its PDF exists produces nothing -- so this ends
-         * the run the way every other cancellation in this action does, in
-         * silence.
-         */
-        if (job.progress.stopped()) {
-            throw new UserCancelled();
-        }
-
+        // Nothing has been made yet, and a combined run that stops before
+        // its PDF exists produces nothing -- so this ends the run the way
+        // every other cancellation in this action does, in silence.
+        checkpoint(job.progress);
         job.progress.beginning(index + 1, imageFile.originalName);
 
         const page = withImageName(

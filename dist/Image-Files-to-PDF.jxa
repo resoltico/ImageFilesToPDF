@@ -465,11 +465,15 @@ function isLocalAuthority(authority) {
     return authority === "" || authority.toLowerCase() === LOCAL_HOST;
 }
 
+const NUL = "\u0000";
+
 function decodePath(path) {
     try {
-        return decodeURIComponent(path);
+        const decoded = decodeURIComponent(path);
+
+        return decoded.includes(NUL) ? "" : decoded;
     } catch {
-        return path;
+        return "";
     }
 }
 
@@ -2290,6 +2294,14 @@ function createProgress(sinks) {
     return { ...reporting(state, say), ...lifecycle(state, each) };
 }
 
+/* ===== src/runtime/stopping.js ===== */
+
+function checkpoint(progress) {
+    if (progress.stopped()) {
+        throw new UserCancelled();
+    }
+}
+
 /* ===== src/runtime/surfaces.js ===== */
 
 
@@ -3185,22 +3197,40 @@ function workspacePaths(job, index) {
     };
 }
 
+function renderPage(job, imageFile, paths) {
+    resizeToPage(job, imageFile, paths.preparedPath);
+
+    const sourcePath = flattenIfTransparent(
+        job,
+        paths.preparedPath,
+        paths.flattenedPath
+    );
+
+    layOutOnPage(job, sourcePath, paths.pagePath);
+}
+
+function sweepUp(job, paths, keeping) {
+    removeFile(job.app, paths.preparedPath);
+    removeFile(job.app, paths.flattenedPath);
+
+    if (!keeping) {
+        removeFile(job.app, paths.pagePath);
+    }
+}
+
 function preparePage(job, imageFile, index) {
-    const { preparedPath, flattenedPath, pagePath } = workspacePaths(job, index);
+    const paths = workspacePaths(job, index);
+    let made = false;
 
     assertSinglePage(job, imageFile);
 
     try {
-        resizeToPage(job, imageFile, preparedPath);
+        renderPage(job, imageFile, paths);
+        made = true;
 
-        const sourcePath = flattenIfTransparent(job, preparedPath, flattenedPath);
-
-        layOutOnPage(job, sourcePath, pagePath);
-
-        return pagePath;
+        return paths.pagePath;
     } finally {
-        removeFile(job.app, preparedPath);
-        removeFile(job.app, flattenedPath);
+        sweepUp(job, paths, made);
     }
 }
 
@@ -3216,10 +3246,7 @@ function withImageName(imageFile, produce) {
 
 function preparePages(job, imageFiles) {
     return imageFiles.map((imageFile, index) => {
-        if (job.progress.stopped()) {
-            throw new UserCancelled();
-        }
-
+        checkpoint(job.progress);
         job.progress.beginning(index + 1, imageFile.originalName);
 
         const page = withImageName(
@@ -3624,20 +3651,26 @@ function resolveOutputPaths(job, outputFolder, name) {
 function prepareCombined(job, imageFiles) {
     const pages = preparePages(job, imageFiles);
 
+    checkpoint(job.progress);
     job.progress.about(`${plural(pages.length, "image")} prepared`);
 
     return pages;
+}
+
+function buildCombined(job, paths, imageFiles) {
+    createAndValidatePdf(
+        job,
+        paths.stagedPath,
+        prepareCombined(job, imageFiles)
+    );
+    checkpoint(job.progress);
 }
 
 function produceCombined(job, paths, imageFiles) {
     let validated = false;
 
     try {
-        createAndValidatePdf(
-            job,
-            paths.stagedPath,
-            prepareCombined(job, imageFiles)
-        );
+        buildCombined(job, paths, imageFiles);
         validated = true;
         publishPdf(job, paths.stagedPath, paths.finalPath);
         job.progress.finished("Saved");
@@ -3662,7 +3695,7 @@ function createCombinedPdf(job, imageFiles) {
     return { outputs: [paths.finalPath], failures: [] };
 }
 
-/* ===== src/runtime/pdf-separate.js ===== */
+/* ===== src/runtime/separate-image.js ===== */
 
 
 function failureRecord(imageFile, error) {
@@ -3716,6 +3749,9 @@ function createSeparatePdf(job, imageFile, index) {
     }
 }
 
+/* ===== src/runtime/pdf-separate.js ===== */
+
+
 function tally(job, results, outcome) {
     if (outcome.failure) {
         results.failures.push(outcome.failure);
@@ -3728,18 +3764,39 @@ function tally(job, results, outcome) {
     job.progress.finished("Saved");
 }
 
+function carryOn(job, results, imageFile, index) {
+    job.progress.beginning(index + 1, imageFile.originalName);
+
+    try {
+        tally(job, results, createSeparatePdf(job, imageFile, index));
+
+        return true;
+    } catch (error) {
+        if (!isUserCancelled(error)) {
+            throw error;
+        }
+
+        return false;
+    }
+}
+
+function stoppedResults(results) {
+    if (results.outputs.length === 0 && results.failures.length === 0) {
+        throw new UserCancelled();
+    }
+
+    results.stopped = true;
+
+    return results;
+}
+
 function createSeparatePdfs(job, imageFiles) {
     const results = { outputs: [], failures: [] };
 
     for (const [index, imageFile] of imageFiles.entries()) {
-        if (job.progress.stopped()) {
-            results.stopped = true;
-
-            return results;
+        if (job.progress.stopped() || !carryOn(job, results, imageFile, index)) {
+            return stoppedResults(results);
         }
-
-        job.progress.beginning(index + 1, imageFile.originalName);
-        tally(job, results, createSeparatePdf(job, imageFile, index));
     }
 
     return results;

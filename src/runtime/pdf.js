@@ -12,6 +12,7 @@ const { pathIsTaken } = require("./asking.js");
 const { publishPdf } = require("./publish.js");
 const { nonce } = require("./workspace.js");
 const { preparePages } = require("./pages.js");
+const { checkpoint } = require("./stopping.js");
 
 /*
  * One PDF from every image, and where the output of either mode goes.
@@ -40,25 +41,42 @@ function resolveOutputPaths(job, outputFolder, name) {
 function prepareCombined(job, imageFiles) {
     const pages = preparePages(job, imageFiles);
 
+    // The last image's own report may have carried a stop, and the loop above
+    // has no further image to ask about it. Nothing has been made but pages,
+    // and the workspace takes those with it.
+    checkpoint(job.progress);
     job.progress.about(`${plural(pages.length, "image")} prepared`);
 
     return pages;
 }
 
 /*
+ * Built, and then asked once more. The PDF is in the workspace, nothing is at
+ * the output name, and the stages that reported "Creating PDF" and
+ * "Validating PDF" are where a stop is most likely to have arrived -- so this
+ * is the last place stopping costs nothing, and the last place it is offered.
+ */
+function buildCombined(job, paths, imageFiles) {
+    createAndValidatePdf(
+        job,
+        paths.stagedPath,
+        prepareCombined(job, imageFiles)
+    );
+    checkpoint(job.progress);
+}
+
+/*
  * The staged file is removed only while it is still disposable. Once
- * createAndValidatePdf returns it is a finished PDF and publication owns it,
- * which is what `validated`, set between the two, is there to say.
+ * buildCombined returns it is a finished PDF and publication owns it, which
+ * is what `validated`, set between the two, is there to say -- so the
+ * checkpoint sits inside buildCombined, before the flag, where a stop still
+ * takes the staged file with it.
  */
 function produceCombined(job, paths, imageFiles) {
     let validated = false;
 
     try {
-        createAndValidatePdf(
-            job,
-            paths.stagedPath,
-            prepareCombined(job, imageFiles)
-        );
+        buildCombined(job, paths, imageFiles);
         validated = true;
         publishPdf(job, paths.stagedPath, paths.finalPath);
         // The PDF is the last unit of a combined run, finished when it has

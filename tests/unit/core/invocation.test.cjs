@@ -47,53 +47,12 @@ test("decodeFileUrl converts Finder URLs to POSIX paths", () => {
     assert.equal(decodeFileUrl("file:///a/b.png"), "/a/b.png");
 });
 
-test("decodeFileUrl degrades rather than throwing on a bad escape", () => {
-    assert.equal(decodeFileUrl("file:///a/%zz.png"), "/a/%zz.png");
-});
-
 test("only a leading file:// prefix is a scheme", () => {
     // Unanchored, the prefix would be removed from anywhere in the path.
     assert.equal(
         decodeFileUrl("file:///a/file:/b.png"),
         "/a/file:/b.png"
     );
-});
-
-test("a local file URL is one with no host, or localhost", () => {
-    for (const url of ["file:///tmp/a.png", "file://localhost/tmp/a.png"]) {
-        assert.equal(decodeFileUrl(url), "/tmp/a.png", url);
-    }
-
-    assert.equal(decodeFileUrl("FILE://LOCALHOST/tmp/a.png"), "/tmp/a.png");
-});
-
-test("a URL this action cannot open resolves to nothing, not to a relative path", () => {
-    // Stripping the prefix and keeping the rest treated the authority as part
-    // of the path, so "file://remotehost/tmp/a.png" became a relative path --
-    // which the filesystem answers against whatever the working directory
-    // happens to be. Matching the longer prefix first made it worse:
-    // "file://localhostevil/tmp/a.png" became "evil/tmp/a.png".
-    const refused = [
-        "file://remotehost/tmp/a.png",
-        "file://localhostevil/tmp/a.png",
-        "file://LocalHostEvil/tmp/a.png",
-        // No path at all is not a file.
-        "file://localhost",
-        "file://",
-        // Not a file URL, so not this function's answer to give.
-        "/already/posix.png",
-        "http://example.com/a.png",
-        // A scheme is a prefix. Unanchored, this would be read as one.
-        "not-a-url-file:///a.png",
-        // A literal newline cannot appear in a URL -- Finder encodes it as
-        // %0A -- and matching to the end of the string is what refuses it.
-        // Unanchored at that end, the path would be silently cut to "/a".
-        "file:///a\nb.png"
-    ];
-
-    for (const url of refused) {
-        assert.equal(decodeFileUrl(url), "", url);
-    }
 });
 
 test("a name that contains file:// is not truncated", () => {

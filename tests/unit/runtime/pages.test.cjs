@@ -60,7 +60,11 @@ test("intermediates are removed even when a stage fails", () => {
 
     const removals = app.commands.filter((command) => command.startsWith("'/bin/rm'"));
 
-    assert.equal(removals.length, 2, "prepared and flattened must both be removed");
+    assert.equal(
+        removals.length,
+        3,
+        "prepared, flattened and the page it had already written"
+    );
 });
 
 test("a stage that reports success but writes nothing is detected", () => {

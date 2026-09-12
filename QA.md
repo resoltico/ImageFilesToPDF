@@ -908,16 +908,81 @@ a property of the photograph; and `isUserCancelled` must agree with
 run from wherever the report happened to be made, and one of those places is
 the middle of a publication -- which owns a finished PDF and a name it has
 claimed, and whose header spends twenty lines on what happens when either is
-let go at the wrong moment. The loops ask between images instead.
+let go at the wrong moment. So the run asks instead, at the places where
+stopping is safe.
 
-The two modes then answer differently, and the asymmetry is the honest one. A
-separate run has published real PDFs by the time it stops, so it keeps them
-and says what it did not reach; saying nothing would break the rule
-`completion.js` states about itself. A combined run that stops before its PDF
-exists has produced nothing, and ends in silence like every other
-cancellation. Once the pages are prepared a combined run is one indivisible
-operation and finishes: there is no safe boundary inside it, and discarding a
-nearly-finished PDF to honour a button is not a service.
+### A checkpoint is a place where stopping costs nothing
+
+That is the whole rule, and it lives in `src/runtime/stopping.js`. The first
+attempt said "between images", which was too specific: what makes between
+images safe is not that it is between images but that nothing has been
+produced, so there is nothing to throw away.
+
+| Where | Made so far | Asked |
+| --- | --- | --- |
+| before each image | nothing | yes |
+| once every page is prepared | pages, in the workspace | yes |
+| once the PDF is built and validated | a staged PDF, in the workspace | yes |
+| inside publication | a claimed name, a published file | **no** |
+
+Reproduced before it was fixed: a stop recorded on the last image's own report
+reached none of those, because the loop had no further image to ask about it.
+The run went on through "Creating PDF", "Validating PDF" and "Saving PDF" and
+published a PDF it had already been told not to make.
+
+There is no checkpoint inside a publication and that is the point of having a
+rule rather than a reflex. Once publication starts it finishes, and the stop
+is honoured at the next checkpoint -- which is what lets `publish.js` keep its
+protocol intact.
+
+Nor is there one inside a separate run's image. Stopping there would abandon
+it half converted and, worse, would carry the escape past the loop that holds
+the list of PDFs already published. One image is the bound on how long such a
+run ignores a stop, and that is the right trade: a combined run funnels
+everything into one operation at the end, so not asking costs the whole of it,
+while a separate run's unasked stretch is a single photograph.
+
+### What the two modes say afterwards
+
+A stop that produced nothing is a cancellation like any other and says
+nothing. A stop with something behind it is an outcome and must be reported,
+because producing files without saying where they are is the one thing
+`completion.js` exists to prevent. Nothing means nothing *attempted*: an image
+that failed still has to be shown, whether or not the run was stopped after
+it.
+
+A combined run reaches the first case by construction -- it publishes once, at
+the end -- and a separate run can reach either.
+
+### Where a cancellation is not propagated, and why that is the answer
+
+An audit asked for cancellation to be carried out of `linkFrom` and the copy
+helpers, and in the same breath for it never to destroy an already-published
+PDF or its only recovery copy. Those are the same request pulling in opposite
+directions. Publication is a transaction -- measure the staged file, claim the
+name, confirm the identity, release both copies -- and an exception thrown out
+of a link attempt lands in the middle of it. Swallowing there is correct.
+
+The same goes for `tryArgv`, `asks` and `isRegularNonEmpty`. The first is
+`removeFile`, called from `finally` blocks, where an escape would mask the
+error already on its way out and abandon the rest of the cleanup. The others
+answer "the test succeeded", and `asking.js` has always said a "no" must not
+be read as a fact about the file.
+
+All of those findings need a `-128` to come out of `doShellScript`. Nothing
+establishes that it can -- exit statuses are 0 to 255 and positive -- and
+nothing disproves it either, because `do shell script` is an Apple Event.
+Making the shell layer aware of a stop means a run-scoped flag threaded
+through four helpers and every call site in five modules, or module-global
+mutable state in a codebase that has none.
+
+**This is a decision against, not a deferral**, and the measurement that
+reopens it belongs in the same hand test as the Stop button: press Stop during
+a conversion and read whether what arrives is a cancellation or a shell error.
+
+What was taken from that neighbourhood is the ten lines that stop a separate
+run from throwing its batch report away when a cancellation is raised from
+inside one of its images. That is cheap and right under either premise.
 
 ## What a tool's exit status is not evidence of
 
@@ -978,10 +1043,29 @@ denotes nothing this action can open, and `""` is the existing answer for an
 item that is not a path -- `selection.js` turns it into a stated rejection
 naming the URL.
 
-The leniency in percent-decoding stays, deliberately. A host that hands over
-`file:///Users/x/100%.png` unencoded makes `decodeURIComponent` throw, and the
-undecoded string is the correct path; refusing it would turn a file that
-converts today into a rejection. The authority was the defect.
+The leniency in percent-decoding did not stay, and it is worth writing down
+that the first answer here was the wrong one. It was kept on the grounds that
+a host handing over `file:///Users/x/100%.png` unencoded makes
+`decodeURIComponent` throw and the undecoded string is the correct path. True,
+and beside the point: keeping it gives two different URLs one meaning.
+`file:///a/photo%20one%ZZ.png` is malformed -- a percent must be followed by
+two hexadecimal digits -- and `file:///a/photo%2520one%25ZZ.png` is the
+correct encoding of a file really called `photo%20one%ZZ.png`. Both resolved
+to that file, so a malformed URL silently selected a photograph nobody had
+named.
+
+What is given up is one case: a host that emits unencoded URLs *and* a
+filename with a percent that is not an escape. Unencoded spaces survive
+either way, because `decodeURIComponent` does not object to them, and Finder
+encodes. What is gained is that a URL this action cannot read becomes a
+stated rejection naming it, rather than a file chosen by guesswork.
+
+A NUL is the same sentence: `%00` decodes without complaint into a character
+no path can hold, and it used to travel as far as the first shell command,
+where `shellQuote`'s refusal was caught and reported as "not a readable file"
+-- true, for the wrong reason. So the contract is: `file://`, an authority
+that is empty or exactly `localhost`, a path beginning with `/`, escapes that
+decode, and no NUL.
 
 ## The name appeared twice
 
@@ -1009,6 +1093,16 @@ with every image converted. Each attempt takes its page with it now.
 
 Deliberately not the rule the staged PDF follows: a validated PDF that could
 not be published is kept for recovery, and a page is not.
+
+That left the narrower case. The page is written before it is checked -- the
+check exists because vips can exit zero having produced nothing -- so the
+failure path is exactly the one where a page is already on disk, and
+`preparePage` swept its two intermediates and left the third. Reproduced: two
+images failing at the check left two pages behind and no `.v` files. The
+contract is now one sentence, *a page or nothing left behind*, and it is kept
+where the file is made, so both modes get it. The alternative -- having
+separate mode work out the page's pathname in advance -- would put the
+workspace naming scheme in a second module and fix one mode of two.
 
 ## The counter has one owner
 
@@ -1202,6 +1296,14 @@ asserted against a fixture instead of being observed passing on a machine that
 happens to have the tool.
 
 ### Survivors
+
+One caveat about the figure itself, found by checking a survivor by hand
+rather than trusting the report. `coverageAnalysis: "perTest"` decides which
+tests to run against each mutant from what it recorded as covering that line,
+and it under-attributes: the guard in `stoppedResults` was reported alive with
+two tests covering it, while applying the same mutation by hand fails four.
+The direction is safe -- the real score is at or above the reported one -- but
+a survivor is a thing to reproduce, not a thing to read.
 
 The mutants that remain alive are equivalent: they describe a program that
 cannot behave differently from this one. They fall into seven groups.
@@ -1552,6 +1654,11 @@ to fail when the fix is reverted:
 | A file URL resolving to a path relative to the working directory | file-URL tests |
 | Half a damaged photograph published as a finished conversion | damaged-source integration |
 | A failure naming the file it happened to twice | separate-mode failure tests + integration |
+| A stop recorded too late for any loop to notice it | checkpoint tests |
+| A PDF published after the run was asked to stop | checkpoint tests |
+| A stopped run losing the report of what it had already published | separate-mode stop tests |
+| Two different file URLs resolving to one path | file-URL tests |
+| A page left behind by the check that rejected it | page-lifetime tests |
 | Scratch storage growing with every image a separate run converts | page-lifetime tests |
 | An image that failed never being counted as attempted | separate-mode counting tests |
 | A conversion that says nothing because nobody presents the surface it writes to | two surfaces, and a hand test for the one that matters |

@@ -87,39 +87,16 @@ test("a stop during the last image does not stop a run that finished", () => {
     assert.equal(results.stopped, undefined);
 });
 
-test("a cancellation from inside an image is not blamed on the photograph", () => {
-    /*
-     * The loop asks between images, so nothing raises one from in there
-     * today. If something ever does, recording it as a per-image failure
-     * would say this photograph was at fault and carry on to the next one.
-     * It is let out instead -- through the wrapping runArgv puts over it,
-     * which is why the chain is walked rather than the top read.
-     */
-    const cancelled = () => {
-        const error = new Error("User cancelled.");
-
-        error.errorNumber = -128;
-
-        return error;
-    };
-    const host = createFakeHost({
-        files: THREE,
-        failures: [["/a/1.png", (command) => (
-            command.includes("thumbnail") ? cancelled() : undefined
-        )]]
-    });
-    const job = makeJob(host);
-
-    job.progress = stoppingAfter(THREE.length + 1);
+test("a stop before the first image says nothing, because nothing happened", () => {
+    // A stop can be recorded while the tools are checked and the folders are
+    // read, before any image is begun. Nothing was produced, so the run ends
+    // the way every other cancellation does rather than putting up a dialog
+    // saying it created no PDFs.
+    const { job } = jobFor(THREE, stoppingAfter(0));
 
     assert.throws(
         () => createSeparatePdfs(job, THREE.map(imageOf)),
         (error) => isUserCancelled(error)
-    );
-    assert.deepEqual(
-        [...host.files].filter((path) => path.endsWith(".pdf")),
-        [],
-        "and no second image was started"
     );
 });
 
