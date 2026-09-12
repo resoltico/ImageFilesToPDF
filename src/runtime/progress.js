@@ -3,40 +3,40 @@
 const { isSeparateMode } = require("../core/settings.js");
 
 /*
- * Saying what the run is doing while it does it.
+ * Saying what the run is doing while it does it: the counting and the wording,
+ * with no knowledge of where either is displayed. What displays them is
+ * surfaces.js, and there is more than one.
  *
- * Written to JavaScript for Automation's own Progress object rather than to a
- * window this code puts on screen. The two were weighed by what happens when
- * each is wrong: an assignment to Progress cannot open a window, cannot raise
- * the process activation policy and put a Dock icon up in the middle of an
- * action, and cannot pump a run loop underneath a host that is driving this
- * script. If nothing is listening, nothing happens.
+ * Two numbers are reported side by side and they are not the same number.
+ * `done` is work that has finished, which is what Apple says
+ * completedUnitCount holds; the label counts images, because "2 of 1" in front
+ * of somebody waiting is nonsense whatever the counter underneath it means. A
+ * combined run of one photograph has two units in it -- the image, and the PDF
+ * it becomes -- and one image.
  *
- * An NSPanel can do all three, and whether it does is not something this
- * repository can measure: a Shortcut cannot be created from the command line,
- * so the probe that established the settings form presents cleanly cannot be
- * repeated here without someone running it by hand. Unverified and silent is
- * a fair trade; unverified and visible is not.
- *
- * Which means the honest statement is that whether the host shows any of this
- * is unmeasured. QA.md says so, and says how to find out. The sink is a
- * parameter so that answer can change without touching a single call site.
+ * Who moves the count is one rule, and it is the rule the old code did not
+ * have: the loop that owns an image opens and closes its unit, and nothing
+ * else counts. Publication used to be the only thing that advanced it, so a
+ * separate run whose second image failed ended at 2 of 3, and one where all
+ * three failed ended at 0 of 3 with the label reading "3 of 3".
  */
 
+function nothing() {
+    return undefined;
+}
+
 /*
- * Reports that go nowhere: a headless run, a job assembled before the count
- * is known, a host with no Progress to write to.
+ * Reports that go nowhere: a headless run, a job assembled before the count is
+ * known, a host with nothing at all to report to.
  */
 const SILENT = Object.freeze({
-    beginning() {
-        return undefined;
-    },
-    finished() {
-        return undefined;
-    },
-    phase() {
-        return undefined;
-    }
+    expect: nothing,
+    beginning: nothing,
+    about: nothing,
+    phase: nothing,
+    finished: nothing,
+    pause: nothing,
+    close: nothing
 });
 
 /*
@@ -49,75 +49,97 @@ function unitsOf(settings, images) {
     return isSeparateMode(settings) ? images : images + 1;
 }
 
-function jxaProgress(host = globalThis.Progress) {
-    if (!host) {
-        return null;
-    }
-
-    return {
-        start(total) {
-            host.totalUnitCount = total;
-            host.completedUnitCount = 0;
-        },
-
-        report(done, description, detail) {
-            host.completedUnitCount = done;
-            host.description = description;
-            host.additionalDescription = detail;
+/*
+ * Every surface gets every report, and one that refuses does not stop the
+ * others. They are not alternatives: the host's own Progress object is
+ * presented by Script Editor and by an applet, and the panel is what a
+ * Shortcut can show, and a run may be either.
+ */
+function broadcast(sinks) {
+    return (use) => {
+        for (const sink of sinks) {
+            try {
+                use(sink);
+            } catch {
+                // A report about the work must not become part of the work.
+            }
         }
     };
 }
 
-/*
- * A unit is a piece of work that has finished, which is what Apple says
- * completedUnitCount holds. It used to hold the number of the file about to
- * be worked on, so a job of one image reported itself complete before its
- * first inspection -- and stayed complete while the PDF was created,
- * validated and saved.
- *
- * Units and images are two counts, not one. A combined run prepares every
- * image and then publishes one PDF, which is a unit of work of its own:
- * counting only the images made a one-image job report 2 of 1 when it
- * finished, and reach 1 of 1 before the PDF had been created at all. The
- * label counts images, because "2 of 1" in front of a person waiting is
- * nonsense whatever the counter underneath it means.
- */
-function createProgress(counts, sink = jxaProgress()) {
-    const { units, images } = counts;
-    let done = 0;
-    let label = "";
-
-    const say = (description) => {
-        try {
-            sink.report(done, description, label);
-        } catch {
-            // A report about the work must not become part of the work.
-        }
+function reporting(state, say) {
+    const headline = (text) => {
+        state.description = text;
+        say();
     };
-
-    try {
-        sink.start(units);
-    } catch {
-        // No Progress on this host, or one that will not take a total.
-        return SILENT;
-    }
 
     return {
         beginning(index, originalName) {
             // A name is a line of the description, so it is kept to one.
             const name = String(originalName).replace(/\s+/gu, " ");
 
-            label = `${index} of ${images} — ${name}`;
-            say("Preparing");
+            state.detail = `${index} of ${state.images} — ${name}`;
+            headline("Preparing");
         },
 
-        finished(description) {
-            done += 1;
-            say(description);
+        /*
+         * The detail line, replaced by something that is not a file. The last
+         * stages of a combined run are about the PDF, and they used to be
+         * reported beside whichever image happened to be prepared last.
+         */
+        about(summary) {
+            state.detail = summary;
+            say();
         },
 
-        phase: say
+        phase: headline,
+
+        finished(text) {
+            state.done += 1;
+            headline(text);
+        }
     };
 }
 
-module.exports = { createProgress, jxaProgress, unitsOf, SILENT };
+function lifecycle(state, each) {
+    return {
+        /*
+         * The second half of this object's life. It is alive before the images
+         * have been counted, because finding them is itself worth saying, and
+         * it has no total until they have been.
+         */
+        expect({ units, images }) {
+            state.images = images;
+            each((sink) => sink.start(units));
+        },
+
+        pause() {
+            each((sink) => sink.pause());
+        },
+
+        close() {
+            if (state.closed) {
+                return;
+            }
+
+            state.closed = true;
+            each((sink) => sink.close());
+        }
+    };
+}
+
+function createProgress(sinks) {
+    if (sinks.length === 0) {
+        return SILENT;
+    }
+
+    const state = { images: 0, done: 0, description: "", detail: "", closed: false };
+    const each = broadcast(sinks);
+    const say = () => each(
+        (sink) => sink.report(state.done, state.description, state.detail)
+    );
+
+    return { ...reporting(state, say), ...lifecycle(state, each) };
+}
+
+module.exports = { createProgress, unitsOf, SILENT };

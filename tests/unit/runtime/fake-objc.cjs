@@ -7,6 +7,7 @@ const {
     makePopup,
     makeAlert
 } = require("./fake-appkit-objects.cjs");
+const { makeWindow, makeBox } = require("./fake-panel-objects.cjs");
 
 /*
  * A stand-in for the JXA ObjC bridge.
@@ -26,6 +27,9 @@ const {
  */
 function colourClass() {
     return {
+        labelColor: { kind: "colour", name: "label" },
+        separatorColor: { kind: "colour", name: "separator" },
+        controlAccentColor: { kind: "colour", name: "controlAccent" },
         secondaryLabelColor: { kind: "colour", name: "secondaryLabel" },
         systemRedColor: {
             kind: "colour",
@@ -50,7 +54,22 @@ function installClasses(ns, state, application) {
         NSPopUpButton: { alloc: { initWithFramePullsDown: makePopup } },
         NSComboBox: { alloc: { initWithFrame: makeCombo } },
         NSColor: colourClass(),
-        NSFont: { systemFontOfSize: (size) => ({ kind: "font", size }) },
+        NSFont: {
+            systemFontOfSize: (size) => ({ kind: "font", size }),
+            boldSystemFontOfSize: (size) => ({ kind: "font", size, bold: true })
+        },
+        NSPanel: { alloc: { initWithContentRectStyleMaskBackingDefer: makeWindow } },
+        NSBox: { alloc: { initWithFrame: makeBox } },
+        NSDate: {
+            dateWithTimeIntervalSinceNow: (seconds) => ({ kind: "date", seconds })
+        },
+        NSRunLoop: {
+            currentRunLoop: {
+                runModeBeforeDate(mode, until) {
+                    state.pumped.push({ mode, until });
+                }
+            }
+        },
         NSAlert: { alloc: { get init() { return makeAlert(state); } } },
         NSApplication: { sharedApplication: application },
         NSObject: {
@@ -71,14 +90,27 @@ function createFakeObjC(settings = {}) {
         alerts: [],
         watchdogs: [],
         disarmed: [],
-        duringModal: settings.duringModal ?? (() => undefined)
+        pumped: [],
+        policies: [],
+        duringModal: settings.duringModal ?? (() => undefined),
+        // NSApplicationActivationPolicyAccessory unless a test says otherwise;
+        // 2 is prohibited, which cannot put a window on screen.
+        policy: settings.policy ?? 1
     };
 
     const application = {
         performSelectorWithObjectAfterDelayInModes(selector, argument, delay, modes) {
             state.watchdogs.push({ selector, argument, delay, modes });
+        },
+        setActivationPolicy(policy) {
+            state.policies.push(policy);
+            state.policy = policy;
         }
     };
+
+    Object.defineProperty(application, "activationPolicy", {
+        get: () => state.policy
+    });
 
     const ns = (value) => ({ boxed: value });
 

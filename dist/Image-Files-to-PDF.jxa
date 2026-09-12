@@ -1435,6 +1435,23 @@ function checkTools(app) {
     return tools;
 }
 
+/* ===== src/runtime/objc-bridge.js ===== */
+
+
+function appkitBridge(objc, ns) {
+    if (!objc || !ns) {
+        return null;
+    }
+
+    try {
+        objc.import("AppKit");
+
+        return { objc, ns };
+    } catch {
+        return null;
+    }
+}
+
 /* ===== src/runtime/appkit-widgets.js ===== */
 
 
@@ -1703,20 +1720,6 @@ const WIDGETS = {
     makeAlert
 };
 
-function appkitBridge(objc, ns) {
-    if (!objc || !ns) {
-        return null;
-    }
-
-    try {
-        objc.import("AppKit");
-
-        return { objc, ns };
-    } catch {
-        return null;
-    }
-}
-
 
 
 const RESPONSE_ABORT = -1001;
@@ -1757,6 +1760,285 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
     return response === FIRST_BUTTON
         ? { answers: readControls(bridge, spec, controls) }
         : { cancelled: true };
+}
+
+/* ===== src/runtime/panel-geometry.js ===== */
+
+
+const PANEL_WIDTH = 420;
+const PADDING_X = 18;
+const PADDING_Y = 16;
+const HEADLINE_HEIGHT = 18;
+const DETAIL_HEIGHT = 16;
+const BAR_HEIGHT = 6;
+
+const HEADLINE_GAP = 4;
+const BAR_GAP = 12;
+
+const EDGES = 2;
+const BAR_RADIUS = BAR_HEIGHT / EDGES;
+
+const CONTENT_WIDTH = PANEL_WIDTH - PADDING_X * EDGES;
+
+const PANEL_HEIGHT = PADDING_Y * EDGES +
+    HEADLINE_HEIGHT + HEADLINE_GAP + DETAIL_HEIGHT + BAR_GAP + BAR_HEIGHT;
+
+const HEADLINE_BOTTOM = PANEL_HEIGHT - PADDING_Y - HEADLINE_HEIGHT;
+const DETAIL_BOTTOM = HEADLINE_BOTTOM - HEADLINE_GAP - DETAIL_HEIGHT;
+const BAR_BOTTOM = DETAIL_BOTTOM - BAR_GAP - BAR_HEIGHT;
+
+function row(bottom, height, width = CONTENT_WIDTH) {
+    return { left: PADDING_X, bottom, width, height };
+}
+
+const PANEL_RECT = Object.freeze({
+    left: 0,
+    bottom: 0,
+    width: PANEL_WIDTH,
+    height: PANEL_HEIGHT
+});
+
+const HEADLINE_RECT = Object.freeze(row(HEADLINE_BOTTOM, HEADLINE_HEIGHT));
+const DETAIL_RECT = Object.freeze(row(DETAIL_BOTTOM, DETAIL_HEIGHT));
+const TRACK_RECT = Object.freeze(row(BAR_BOTTOM, BAR_HEIGHT));
+
+function fillRect(done, total) {
+    const fraction = total > 0 ? Math.min(done / total, 1) : 0;
+
+    return row(BAR_BOTTOM, BAR_HEIGHT, CONTENT_WIDTH * fraction);
+}
+
+/* ===== src/runtime/panel-widgets.js ===== */
+
+
+const BACKING_BUFFERED = 2;
+
+const STYLE_TITLED = 1;
+const STYLE_UTILITY = 16;
+const STYLE_NONACTIVATING = 128;
+const PANEL_STYLE = STYLE_TITLED + STYLE_UTILITY + STYLE_NONACTIVATING;
+
+const FLOATING_LEVEL = 3;
+
+const BOX_CUSTOM = 4;
+const NO_BORDER = 0;
+const NO_TITLE = 0;
+
+const HEADLINE_FONT_SIZE = 13;
+const DETAIL_FONT_SIZE = 11;
+
+const TRUNCATES_TAIL = 4;
+
+function perform(target, method) {
+    return target[method];
+}
+
+function rectOf(ns, rect) {
+    return ns.NSMakeRect(rect.left, rect.bottom, rect.width, rect.height);
+}
+
+function makePanel(ns, rect, title) {
+    const panel = ns.NSPanel.alloc.initWithContentRectStyleMaskBackingDefer(
+        rectOf(ns, rect),
+        PANEL_STYLE,
+        BACKING_BUFFERED,
+        false
+    );
+
+    panel.title = title;
+    panel.level = FLOATING_LEVEL;
+    panel.hidesOnDeactivate = false;
+    panel.becomesKeyOnlyIfNeeded = true;
+    panel.ignoresMouseEvents = true;
+    panel.releasedWhenClosed = false;
+    perform(panel, "center");
+
+    return panel;
+}
+
+function makeContent(ns, rect) {
+    return ns.NSView.alloc.initWithFrame(rectOf(ns, rect));
+}
+
+function makeText(ns, rect, font, colour) {
+    const text = ns.NSTextField.alloc.initWithFrame(rectOf(ns, rect));
+
+    text.stringValue = "";
+    text.editable = false;
+    text.bezeled = false;
+    text.drawsBackground = false;
+    text.selectable = false;
+    text.font = font;
+    text.textColor = colour;
+    text.lineBreakMode = TRUNCATES_TAIL;
+
+    return text;
+}
+
+function makeHeadline(ns, rect) {
+    return makeText(
+        ns,
+        rect,
+        ns.NSFont.boldSystemFontOfSize(HEADLINE_FONT_SIZE),
+        ns.NSColor.labelColor
+    );
+}
+
+function makeDetail(ns, rect) {
+    return makeText(
+        ns,
+        rect,
+        ns.NSFont.systemFontOfSize(DETAIL_FONT_SIZE),
+        ns.NSColor.secondaryLabelColor
+    );
+}
+
+function makeBar(ns, rect, colour) {
+    const box = ns.NSBox.alloc.initWithFrame(rectOf(ns, rect));
+
+    box.boxType = BOX_CUSTOM;
+    box.borderType = NO_BORDER;
+    box.borderWidth = 0;
+    box.titlePosition = NO_TITLE;
+    box.fillColor = colour;
+    box.cornerRadius = BAR_RADIUS;
+
+    return box;
+}
+
+/* ===== src/runtime/panel-window.js ===== */
+
+
+const PAINT_SECONDS = 0.01;
+
+const POLICY_ACCESSORY = 1;
+const POLICY_PROHIBITED = 2;
+
+function sharedApplication(ns) {
+    return ns.NSApplication.sharedApplication;
+}
+
+function policyOf(ns) {
+    return Number(perform(sharedApplication(ns), "activationPolicy"));
+}
+
+function setPolicy(ns, policy) {
+    sharedApplication(ns).setActivationPolicy(policy);
+}
+
+function allowWindows(ns) {
+    const policy = policyOf(ns);
+
+    if (policy === POLICY_PROHIBITED) {
+        setPolicy(ns, POLICY_ACCESSORY);
+    }
+
+    return () => setPolicy(ns, policy);
+}
+
+function paint(ns, panel) {
+    perform(panel, "display");
+    ns.NSRunLoop.currentRunLoop.runModeBeforeDate(
+        ns.NSModalPanelRunLoopMode,
+        ns.NSDate.dateWithTimeIntervalSinceNow(PAINT_SECONDS)
+    );
+}
+
+function show(panel) {
+    perform(panel, "orderFrontRegardless");
+}
+
+function hide(panel) {
+    panel.orderOut(null);
+}
+
+function closeWindow(panel) {
+    perform(panel, "close");
+}
+
+function setFrame(ns, view, rect) {
+    view.frame = rectOf(ns, rect);
+}
+
+function setHidden(view, hidden) {
+    view.hidden = hidden;
+}
+
+/* ===== src/runtime/panel.js ===== */
+
+
+const APPEARANCE_DELAY = 500;
+
+function build(ns) {
+    const content = makeContent(ns, PANEL_RECT);
+    const view = {
+        panel: makePanel(ns, PANEL_RECT, APP_NAME),
+        headline: makeHeadline(ns, HEADLINE_RECT),
+        detail: makeDetail(ns, DETAIL_RECT),
+        track: makeBar(ns, TRACK_RECT, ns.NSColor.separatorColor),
+        fill: makeBar(ns, fillRect(0, 0), ns.NSColor.controlAccentColor)
+    };
+
+    for (const part of [view.headline, view.detail, view.track, view.fill]) {
+        content.addSubview(part);
+    }
+
+    setHidden(view.track, true);
+    setHidden(view.fill, true);
+    view.panel.contentView = content;
+
+    return view;
+}
+
+function panelSink(view, ns, now, restore) {
+    let total = 0;
+    let armedAt = now();
+
+    return {
+        start(units) {
+            total = units;
+            setHidden(view.track, false);
+            setHidden(view.fill, false);
+        },
+
+        report(done, description, detail) {
+            view.headline.stringValue = description;
+            view.detail.stringValue = detail;
+            setFrame(ns, view.fill, fillRect(done, total));
+
+            if (now() - armedAt < APPEARANCE_DELAY) {
+                return;
+            }
+
+            show(view.panel);
+            paint(ns, view.panel);
+        },
+
+        pause() {
+            hide(view.panel);
+            armedAt = now();
+        },
+
+        close() {
+            hide(view.panel);
+            closeWindow(view.panel);
+            restore();
+        }
+    };
+}
+
+function openPanel(bridge = appkitBridge(globalThis.ObjC, globalThis.$), now = Date.now) {
+    if (!bridge) {
+        return null;
+    }
+
+    try {
+        const view = build(bridge.ns);
+
+        return panelSink(view, bridge.ns, now, allowWindows(bridge.ns));
+    } catch {
+        return null;
+    }
 }
 
 /* ===== src/runtime/prompts.js ===== */
@@ -1857,21 +2139,101 @@ function collectDialogSettings(app, answers = defaultAnswers()) {
 /* ===== src/runtime/progress.js ===== */
 
 
+function nothing() {
+    return undefined;
+}
+
 const SILENT = Object.freeze({
-    beginning() {
-        return undefined;
-    },
-    finished() {
-        return undefined;
-    },
-    phase() {
-        return undefined;
-    }
+    expect: nothing,
+    beginning: nothing,
+    about: nothing,
+    phase: nothing,
+    finished: nothing,
+    pause: nothing,
+    close: nothing
 });
 
 function unitsOf(settings, images) {
     return isSeparateMode(settings) ? images : images + 1;
 }
+
+function broadcast(sinks) {
+    return (use) => {
+        for (const sink of sinks) {
+            try {
+                use(sink);
+            } catch {
+            }
+        }
+    };
+}
+
+function reporting(state, say) {
+    const headline = (text) => {
+        state.description = text;
+        say();
+    };
+
+    return {
+        beginning(index, originalName) {
+            const name = String(originalName).replace(/\s+/gu, " ");
+
+            state.detail = `${index} of ${state.images} — ${name}`;
+            headline("Preparing");
+        },
+
+        about(summary) {
+            state.detail = summary;
+            say();
+        },
+
+        phase: headline,
+
+        finished(text) {
+            state.done += 1;
+            headline(text);
+        }
+    };
+}
+
+function lifecycle(state, each) {
+    return {
+        expect({ units, images }) {
+            state.images = images;
+            each((sink) => sink.start(units));
+        },
+
+        pause() {
+            each((sink) => sink.pause());
+        },
+
+        close() {
+            if (state.closed) {
+                return;
+            }
+
+            state.closed = true;
+            each((sink) => sink.close());
+        }
+    };
+}
+
+function createProgress(sinks) {
+    if (sinks.length === 0) {
+        return SILENT;
+    }
+
+    const state = { images: 0, done: 0, description: "", detail: "", closed: false };
+    const each = broadcast(sinks);
+    const say = () => each(
+        (sink) => sink.report(state.done, state.description, state.detail)
+    );
+
+    return { ...reporting(state, say), ...lifecycle(state, each) };
+}
+
+/* ===== src/runtime/surfaces.js ===== */
+
 
 function jxaProgress(host = globalThis.Progress) {
     if (!host) {
@@ -1888,43 +2250,28 @@ function jxaProgress(host = globalThis.Progress) {
             host.completedUnitCount = done;
             host.description = description;
             host.additionalDescription = detail;
+        },
+
+        pause() {
+            return undefined;
+        },
+
+        close() {
+            host.totalUnitCount = 0;
         }
     };
 }
 
-function createProgress(counts, sink = jxaProgress()) {
-    const { units, images } = counts;
-    let done = 0;
-    let label = "";
-
-    const say = (description) => {
-        try {
-            sink.report(done, description, label);
-        } catch {
-        }
-    };
-
-    try {
-        sink.start(units);
-    } catch {
+function openProgress(headless, build = [openPanel, jxaProgress]) {
+    if (headless) {
         return SILENT;
     }
 
-    return {
-        beginning(index, originalName) {
-            const name = String(originalName).replace(/\s+/gu, " ");
-
-            label = `${index} of ${images} — ${name}`;
-            say("Preparing");
-        },
-
-        finished(description) {
-            done += 1;
-            say(description);
-        },
-
-        phase: say
-    };
+    try {
+        return createProgress(build.map((open) => open()).filter(Boolean));
+    } catch {
+        return SILENT;
+    }
 }
 
 /* ===== src/runtime/completion.js ===== */
@@ -2768,8 +3115,6 @@ function workspacePaths(job, index) {
 }
 
 function preparePage(job, imageFile, index) {
-    job.progress.beginning(index + 1, imageFile.originalName);
-
     const { preparedPath, flattenedPath, pagePath } = workspacePaths(job, index);
 
     assertSinglePage(job, imageFile);
@@ -2800,6 +3145,8 @@ function withImageName(imageFile, produce) {
 
 function preparePages(job, imageFiles) {
     return imageFiles.map((imageFile, index) => {
+        job.progress.beginning(index + 1, imageFile.originalName);
+
         const page = withImageName(
             imageFile,
             () => preparePage(job, imageFile, index)
@@ -3087,7 +3434,6 @@ function confirm(job, paths, outcome) {
     }
 
     job.unpublished.delete(paths.staged);
-    job.progress.finished("Saved");
     clearAway(job, outcome);
     removeFile(job.app, paths.staged);
 }
@@ -3200,29 +3546,49 @@ function resolveOutputPaths(job, outputFolder, name) {
     return { finalPath, stagedPath: stagedPdfPath(job.workspace, nonce()) };
 }
 
-function createCombinedPdf(job, imageFiles) {
-    const { finalPath, stagedPath } = resolveOutputPaths(
-        job,
-        imageFiles[0].folder,
-        outputNameForCombined(job.timestamp)
-    );
+function prepareCombined(job, imageFiles) {
+    const pages = preparePages(job, imageFiles);
 
+    job.progress.about(`${plural(pages.length, "image")} prepared`);
+
+    return pages;
+}
+
+function produceCombined(job, paths, imageFiles) {
     let validated = false;
 
     try {
-        createAndValidatePdf(job, stagedPath, preparePages(job, imageFiles));
+        createAndValidatePdf(
+            job,
+            paths.stagedPath,
+            prepareCombined(job, imageFiles)
+        );
         validated = true;
-        publishPdf(job, stagedPath, finalPath);
-
-        return { outputs: [finalPath], failures: [] };
+        publishPdf(job, paths.stagedPath, paths.finalPath);
+        job.progress.finished("Saved");
     } catch (error) {
         if (!validated) {
-            removeFile(job.app, stagedPath);
+            removeFile(job.app, paths.stagedPath);
         }
 
         throw error;
     }
 }
+
+function createCombinedPdf(job, imageFiles) {
+    const paths = resolveOutputPaths(
+        job,
+        imageFiles[0].folder,
+        outputNameForCombined(job.timestamp)
+    );
+
+    produceCombined(job, paths, imageFiles);
+
+    return { outputs: [paths.finalPath], failures: [] };
+}
+
+/* ===== src/runtime/pdf-separate.js ===== */
+
 
 function failureRecord(imageFile, error) {
     return {
@@ -3259,25 +3625,31 @@ function createSeparatePdf(job, imageFile, index) {
             removeFile(job.app, stagedPath);
         }
 
-        return { output: "", failure: failureRecord(imageFile, error) };
+        return { failure: failureRecord(imageFile, error) };
     }
 }
 
+function tally(job, results, outcome) {
+    if (outcome.failure) {
+        results.failures.push(outcome.failure);
+        job.progress.finished("Failed");
+
+        return;
+    }
+
+    results.outputs.push(outcome.output);
+    job.progress.finished("Saved");
+}
+
 function createSeparatePdfs(job, imageFiles) {
-    const outputs = [];
-    const failures = [];
+    const results = { outputs: [], failures: [] };
 
     imageFiles.forEach((imageFile, index) => {
-        const { output, failure } = createSeparatePdf(job, imageFile, index);
-
-        if (failure) {
-            failures.push(failure);
-        } else {
-            outputs.push(output);
-        }
+        job.progress.beginning(index + 1, imageFile.originalName);
+        tally(job, results, createSeparatePdf(job, imageFile, index));
     });
 
-    return { outputs, failures };
+    return results;
 }
 
 /* ===== src/runtime/job.js ===== */
@@ -3295,6 +3667,26 @@ function createJob(app, settings, timestamp, tools) {
         progress: SILENT,
         rename: null
     };
+}
+
+function prepareJob(app, invocation, tools, count) {
+    return createJob(
+        app,
+        settingsFor(app, invocation, count),
+        invocation.timestamp || makeTimestamp(new Date()),
+        tools
+    );
+}
+
+function reportingJob(app, invocation, tools, work) {
+    const images = work.images.length;
+    const job = prepareJob(app, invocation, tools, images);
+
+    job.rename = createRenamer(globalThis.ObjC, globalThis.$);
+    job.progress = work.report;
+    work.report.expect({ units: unitsOf(job.settings, images), images });
+
+    return job;
 }
 
 function runJob(job, imageFiles) {
@@ -3315,9 +3707,13 @@ function runJob(job, imageFiles) {
 
 
 
-function prepare(app, input, headless) {
+function prepare(app, input, headless, report) {
+    report.phase("Checking required tools");
+
     const tools = checkTools(app);
     const invocation = collectInvocation(app, input, headless);
+
+    report.phase("Finding images");
 
     return {
         tools,
@@ -3330,43 +3726,47 @@ function prepare(app, input, headless) {
     };
 }
 
-function prepareJob(app, invocation, tools, count) {
-    return createJob(
-        app,
-        settingsFor(app, invocation, count),
-        invocation.timestamp || makeTimestamp(new Date()),
-        tools
-    );
-}
-
-function reportingJob(app, invocation, tools, work) {
-    const images = work.images.length;
-    const job = prepareJob(app, invocation, tools, images);
-
-    job.rename = createRenamer(globalThis.ObjC, globalThis.$);
-    job.progress = work.headless
-        ? job.progress
-        : createProgress({ units: unitsOf(job.settings, images), images });
-
-    return job;
-}
-
-function execute(app, input, headless) {
-    const startedAt = new Date();
-    const { tools, invocation, selection } = prepare(app, input, headless);
+function convert(app, prepared, report, startedAt) {
+    const { invocation, tools, selection } = prepared;
     const { images, rejected } = selection;
 
-    if (images.length === 0) {
-        return reportNoImages(app, headless, rejected);
-    }
+    report.pause();
 
-    const job = reportingJob(app, invocation, tools, { images, headless });
+    const job = reportingJob(app, invocation, tools, { images, report });
     const result = runJob(job, images);
 
     result.elapsed = formatDuration(new Date() - startedAt);
     result.rejected = rejected;
+    report.close();
 
-    return reportResult(app, job, result, { headless, pageCount: images.length });
+    return reportResult(app, job, result, {
+        headless: invocation.headless,
+        pageCount: images.length
+    });
+}
+
+function execute(app, input, headless, report = openProgress(headless)) {
+    const startedAt = new Date();
+    const prepared = prepare(app, input, headless, report);
+    const { images, rejected } = prepared.selection;
+
+    if (images.length === 0) {
+        report.close();
+
+        return reportNoImages(app, headless, rejected);
+    }
+
+    return convert(app, prepared, report, startedAt);
+}
+
+function runReported(app, input, headless) {
+    const report = openProgress(headless);
+
+    try {
+        return execute(app, input, headless, report);
+    } finally {
+        report.close();
+    }
 }
 
 function run(input, parameters) {
@@ -3376,7 +3776,7 @@ function run(input, parameters) {
     app.includeStandardAdditions = true;
 
     try {
-        return execute(app, input, headless);
+        return runReported(app, input, headless);
     } catch (error) {
         if (headless) {
             throw new Error(describeForLog(error), { cause: error });

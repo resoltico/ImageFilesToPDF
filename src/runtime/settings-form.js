@@ -3,7 +3,8 @@
 const { formSpec } = require("../core/form.js");
 const { readAnswers } = require("../core/answers.js");
 const { isUserCancelled, UserCancelled } = require("../core/errors.js");
-const { presentForm, appkitBridge } = require("./appkit.js");
+const { appkitBridge } = require("./objc-bridge.js");
+const { presentForm } = require("./appkit.js");
 const { collectDialogSettings } = require("./dialogs.js");
 const { defaultAnswers } = require("../core/form-rows.js");
 const { normalizeSettings } = require("../core/settings.js");
@@ -17,11 +18,10 @@ function defaultMemory() {
 /*
  * Which front end asks for the settings.
  *
- * The AppKit form is preferred and the stepwise dialogs are the fallback,
- * rather than the form replacing them. A probe run inside ShortcutsMacHelper
- * showed the form displays there without touching the activation policy, but
- * that is a fact about this macOS, not a guarantee about the next one, and a
- * tool whose interface disappears is worse than one that asks six questions.
+ * The AppKit form is preferred and the stepwise dialogs are the fallback. A
+ * probe inside ShortcutsMacHelper showed the form displays there without
+ * touching the activation policy -- as a modal session, which is why it is no
+ * evidence about the progress panel -- and that is this macOS, not the next.
  */
 
 /*

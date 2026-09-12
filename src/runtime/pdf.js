@@ -1,9 +1,8 @@
 "use strict";
 
-const { errorMessage, commandOf } = require("../core/errors.js");
+const { plural } = require("../core/numbers.js");
 const {
     outputNameForCombined,
-    outputNameForSeparate,
     nextUniquePath,
     stagedPdfPath
 } = require("../core/naming.js");
@@ -12,10 +11,14 @@ const { removeFile } = require("./shell.js");
 const { pathIsTaken } = require("./asking.js");
 const { publishPdf } = require("./publish.js");
 const { nonce } = require("./workspace.js");
-const { preparePage, preparePages, withImageName } = require("./pages.js");
+const { preparePages } = require("./pages.js");
 
 /*
- * PDF creation, validation, and publication.
+ * One PDF from every image, and where the output of either mode goes.
+ *
+ * Both modes loop over images, and the loop is what owns a unit of work: it
+ * opens one with each image it starts and closes one with each image it is
+ * finished with. Nothing further down counts. Separate mode is pdf-separate.js.
  */
 
 function resolveOutputPaths(job, outputFolder, name) {
@@ -29,106 +32,57 @@ function resolveOutputPaths(job, outputFolder, name) {
     return { finalPath, stagedPath: stagedPdfPath(job.workspace, nonce()) };
 }
 
-function createCombinedPdf(job, imageFiles) {
-    const { finalPath, stagedPath } = resolveOutputPaths(
-        job,
-        imageFiles[0].folder,
-        outputNameForCombined(job.timestamp)
-    );
+/*
+ * Every image, and then the fact that the images are behind it: what follows
+ * is about the PDF, and used to be reported beside whichever image happened
+ * to be prepared last.
+ */
+function prepareCombined(job, imageFiles) {
+    const pages = preparePages(job, imageFiles);
 
-    // Removed only while it is still disposable. Once createAndValidatePdf
-    // returns, the staged file is a finished PDF and publication owns it.
+    job.progress.about(`${plural(pages.length, "image")} prepared`);
+
+    return pages;
+}
+
+/*
+ * The staged file is removed only while it is still disposable. Once
+ * createAndValidatePdf returns it is a finished PDF and publication owns it,
+ * which is what `validated`, set between the two, is there to say.
+ */
+function produceCombined(job, paths, imageFiles) {
     let validated = false;
 
     try {
-        createAndValidatePdf(job, stagedPath, preparePages(job, imageFiles));
-        // Set between the two: from here the staged file is a finished PDF
-        // and publication owns it, so a failure must not delete it.
+        createAndValidatePdf(
+            job,
+            paths.stagedPath,
+            prepareCombined(job, imageFiles)
+        );
         validated = true;
-        publishPdf(job, stagedPath, finalPath);
-
-        return { outputs: [finalPath], failures: [] };
+        publishPdf(job, paths.stagedPath, paths.finalPath);
+        // The PDF is the last unit of a combined run, finished when it has
+        // been published rather than when it has been built.
+        job.progress.finished("Saved");
     } catch (error) {
         if (!validated) {
-            removeFile(job.app, stagedPath);
+            removeFile(job.app, paths.stagedPath);
         }
 
         throw error;
     }
 }
 
-/*
- * What a failed image is, kept as a record until something displays it.
- *
- * The command that failed is carried by the innermost error and reached
- * through the cause chain. Reducing the failure to its message here threw
- * that away before the headless receipt -- the one place it is worth having
- * -- could ever see it.
- */
-function failureRecord(imageFile, error) {
-    return {
-        name: imageFile.originalName,
-        message: errorMessage(error),
-        command: commandOf(error)
-    };
+function createCombinedPdf(job, imageFiles) {
+    const paths = resolveOutputPaths(
+        job,
+        imageFiles[0].folder,
+        outputNameForCombined(job.timestamp)
+    );
+
+    produceCombined(job, paths, imageFiles);
+
+    return { outputs: [paths.finalPath], failures: [] };
 }
 
-/*
- * One failing image must not abandon the rest, so each is reported and the
- * run continues.
- */
-function createSeparatePdf(job, imageFile, index) {
-    // Naming is inside the boundary: resolving an output path can fail, and
-    // outside the try that failure escapes the per-image result and abandons
-    // the rest of the batch.
-    let stagedPath = "";
-    let validated = false;
-
-    try {
-        const { finalPath, stagedPath: staged } = resolveOutputPaths(
-            job,
-            imageFile.folder,
-            outputNameForSeparate(imageFile, job.timestamp)
-        );
-
-        stagedPath = staged;
-
-        withImageName(imageFile, () => {
-            createAndValidatePdf(job, stagedPath, [
-                preparePage(job, imageFile, index)
-            ]);
-            validated = true;
-            publishPdf(job, stagedPath, finalPath);
-        });
-
-        return { output: finalPath, failure: null };
-    } catch (error) {
-        if (!validated) {
-            removeFile(job.app, stagedPath);
-        }
-
-        return { output: "", failure: failureRecord(imageFile, error) };
-    }
-}
-
-function createSeparatePdfs(job, imageFiles) {
-    const outputs = [];
-    const failures = [];
-
-    imageFiles.forEach((imageFile, index) => {
-        const { output, failure } = createSeparatePdf(job, imageFile, index);
-
-        if (failure) {
-            failures.push(failure);
-        } else {
-            outputs.push(output);
-        }
-    });
-
-    return { outputs, failures };
-}
-
-module.exports = {
-    createCombinedPdf,
-    createSeparatePdfs
-};
+module.exports = { resolveOutputPaths, createCombinedPdf };

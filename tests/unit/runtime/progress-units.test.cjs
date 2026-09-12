@@ -1,28 +1,45 @@
 "use strict";
 
 /*
- * What the counter counts.
+ * What the counter counts, driven through the real conversion code.
  *
  * completedUnitCount holds work that has finished, so it must never pass the
- * total and must not reach it while there is work left. A combined run
- * counted only its images: preparing the last one took the counter to the
- * total before the PDF had been created, and publishing it took the counter
- * past the total -- 2 of 1 for a job of one photograph.
+ * total, must not reach it while there is work left, and must reach it when
+ * there is not. A combined run counted only its images: preparing the last one
+ * took the counter to the total before the PDF had been created, and
+ * publishing it took the counter past the total -- 2 of 1 for a job of one
+ * photograph.
+ *
+ * The separate-mode failures are the other half. Publication was the only
+ * thing that advanced the count, so an image that failed on its way there was
+ * never counted as attempted: three images with the second failing ended at
+ * 2 of 3, three failures ended at 0 of 3, and the label said "3 of 3".
  */
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createProgress, unitsOf } = require("../../../src/runtime/progress.js");
+const { createCombinedPdf } = require("../../../src/runtime/pdf.js");
 const {
-    createCombinedPdf,
     createSeparatePdfs
-} = require("../../../src/runtime/pdf.js");
+} = require("../../../src/runtime/pdf-separate.js");
 const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob, imageOf } = require("./fake-job.cjs");
 
-// What a run reports, in the order it reports it.
-function run(mode, paths) {
-    const host = createFakeHost({ files: paths });
+/*
+ * What a run reports, in the order it reports it. `broken` names the images
+ * vips will refuse to resize, which is how an image is made to fail without
+ * taking the run with it.
+ */
+function run(mode, paths, broken = []) {
+    const host = createFakeHost({
+        files: paths,
+        failures: broken.map((path) => [path, (command) => (
+            command.includes("thumbnail")
+                ? new Error("cannot resize this one")
+                : undefined
+        )])
+    });
     const job = makeJob(host);
     const reports = [];
 
@@ -30,19 +47,21 @@ function run(mode, paths) {
 
     const units = unitsOf(job.settings, paths.length);
 
-    job.progress = createProgress({ units, images: paths.length }, {
+    job.progress = createProgress([{
         start() {
             return undefined;
         },
-        report: (done, description, label) => reports.push({ done, description, label })
-    });
+        report: (done, description, label) =>
+            reports.push({ done, description, label })
+    }]);
+    job.progress.expect({ units, images: paths.length });
 
-    (mode === "separate" ? createSeparatePdfs : createCombinedPdf)(
+    const outcome = (mode === "separate" ? createSeparatePdfs : createCombinedPdf)(
         job,
         paths.map(imageOf)
     );
 
-    return { units, reports };
+    return { units, reports, outcome };
 }
 
 test("a combined run counts the PDF it publishes as work of its own", () => {
@@ -73,6 +92,13 @@ test("the PDF is not counted as finished until it is saved", () => {
     assert.ok(creating.done < units, `${creating.done} of ${units} before creation`);
 });
 
+test("a combined run stops naming an image once the images are behind it", () => {
+    const { reports } = run("single", ["/a/1.png", "/a/2.png"]);
+    const creating = reports.find((entry) => entry.description === "Creating PDF");
+
+    assert.equal(creating.label, "2 images prepared");
+});
+
 test("a separate run counts one unit for each PDF it publishes", () => {
     const paths = ["/a/1.png", "/a/2.png"];
     const { units, reports } = run("separate", paths);
@@ -83,6 +109,33 @@ test("a separate run counts one unit for each PDF it publishes", () => {
         [1, 2]
     );
     assert.ok(reports.every((entry) => entry.done <= units));
+});
+
+test("a separate run counts an image it could not convert", () => {
+    // The audit's own table: whichever way each image goes, the run ends
+    // having accounted for all three of them.
+    const paths = ["/a/1.png", "/a/2.png", "/a/3.png"];
+    const cases = [
+        [[], 3, 0],
+        [["/a/2.png"], 2, 1],
+        [paths, 0, 3]
+    ];
+
+    for (const [broken, saved, failed] of cases) {
+        const { units, reports, outcome } = run("separate", paths, broken);
+
+        assert.equal(outcome.outputs.length, saved, `${broken.length} broken: saved`);
+        assert.equal(outcome.failures.length, failed, `${broken.length} broken: failed`);
+        assert.equal(
+            reports.at(-1).done,
+            units,
+            `${broken.length} broken: every image is accounted for`
+        );
+        assert.equal(
+            reports.filter((entry) => entry.description === "Failed").length,
+            failed
+        );
+    }
 });
 
 test("the label counts images, whatever the units underneath it are", () => {

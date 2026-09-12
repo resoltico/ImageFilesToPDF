@@ -31,8 +31,6 @@ function workspacePaths(job, index) {
 }
 
 function preparePage(job, imageFile, index) {
-    job.progress.beginning(index + 1, imageFile.originalName);
-
     const { preparedPath, flattenedPath, pagePath } = workspacePaths(job, index);
 
     assertSinglePage(job, imageFile);
@@ -67,11 +65,18 @@ function withImageName(imageFile, produce) {
 }
 
 /*
+ * The loop owns the unit, so the loop opens it and closes it. Preparing a page
+ * used to announce itself from inside preparePage, one level below the only
+ * code that knows an image is one of several -- and the matching close lived
+ * three modules away, in publication, where a failed image never reached it.
+ *
  * One unit finishes with each page prepared; the PDF made from them is the
- * last unit, and createCombinedPdf reports that one.
+ * last unit, and createCombinedPdf closes that one.
  */
 function preparePages(job, imageFiles) {
     return imageFiles.map((imageFile, index) => {
+        job.progress.beginning(index + 1, imageFile.originalName);
+
         const page = withImageName(
             imageFile,
             () => preparePage(job, imageFile, index)

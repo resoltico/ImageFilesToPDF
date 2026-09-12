@@ -8,7 +8,9 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { createSeparatePdfs } = require("../../../src/runtime/pdf.js");
+const {
+    createSeparatePdfs
+} = require("../../../src/runtime/pdf-separate.js");
 const { failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob, imageOf } = require("./fake-job.cjs");

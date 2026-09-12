@@ -1,19 +1,14 @@
 "use strict";
 
 /*
- * Saying what the run is doing while it does it, written to JavaScript for
- * Automation's own Progress object rather than to a window this code puts on
- * screen. If nothing is listening, nothing happens -- which is the whole
- * reason it was chosen over a panel that could put a Dock icon up mid-action.
+ * Saying what the run is doing while it does it: the counting and the wording.
+ * Where any of it is displayed is surfaces.js and panel.js; nothing here knows
+ * about either, which is the point of the split.
  */
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    createProgress,
-    jxaProgress,
-    SILENT
-} = require("../../../src/runtime/progress.js");
+const { createProgress } = require("../../../src/runtime/progress.js");
 
 function recorder() {
     const said = [];
@@ -22,8 +17,18 @@ function recorder() {
         said,
         start: (total) => said.push(`start ${total}`),
         report: (done, description, detail) =>
-            said.push(`${description} ${done} | ${detail}`)
+            said.push(`${description} ${done} | ${detail}`),
+        pause: () => said.push("pause"),
+        close: () => said.push("close")
     };
+}
+
+function opened(sink, units = 3, images = 3) {
+    const progress = createProgress([sink]);
+
+    progress.expect({ units, images });
+
+    return progress;
 }
 
 test("nothing is complete until something has finished", () => {
@@ -31,7 +36,7 @@ test("nothing is complete until something has finished", () => {
     // of the file about to be started, so a job of one image reported itself
     // complete before its first inspection had even run.
     const sink = recorder();
-    const progress = createProgress({ units: 3, images: 3 }, sink);
+    const progress = opened(sink);
 
     progress.beginning(1, "one.png");
     progress.finished("Saved");
@@ -49,7 +54,7 @@ test("the label says which file, the count says how much is done", () => {
     // Two different things, reported together. The label may say the third of
     // twenty while two are finished.
     const sink = recorder();
-    const progress = createProgress({ units: 20, images: 20 }, sink);
+    const progress = opened(sink, 20, 20);
 
     progress.beginning(1, "a.png");
     progress.finished("Saved");
@@ -62,7 +67,7 @@ test("the label says which file, the count says how much is done", () => {
 
 test("the later stages keep the file they are working on", () => {
     const sink = recorder();
-    const progress = createProgress({ units: 2, images: 2 }, sink);
+    const progress = opened(sink, 2, 2);
 
     progress.beginning(2, "last.png");
     progress.phase("Creating PDF");
@@ -74,64 +79,48 @@ test("the later stages keep the file they are working on", () => {
     ]);
 });
 
+test("a stage that is not about an image says so instead of naming one", () => {
+    // The last stages of a combined run are about the PDF. They used to be
+    // reported beside whichever image happened to be prepared last, so a run
+    // of twenty read "Validating PDF / 20 of 20 — last.png".
+    const sink = recorder();
+    const progress = opened(sink, 3, 2);
+
+    progress.beginning(2, "last.png");
+    progress.about("2 images prepared");
+    progress.phase("Creating PDF");
+
+    assert.deepEqual(sink.said.slice(-2), [
+        "Preparing 0 | 2 images prepared",
+        "Creating PDF 0 | 2 images prepared"
+    ]);
+});
+
+test("a summary before any stage invents no stage to put it under", () => {
+    // The detail line and the headline are two separate things, and setting
+    // one must not make the other up.
+    const sink = recorder();
+    const progress = createProgress([sink]);
+
+    progress.about("1 image prepared");
+
+    assert.deepEqual(sink.said, [" 0 | 1 image prepared"]);
+});
+
 test("a name that spans lines is kept to one", () => {
     const sink = recorder();
 
-    createProgress({ units: 1, images: 1 }, sink).beginning(1, "two\nwide\t\tlines .png");
-    assert.deepEqual(sink.said.at(-1), "Preparing 0 | 1 of 1 — two wide lines .png");
+    opened(sink, 1, 1).beginning(1, "two\nwide\t\tlines .png");
+    assert.equal(sink.said.at(-1), "Preparing 0 | 1 of 1 — two wide lines .png");
 });
 
 test("a stage reached before any file names no file", () => {
+    // Which is every stage before the images have even been counted: the
+    // tools are checked and the folders are read before there is a total.
     const sink = recorder();
+    const progress = createProgress([sink]);
 
-    createProgress({ units: 2, images: 2 }, sink).phase("Creating PDF");
-    assert.deepEqual(sink.said.at(-1), "Creating PDF 0 | ");
-});
+    progress.phase("Checking required tools");
 
-test("a report about the work does not become part of the work", () => {
-    // A host that refuses the assignment must not fail the conversion.
-    const angry = {
-        start: () => undefined,
-        report() {
-            throw new Error("no progress here");
-        }
-    };
-
-    assert.doesNotThrow(() => createProgress({ units: 1, images: 1 }, angry).beginning(1, "x.png"));
-});
-
-test("a host that will not start is reported to no further", () => {
-    const refuses = {
-        start() {
-            throw new Error("no progress here");
-        },
-        report: () => undefined
-    };
-
-    assert.equal(createProgress({ units: 1, images: 1 }, refuses), SILENT);
-});
-
-test("with nothing to report to, nothing is reported", () => {
-    assert.equal(createProgress({ units: 5, images: 5 }, null), SILENT);
-    assert.equal(jxaProgress(null), null, "no Progress on the host");
-    assert.doesNotThrow(() => {
-        SILENT.beginning(1, "x.png");
-        SILENT.finished("Saved");
-        SILENT.phase("Saving PDF");
-    });
-});
-
-test("the host's own object is written to, in its own words", () => {
-    const host = {};
-    const sink = jxaProgress(host);
-
-    sink.start(4);
-    sink.report(2, "Preparing", "3 of 4 — x.png");
-
-    assert.deepEqual(host, {
-        totalUnitCount: 4,
-        completedUnitCount: 2,
-        description: "Preparing",
-        additionalDescription: "3 of 4 — x.png"
-    });
+    assert.deepEqual(sink.said, ["Checking required tools 0 | "]);
 });

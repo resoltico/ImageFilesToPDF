@@ -21,6 +21,11 @@ const { pathIsTaken } = require("./asking.js");
  * therefore deleted the finished PDF and reported it missing. Nothing is
  * moved out of the workspace any more, and nothing is removed on the strength
  * of a question about a file this run did not create.
+ *
+ * Nothing here counts. Publication used to be the one place a unit of work was
+ * closed, which meant an image that failed on its way here was never counted
+ * as attempted at all; saying what is happening is this module's business and
+ * saying how much of it is done is the caller's.
  */
 
 /*
@@ -72,7 +77,6 @@ function confirm(job, paths, outcome) {
     }
 
     job.unpublished.delete(paths.staged);
-    job.progress.finished("Saved");
     clearAway(job, outcome);
     removeFile(job.app, paths.staged);
 }

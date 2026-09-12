@@ -122,10 +122,11 @@ test("the workspace copy goes only after the output path is checked", () => {
     assert.ok(stubborn.files.has("/a/out.pdf"));
 });
 
-test("publication announces itself before it starts, and again when it is done", () => {
+test("publication announces itself, and counts nothing", () => {
     // The last thing a run does, and on a large PDF the longest wait in it.
-    // A published PDF is also a unit of work that has finished, which is what
-    // moves the count along.
+    // It says so and no more: publication used to be the only thing that
+    // moved the count, which is why an image that failed on its way here was
+    // never counted as having been attempted.
     const host = createFakeHost({ files: ["/a/p.pdf"] });
     const job = makeJob(host);
     const said = [];
@@ -139,5 +140,5 @@ test("publication announces itself before it starts, and again when it is done",
     };
 
     publishPdf(job, "/a/p.pdf", "/a/out.pdf");
-    assert.deepEqual(said, ["Saving PDF", "done: Saved"]);
+    assert.deepEqual(said, ["Saving PDF"]);
 });

@@ -814,25 +814,136 @@ Both halves are verified to fail when the constraint is broken.
 The floor is declared once, in `tools/release.mjs`, and flows from there into
 the artifact banner and the gate's output.
 
-## What the progress reporting does not establish
+## Where progress is displayed, and what is still unmeasured
 
-The action writes what it is doing to JavaScript for Automation's own
-`Progress` object. **Whether a Shortcut displays any of it is unmeasured.**
+The action reports to two surfaces, and it reports to both rather than falling
+back from one to the other. They are presented by different hosts: JavaScript
+for Automation's own `Progress` object is displayed by Script Editor, by a
+script applet and by the system script menu, and an `NSPanel` is what a
+Shortcut can show. A run may be either.
 
-It was chosen on the strength of what happens when it is wrong. An assignment
-to `Progress` cannot open a window, cannot raise the process activation policy
-and put a Dock icon up in the middle of an action, and cannot pump a run loop
-underneath a host that is driving the script. If nothing is listening, nothing
-happens. An `NSPanel` can do all three, and this repository cannot measure
-whether it does: a Shortcut cannot be created from the command line, so the
-probe that established the settings form presents cleanly cannot be repeated
-without someone running it by hand.
+It used to write only to `Progress`. That was chosen on the strength of what
+happens when it is wrong — an assignment cannot open a window, cannot raise
+the activation policy, and cannot pump a run loop underneath the host — and it
+was the wrong trade, because the assignments succeed on a host that displays
+none of them. Nothing could tell that apart from working, which is how this
+action shipped with a conversion that says nothing for its entire length.
 
-To find out: paste a script that sets `Progress.totalUnitCount`,
-`completedUnitCount` and `description` into a Run JavaScript action, run the
-Shortcut, and watch. The object exists and accepts those assignments under
-`osascript` — that much is measured. The sink is a parameter, so if the answer
-is no, a panel can replace it without touching a single call site.
+Two of the three objections are now answerable, and the third was never a
+hazard:
+
+- **Activation policy.** A window is activated by `activateIgnoringOtherApps`
+  or by raising the policy to `regular`, and the panel does neither.
+  `orderFrontRegardless` shows a window in a background application without
+  activating it. The one policy change is `prohibited` to `accessory`, which
+  is the smallest policy that can put a window on screen at all and shows
+  neither a Dock icon nor a menu-bar item, and it is put back on close. A
+  prohibited process can still run a modal session, which is exactly why the
+  settings form displaying inside ShortcutsMacHelper was never evidence about
+  a panel.
+- **Run-loop re-entry.** The settings form calls `runModal`, which runs a
+  nested modal session inside this host for as long as somebody takes over six
+  fields. A 10 ms `runMode:beforeDate:` is a far shallower re-entry, and it is
+  taken in `NSModalPanelRunLoopMode` rather than the default mode, because
+  this code is executing inside an Apple Event and the default mode is where
+  another one would be delivered.
+- **Opening a window** is the feature that was missing.
+
+### What was measured, and how
+
+Not argued. The built artifact was run under `osascript -l JavaScript` with a
+probe appended, and a screenshot was taken from another process while the
+panel was held up:
+
+- `osascript` runs with activation policy **prohibited**. That is the finding
+  the whole design turns on: without the raise to accessory, `orderFront`
+  would have shown nothing and the new surface would have been as invisible as
+  the old one. It was a guess in the design and a fact afterwards.
+- The panel renders. The screenshot shows the window, the bold headline, the
+  secondary detail line reading "8 of 20 — IMG_1234.HEIC", and the accent bar
+  over its track, in a process that is not the frontmost application.
+- `-[NSWindow display]` followed by the bounded pump in
+  `NSModalPanelRunLoopMode` composites, and does not hang.
+- The activation policy reads back as prohibited again after `close`.
+
+To repeat it: concatenate the artifact with a probe that calls `openPanel`,
+and **end the probe with `$.exit(0)`**. Without it, `osascript` invokes the
+artifact's own `run()` as soon as the top level finishes, and the process
+sits on a settings dialog with nobody to answer it — which looks exactly like
+a hang caused by the panel and is not one.
+
+What is still unmeasured is the same thing as for the settings form: whether
+this holds inside ShortcutsMacHelper, which is a different host. It is the
+same JavaScriptCore and the same AppKit, so the mechanism is no longer the
+question; only the host is. `PAINT_SECONDS` and the mode beside it in
+`src/runtime/panel-window.js` are the knobs if it turns out to be.
+
+Establishment is measured in either case: a panel that could not be built
+returns null and is left out, and a run with no surface at all reaches
+`SILENT` as a fact about the host rather than an assumption about it.
+
+## The counter has one owner
+
+The loop that owns an image opens and closes its unit, and nothing else
+counts. That rule did not exist before, and what it cost was a defect nothing
+was watching for: publication was the only thing that advanced the count, so
+an image that failed on its way there was never counted as attempted. Three
+images with the second failing ended at 2 of 3; three failures ended at 0 of
+3, with the label reading "3 of 3".
+
+`src/runtime/publish.js` now says what it is doing and counts nothing, which
+is the subject its own header claims. `preparePage` no longer announces
+itself: it is one step of an image rather than an image, and reporting from
+there put the opening of a unit one level below the only code that knows an
+image is one of several, with the closing three modules away.
+
+## What the panel tests do not establish
+
+The same limit as the settings form, and it is stated for the same reason: no
+headless test can prove AppKit put anything on screen, and every check listed
+below passes against a fake that renders nothing.
+
+What is tested: that the window is asked for with the style mask, level and
+flags the design depends on; that the rows are laid out top to bottom in
+AppKit's bottom-left coordinate space; that the bar is hidden until there is a
+total to draw in it; that no window is ordered front before the appearance
+delay and one is at it; that pausing orders it out and starts the delay again;
+that closing orders out, closes, and puts the activation policy back; and that
+a host which refuses any of the objects yields no panel and leaves the process
+exactly as it was found.
+
+Two of those flags are load-bearing in a way a screenshot would not show. A
+utility panel that does not clear `hidesOnDeactivate` is built, ordered front
+and hidden again — silently, with every call reporting success — because this
+process is never the active application. And the non-activating mask is the
+difference between saying what a run is doing and taking the machine over
+while it does it.
+
+To find out the rest, by hand, on the real Shortcut:
+
+1. Build, and paste `dist/Image-Files-to-PDF.jxa` into the Run JavaScript
+   action.
+2. Select about twenty large images in Finder and run the Quick Action with
+   Shortcuts **not** frontmost.
+3. The settings form must present exactly as it did before. It is the one
+   thing the panel could affect without going near it: if the host was a
+   prohibited process, it is an accessory one by the time the form is shown.
+4. The panel must appear before the first conversion finishes, stay up through
+   a slow image, advance its counter and its bar across images and across
+   "Creating PDF", "Validating PDF" and "Saving PDF", never take focus, and be
+   gone before the completion dialog.
+5. Separate mode with one deliberately corrupt file: the counter must still
+   reach n of n, and the failed image must say "Failed".
+6. A two-image run that finishes in under half a second must put **no** window
+   up at all.
+
+Three levers, in the order they would be reached for. A window that never
+repaints is the two knobs named above. Anything wrong at step 3 is
+`allowWindows` in `src/runtime/panel-window.js`, and deleting the one call to
+it gives up the panel on hosts that are prohibited and changes nothing else. A
+panel that never appears at all was not established, and `Progress` is still
+being written: no run is harmed either way, which is the property the whole
+arrangement is built on.
 
 ## Coverage
 
@@ -981,19 +1092,19 @@ cannot behave differently from this one. They fall into seven groups.
   after `function`, or `git+` somewhere other than the front of a repository
   URL — GitHub names cannot contain a plus, so npm's prefix is the only one
   there will ever be.
-- A body that is already a no-op. The silent progress sink's three methods
-  exist to be called and do nothing, so emptying them changes nothing; the
-  same goes for a `catch` that returns `false` to a caller that only asks
-  whether the answer is truthy.
+- A body that is already a no-op. The silent progress reporter's seven methods
+  exist to be called and do nothing, as does the pause a host's own `Progress`
+  object has nothing to do for, so emptying them changes nothing; the same
+  goes for a `catch` that returns `false` to a caller that only asks whether
+  the answer is truthy.
 - A guard the surrounding `catch` would answer identically. The bridge
   factories refuse a missing namespace before touching it, and removing that
   refusal only means the first message sent raises instead — caught two lines
   below, with the same result. The guard states a precondition where a reader
   needs it rather than leaving them to find the catch, and every one of these
-  factories states it the same way.
-- A field nothing downstream reads: the empty output path returned alongside a
-  failure, where the caller takes one or the other and never both. Settled by
-  running the caller with the mutated field in place.
+  factories states it the same way. `openPanel` refusing an absent bridge is
+  the same shape: without it the first message sent raises, and the catch
+  below returns the same null.
 
 They are settled by running each mutant against the real function over a
 spread of inputs and looking for a disagreement, not by argument. The ordering
@@ -1306,6 +1417,9 @@ to fail when the fix is reverted:
 | A partial PDF under the document's own name, across volumes | claim-not-write protocol + cross-volume integration |
 | Two runs both publishing to one name | exclusive claim tests |
 | A completed count passing the total it was given | progress unit tests |
+| An image that failed never being counted as attempted | separate-mode counting tests |
+| A conversion that says nothing because nobody presents the surface it writes to | two surfaces, and a hand test for the one that matters |
+| A progress window left on screen in front of the completion dialog | run lifecycle tests |
 | A valid source name producing an output name the filesystem refuses | filename budget tests |
 | Two long numeric filenames sorting as equal | comparator tests |
 | A finished PDF deleted because a check could not answer | ownership tests |

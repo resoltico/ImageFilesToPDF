@@ -150,16 +150,20 @@ a colour of your own, asking for it.
 
 ## While it runs
 
-The action reports what it is doing — which file it is preparing, and then
-creating, validating and saving the PDF — through JavaScript for Automation's
-own progress object.
+A small panel appears, showing what the action is doing — which file it is
+preparing, then creating, validating and saving the PDF — with a count of the
+images and a bar. It floats above the Finder window you started from, never
+takes focus, and closes before the message that says what was produced.
 
-Whether a Shortcut displays that is not something this project has been able to
-measure, because a Shortcut cannot be created from the command line. The
-reporting was chosen on that basis: writing to it cannot open a window, cannot
-raise the process activation policy and put a Dock icon up mid-action, and
-cannot pump a run loop underneath the host. If nothing is listening, nothing
-happens. `QA.md` says how to find out.
+It does not appear at all for a run that is over in a moment; there is no
+point flashing a window up on the way past. It goes out of the way while the
+settings are being asked, and comes back when there is work to report.
+
+The same report is written to JavaScript for Automation's own progress object,
+which Script Editor, a script applet and the system script menu display in
+their own way. The two are not alternatives: they are different hosts, and a
+run may be either. If neither can be shown, the conversion is exactly the
+same — a report about the work never becomes part of the work.
 
 ## When the tools are missing
 

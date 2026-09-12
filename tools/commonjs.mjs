@@ -11,6 +11,7 @@
  * The parser has no such dependence. A statement either is a require
  * declaration or it is not, wherever it sits and however it is spaced.
  */
+import { assertPlainBindings } from "./bindings.mjs";
 
 /*
  * Only an Identifier has a name and only a Literal has a value, so asking for
@@ -42,10 +43,16 @@ function requireTargetOf(statement) {
 
     const [declarator] = statement.declarations;
 
-    return declarator.id.type === "ObjectPattern" &&
-        isRequireCall(declarator.init)
-        ? declarator.init.arguments[0].value
-        : null;
+    if (declarator.id.type !== "ObjectPattern" ||
+        !isRequireCall(declarator.init)) {
+        return null;
+    }
+
+    const target = declarator.init.arguments[0].value;
+
+    assertPlainBindings(declarator.id, target);
+
+    return target;
 }
 
 function isModuleExports(statement) {

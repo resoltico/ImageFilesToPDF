@@ -4,6 +4,41 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Added
+
+- A panel that shows what the action is doing while it does it: the file being
+  prepared, the count of images, a bar, and then creating, validating and
+  saving the PDF. It floats above the window you started from, never takes
+  focus, and is gone before the message that says what was produced.
+- The tool check and the search for images are now reported too. A selection
+  of folders can take a while to read, and it used to be the longest a run
+  could go without saying anything.
+
+### Changed
+
+- A run that finishes in a moment puts no window up at all, and neither does a
+  quick conversion after a slow answer to the settings — there is no point
+  flashing one up on the way past. The panel also steps out of the way while
+  the settings are being asked.
+- Progress is still written to JavaScript for Automation's own progress
+  object, which Script Editor, a script applet and the system script menu
+  display in their own way. It is no longer the only place it is written: a
+  Shortcut displays none of it, so a conversion said nothing for its entire
+  length.
+- Headless runs are unaffected. Nothing is displayed, nothing is built, and
+  the receipt is exactly as it was.
+
+### Fixed
+
+- In Separate PDFs mode, an image that could not be converted now counts
+  towards the progress. Only a saved PDF used to move the count, so three
+  images with the second failing stopped at two of three, three failures
+  stopped at none of three, and the file counter beside it went on to "3 of 3"
+  regardless.
+- The later stages of a combined run no longer report themselves beside a
+  filename they have nothing to do with. "Creating PDF" now says how many
+  images were prepared, instead of naming whichever one happened to be last.
+
 ## [1.4.0] - 2026-09-09
 
 ### Added
