@@ -25,8 +25,8 @@ Notable changes to this project are documented in this file. The format is based
   display in their own way. It is no longer the only place it is written: a
   Shortcut displays none of it, so a conversion said nothing for its entire
   length.
-- Headless runs are unaffected. Nothing is displayed, nothing is built, and
-  the receipt is exactly as it was.
+- The panel changes nothing for a headless run: nothing is displayed and
+  nothing is built. Other changes below do affect one, and say so.
 
 ### Fixed
 
@@ -36,64 +36,35 @@ Notable changes to this project are documented in this file. The format is based
   written into a PDF and reported as a finished conversion, with nothing said.
   It is now reported as a failure, by name. In Separate PDFs mode the rest of
   the selection still converts.
+- A request to stop the run is now acted on. Pressing Stop — in a host that
+  offers one; a Shortcut does not — used to be discarded, and the conversion
+  ran to the end, or reported a file as missing that had never been written.
+  It now takes effect at each point where the action says what it is about to
+  do next, so nothing further is written into your folder after you stop and
+  no PDF is ever left half saved.
+- A stopped run says what it produced. The PDFs already saved are listed,
+  including one that was saved at the very moment you stopped; a stop that
+  arrived before anything had been made says nothing at all, as a cancellation
+  always has; a headless run that was stopped part way reports that it did not
+  do everything it was asked; and a run that had in fact finished every image
+  by the time the stop arrived is reported as the complete run it was.
 - A failure now names the file once. Every per-image failure used to read
   "photo.jpg: photo.jpg: ..." in the message and in the headless receipt.
 - A `timestamp` in a headless configuration file must now be `YYYYMMDD_HHMMSS`.
   Anything else is refused before a single image is converted, and says what
   is expected. A value containing a `/` used to be accepted and put the PDF in
   a folder nobody asked for.
-- A file URL that is not local is now reported as something that could not be
-  converted, instead of being read as a path relative to wherever the action
-  happened to be running.
+- A file URL the action cannot read is now reported as something that could
+  not be converted, rather than guessed at. One naming a host other than this
+  Mac used to be read as a path relative to wherever the action happened to be
+  running, and one whose escapes are malformed used to be read as a literal
+  filename — so a malformed address and a correctly written one for a file
+  whose name really contains `%20` meant the same thing, and the wrong
+  photograph could be picked silently.
 - Separate PDFs mode no longer keeps every page it has made until the run is
-  over. A long run used temporary space in proportion to the number of images
-  converted; it now uses it for one image at a time.
-- If the run is stopped part way, in a host that offers a Stop, what has
-  already been saved is kept and reported instead of the run ending with
-  nothing said about the PDFs on disk. A stop that arrived before anything was
-  made says nothing, as a cancellation always has.
-- A run that is stopped no longer goes on to build and save a PDF anyway.
-  Stopping now takes effect at every point where the action says what it is
-  about to do next — preparing an image, creating the PDF, validating it,
-  saving it — because at each of those nothing has been produced yet. It never
-  takes effect once saving has begun, so a PDF is never half published.
-- In Separate PDFs mode a stop now takes effect within the image being
-  converted, rather than only before the next one. The image being worked on
-  produces nothing; the PDFs already saved are kept and reported.
-- A headless run that was stopped part way now reports that it did not do
-  everything it was asked, instead of exiting as though it had. The receipt is
-  unchanged and still lists what was produced.
-- The count in the stopped message no longer describes an image that was
-  interrupted as one that was never started. It says how many images no PDF
-  came out of, which is true of both.
-- Stopping now also takes effect when the request arrives while a command is
-  running rather than between them, including while the PDF is being saved.
-  Nothing further is written into your folder after you stop: the action does
-  not go on to copy the PDF there and try again, which is what it does when
-  saving genuinely fails.
-- Stopping a run of a single image, or one stopped while its last image was
-  being saved, now reports that it was stopped. It used to finish saving and
-  report success, because nothing after it was left to notice.
-- A PDF that was saved just as you stopped is listed with the rest. Stopping
-  does not prove the file was not written, so the action now looks at the
-  output folder before saying it was not; it used to leave the PDF on disk
-  and not mention it.
-- A run stopped while its last image was being saved is no longer reported as
-  incomplete. Every image had been converted by then, so there was nothing
-  left for the stop to stop.
-- A stopped run no longer reports a missing file it never had. The request to
-  stop used to reach the check that looks for the file a stage just wrote, and
-  was reported as that file being absent.
-- The headless failure message no longer says "0 not converted" for a run that
-  left images unconverted. That count is of files refused before conversion
-  began, and it is now named as such.
-- A file URL that cannot be decoded is now reported as something that could
-  not be converted, rather than being read as a literal filename. A malformed
-  address and a correctly written one for a file whose name really contains
-  `%20` used to mean the same thing, so the wrong photograph could be picked
-  silently.
-- A page image left behind by the check that rejected it is now removed with
-  the rest of that image's working files, rather than at the end of the run.
+  over, including pages left behind by the check that rejected them. A long
+  run used temporary space in proportion to the number of images converted; it
+  now uses it for one image at a time.
 - In Separate PDFs mode, an image that could not be converted now counts
   towards the progress. Only a saved PDF used to move the count, so three
   images with the second failing stopped at two of three, three failures
@@ -102,6 +73,9 @@ Notable changes to this project are documented in this file. The format is based
 - The later stages of a combined run no longer report themselves beside a
   filename they have nothing to do with. "Creating PDF" now says how many
   images were prepared, instead of naming whichever one happened to be last.
+- The headless failure message no longer says "0 not converted" for a run that
+  left images unconverted. That count is of files refused before conversion
+  began, and it is now named as such.
 
 ## [1.4.0] - 2026-09-09
 

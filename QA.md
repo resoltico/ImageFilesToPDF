@@ -1092,7 +1092,7 @@ stay that way, and the boundary is statable rather than arbitrary:
 > A stop is honoured wherever the program is **told** about it. A question's
 > silence is not being told.
 
-Four reasons, and the fourth is the one that settles it.
+Four reasons, and none of them is that it is impossible.
 
 1. **Nothing unsafe follows, by construction.** `asking.js` has said from the
    start that every answer there is really "the test succeeded", that a test
@@ -1101,14 +1101,26 @@ Four reasons, and the fourth is the one that settles it.
    cancelled `pathIsTaken` leads to a claim the filesystem itself refuses, and
    a cancelled `fileFacts` leads to the PDF being preserved and reported.
    What is lost is stopping, not safety.
-2. **Making `asks` raise needs a local catch at four points inside the
+2. **Making `asks` raise needs a local catch wherever it is asked inside the
    publication transaction**, each having to know what it had already made in
-   order to clear it away -- more machinery in the one module whose header is
-   about not letting go of things at the wrong moment.
-3. **`tryArgv` cannot raise at all.** It is `removeFile`, called from
-   `finally` blocks, where an escape masks the error already on its way out.
-   So `fileFacts` keeps the gap whatever happens to `asks`, and the guarantee
-   would not be whole even after the work in (2).
+   order to clear it away. `pathIsTaken` alone is asked in three places there
+   -- before publication starts, after a refused link, and while working out
+   what to tell the person about a refusal -- which is more machinery in the
+   one module whose header is about not letting go of things at the wrong
+   moment.
+3. **`fileFacts` would need the same treatment, at every one of its call
+   sites.** `tryArgv` itself cannot raise -- it is `removeFile`, called from
+   `finally` blocks, where an escape masks the error already on its way out --
+   but that does not make the stronger guarantee impossible, and an earlier
+   draft of this section said it did. A separate read that raises could sit
+   beside it. What stops that is cost, not impossibility: `fileFacts` is
+   called five times, and a raise is unsafe at all five. In `attempt` it lands
+   after the staged path is recorded as unpublished, so the workspace is
+   retained with nothing said; in `confirm` and in `abandon` it loses the
+   chance to preserve the PDF and say where; in `strayInside` it abandons the
+   message telling the person where their PDF went; and in `copyBeside` it
+   leaves the staging place behind. Five more local catches, each having to
+   know what it had already made.
 4. Both are also used before a run has a job at all -- `findTool`,
    `rejectionReason` during admission -- so there is nothing to tell.
 
