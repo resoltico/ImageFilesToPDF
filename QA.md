@@ -1335,6 +1335,51 @@ panel that never appears at all was not established, and `Progress` is still
 being written: no run is harmed either way, which is the property the whole
 arrangement is built on.
 
+## What the hand test found
+
+Run on 2026-09-14 against the shipped artifact — the 1.5.0 build,
+`f7d441551831d741efacf3b92b7f62ed402178ed8f9edd406e49b668c45000b0`, pasted
+into the Quick Action — with Shortcuts not frontmost and Finder holding the
+selection. Steps 1 to 5 pass. Step 6 could not be constructed on this
+machine, and what was measured in its place is below.
+
+The panel renders inside `ShortcutsMacHelper` as a floating titled utility
+window: headline, detail, accent bar. Sampled at about eight frames a second,
+a seven-image run in separate mode showed "Preparing", "Creating PDF",
+"Validating PDF", "Saving PDF" and "Saved" in turn, the counter advancing
+image by image and the bar with it — and "Failed" standing where the
+deliberately truncated file was, with the counter carrying on to 7 of 7. So a
+failed image counts towards progress, which is what the notes claim for it.
+The completion dialog for that run read six created, one failed, and named
+the file and the reason.
+
+Focus: 300 consecutive samples of the frontmost process, taken while a
+conversion was running, returned the same unrelated application every time
+and never the helper. Neither the panel nor the completion dialog takes the
+machine over.
+
+Closing order: the first frame carrying the completion dialog carries no
+panel. The two do overlap on screen for about a tenth of a second, because
+macOS fades a closing window out while it fades the next one in — that is the
+window server animating an ordering the program has already made, not a
+report sitting on top of an answer.
+
+Step 6 is the one not reached. The shortest run this host can perform — a
+single 1.3 KB image — takes about 1.1 seconds from the moment the settings
+are answered, because the shell-outs that convert, import, validate and
+publish cost more between them than the delay does. What was measured instead
+is the delay itself: for the first half second of that run no window was
+shown while reports were already arriving, and the panel appeared after it. A
+run finishing inside the delay would show nothing, which is the claim; there
+is no selection on this machine that finishes that quickly.
+
+One thing the test did not change but did make plain: the elapsed time in the
+completion dialog is measured from the start of the run, so it counts the
+time spent in the settings form — a form left open for four minutes reports
+four minutes for a four-second conversion. `startedAt` sits before `prepare`
+in 1.4.0 as well, so this is not something this work introduced, and it is
+left alone rather than folded into a release that is about other things.
+
 ## Coverage
 
 The figure covers every production module — the list in
