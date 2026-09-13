@@ -91,7 +91,18 @@ function deliver(job, paths, facts) {
      * person's folder and copy the whole PDF into it after they said stop.
      */
     if (isUserCancelled(failure)) {
-        return { ...abandoned(), staging: null };
+        /*
+         * With the claim it would have made, because an interrupted call is
+         * not proof the link was not created. A hard link shares the identity
+         * of the file it was made from, so these are what the output path
+         * will report if the ln completed. publish.js asks it.
+         */
+        return {
+            ...abandoned(),
+            claimedIdentity: facts.identity,
+            claimedSize: facts.size,
+            staging: null
+        };
     }
 
     const said = errorMessage(failure);

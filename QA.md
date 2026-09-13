@@ -1037,10 +1037,43 @@ The mechanism needs no flag. `linkFrom` returns the failure rather than its
 message, because a cancellation and a refusal read the same once they are
 strings and mean opposite things here; `copyBeside` says which it was; and
 `deliver`, `throughStaging` and `claimFrom` each ask before choosing the next
-strategy. `publish.js` turns an abandoned outcome into `UserCancelled` after
-`clearAway` closes any staging place, and drops the staged path from
-`unpublished` -- which is what says there is nothing to recover, and is the
-one thing that differs from a refusal.
+strategy.
+
+**An abandoned attempt is not a claim that nothing happened.** The first
+version of it assumed so -- cleared up, raised, and never asked the output
+path what it held -- and a PDF whose link had been made before the
+cancellation surfaced went unmentioned. That is the one thing `completion.js`
+exists to prevent, and the one thing this module has always refused to infer:
+its header is about never reading absence as fact, `isPublished` is built so
+that an identity nobody could read is not a match, and `confirm` exists
+because "the call returned" is not "the file is there".
+
+So an abandoned attempt puts the same question a successful one puts, in
+`settling.js`, which now holds both. If the output path holds this run's file
+the PDF was published after all: it is let go of by the same `settled` that a
+confirmed publication uses, and the caller is told to stop afterwards. If it
+does not, the staging place goes and the staged path is dropped from
+`unpublished`, which says there is nothing to recover -- the difference from a
+refusal, which keeps the PDF because the person needs it back.
+
+The claim that comparison needs is already to hand: a hard link shares the
+identity of the file it was made from, so the staged file's own facts are what
+the output path will report if the `ln` completed.
+
+**And a stop with nothing left to stop is not a stop.** If the last image was
+the one being saved, every image was converted, and marking the run stopped
+would fail a headless run that produced every PDF asked of it and tell the
+person "0 images not converted". `stoppedResults` marks it only when some
+image was never attempted. Combined mode publishes once, at the end, so it
+ignores the answer entirely.
+
+One residual, because `file-facts.js` says in its own words that a stat which
+could not be made reads the same as one that named nothing: a cancellation
+landing on the link *and* on the measurement after it reads as "nothing
+published". The staged copy is discarded either way -- correctly, since a
+published file needs no second copy and an unpublished one is the intended
+loss -- so only the mention is lost, and only when two cancellations land in
+consecutive sub-millisecond calls.
 
 **And it removes a hole that had nothing to do with publication.** The
 previous round recorded a cancellation and relied on the next image's report
@@ -1059,13 +1092,25 @@ stay that way, and the boundary is statable rather than arbitrary:
 > A stop is honoured wherever the program is **told** about it. A question's
 > silence is not being told.
 
-`asking.js` has said from the start that every answer there is really "the
-test succeeded", that a test which could not be run says no in the same words,
-and that nothing may be deleted or given up on the strength of one. `tryArgv`
-is `removeFile`, called from `finally` blocks, where an escape would mask the
-error already on its way out. Both are also used before a run has a job at all
--- `findTool`, `rejectionReason` during admission -- so there is nothing to
-tell.
+Four reasons, and the fourth is the one that settles it.
+
+1. **Nothing unsafe follows, by construction.** `asking.js` has said from the
+   start that every answer there is really "the test succeeded", that a test
+   which could not be run says no in the same words, and that nothing may be
+   deleted or given up on the strength of one. Every caller honours it: a
+   cancelled `pathIsTaken` leads to a claim the filesystem itself refuses, and
+   a cancelled `fileFacts` leads to the PDF being preserved and reported.
+   What is lost is stopping, not safety.
+2. **Making `asks` raise needs a local catch at four points inside the
+   publication transaction**, each having to know what it had already made in
+   order to clear it away -- more machinery in the one module whose header is
+   about not letting go of things at the wrong moment.
+3. **`tryArgv` cannot raise at all.** It is `removeFile`, called from
+   `finally` blocks, where an escape masks the error already on its way out.
+   So `fileFacts` keeps the gap whatever happens to `asks`, and the guarantee
+   would not be whole even after the work in (2).
+4. Both are also used before a run has a job at all -- `findTool`,
+   `rejectionReason` during admission -- so there is nothing to tell.
 
 What it costs, said plainly: a Stop landing exactly on a `test`, a `stat` or
 an `rm` is not noticed. Those are sub-millisecond calls. vips and pdfcpu take
@@ -1774,6 +1819,8 @@ to fail when the fix is reverted:
 | A stop at publication copying into the folder anyway | publication-cancellation tests |
 | A stop on the last image never reaching the result | last-image stop tests |
 | A cancelled publication leaving its staging place behind | publication-cancellation tests |
+| A PDF linked into place and then not mentioned | after-the-effect stop tests |
+| A complete run reported as stopped because the stop arrived last | after-the-effect stop tests |
 | A headless count naming refused inputs as everything unconverted | receipt tests |
 | A stopped run losing the report of what it had already published | separate-mode stop tests |
 | Two different file URLs resolving to one path | file-URL tests |

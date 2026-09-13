@@ -74,6 +74,13 @@ Notable changes to this project are documented in this file. The format is based
 - Stopping a run of a single image, or one stopped while its last image was
   being saved, now reports that it was stopped. It used to finish saving and
   report success, because nothing after it was left to notice.
+- A PDF that was saved just as you stopped is listed with the rest. Stopping
+  does not prove the file was not written, so the action now looks at the
+  output folder before saying it was not; it used to leave the PDF on disk
+  and not mention it.
+- A run stopped while its last image was being saved is no longer reported as
+  incomplete. Every image had been converted by then, so there was nothing
+  left for the stop to stop.
 - A stopped run no longer reports a missing file it never had. The request to
   stop used to reach the check that looks for the file a stage just wrote, and
   was reported as that file being absent.

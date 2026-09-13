@@ -68,6 +68,7 @@ export const moduleOrder = [
     "src/runtime/claim.js",
     "src/runtime/transfer.js",
     "src/runtime/recovery.js",
+    "src/runtime/settling.js",
     "src/runtime/publish.js",
     "src/runtime/staging.js",
     "src/runtime/pdf.js",

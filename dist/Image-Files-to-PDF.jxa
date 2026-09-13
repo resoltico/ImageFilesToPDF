@@ -3465,7 +3465,12 @@ function deliver(job, paths, facts) {
     }
 
     if (isUserCancelled(failure)) {
-        return { ...abandoned(), staging: null };
+        return {
+            ...abandoned(),
+            claimedIdentity: facts.identity,
+            claimedSize: facts.size,
+            staging: null
+        };
     }
 
     const said = errorMessage(failure);
@@ -3511,7 +3516,7 @@ function keep(job, paths, outcome) {
     ));
 }
 
-/* ===== src/runtime/publish.js ===== */
+/* ===== src/runtime/settling.js ===== */
 
 
 function isPublished(published, outcome) {
@@ -3528,6 +3533,12 @@ function strayInside(app, paths, outcome) {
         : [];
 }
 
+function settled(job, paths, outcome) {
+    job.unpublished.delete(paths.staged);
+    clearAway(job, outcome);
+    removeFile(job.app, paths.staged);
+}
+
 function confirm(job, paths, outcome) {
     const published = fileFacts(job.app, paths.final);
 
@@ -3541,10 +3552,24 @@ function confirm(job, paths, outcome) {
         });
     }
 
-    job.unpublished.delete(paths.staged);
-    clearAway(job, outcome);
-    removeFile(job.app, paths.staged);
+    settled(job, paths, outcome);
 }
+
+function abandon(job, paths, outcome) {
+    if (isPublished(fileFacts(job.app, paths.final), outcome)) {
+        settled(job, paths, outcome);
+
+        return true;
+    }
+
+    clearAway(job, outcome);
+    job.unpublished.delete(paths.staged);
+
+    throw new UserCancelled();
+}
+
+/* ===== src/runtime/publish.js ===== */
+
 
 function refuseBefore(app, paths, facts) {
     if (!facts.identity) {
@@ -3556,17 +3581,12 @@ function refuseBefore(app, paths, facts) {
         : "";
 }
 
-function abandon(job, paths, outcome) {
-    clearAway(job, outcome);
-    job.unpublished.delete(paths.staged);
+function settle(job, paths, outcome) {
+    if (!outcome.abandoned) {
+        throw keep(job, paths, outcome);
+    }
 
-    return new UserCancelled();
-}
-
-function refuse(job, paths, outcome) {
-    return outcome.abandoned
-        ? abandon(job, paths, outcome)
-        : keep(job, paths, outcome);
+    return abandon(job, paths, outcome);
 }
 
 function attempt(job, paths) {
@@ -3579,11 +3599,13 @@ function attempt(job, paths) {
 
     const outcome = deliver(job, paths, facts);
 
-    if (!outcome.published) {
-        throw refuse(job, paths, outcome);
+    if (outcome.published) {
+        confirm(job, paths, outcome);
+
+        return false;
     }
 
-    confirm(job, paths, outcome);
+    return settle(job, paths, outcome);
 }
 
 function publishPdf(job, stagedPath, finalPath) {
@@ -3595,7 +3617,8 @@ function publishPdf(job, stagedPath, finalPath) {
 
     job.progress.phase("Saving PDF");
     job.unpublished.add(stagedPath);
-    attempt(job, paths);
+
+    return attempt(job, paths);
 }
 
 /* ===== src/runtime/staging.js ===== */
@@ -3754,9 +3777,10 @@ function createSeparatePdf(job, imageFile, index) {
         staged.path = stagedPath;
         convertOne(job, imageFile, index, stagedPath);
         staged.validated = true;
-        publishPdf(job, stagedPath, finalPath);
 
-        return { output: finalPath, failure: null };
+        const stopped = publishPdf(job, stagedPath, finalPath);
+
+        return { output: finalPath, failure: null, stopped };
     } catch (error) {
         return failed(job, imageFile, error, staged);
     }
@@ -3780,9 +3804,12 @@ function tally(job, results, outcome) {
 function carryOn(job, results, imageFile, index) {
     try {
         job.progress.beginning(index + 1, imageFile.originalName);
-        tally(job, results, createSeparatePdf(job, imageFile, index));
 
-        return true;
+        const outcome = createSeparatePdf(job, imageFile, index);
+
+        tally(job, results, outcome);
+
+        return !outcome.stopped;
     } catch (error) {
         if (!isUserCancelled(error)) {
             throw error;
@@ -3792,12 +3819,14 @@ function carryOn(job, results, imageFile, index) {
     }
 }
 
-function stoppedResults(results) {
+function stoppedResults(results, images) {
     if (results.outputs.length === 0 && results.failures.length === 0) {
         throw new UserCancelled();
     }
 
-    results.stopped = true;
+    if (results.outputs.length + results.failures.length < images) {
+        results.stopped = true;
+    }
 
     return results;
 }
@@ -3807,7 +3836,7 @@ function createSeparatePdfs(job, imageFiles) {
 
     for (const [index, imageFile] of imageFiles.entries()) {
         if (!carryOn(job, results, imageFile, index)) {
-            return stoppedResults(results);
+            return stoppedResults(results, imageFiles.length);
         }
     }
 

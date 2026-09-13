@@ -45,9 +45,14 @@ function carryOn(job, results, imageFile, index) {
          * and the next, and the batch report must survive it.
          */
         job.progress.beginning(index + 1, imageFile.originalName);
-        tally(job, results, createSeparatePdf(job, imageFile, index));
 
-        return true;
+        const outcome = createSeparatePdf(job, imageFile, index);
+
+        // Counted first, then the answer: a stop that arrived while this
+        // image was being saved does not unmake the PDF it saved.
+        tally(job, results, outcome);
+
+        return !outcome.stopped;
     } catch (error) {
         if (!isUserCancelled(error)) {
             throw error;
@@ -61,17 +66,23 @@ function carryOn(job, results, imageFile, index) {
  * A stop that produced nothing is a cancellation like any other and says
  * nothing; a stop with something behind it is an outcome and must be
  * reported, because producing files without saying where they are is the one
- * thing this action exists to prevent.
- *
- * Nothing means nothing attempted. An image that failed still has to be
- * shown, whether or not the run was stopped afterwards.
+ * thing this action exists to prevent. Nothing means nothing attempted: an
+ * image that failed still has to be shown.
  */
-function stoppedResults(results) {
+function stoppedResults(results, images) {
     if (results.outputs.length === 0 && results.failures.length === 0) {
         throw new UserCancelled();
     }
 
-    results.stopped = true;
+    /*
+     * A stop with nothing left to stop is not a stop. If the last image was
+     * the one being saved when it arrived, every image was converted, and
+     * calling that incomplete would fail a headless run that produced every
+     * PDF asked of it and tell the person "0 images not converted".
+     */
+    if (results.outputs.length + results.failures.length < images) {
+        results.stopped = true;
+    }
 
     return results;
 }
@@ -81,7 +92,7 @@ function createSeparatePdfs(job, imageFiles) {
 
     for (const [index, imageFile] of imageFiles.entries()) {
         if (!carryOn(job, results, imageFile, index)) {
-            return stoppedResults(results);
+            return stoppedResults(results, imageFiles.length);
         }
     }
 

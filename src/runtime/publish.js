@@ -1,80 +1,20 @@
 "use strict";
 
-const { basename } = require("../core/paths.js");
-const { UserCancelled } = require("../core/errors.js");
-const { keep, clearAway } = require("./recovery.js");
+const { keep } = require("./recovery.js");
 const { deliver, stagingArea } = require("./transfer.js");
 const { fileFacts } = require("./file-facts.js");
-const { removeFile } = require("./shell.js");
 const { pathIsTaken } = require("./asking.js");
+const { confirm, abandon } = require("./settling.js");
 
 /*
  * Who owns a finished PDF, and where it goes when it cannot be published.
  *
- * The bytes are transfer.js's business. This is the rule about the file: the
- * job owns the PDF it built until the output path has been checked, and this
- * run removes only what this run made. Both halves were learned the hard way
- * -- the workspace copy used to be moved into the output folder, so a failure
- * afterwards had to work out where the bytes had got to through a check that
- * answers "no" when it cannot tell, and a refused check deleted the finished
- * PDF and reported it missing.
- *
- * Nothing here counts either. Publication used to be the one place a unit of
- * work was closed, so an image that failed on its way here was never counted.
+ * The bytes are transfer.js's business, and what the output path holds is
+ * settling.js's. This is the rule about the file: the job owns the PDF it
+ * built until the output path has been checked, and this run removes only
+ * what this run made. Nothing here counts -- QA.md has what both were
+ * learned from.
  */
-
-/*
- * The PDF is at the output path, or it is not published.
- *
- * Asked of the output path itself: which file is this? A hard link shares its
- * volume and file number with the file it was made from, and a rename carries
- * them along, so the same pair is proof that the entry holds what this run
- * put there. A nonempty regular file is not proof of anything -- another
- * writer's PDF is one too, and taking it as ours published their document and
- * deleted both copies of ours.
- *
- * Checked before anything is let go: after this the staging copy and the
- * workspace copy both go, and a failed check has to still have a finished PDF
- * to give back. An identity that could not be read is not a match, which is
- * what makes a refused inspection safe.
- */
-function isPublished(published, outcome) {
-    return Boolean(published.identity) &&
-        published.identity === outcome.claimedIdentity &&
-        published.size === outcome.claimedSize;
-}
-
-/*
- * ln links into a folder standing at the output path rather than refusing it,
- * so the claim may have gone inside one. The link there is this run's own
- * only if it is the file this run published, which is a question with an
- * exact answer -- and only then is it this run's to remove.
- */
-function strayInside(app, paths, outcome) {
-    const inside = `${paths.final}/${basename(outcome.claimed)}`;
-
-    return fileFacts(app, inside).identity === outcome.claimedIdentity
-        ? [inside]
-        : [];
-}
-
-function confirm(job, paths, outcome) {
-    const published = fileFacts(job.app, paths.final);
-
-    if (!isPublished(published, outcome)) {
-        throw keep(job, paths, {
-            ...outcome,
-            mine: strayInside(job.app, paths, outcome),
-            reasons: [
-                `the output path does not hold the PDF this run published:\n\n${paths.final}`
-            ]
-        });
-    }
-
-    job.unpublished.delete(paths.staged);
-    clearAway(job, outcome);
-    removeFile(job.app, paths.staged);
-}
 
 /*
  * Why not to start: a PDF that cannot be identified cannot be shown to have
@@ -92,26 +32,12 @@ function refuseBefore(app, paths, facts) {
         : "";
 }
 
-/*
- * Stopped before it could be either published or refused.
- *
- * Whatever the attempt made in the output folder goes; the staging place is
- * the only thing it can have made. Dropping the PDF from the unpublished set
- * is what says there is nothing to recover -- nothing was written where the
- * person would look, so the workspace takes it on the way out. That is the
- * difference from a refusal, which keeps it because they need it back.
- */
-function abandon(job, paths, outcome) {
-    clearAway(job, outcome);
-    job.unpublished.delete(paths.staged);
+function settle(job, paths, outcome) {
+    if (!outcome.abandoned) {
+        throw keep(job, paths, outcome);
+    }
 
-    return new UserCancelled();
-}
-
-function refuse(job, paths, outcome) {
-    return outcome.abandoned
-        ? abandon(job, paths, outcome)
-        : keep(job, paths, outcome);
+    return abandon(job, paths, outcome);
 }
 
 /*
@@ -128,11 +54,13 @@ function attempt(job, paths) {
 
     const outcome = deliver(job, paths, facts);
 
-    if (!outcome.published) {
-        throw refuse(job, paths, outcome);
+    if (outcome.published) {
+        confirm(job, paths, outcome);
+
+        return false;
     }
 
-    confirm(job, paths, outcome);
+    return settle(job, paths, outcome);
 }
 
 function publishPdf(job, stagedPath, finalPath) {
@@ -144,7 +72,10 @@ function publishPdf(job, stagedPath, finalPath) {
 
     job.progress.phase("Saving PDF");
     job.unpublished.add(stagedPath);
-    attempt(job, paths);
+
+    // Whether the run was asked to stop while this was being published. The
+    // PDF is at the name either way; what the caller does next is not.
+    return attempt(job, paths);
 }
 
 module.exports = { publishPdf };

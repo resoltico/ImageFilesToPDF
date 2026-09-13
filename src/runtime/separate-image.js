@@ -100,9 +100,12 @@ function createSeparatePdf(job, imageFile, index) {
         staged.path = stagedPath;
         convertOne(job, imageFile, index, stagedPath);
         staged.validated = true;
-        publishPdf(job, stagedPath, finalPath);
 
-        return { output: finalPath, failure: null };
+        // The PDF is at the name either way; whether the person asked to stop
+        // while it was being put there travels with it.
+        const stopped = publishPdf(job, stagedPath, finalPath);
+
+        return { output: finalPath, failure: null, stopped };
     } catch (error) {
         return failed(job, imageFile, error, staged);
     }
