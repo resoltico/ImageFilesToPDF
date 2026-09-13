@@ -28,6 +28,8 @@ trap cleanup EXIT
 source "$ROOT/tests/integration/lib/assert.sh"
 # shellcheck source=tests/integration/lib/fixtures.sh
 source "$ROOT/tests/integration/lib/fixtures.sh"
+# shellcheck source=tests/integration/lib/volume.sh
+source "$ROOT/tests/integration/lib/volume.sh"
 
 require_tools
 solid_svg "$WORK/blue.svg" 64 64 "#3080c0"
@@ -65,7 +67,7 @@ if attach_test_volume APFS "$VOLUME_NAME"; then
     assert_nothing_left_behind "$VOLUME"
     test "$(stat -f%l "$CROSS")" = 1 ||
         fail "the published PDF still has a second name"
-    hdiutil detach -quiet "$VOLUME"
+    detach_test_volume "$VOLUME"
 else
     printf 'cross-volume publication skipped: no test volume could be attached\n'
 fi

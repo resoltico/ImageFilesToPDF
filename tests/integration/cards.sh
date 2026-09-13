@@ -33,6 +33,8 @@ trap cleanup EXIT
 source "$ROOT/tests/integration/lib/assert.sh"
 # shellcheck source=tests/integration/lib/fixtures.sh
 source "$ROOT/tests/integration/lib/fixtures.sh"
+# shellcheck source=tests/integration/lib/volume.sh
+source "$ROOT/tests/integration/lib/volume.sh"
 
 require_tools
 solid_svg "$WORK/blue.svg" 64 64 "#3080c0"
@@ -80,7 +82,7 @@ if attach_test_volume "MS-DOS FAT32" "$FAT_NAME"; then
         fail "a file that was already there was overwritten"
     assert_valid_pdf "$FAT_VOLUME/output_20260907_060606_2.pdf"
     assert_nothing_left_behind "$FAT_VOLUME"
-    hdiutil detach -quiet "$FAT_VOLUME"
+    detach_test_volume "$FAT_VOLUME"
 else
     printf 'link-free publication skipped: no MS-DOS volume could be attached\n'
 fi
@@ -122,7 +124,7 @@ if attach_test_volume "ExFAT" "$EXFAT_NAME"; then
     assert_valid_pdf "$KEPT"
     rm -rf "$(dirname "$KEPT")"
 
-    hdiutil detach -quiet "$EXFAT_VOLUME"
+    detach_test_volume "$EXFAT_VOLUME"
 else
     printf 'exFAT publication skipped: no exFAT volume could be attached\n'
 fi
