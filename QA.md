@@ -1389,7 +1389,7 @@ A Quick Action's result is the shortcut's result, and Shortcuts writes a text
 result out as a file -- named after the text, with the slashes turned into
 colons, which is how a whole POSIX path becomes one filename. Measured there:
 a run over five photographs left five 42-byte files beside them, called
-`:Users:erst:Downloads:IMG_1538_stamped.txt` and so on, each holding the path
+`:Users:someone:Downloads:IMG_1538_stamped.txt` and so on, each holding the path
 of one copy and each carrying `com.apple.quarantine: 0082;...;com.apple.
 shortcuts;` -- which is what identifies the writer. Nobody asked for them,
 nothing said they had been made, and they accumulate one per output for as
