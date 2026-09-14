@@ -59,15 +59,20 @@ test("a rejection alone is enough to fail a headless run", () => {
     );
 });
 
-test("an interactive run shows the completion and answers with its outputs", () => {
+test("an interactive run shows the completion and answers with nothing", () => {
+    // Nothing on purpose. A Quick Action's result is the shortcut's result,
+    // and Shortcuts writes a text result out as a file named after the text,
+    // with the slashes turned into colons -- so the list of PDFs arrived back
+    // as a file of its own for every one of them, beside the images. The
+    // dialog below is how a person is told.
     const app = createFakeApp();
-    const outputs = reportResult(app, job, {
+    const answer = reportResult(app, job, {
         outputs: ["/a/x.pdf"],
         failures: [],
         elapsed: "1 second(s)"
     }, { headless: false, pageCount: 1 });
 
-    assert.deepEqual(outputs, ["/a/x.pdf"]);
+    assert.equal(answer, undefined);
     assert.equal(app.dialogs.length, 1);
     assert.match(app.dialogs[0].message, /Created 1 PDF\./u);
     assert.match(app.dialogs[0].message, /\/a\//u, "and where it went");

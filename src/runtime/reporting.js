@@ -12,6 +12,20 @@ const {
 /*
  * What a finished run tells its caller, in each of the two ways it can be
  * called.
+ *
+ * Only one of the two is answered with a value. A person has been told in a
+ * dialog, so there is nothing left to hand back -- and handing back the list
+ * of PDFs was not free. A Quick Action's result is the shortcut's result, and
+ * Shortcuts writes a text result out as a file, named after the text with the
+ * slashes turned into colons. Measured on the sibling project, whose
+ * publication this shares: a run of five left five files called
+ * ":Users:...:IMG_1538_stamped.txt" beside the photographs, each holding one
+ * path, each carrying com.apple.shortcuts' own quarantine. Nobody asked for
+ * them and nothing said they had been made.
+ *
+ * What is given up is chaining this action to another one inside a shortcut,
+ * which would need the paths. INSTALL.txt builds a shortcut with one action,
+ * and litter in somebody's folder is the worse default.
  */
 
 /*
@@ -40,8 +54,6 @@ function reportNoImages(app, headless, rejected) {
         buttons: ["OK"],
         defaultButton: "OK"
     });
-
-    return [];
 }
 
 /*
@@ -72,7 +84,9 @@ function reportResult(app, job, result, options) {
 
     showCompletion(app, job.settings.mode, result, options.pageCount);
 
-    return result.outputs;
+    // Said out loud rather than fallen off the end of: nothing is the answer
+    // here, and the host does something with an answer.
+    return undefined;
 }
 
 module.exports = {

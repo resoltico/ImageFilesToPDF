@@ -51,7 +51,7 @@ test("run reports a failure through a dialog when interactive", () => {
     };
     globalThis.Application.currentApplication = () => host;
 
-    assert.deepEqual(run(["/a/x.png"], undefined), []);
+    assert.equal(run(["/a/x.png"], undefined), undefined);
     assert.match(host.dialogs.at(-1).message, /^something broke$/u);
 
     // Titled, and with the one button a report of failure can offer.
@@ -86,7 +86,7 @@ test("run stays silent when the user cancels", () => {
     host.chooseFromList = () => false;
     globalThis.Application.currentApplication = () => host;
 
-    assert.deepEqual(run(["/a/x.png"], undefined), []);
+    assert.equal(run(["/a/x.png"], undefined), undefined);
     assert.equal(
         host.dialogs.length,
         0,
@@ -104,7 +104,7 @@ test("a genuine failure does raise a dialog, unlike a cancellation", () => {
     };
     globalThis.Application.currentApplication = () => host;
 
-    assert.deepEqual(run(["/a/x.png"], undefined), []);
+    assert.equal(run(["/a/x.png"], undefined), undefined);
     assert.equal(host.dialogs.length, 1);
     assert.match(host.dialogs[0].message, /the tool exploded/u);
 });

@@ -1380,6 +1380,43 @@ four minutes for a four-second conversion. `startedAt` sits before `prepare`
 in 1.4.0 as well, so this is not something this work introduced, and it is
 left alone rather than folded into a release that is about other things.
 
+## What a Quick Action does with the result
+
+Found on the sibling project on 2026-09-14 and true here for the same reason:
+both return the list of what they published from `run`.
+
+A Quick Action's result is the shortcut's result, and Shortcuts writes a text
+result out as a file -- named after the text, with the slashes turned into
+colons, which is how a whole POSIX path becomes one filename. Measured there:
+a run over five photographs left five 42-byte files beside them, called
+`:Users:erst:Downloads:IMG_1538_stamped.txt` and so on, each holding the path
+of one copy and each carrying `com.apple.quarantine: 0082;...;com.apple.
+shortcuts;` -- which is what identifies the writer. Nobody asked for them,
+nothing said they had been made, and they accumulate one per output for as
+long as somebody keeps using the action.
+
+`reportResult` returned `result.outputs` to a person exactly as it returns the
+receipt to a headless caller. The receipt has a reader; the list did not.
+`INSTALL.txt` builds a shortcut with a single action, so there is nothing to
+chain to and nowhere for the list to go but the filesystem.
+
+So a person is answered with nothing at all -- `return undefined`, said out
+loud rather than left to fall off the end of the function, in `reportResult`,
+`reportNoImages` and the interactive arm of `run`. The headless path is
+untouched: there the return value is the receipt, and the integration gate
+reads it off standard output.
+
+What is given up is chaining this action to another one inside a shortcut,
+which would need the paths. That is a capability somebody can ask for; litter
+in their folder is not a default worth keeping to hold it open.
+
+**What the tests establish, and what they cannot.** Three unit tests now ask
+the fake filesystem what was produced rather than reading it off the return
+value, which is the better question in any case. That returning nothing stops
+Shortcuts writing anything is not established here and needs a hand test: what
+is established is where the files came from, what was in them, and that this
+action no longer offers one.
+
 ## Coverage
 
 The figure covers every production module — the list in

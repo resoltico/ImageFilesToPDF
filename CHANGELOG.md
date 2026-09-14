@@ -2,6 +2,17 @@
 
 Notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- No more stray text files beside your PDFs. The action handed the list of
+  PDFs it made back to Shortcuts, which wrote each path out as a file of its
+  own — `:Users:you:Pictures:output_20260907_010101.txt` and one for every
+  other PDF in the run. It hands back nothing now; the PDFs and the completion
+  message are the whole of what a run produces. If you have collected some,
+  they are safe to delete.
+
 ## [1.5.0] - 2026-09-13
 
 ### Added

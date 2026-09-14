@@ -2972,8 +2972,6 @@ function reportNoImages(app, headless, rejected) {
         buttons: ["OK"],
         defaultButton: "OK"
     });
-
-    return [];
 }
 
 function reportHeadless(result, write = writeReceipt) {
@@ -2995,7 +2993,7 @@ function reportResult(app, job, result, options) {
 
     showCompletion(app, job.settings.mode, result, options.pageCount);
 
-    return result.outputs;
+    return undefined;
 }
 
 /* ===== src/runtime/source-image.js ===== */
@@ -3985,6 +3983,6 @@ function run(input, parameters) {
             });
         }
 
-        return [];
+        return undefined;
     }
 }

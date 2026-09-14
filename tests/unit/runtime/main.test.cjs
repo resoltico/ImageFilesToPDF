@@ -97,7 +97,7 @@ test("a headless run whose files cannot be read says which", () => {
 test("an interactive run with no images explains itself in a dialog", () => {
     const host = createFakeHost({ files: [] });
 
-    assert.deepEqual(execute(host, [], false), []);
+    assert.equal(execute(host, [], false), undefined);
     assert.match(host.dialogs.at(-1).message, /No images selected/u);
     assert.match(host.dialogs.at(-1).message, /run the action again/u);
 

@@ -114,7 +114,9 @@ function runReported(app, input, headless) {
 }
 
 // osascript calls run with this exact two-argument signature; the second
-// parameter is unused here but must remain part of the signature.
+// parameter is unused here but must remain part of the signature. It answers
+// a person with nothing, whichever way the run went -- Shortcuts turns a
+// result into a file, and reporting.js is where that is written down.
 // eslint-disable-next-line no-unused-vars
 function run(input, parameters) {
     const app = Application.currentApplication();
@@ -138,7 +140,7 @@ function run(input, parameters) {
             });
         }
 
-        return [];
+        return undefined;
     }
 }
 

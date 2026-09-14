@@ -108,7 +108,7 @@ test("a run that fails closes the report before the error dialog", () => {
     globalThis.Application.currentApplication = () => host;
 
     try {
-        assert.deepEqual(run(["/a/x.png"], undefined), []);
+        assert.equal(run(["/a/x.png"], undefined), undefined);
     } finally {
         delete globalThis.Progress;
     }
