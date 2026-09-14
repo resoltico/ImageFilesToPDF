@@ -1,5 +1,5 @@
 /*
- * Image Files to PDF 1.5.0
+ * Image Files to PDF 1.5.1
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
@@ -18,7 +18,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.5.0";
+const VERSION = "1.5.1";
 
 /* ===== src/core/executables.js ===== */
 

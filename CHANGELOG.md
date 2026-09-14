@@ -4,6 +4,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-09-14
+
 ### Fixed
 
 - No more stray text files beside your PDFs. The action handed the list of
