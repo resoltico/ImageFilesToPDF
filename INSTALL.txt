@@ -45,3 +45,24 @@ Install the Quick Action
        dist/Image-Files-to-PDF.jxa
 
 10. Save the shortcut as "Image Files to PDF".
+
+Remove it
+=========
+
+1. In the Shortcuts app, delete the "Image Files to PDF" shortcut.
+2. To forget the settings it remembered, open Terminal and run:
+
+       defaults delete com.resoltico.ImageFilesToPDF
+
+That is everything it leaves on your Mac. It keeps one preferences entry,
+under that name, holding the page setup of your last run, and nothing about
+your images. Its working files go in the system temporary folder and are
+cleared away as each run ends; a run that could not save a finished PDF leaves
+them in place on purpose, and the message says where they are.
+
+vips and pdfcpu are yours rather than this action's, and anything else on your
+Mac may be using them, so they are left alone. Remove them with
+
+    brew uninstall vips pdfcpu
+
+if nothing else needs them.
