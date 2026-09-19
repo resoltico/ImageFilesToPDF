@@ -40,8 +40,11 @@
   "tempDirName": ".stryker-tmp",
   "timeoutMS": 20000,
   "_comment_thresholds": "Measured 98.5% on 2026-09-12, up from 97.8-98.0 on 2026-09-06. break sits well below so an ordinary change cannot fail on noise, while a real drop in test strength does; the score varies a little because a timed-out mutant counts as killed. Ratchet it up as the score improves.",
+  "_comment_tap": "The fast-check settings file pins the seed and the case count for a campaign only, so every mutant meets the same inputs; everywhere else the properties run on fast-check's defaults. See tests/unit/fast-check-mutation.cjs.",
   "tap": {
     "nodeArgs": [
+      "-r",
+      "./tests/unit/fast-check-mutation.cjs",
       "--test-reporter=tap"
     ],
     "testFiles": [

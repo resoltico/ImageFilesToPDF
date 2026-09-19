@@ -1685,43 +1685,84 @@ cases through fast-check.
 
 `src/core/ordering.js` — the laws a comparator has to obey, which no example
 can establish: a name is equal to itself; reversing the pair reverses the
-answer; an order that holds across two pairs holds across the third; two names
-that are not one name get a definite order; case is the only difference a name
-may have and still compare equal; and sorting does not depend on the order the
-names arrived in. A comparator that breaks any of these hands `sort` a
-contradiction, and what comes back then depends on the engine's algorithm.
+answer; a sorted list is in order between every pair, not only neighbours;
+two identifiers a step apart above 2^53 still have an order; two names that
+are not one name get a definite order; a name and its folded spelling are one
+name to everything; and sorting does not depend on the order the names arrived
+in. A comparator that breaks any of these hands `sort` a contradiction, and
+what comes back then depends on the engine's algorithm.
 
-`src/core/numbers.js` — byte counting and cutting, checked against Node's own
+`src/core/numbers.js` — byte counting and cutting, against Node's own
 `Buffer.byteLength` as the oracle: the length in bytes is the length the
 platform measures; what is kept is a beginning of what was given, fits its
 budget, keeps whole characters, and is as much as the budget allows.
 
-**The seed is fixed and the case count is 50.** A property that generates
-different inputs on every machine is a lottery rather than a gate. Pinned, it
-is the same run every time, and a failure is one anybody can reproduce.
+### How they are written
 
-**A property has to be shaped like the fault it is for.** Two things about
-these are deliberate and look arbitrary without the reason:
+Three rules from fast-check's own guidance, each of which changed something
+here.
 
-- The comparator's fault past 2^53 needs two identifiers that are *adjacent*:
-  a double cannot hold both, so subtracting them says they are the same name.
-  Two names drawn independently never collide, so a generic generator never
-  reaches it. The pair is generated together, one step apart, from 2^53 up.
-- Cutting on a byte rather than between characters cannot be seen by a round
-  trip through a buffer, because an invalid sequence comes back as U+FFFD
-  rather than as damage. So what is asserted is that the kept text is whole
-  characters taken from the front of the input.
+**Take the whole domain unless the algorithm needs less.** Names are any text
+at all, beside text shaped the way the comparison is decided — runs of digits
+next to letters, dots and spaces, and runs of digits past 2^53 — because text
+drawn from everything rarely puts a digit beside a letter, and text drawn only
+from the shapes would never try anything else. Neither has a length limit.
+Text for the byte properties is any code point in any width, with no length
+limit either.
 
-Both are measured against a copy of the module reverted to the fault: the
-comparator property fails and shrinks to `img9007199254740992.jpg` against
-`img9007199254740993.jpg` — the pair the example test already names — and the
-whole-character property fails where the round trip passed.
+**Build valid inputs rather than discard invalid ones.** Transitivity is
+checked by sorting and then requiring every pair of the result to be in order,
+rather than by drawing three names and discarding every triple that is not
+already ordered. A byte budget is drawn relative to its text, from nothing to
+the whole of it — drawn on its own, a budget lands below a line of text too
+rarely to cut anything — and a budget that must cut something is built short
+of the whole text by at least a byte.
 
-**What it costs, measured.** The suite's net running time goes from 2064.44ms
-to 2553.24ms, about half a second, taken from Stryker's dry run rather than
-the wall clock. Coverage was 100% and stays there; the mutation score moves
-from 98.50 to 98.52, which is within what a timed-out mutant counting as
-killed does from run to run. Nothing in this code fails any of them.
+**Build the input and know the answer.** A name and its folded spelling are
+built by folding rather than by raising the case, because "ß" raised is "SS",
+which folds to "ss", which is a different name. Two identifiers either side of
+a step above 2^53 are built as a pair, because two drawn independently never
+collide — the generator has to have the shape of the risk.
+
+### Seeds
+
+Ordinary runs — `npm test`, the coverage gate, continuous integration — use
+fast-check's defaults: a fresh seed and a hundred cases each time, so the
+inputs keep changing from run to run. A failure is reproducible without a
+fixed seed, because fast-check reports the seed it used and the smallest
+counterexample it could shrink to.
+
+A mutation campaign is the exception. It runs the suite once per mutant, and a
+mutant that one seed kills and another does not would make the score a matter
+of luck, so under it the seed is pinned and each property runs 25 cases.
+`tests/unit/fast-check-mutation.cjs` does that, loaded by Stryker's tap runner
+with `-r`.
+
+A property that runs unpinned has to hold for every input, not only for those
+one seed happened to reach, so each of these was run at 20,000 cases on six
+seeds before it was allowed to. Two things only that showed:
+
+- Reversing a pair of identical names gives an answer of nought, and negating
+  nought gives -0, which `assert.equal` — `Object.is` underneath — treats as a
+  different number. Antisymmetry is compared with `===`.
+- Sorting is stable, so two spellings of one name keep the order they arrived
+  in. Two sorts of the same names in different orders are compared as the
+  names the comparison sees, folded, rather than as the text they were typed
+  in.
+
+### What it costs, and what it does not buy
+
+Stryker's dry run, which excludes the machine's load from the figure: the
+suite's net running time is 2064.44ms with no properties and 2159.87ms with
+these at the campaign's 25 cases. The mutation score is 98.52, against 98.50
+without them, which is within what a timed-out mutant counting as killed does
+from one run to the next.
+
+Coverage is 100% with or without them. Nothing in this code fails any of them.
+Against copies reverted to each fault they guard, both fail in every run: the
+comparator subtracting digit runs as JavaScript numbers fails the pair above
+2^53, and a cut made on a byte rather than between characters fails four of
+the five byte properties.
 
 ## Testing the gate itself
 
