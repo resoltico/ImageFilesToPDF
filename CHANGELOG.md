@@ -4,6 +4,19 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-09-19
+
+### Added
+
+- Instructions for removing the action. INSTALL.txt now ends with how to take
+  it off your Mac and what it leaves there: one preferences entry, holding the
+  page setup of your last run.
+
+### Internal
+
+- Property-based tests for file ordering and byte-length handling, and a
+  revised quality record.
+
 ## [1.5.1] - 2026-09-14
 
 ### Fixed
