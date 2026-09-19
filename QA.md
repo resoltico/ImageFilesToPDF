@@ -184,8 +184,8 @@ arrived first.
 
 A link gets the same answer from admission that it gets from the walk. It is
 passed over there because following one is how a run leaves the folder it was
-given; it used to be validated here through the shell, which follows it, so a
-link and the file it points to were two images of one photograph. Asking the shell instead is
+given. Validated through the shell, which follows it, a link and the file it
+points to are two images of one photograph. Asking the shell instead is
 what sent the walk inside an `.app`, which is a directory to `/bin/test`;
 deciding as each item came up is what made the answer depend on the order
 Finder handed the selection over.
@@ -210,9 +210,9 @@ Two things the walk cannot pass over silently are the folders it could not
 read and the entries it could not get the attributes of. Both might have been
 photographs. A listing can succeed while inspecting what it listed fails, so
 these are separate failures, and each comes back with the images and becomes a
-rejection naming the path — a folder whose photographs were all in a subfolder
-nobody had permission to open used to produce a PDF of whatever else was lying
-around and report that nothing had failed.
+rejection naming the path — collapsed, a folder whose photographs are all in a
+subfolder nobody has permission to open produces a PDF of whatever else was
+lying around and reports that nothing failed.
 
 Verified to fail: a link with an image's name being taken; a package being
 walked into, whether reached through a folder or selected directly; a hidden
@@ -259,8 +259,8 @@ one. errno does not come back through the bridge, so a refusal is classified
 the way a refused link is: by asking whether the name is taken.
 
 Measured against a regular file, a link pointing at `/dev/null`, a directory
-and a named pipe: `mkdir` refuses all four. The shell's noclobber redirection,
-which used to take that name, refuses only two of them. It *accepts* a link
+and a named pipe: `mkdir` refuses all four. The shell's noclobber
+redirection, the obvious alternative, refuses only two of them. It *accepts* a link
 pointing at something that is not a regular file -- creating nothing, so the
 run recorded a name it did not own and cleanup deleted the link -- and on a
 named pipe it waits for a reader that never comes, with no timeout above it to
@@ -308,10 +308,10 @@ HFS Plus take the link, FAT32 refuses it with "Operation not supported" and
 takes the rename, exFAT refuses both.
 
 The link goes first for two reasons. It needs no bridge, and a volume that has
-hard links must not be refused because a bridge is missing -- which is what
-used to happen: the rename was the only thing tried from that place, so a
-host without the `stdio` import could not publish to an attached APFS drive at
-all, and was told the drive could not take the name. And a refused link says
+hard links must not be refused because a bridge is missing. With the rename as
+the only thing tried from that place, a host without the `stdio` import cannot
+publish to an attached APFS drive at all, and is told the drive could not take
+the name. And a refused link says
 something, where a refused rename says nothing at all.
 
 Which operation may be used where is decided by what a failure would cost. `ln`
@@ -400,10 +400,10 @@ measured -- so the same pair is proof, and nothing else is. A nonempty regular
 file is not: another writer's PDF is one too, and taking it as ours published
 their document, deleted both copies of ours, and reported success.
 
-Which is what asking after the staging copy used to do. It asked whether that
-copy was still there, to tell a rename that happened from one that had
-declined -- and that question answers "gone" when it cannot be put at all, so
-a refused inspection read as a publication. Nothing infers a result from a
+Which is what asking after the staging copy does. It asks whether that copy is
+still there, to tell a rename that happened from one that declined -- and that
+question answers "gone" when it cannot be put at all, so a refused inspection
+reads as a publication. Nothing infers a result from a
 file's absence any more; the identity at the output path settles it, and an
 identity that could not be read matches nothing.
 
@@ -415,10 +415,9 @@ enough. An unrelated document with the same basename as the file the claim was
 made from was otherwise deleted for it.
 
 Recovery does not search. The finished PDF is in the workspace by
-construction, so it is set aside from there. It used to be worked out by
-asking whether files existed, through a check that answers "no" when it cannot
-tell -- so a refused check deleted the only copy and then reported the PDF
-missing.
+construction, so it is set aside from there. Worked out instead by asking
+whether files exist, through a check that answers "no" when it cannot tell, a
+refused check deletes the only copy and then reports the PDF missing.
 
 Verified to fail: a place this run did not make being used or cleared away,
 whatever kind of thing is at that name; a place something else has written
@@ -442,8 +441,8 @@ check could not answer.
 
 Any opaque sRGB colour, written as six hexadecimal digits. The four named
 colours are presets — what the list offers — and not the list of colours the
-program permits, which is what they used to be: a value was looked up in a
-table of four and anything else refused.
+program permits. As the permitted list, a value is looked up in a table of
+four and anything else refused.
 
 Permissive at the edge and strict in what is kept. A leading `#` is optional,
 either case is taken, surrounding space is ignored, and what is stored is
@@ -497,9 +496,9 @@ The suite's other alpha fixture is a rendered SVG, which is always RGBA, so
 this path went unexercised while being the one the comments warn about.
 
 A preset label is not a colour and is not accepted as one. `White (#FFFFFF)`
-is the wording of a menu, and it used to be recognised at the form's edge and
-turned into a colour there — which made display text part of what the program
-accepted, so renaming a preset would have changed it. Nothing sends a label
+is the wording of a menu. Recognised at the form's edge and turned into a
+colour there, display text becomes part of what the program accepts, and
+renaming a preset changes it. Nothing sends a label
 any more: the form's list holds the colours themselves, and the stepwise
 dialogs map their own list through `valueOfLabel` before anything is read. A
 hex code is not fished out of whatever else was typed around it either, so
@@ -582,9 +581,9 @@ reading the form, and the two are in one file because inverses kept apart
 drift: the tests put all 192 combinations of the settings through a record and
 back, because the way this breaks is one setting quietly failing to survive
 while the other five prove nothing. It is also why every choice control's
-value is now what `normalizeSettings` produces — the output mode used to offer
-`Single PDF` while the pipeline stored `single`, and an inverse of that would
-have needed a table to undo a mapping that had no reason to exist. The two
+value is what `normalizeSettings` produces. A control offering `Single PDF`
+while the pipeline stores `single` needs a table to undo a mapping that had no
+reason to exist. The two
 older spellings are still accepted from a configuration file, because one
 written against an earlier release has to keep working.
 
@@ -609,10 +608,10 @@ the point of the file. The form asks six questions at once and collects every
 problem; the stepwise dialogs ask one and ask again; what an answer may be,
 and the sentence said when it may not, is the same either way.
 
-The rule for a number used to be written three times over — the coercion for a
-headless configuration, the form's own check, and the dialog's own check —
-with three wordings for one rule, so the two front ends said different things
-about the same answer. One reader now serves both, and it is deliberately
+One reader serves every front end. Written three times over — the coercion
+for a headless configuration, the form's own check, and the dialog's own check
+— one rule gets three wordings, and the two front ends say different things
+about the same answer. The one reader is deliberately
 stricter than the coercion it sits beside: a typed answer is digits, where
 `Number()` also reads `0x12C` and `3e2` as 300. A JSON configuration is a
 different question, where a number is legitimately a number, and keeps the
@@ -736,10 +735,9 @@ final newline; and a reference to a file that is not there. Verified to pass:
 prose that mentions a hash, the same subheading under two different releases,
 and a plain-text document that underlines its headings instead.
 
-What is not checked is whether the prose is true. That is read, and this round
-of reading found the artifact documented as passing a vips flag it no longer
-passes, a macOS version that was never right, and a dependency list missing an
-entry.
+What is not checked is whether the prose is true. That is read, and reading is
+what catches an artifact documented as passing a vips flag it does not pass, a
+macOS version that is not the floor, or a dependency list missing an entry.
 
 ## Workflows
 
@@ -822,10 +820,11 @@ for Automation's own `Progress` object is displayed by Script Editor, by a
 script applet and by the system script menu, and an `NSPanel` is what a
 Shortcut can show. A run may be either.
 
-It used to write only to `Progress`. That was chosen on the strength of what
-happens when it is wrong — an assignment cannot open a window, cannot raise
-the activation policy, and cannot pump a run loop underneath the host — and it
-was the wrong trade, because the assignments succeed on a host that displays
+Writing only to `Progress` is the safer-looking choice, on the strength of
+what happens when it is wrong — an assignment cannot open a window, cannot
+raise the activation policy, and cannot pump a run loop underneath the host —
+and it is the wrong trade, because the assignments succeed on a host that
+displays
 none of them. Nothing could tell that apart from working, which is how this
 action shipped with a conversion that says nothing for its entire length.
 
@@ -887,8 +886,8 @@ returns null and is left out, and a run with no surface at all reaches
 A progress surface can report two different things by throwing, and only one
 of them is about the surface. "I could not show this" is not news. "The person
 asked you to stop" is not about the display at all -- the display is merely
-where it arrived -- and it used to be discarded along with it, by the one
-`catch {}` in `src/runtime/progress.js`.
+where it arrived -- so a bare `catch {}` in `src/runtime/progress.js` discards
+it along with the news that is not news.
 
 **What is not established:** that any host actually raises one. Apple
 documents a user-cancelled error for a script progress dialog, and it does not
@@ -953,10 +952,9 @@ that case and carried on into the work it had just announced.
 
 What the rule buys beyond correctness is that there is nothing to remember. A
 stage added later says what it is about to do, because that is what the panel
-exists to show, and in saying so it becomes a checkpoint. The default for a
-new stage used to be "carries on after a stop"; it is "stops" now, and when a
-rule is going to be got wrong occasionally it should be wrong in the direction
-of doing less.
+exists to show, and in saying so it becomes a checkpoint. The default for a new
+stage is "stops" rather than "carries on after a stop": when a rule is going to
+be got wrong occasionally it should be wrong in the direction of doing less.
 
 The inverted risk is real and is the thing to check: a report can now raise,
 so every call site must be somewhere a raise is safe. The table above is that
@@ -1009,16 +1007,15 @@ different circumstances:
 | copying beside the destination | a staging place, cleared on the way out | unwinds |
 | cleanup, and questions put to the filesystem | an error already on its way out | swallowed -- see below |
 
-### Publication answers three ways, not two
+### Publication answers three ways
 
-An outcome used to be published or refused. A cancellation is neither: it is
-**abandoned**, stopped before it could become either.
+An outcome is published, refused, or **abandoned**. A cancellation is neither
+of the first two: it is stopped before it could become either.
 
-Two rounds got this wrong in the other direction, and the reasoning is worth
-keeping because it is easy to repeat. The argument for letting publication
-finish was that the PDF is built, validated and one operation from the
-person's folder, so stopping would throw finished work away. That is about the
-PDF and misses what the second route is. `deliver` tries a hard link; if the
+The argument in the other direction is easy to repeat, so it is written down
+and answered. It runs: the PDF is built, validated and one operation from the
+person's folder, so stopping throws finished work away. That is about the PDF
+and misses what the second route is. `deliver` tries a hard link; if the
 link fails it copies the PDF beside the destination and claims it from there,
 and that route exists because the link may be *impossible* -- another volume,
 a filesystem without hard links. Taking it is a diagnosis.
@@ -1039,10 +1036,9 @@ strings and mean opposite things here; `copyBeside` says which it was; and
 `deliver`, `throughStaging` and `claimFrom` each ask before choosing the next
 strategy.
 
-**An abandoned attempt is not a claim that nothing happened.** The first
-version of it assumed so -- cleared up, raised, and never asked the output
-path what it held -- and a PDF whose link had been made before the
-cancellation surfaced went unmentioned. That is the one thing `completion.js`
+**An abandoned attempt is not a claim that nothing happened.** Assuming so --
+clearing up, raising, and never asking the output path what it holds -- leaves
+a PDF whose link was made before the cancellation surfaced unmentioned. That is the one thing `completion.js`
 exists to prevent, and the one thing this module has always refused to infer:
 its header is about never reading absence as fact, `isPublished` is built so
 that an identity nobody could read is not a match, and `confirm` exists
@@ -1229,8 +1225,8 @@ encodes. What is gained is that a URL this action cannot read becomes a
 stated rejection naming it, rather than a file chosen by guesswork.
 
 A NUL is the same sentence: `%00` decodes without complaint into a character
-no path can hold, and it used to travel as far as the first shell command,
-where `shellQuote`'s refusal was caught and reported as "not a readable file"
+no path can hold. Unrefused here it travels as far as the first shell command,
+where `shellQuote`'s refusal is caught and reported as "not a readable file"
 -- true, for the wrong reason. So the contract is: `file://`, an authority
 that is empty or exactly `localhost`, a path beginning with `/`, escapes that
 decode, and no NUL.
@@ -1335,13 +1331,12 @@ panel that never appears at all was not established, and `Progress` is still
 being written: no run is harmed either way, which is the property the whole
 arrangement is built on.
 
-## What the hand test found
+## What the panel does in a real Quick Action
 
-Run on 2026-09-14 against the shipped artifact — the 1.5.0 build,
+Measured on 2026-09-14 against the shipped artifact — the 1.5.0 build,
 `f7d441551831d741efacf3b92b7f62ed402178ed8f9edd406e49b668c45000b0`, pasted
 into the Quick Action — with Shortcuts not frontmost and Finder holding the
-selection. Steps 1 to 5 pass. Step 6 could not be constructed on this
-machine, and what was measured in its place is below.
+selection.
 
 The panel renders inside `ShortcutsMacHelper` as a floating titled utility
 window: headline, detail, accent bar. Sampled at about eight frames a second,
@@ -1364,21 +1359,19 @@ macOS fades a closing window out while it fades the next one in — that is the
 window server animating an ordering the program has already made, not a
 report sitting on top of an answer.
 
-Step 6 is the one not reached. The shortest run this host can perform — a
-single 1.3 KB image — takes about 1.1 seconds from the moment the settings
-are answered, because the shell-outs that convert, import, validate and
-publish cost more between them than the delay does. What was measured instead
-is the delay itself: for the first half second of that run no window was
-shown while reports were already arriving, and the panel appeared after it. A
-run finishing inside the delay would show nothing, which is the claim; there
-is no selection on this machine that finishes that quickly.
+**Not established: that a run short enough to finish inside the panel's delay
+shows no window.** The shortest run this host can perform — a single 1.3 KB
+image — takes about 1.1 seconds from the moment the settings are answered,
+because the shell-outs that convert, import, validate and publish cost more
+between them than the delay does. What was measured instead is the delay
+itself: for the first half second of that run no window was shown while
+reports were already arriving, and the panel appeared after it. There is no
+selection on this machine that finishes quickly enough to test the rest.
 
-One thing the test did not change but did make plain: the elapsed time in the
-completion dialog is measured from the start of the run, so it counts the
-time spent in the settings form — a form left open for four minutes reports
-four minutes for a four-second conversion. `startedAt` sits before `prepare`
-in 1.4.0 as well, so this is not something this work introduced, and it is
-left alone rather than folded into a release that is about other things.
+**A stated limit.** The elapsed time in the completion dialog is measured from
+the start of the run, so it counts the time spent in the settings form: a form
+left open for four minutes reports four minutes for a four-second
+conversion.
 
 ## What a Quick Action does with the result
 
@@ -1479,26 +1472,25 @@ It is checked by hand, on the real Shortcut, against this list:
   typed rather than replaced by a preset;
 - nothing is completed for you while typing.
 
-A value typed and submitted without leaving the field is the one that used to
-be at risk everywhere, not only here: text lives in the window's field editor
-until something commits it, and `stringValue` is what was last committed.
-`validateEditing` is now called on every editable row before it is read, which
+A value typed and submitted without leaving the field is the one at risk, and
+not only here: text lives in the window's field editor until something commits
+it, and `stringValue` is what was last committed. `validateEditing` is called
+on every editable row before it is read, which
 covers the resolution and quality fields as well.
 
-The four backgrounds used to carry a colour swatch in their menu, drawn into
-an `NSImage` for each. A combo box list holds strings and nothing else, and a
-swatch shown beside the field instead would be telling the truth only until
-the next keystroke — so the swatches went with the pop-up, and the names and
-hex codes are what the list shows. That is the price of typing a colour at
-all, and it was paid deliberately: no control offers both, and a second
-control beside the first would be a second place for the answer to live.
+The background list shows names and hex codes and no colour swatch. A combo
+box list holds strings and nothing else, and a swatch shown beside the field
+instead would be telling the truth only until the next keystroke. That is the
+price of being able to type a colour at all, and it is paid deliberately: no
+control offers both, and a second control beside the first would be a second
+place for the answer to live.
 
-There was a watchdog: an `abortModal` scheduled two minutes out, so a form
-that never returned could not hang the run. It fired on forms that were
-working perfectly — taking two minutes to choose a paper size and a colour is
-not evidence of anything — and the abort reads as "never presented", so the
-user was dropped into the stepwise dialogs half way through answering. Nothing
-replaced it: the form ends when it is answered or cancelled.
+There is no watchdog on the form. An `abortModal` scheduled two minutes out
+bounds a form that never returns, and fires on forms that are working
+perfectly — taking two minutes to choose a paper size and a colour is not
+evidence of anything — and its abort reads as "never presented", which drops
+the person into the stepwise dialogs half way through answering. The form ends
+when it is answered or cancelled.
 
 What is not tested, and cannot be: that AppKit renders it. That was
 established by running a probe inside `ShortcutsMacHelper`, which presented a
@@ -1596,113 +1588,76 @@ and invocation guards were decided the same way, and `describeSetupProblems`
 and `createSeparatePdfs` were run with the mutated field in place to confirm
 that nothing downstream reads it.
 
-A campaign finds two kinds of thing, and only one of them is a defect. No run
-so far has found behaviour this code gets wrong. What they find is correct
-behaviour that nothing is holding in place — a repository whose name ends in
-`.io` surviving npm's `.git` suffix being stripped, a value that merely
-mentions a file URL not being read as one, a URL disagreement naming which
-file each value came from, the file being prepared counted from one rather
-than zero.
+A campaign finds two kinds of thing, and only one of them is a defect. Almost
+all of what it finds is correct behaviour that nothing is holding in place — a
+repository whose name ends in `.io` surviving npm's `.git` suffix being
+stripped, a value that merely mentions a file URL not being read as one, a URL
+disagreement naming which file each value came from, the file being prepared
+counted from one rather than zero. One defect has come out of them, below.
 
-The last run found nothing in the reworked prompts: no survivor in any file
-this round changed.
+One finding is worth keeping as a defect the campaigns caught, because it
+would have painted the wrong colour on a page. The rule deciding whether vips
+is given one number or three was that all three channels agree, and nothing
+distinguished it from either channel pair agreeing on its own: `#C7C7E8` would
+have been sent as a single 199 and come out grey, silently, while still
+looking like a colour. Both the rule and the shorter form it chose between are
+gone — the one-band image they existed for cannot reach the flatten — so the
+trap is closed by there being nothing left to choose.
 
-The run before that found one thing that would have painted the wrong colour
-on a page. The rule deciding whether vips was given one number or three was
-that all three channels agree, and nothing distinguished it from either
-channel pair agreeing on its own: `#C7C7E8` would have been sent as a single
-199 and come out grey, silently, while still looking like a colour. Both the
-rule and the shorter form it chose between are gone now — the one-band image
-they existed for cannot reach the flatten — so the trap is closed by there
-being nothing to choose. The rest of that run's survivors were the wording of
-the colour prompt and the buttons on it, which are what a person answers.
+Everything else the campaigns have produced is an assertion that now exists,
+and each is kept because the behaviour it holds in place is load-bearing and
+was held by nothing:
 
-The run before that found nothing new: every survivor in the publication path
-was gone, and the one that remains there is equivalent -- a `catch` that returns
-`false` to callers that only ask whether the answer is truthy, which is the
-group already written down above.
+- a bridge that will not take the header is not used even when the operation
+  looks present on it, since the header is what makes it callable;
+- a publication that succeeded carries no reasons to explain itself, on both
+  routes to the name;
+- the drive-cannot-take-it message says what became of the PDF, not only what
+  failed;
+- a run whose output path holds another program's file removes nothing at all;
+- whitespace around a `stat` answer does not become part of an identity that
+  is compared for equality, and a stat reporting a size with no file behind it
+  identifies nothing;
+- two sizes neither of which could be read are not a match: the check that a
+  copy is whole has to know its expectation was readable;
+- a rename that was refused says which of its two steps it was, and the second
+  of publication's two renames names itself when it fails, so a message about
+  the copy cannot be mistaken for one about the rename;
+- a staging file this run did not create is neither adopted nor removed, and
+  the copy this run did make is cleared away when the claim after it fails;
+- the staging file is the only copy the run has once a rename has emptied the
+  workspace, so removing it on a failure would destroy the finished PDF, and
+  the workspace copy goes after a copy-staging too;
+- which of the two names a publication takes was the one it could not take,
+  and what a run removes on each of the four paths — ordinary, through a
+  staging copy, on a volume without hard links, and having refused before
+  making anything, which is the whole ownership rule as an assertion;
+- among two spellings of one file, the name it is stored under is the one
+  used;
+- the leading zeros stripped from a number are the ones at the front and all
+  of them; a run of letters is compared as a word rather than by its length;
+- a text exactly filling its byte budget is kept whole, and the first
+  character of each width in the UTF-8 table, where a comparison one step out
+  under-counts a byte;
+- the host is told how many units of work a run has, and the description a
+  finished page reports, which is what somebody waiting reads;
+- a command carries more than one page. The batching measures the fixed part
+  of the import command to know how much room is left, and measuring it with
+  every page already in it leaves nothing of the budget: the PDF still comes
+  out right, and a job of four thousand pages becomes four thousand
+  invocations of pdfcpu.
 
-The run before those found no wrong behaviour and two pieces of dead weight. Six of
-its survivors were one finding wearing six faces: a label passed to `runArgv`
-describes a failure for somebody to read, and six of them were attached to
-commands whose failure is discarded where it happens -- text written for a
-reader who does not exist. They are gone, along with the ad-hoc `try`/`catch`
-around each one, in favour of `tryArgv`, which runs a command and takes
-silence for an answer. Splitting that from the questions put to the
-filesystem, which return an answer rather than fail, gave `asking.js` its own
-module and left a dead predicate behind: `fileExists`, used by nothing but its
-own tests, the leftover of a check that says "no" both when a file is absent
-and when the question could not be put. The other dead weight was a counter
-compared only against zero -- a flag wearing a number -- and the behaviour it
-guarded, that a folder whose images are all already in the run is not called
-empty, had nothing asserting it. The rest were assertions worth having: that a
-publication which succeeded carries no reasons to explain itself, on both
-routes to the name; that the drive-cannot-take-it message says what became of
-the PDF and not only what failed; that a run whose output path holds another
-program's file removes nothing at all; that whitespace around a `stat` answer
-does not become part of an identity that is compared for equality; and that
-the anchor on the file-URL prefix is load-bearing for a path already in POSIX
-form.
+The campaigns have also removed dead weight rather than added tests: a ledger
+entry written after everything that reads it; a counter compared only against
+zero, a flag wearing a number; half a guard comparing a claim against the
+output name, which a claim is never made from; `fileExists`, used by nothing
+but its own tests; and six labels passed to `runArgv` describing failures
+discarded where they happen, which is text written for a reader who does not
+exist. Those six are why `tryArgv` exists, and splitting it from the questions
+put to the filesystem is why `asking.js` does.
 
-The run before those found a cost rather than a wrongness, which is the same
-thing at a distance: the batching measures the fixed part of the import
-command so it knows how much room is left for pages, and measuring it with
-every page already in it leaves nothing of the budget. The PDF still comes out
-right — every page, in order — but a job of four thousand pages becomes four
-thousand invocations of pdfcpu. The test now says a command carries more than
-one page.
-
-The run after the fallback audit found one thing worth holding: that a bridge
-which will not take the header must not be used even when the operation looks
-present on it, since the header is what makes it callable.
-
-The run before that found nothing this code gets wrong: every
-survivor fell into a group already written down here -- a description whose
-command swallows it, a defensive conversion, and a list nothing reads on the
-path that returns it.
-
-The run before that found four, all about a message or a list that nothing was
-reading: which of the two names a publication takes was
-the one it could not take, and what a run removes -- on the ordinary path, on
-the path through a staging copy, on a volume without hard links, and when it
-refused before making anything. The last of those is the whole ownership rule
-stated as an assertion, and it was worth writing down.
-
-The run before that found two, both about an answer that looks like one: that a stat reporting a size and no file behind it identifies
-nothing, and that two sizes neither of which could be read are not a match --
-the check that a copy is whole has to know that its expectation was readable
-in the first place.
-
-The run before that found five, and one piece of dead code: that a rename which was refused has to say which of the two steps it
-was; that a staging file this run did not create is neither adopted nor
-removed; that the copy this run did make is cleared away when the claim after
-it fails; that among two spellings of one file the name it is stored under is
-the one used; and that the fake answering /bin/test had been answering a
-question that was not asked -- it matched any five-word test, so a mutated
-flag still got the right answer. The dead code was half of a guard: a claim is
-made from the workspace file or from the staging copy, never from the output
-name, so comparing it against the output name decided nothing.
-
-The run before that found eight of the same kind: the
-catch that turns an unmeasurable file into "unknown" rather than into nothing;
-the two operations that can fail while taking the output name, which have to
-say which one it was; that the staging file is the only copy the run has once
-a rename has emptied the workspace, so removing it on a failure would destroy
-the finished PDF; that the workspace copy goes after a copy-staging too; that
-the leading zeros stripped from a number are the ones at the front and all of
-them; that a run of letters is compared as a word rather than by its length;
-that a text exactly filling its byte budget is kept whole; and that the host
-is told how many units of work a run has. It also found one line of dead
-code -- a ledger entry written after everything that reads it -- which is
-gone.
-
-The run before it found four of the same kind: the first character of each width in the UTF-8 table, where a comparison
-one step out under-counts a byte; the description a finished page reports,
-which is what somebody waiting reads; that a path handed over twice is
-classified once, which is a cost in Foundation calls rather than a wrong
-answer; and that the second of publication's two renames names itself when it
-fails, so a message about the copy cannot be mistaken for one about the
-rename. Each is now a test.
+One trap in the fakes came out the same way: the stand-in for `/bin/test`
+matched any five-word test, so a mutated flag still got the right answer.
 
 ### Runner
 
@@ -1720,6 +1675,53 @@ report is a real hazard.
 
 It carries a break threshold, so a drop in test strength fails the build rather
 than passing quietly.
+
+## What a generated case covers
+
+Coverage and mutation both answer questions about the tests. Neither answers
+whether anybody thought of the input — and for two modules the input space is
+unbounded and the failure lives at a boundary, so those are given generated
+cases through fast-check.
+
+`src/core/ordering.js` — the laws a comparator has to obey, which no example
+can establish: a name is equal to itself; reversing the pair reverses the
+answer; an order that holds across two pairs holds across the third; two names
+that are not one name get a definite order; case is the only difference a name
+may have and still compare equal; and sorting does not depend on the order the
+names arrived in. A comparator that breaks any of these hands `sort` a
+contradiction, and what comes back then depends on the engine's algorithm.
+
+`src/core/numbers.js` — byte counting and cutting, checked against Node's own
+`Buffer.byteLength` as the oracle: the length in bytes is the length the
+platform measures; what is kept is a beginning of what was given, fits its
+budget, keeps whole characters, and is as much as the budget allows.
+
+**The seed is fixed and the case count is 50.** A property that generates
+different inputs on every machine is a lottery rather than a gate. Pinned, it
+is the same run every time, and a failure is one anybody can reproduce.
+
+**A property has to be shaped like the fault it is for.** Two things about
+these are deliberate and look arbitrary without the reason:
+
+- The comparator's fault past 2^53 needs two identifiers that are *adjacent*:
+  a double cannot hold both, so subtracting them says they are the same name.
+  Two names drawn independently never collide, so a generic generator never
+  reaches it. The pair is generated together, one step apart, from 2^53 up.
+- Cutting on a byte rather than between characters cannot be seen by a round
+  trip through a buffer, because an invalid sequence comes back as U+FFFD
+  rather than as damage. So what is asserted is that the kept text is whole
+  characters taken from the front of the input.
+
+Both are measured against a copy of the module reverted to the fault: the
+comparator property fails and shrinks to `img9007199254740992.jpg` against
+`img9007199254740993.jpg` — the pair the example test already names — and the
+whole-character property fails where the round trip passed.
+
+**What it costs, measured.** The suite's net running time goes from 2064.44ms
+to 2553.24ms, about half a second, taken from Stryker's dry run rather than
+the wall clock. Coverage was 100% and stays there; the mutation score moves
+from 98.50 to 98.52, which is within what a timed-out mutant counting as
+killed does from run to run. Nothing in this code fails any of them.
 
 ## Testing the gate itself
 
