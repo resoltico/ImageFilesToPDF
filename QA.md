@@ -669,7 +669,11 @@ three invalid answers — in both the light and dark appearance, it checks:
 - that every control has an accessibility label equal to its row's label and
   non-empty accessibility help, which names every option of a popup and says
   "Invalid value" first on a row sent back for correction;
-- that the whole alert fits the main screen's visible height.
+- that the whole alert is no taller than 744 points: the 11-inch MacBook Air
+  of early 2015, the smallest display macOS 12 supports, less its menu bar.
+  Measured: 566 points, 598 with three corrections shown. The runner's own
+  screen is not the measure, because a CI runner's virtual display is smaller
+  than any Mac's.
 
 It writes a PNG of each laid-out form to `$IFTP_FORM_PREVIEWS`, which CI keeps
 as the `native-form-previews` artifact. Off-screen, the window has no

@@ -11,6 +11,8 @@ mkdir -p "$PREVIEWS"
 cat "$ROOT/dist/Image-Files-to-PDF.jxa" > "$WORK/form.jxa"
 cat >> "$WORK/form.jxa" <<'JXA'
 
+const SMALLEST_VISIBLE_HEIGHT = 744;
+
 function requireNative(condition, message) {
     if (!condition) { throw new Error(message); }
 }
@@ -53,8 +55,13 @@ function snapshotForm(folder, scenario, appearance) {
     measuredControls(built, spec);
     const content = alert.window.contentView;
     content.layoutSubtreeIfNeeded;
-    requireNative(alert.window.frame.size.height <= $.NSScreen.mainScreen.visibleFrame.size.height,
-        `${scenario.name}: the form is taller than the screen`);
+    // Against the smallest screen a supported Mac has, not the screen this
+    // runs on: a CI runner's virtual display is smaller than any Mac's.
+    // 1366 x 768 is the 11-inch MacBook Air of early 2015, which macOS 12
+    // supports; the menu bar leaves 744 points.
+    const height = Number(alert.window.frame.size.height);
+    requireNative(height <= SMALLEST_VISIBLE_HEIGHT,
+        `${scenario.name}: the form is ${height} points tall, more than ${SMALLEST_VISIBLE_HEIGHT}`);
     const bitmap = content.bitmapImageRepForCachingDisplayInRect(content.bounds);
     content.cacheDisplayInRectToBitmapImageRep(content.bounds, bitmap);
     const PNG_TYPE = 4;
