@@ -35,16 +35,9 @@ const WIDGETS = {
  * out of them — is unit tested against fakes. Only appkit-widgets.js touches
  * AppKit for real.
  *
- * A form that never appears would leave the user with nothing, so runModal is
- * guarded by an abortModal watchdog and an abort is reported as "could not
- * present" rather than as an answer. The caller then falls back to the
- * stepwise dialogs, which need no AppKit at all.
- */
-
-/*
- * Long enough that nobody filling in six fields is cut off, short enough that
- * a form which never rendered does not look like a hang forever. Reaching it
- * costs one slow run and then the dialogs appear instead.
+ * An explicit host abort means the form was unavailable, not that the user
+ * cancelled. There is no timeout: taking time to choose settings must never
+ * discard the form and start a different interface.
  */
 
 /*

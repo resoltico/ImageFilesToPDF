@@ -27,7 +27,7 @@ function scripted(outcomes) {
 test("the form's answers become the settings", () => {
     const present = scripted([{ answers: defaultAnswers() }]);
 
-    assert.deepEqual(collectViaForm(BRIDGE, present), {
+    assert.deepEqual(collectViaForm(BRIDGE, present).settings, {
         paperSize: "A4",
         orientation: "Portrait",
         mode: "single",
@@ -38,7 +38,7 @@ test("the form's answers become the settings", () => {
     assert.equal(present.seen.length, 1, "one good answer needs one form");
     assert.match(
         present.seen[0].detail,
-        /Choose how the pages are built/u,
+        /Each image gets its own page/u,
         "the first form has nothing to complain about yet"
     );
 
@@ -57,7 +57,7 @@ test("a bad answer redisplays the form with the problem and the rest intact", ()
         { answers: typed },
         { answers: { ...typed, dpi: "600" } }
     ]);
-    const settings = collectViaForm(BRIDGE, present);
+    const { settings } = collectViaForm(BRIDGE, present);
 
     assert.equal(settings.dpi, 600);
     assert.equal(settings.paperSize, "Letter", "the good answers must survive");
@@ -78,7 +78,7 @@ test("cancelling the form cancels the run", () => {
 });
 
 test("a form that could not be presented is not an answer", () => {
-    assert.equal(collectViaForm(BRIDGE, scripted([null])), null);
+    assert.deepEqual(collectViaForm(BRIDGE, scripted([null])), { answers: defaultAnswers() });
 });
 
 test("a remembered run is what the form opens on", () => {
@@ -92,7 +92,7 @@ test("a remembered run is what the form opens on", () => {
         dpi: "600"
     };
 
-    collectViaForm(BRIDGE, present, { count: 3, answers });
+    collectViaForm(BRIDGE, present, { context: { count: 3 }, answers });
 
     const [{ rows }] = present.seen;
 

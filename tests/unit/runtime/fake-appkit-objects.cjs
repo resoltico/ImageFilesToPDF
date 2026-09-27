@@ -20,6 +20,13 @@ function makeView(rect) {
  * typed out of the field editor before reading it.
  */
 function commitCounter(control) {
+    control.setAccessibilityLabel = (label) => {
+        control.accessibilityLabel = label;
+    };
+    control.setAccessibilityHelp = (help) => {
+        control.accessibilityHelp = help;
+    };
+
     Object.defineProperty(control, "validateEditing", {
         get: () => {
             control.committed += 1;

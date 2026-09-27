@@ -8,6 +8,14 @@ const DECIMAL_PLACES = 2;
 const MILLISECONDS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
 
+function positiveIntegerFrom(text) {
+    const value = Number(text);
+
+    return /^\d+$/u.test(String(text).trim()) && Number.isSafeInteger(value) && value > 0
+        ? value
+        : 0;
+}
+
 function parseInteger(value, minimum, maximum, label) {
     const numeric = Number(value);
 
@@ -56,10 +64,10 @@ function formatDuration(milliseconds) {
     const seconds = totalSeconds % SECONDS_PER_MINUTE;
 
     if (minutes <= 0) {
-        return `${seconds} second(s)`;
+        return plural(seconds, "second");
     }
 
-    return `${minutes} minute(s), ${seconds} second(s)`;
+    return `${plural(minutes, "minute")}, ${plural(seconds, "second")}`;
 }
 
 /*
@@ -117,6 +125,7 @@ function truncateToBytes(text, budget) {
 module.exports = {
     utf8Length,
     truncateToBytes,
+    positiveIntegerFrom,
     parseInteger,
     fixed2,
     zeroPad,

@@ -40,7 +40,7 @@ test("collectDialogSettings asks for every setting", () => {
     const settings = collectDialogSettings(app);
 
     assert.deepEqual(Object.keys(settings), [
-        "paperSize", "orientation", "dpi", "quality", "mode", "background"
+        "mode", "paperSize", "orientation", "dpi", "quality", "background"
     ]);
     assert.equal(app.listPrompts.length, 4);
 });
@@ -58,7 +58,7 @@ test("every prompt actually asks something", () => {
         assert.ok(prompt.options.every((option) => option.length > 0));
     }
 
-    for (const dialog of app.dialogs) {
+    for (const dialog of app.dialogs.filter((entry) => entry.options.defaultAnswer)) {
         assert.ok(dialog.message.length > 0, "input dialog has text");
         assert.ok(dialog.options.defaultAnswer.length > 0);
     }
@@ -80,7 +80,7 @@ test("the prompts name what they are asking about", () => {
         /orientation/iu,
         /DPI/u,
         /quality/iu,
-        /output/iu,
+        /PDF files be grouped/u,
         /background/iu
     ]) {
         assert.match(asked, subject);

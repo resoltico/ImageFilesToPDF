@@ -1,6 +1,7 @@
 "use strict";
 
 const { APP_NAME, VERSION } = require("../core/version.js");
+const { outputSummary } = require("../core/output-description.js");
 const { plural } = require("../core/numbers.js");
 const { dirname } = require("../core/paths.js");
 
@@ -20,17 +21,18 @@ function describeFailures(failures) {
         .map((entry) => `${entry.name}: ${entry.message}`);
 
     if (failures.length > shown.length) {
-        shown.push(`...and ${failures.length - shown.length} more failure(s).`);
+        shown.push(`...and ${plural(failures.length - shown.length, "more failure")}.`);
     }
 
-    return shown.join("\n");
+    return `Could not convert ${plural(failures.length, "image")}:\n${shown.join("\n")}`;
 }
 
 /*
  * The files that were asked for and will not be converted, each with its
  * reason. Truncated like the failure list, because a selection can be large.
+ * The heading depends on when it is said: before the run or after it.
  */
-function describeRejections(rejected) {
+function describeRejections(rejected, heading = "Not converted:") {
     const shown = rejected
         .slice(0, MAXIMUM_SHOWN_FAILURES)
         .map((entry) => `${entry.name}: ${entry.reason}`);
@@ -39,7 +41,7 @@ function describeRejections(rejected) {
         shown.push(`...and ${rejected.length - shown.length} more.`);
     }
 
-    return `Not converted:\n${shown.join("\n")}`;
+    return `${heading}\n${shown.join("\n")}`;
 }
 
 /*
@@ -58,7 +60,7 @@ function describeDestinations(outputs) {
 }
 
 function versionLine() {
-    return `\n${APP_NAME} ${VERSION}`;
+    return `${APP_NAME} ${VERSION}`;
 }
 
 /*
@@ -86,52 +88,45 @@ function stoppedLine(result, pageCount) {
 }
 
 /*
- * Every completion says the same three things in the same order: what was
- * produced, where it went, and how long it took. Producing files without
- * saying where they are is the one thing this dialog exists to prevent.
+ * Counted from what was published, not from what was selected: a stopped or
+ * partly failed separate run saved fewer PDFs, a failed combined run none.
+ */
+function createdLine(mode, result, pageCount) {
+    if (result.outputs.length === 0) {
+        return "No PDF was created.";
+    }
+
+    return `Created ${outputSummary(
+        mode, mode === "single" ? pageCount : result.outputs.length
+    )}.`;
+}
+
+/*
+ * Every completion says the same things in the same order, one paragraph
+ * each: what was produced and where it went, which images failed to convert,
+ * which selected items were never images to convert, and how long it took.
+ * The last two are kept apart because a locked folder is not a failed image.
  */
 function completionMessage(mode, result, pageCount) {
     const rejected = result.rejected ?? [];
-    const notConverted = rejected.length > 0
-        ? `\n${describeRejections(rejected)}`
-        : "";
-    const stopped = stoppedLine(result, pageCount);
-
-    if (result.failures.length > 0) {
-        return [
-            `Finished with errors.\n`,
-            `Created: ${plural(result.outputs.length, "PDF")}`,
-            `Failed: ${result.failures.length + rejected.length}`,
-            stopped,
-            `Elapsed: ${result.elapsed}\n`,
-            // Where the PDFs that were created actually went.
-            result.outputs.length > 0
-                ? `In: ${describeDestinations(result.outputs)}\n`
-                : "",
-            describeFailures(result.failures),
-            notConverted,
-            versionLine()
-        ].filter(Boolean).join("\n");
-    }
-
-    if (mode === "single") {
-        return [
-            `Created one PDF from ${plural(pageCount, "image")}.\n`,
-            result.outputs[0],
-            notConverted,
-            `\nElapsed: ${result.elapsed}`,
-            versionLine()
-        ].filter(Boolean).join("\n");
-    }
+    const destination = mode === "single"
+        ? result.outputs[0]
+        : describeDestinations(result.outputs);
 
     return [
-        `Created ${plural(result.outputs.length, "PDF")}.\n`,
-        describeDestinations(result.outputs),
-        notConverted,
-        stopped && `\n${stopped}`,
-        `\nElapsed: ${result.elapsed}`,
+        result.failures.length > 0 ? "Finished with errors." : "",
+        [
+            createdLine(mode, result, pageCount),
+            stoppedLine(result, pageCount),
+            result.outputs.length > 0 ? `Saved to: ${destination}` : ""
+        ].filter(Boolean).join("\n"),
+        result.failures.length > 0 ? describeFailures(result.failures) : "",
+        rejected.length > 0
+            ? describeRejections(rejected, "Not included from your selection:")
+            : "",
+        `Elapsed: ${result.elapsed}`,
         versionLine()
-    ].filter(Boolean).join("\n");
+    ].filter(Boolean).join("\n\n");
 }
 
 function showCompletion(app, mode, result, pageCount) {

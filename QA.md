@@ -13,7 +13,8 @@
 5. built-in Node tests of every module in `src/` — the portable core and the
    macOS runtime layer alike — held to 100% line, branch, and function
    coverage, with test helpers excluded from the measurement;
-6. checksum and source-to-distribution verification.
+6. mutation testing against a 96% minimum score;
+7. checksum and source-to-distribution verification.
 
 The gate deliberately does **not** build first. It verifies the committed
 artifact against `src/`, so a stale `dist/` fails the gate instead of shipping.
@@ -21,7 +22,7 @@ Use `npm run release` to regenerate and then verify.
 
 ## Static analysis
 
-ESLint 10.9.1 runs in strictest mode — `js.configs.all`, every core rule — as
+ESLint 10.11.0 runs in strictest mode — `js.configs.all`, every core rule — as
 part of `npm run quality`, and reports no findings.
 
 Rules that are switched off are enumerated individually in
@@ -601,6 +602,83 @@ Shortcut:
 - run a headless conversion with a configuration file and confirm the
   interactive defaults are unchanged afterwards.
 
+## What the settings say before anything is created
+
+"One PDF with all images" was read as a collage, so every sentence about output
+names pages as well as files: **One PDF — one image per page** and **Separate
+PDFs — one page per image**. The grouping never changes how an image sits on
+its page; it is the first row because it is the decision the rest serve.
+
+The text above the form says, from `src/core/output-description.js`:
+
+- what was selected — "You have selected 12 images." for files, or "Found 231
+  images in your selection, including subfolders." when any folder was
+  selected. Admission reports how many folders were selected, including ones
+  later refused; it is never inferred from a path. Either count is candidates,
+  not a promise that each converts;
+- that each image gets its own page, centred without cropping, and that the
+  originals are not changed;
+- both outcomes at once — "1 PDF with 12 pages, or 12 single-page PDFs." The
+  form cannot follow its own popup without an Objective-C target, so a line
+  computed from the mode showing would be false after it changed. With one
+  image both give one single-page PDF and only the filename differs
+  (`output_…` or the image's name), which is why the choice stays;
+- that pages follow the full path with 2 before 10, not the click order;
+- where the PDFs go: one folder when there is one; otherwise the combined PDF's
+  folder, and that separate PDFs go into each selected folder or beside each
+  image selected directly, with the number of folders.
+
+A form sent back for corrections puts the problems first and keeps all of that,
+because a correction is made against the same selection.
+
+**Consent.** Items that will not be converted — a locked folder, a GIF — are
+listed in a Continue/Cancel dialog before the settings appear, so leaving one
+out is agreed to rather than found out afterwards. The form's Create button is
+its consent. The stepwise dialogs start with the same text as the form and end
+with a Create/Cancel confirmation stating the answers given, since the last
+answer to a question is not consent to write files. Settings are remembered
+only after that consent. In both dialogs anything but the button that goes on
+is a cancellation, and a cancellation never falls back to another interface.
+
+**Fallback.** When the form stops working part way — `present` returns nothing
+or throws anything but a cancellation — the dialogs open with the answers last
+submitted, not the ones the form opened with. Edits never submitted are lost
+with the widget.
+
+**Headless** runs ask none of this. A configuration file is the whole of what
+they are told; a rejected item is reported in the receipt, not asked about.
+
+**What completion says.** One paragraph each: what was created and where it
+went; which images could not be converted, with reasons; which selected items
+were not included; how long it took. Counts come from what was published — a
+combined run that failed says "No PDF was created.", a stopped separate run
+counts the PDFs it saved — and a refused folder is never added to the count
+of failed images.
+
+## What the settings form is measured against
+
+`tests/integration/form.sh` appends a harness to the shipped
+`dist/Image-Files-to-PDF.jxa` and builds the real form with AppKit under
+`osascript`, without running it modally. For five scenarios — one image,
+combined, separate, folders across two volumes, and a form sent back with
+three invalid answers — in both the light and dark appearance, it checks:
+
+- that every choice in every popup fits its control, measured with the cell's
+  own `cellSize` rather than a guessed width;
+- that no label or hint is clipped;
+- that every control has an accessibility label equal to its row's label and
+  non-empty accessibility help, which names every option of a popup and says
+  "Invalid value" first on a row sent back for correction;
+- that the whole alert fits the main screen's visible height.
+
+It writes a PNG of each laid-out form to `$IFTP_FORM_PREVIEWS`, which CI keeps
+as the `native-form-previews` artifact. Off-screen, the window has no
+backdrop, so the dark previews are text on transparency.
+
+This is layout measured in AppKit, not use: nobody has operated the form with
+VoiceOver, and the modal run inside Shortcuts is covered only by the manual
+checks under "What the AppKit tests do not establish".
+
 ## Reading an answer
 
 Both front ends read their answers through `src/core/answers.js`, and that is
@@ -647,9 +725,20 @@ environment against the same allowance and this code cannot see how large the
 environment is. It is spent on the arguments as they will actually be written,
 quoted and separated, so a batch adapts to how long the paths turn out to be.
 
-Chunking introduces a failure a single import did not have — a batch that
-appends nothing while exiting zero — so when the pages went over in more than
-one group, the PDF is asked how many pages it ended up with.
+Every staged PDF is then asked how many pages it holds, and must hold exactly
+as many as were prepared before it is validated and published — one group or
+several, one page or thousands. A batch that appends nothing while exiting zero
+is the failure chunking introduces, but strict validation cannot see any
+version of it: a PDF short of pages is still a well-formed PDF. The count is
+read from pdfcpu's `Page count:` line, which must appear exactly once and hold
+a positive integer and nothing else; an absent, repeated or malformed line
+fails the conversion as "could not be verified" rather than passing unchecked.
+In separate mode this is one more `pdfcpu info` per image.
+
+The integers vipsheader reports — width, height, bands, `n-pages` and the EXIF
+orientation — are read the same way: digits only, positive, and within the
+safe integers, so `2junk` is not two. An orientation outside 1–8 fails the
+image rather than placing it unturned.
 
 ## What a filename may be
 
@@ -741,9 +830,8 @@ macOS version that is not the floor, or a dependency list missing an entry.
 
 ## Workflows
 
-The workflows are the one part of this project that has never executed, so a
-mistake in them would surface on a first push rather than in the gate.
-`actionlint` checks their schema, expression syntax, runner labels and the
+No JavaScript test executes a workflow, so a mistake in one would surface on
+a hosted runner rather than in the gate. `actionlint` checks their schema, expression syntax, runner labels and the
 shell inside `run:` steps. It is optional in the same way `shellcheck` is: the
 gate stays runnable without it, and CI installs it.
 
@@ -1448,7 +1536,7 @@ almost entirely outside them.
 
 That was checked by hand on the real Shortcut, and it found both things such a
 check is for. The control works — a colour typed over the value is accepted,
-including when Create PDF is clicked immediately, without leaving the field —
+including when Create is clicked immediately, without leaving the field —
 and nobody could find that it could be typed into at all. The instruction was
 in a tooltip, and the field read "White (#FFFFFF)", which is a menu's wording
 and reads as a choice already made rather than a value to edit. It also made
@@ -1466,7 +1554,7 @@ It is checked by hand, on the real Shortcut, against this list:
   itself, and opens a list of the four presets as codes;
 - a preset can be chosen with the mouse and with the keyboard;
 - the text can be selected and replaced by typing or pasting;
-- a pasted colour is accepted by pressing Create PDF immediately, without
+- a pasted colour is accepted by pressing Create immediately, without
   first pressing Tab or Return;
 - a colour that is not six hex digits redisplays the form with the text as
   typed rather than replaced by a preset;
@@ -1676,6 +1764,12 @@ report is a real hazard.
 It carries a break threshold, so a drop in test strength fails the build rather
 than passing quietly.
 
+The scripted hosts in `tests/unit/runtime/fake-app.cjs` and `fake-host.cjs`
+answer at most 32 dialogs per test and then throw. A mutant that rejects every
+answer would otherwise re-ask a scripted person until the mutant timed out,
+which Stryker scores as killed without any test having failed. The limit is
+the fake's; the real dialogs accept any number of retries.
+
 ## What a generated case covers
 
 Coverage and mutation both answer questions about the tests. Neither answers
@@ -1794,10 +1888,12 @@ file under `tests/unit/`.
 ## macOS integration gate
 
 `npm run test:integration:macos` requires macOS, `vips`, `pdfcpu`, qpdf, libtiff,
-Poppler, and `osascript`. It runs six suites: `tests/integration/macos.sh`,
+Poppler, and `osascript`. It runs eight suites: `tests/integration/macos.sh`,
 `tests/integration/background.sh`, `tests/integration/selection.sh`,
-`tests/integration/publication.sh`, `tests/integration/volumes.sh` and
-`tests/integration/cards.sh`.
+`tests/integration/publication.sh`, `tests/integration/volumes.sh`,
+`tests/integration/cards.sh`, `tests/integration/damaged.sh` and
+`tests/integration/form.sh`. The last needs only AppKit and is described
+under "What the settings form is measured against".
 
 The first exercises:
 

@@ -4,6 +4,36 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Changed
+
+- The output choice now reads **One PDF — one image per page** or **Separate
+  PDFs — one page per image**. It is the first setting. Every image still gets
+  its own page, and the choice never changes that.
+- The settings window says how many images you selected, or how many were
+  found in the folders you selected. It also says what each choice would
+  create, in files and pages, where the PDFs will be saved, and the page order.
+  Its button is now **Create**.
+- Items in your selection that cannot be converted are listed before the
+  settings, and you can cancel there instead of finding out afterwards.
+- When the stepwise dialogs stand in for the settings window, they end by asking
+  you to confirm the settings before anything is created, and they keep the
+  answers you had already corrected in the window. Settings are remembered only
+  once you confirm them.
+- The completion message counts PDFs and pages actually saved, says "No PDF was
+  created." when none was, and lists images that failed to convert separately
+  from selected items that were not included.
+- Every setting in the settings window has an accessible name and description.
+
+### Fixed
+
+- A PDF missing pages could be published when all its pages were added in one
+  step, which includes every single-image PDF. The page count of every PDF is
+  now checked before it is saved, and a count that cannot be read fails the
+  conversion.
+- Malformed output from `vipsheader`, such as `2junk` for a size or an
+  orientation outside 1–8, now fails the image. Previously it could be taken
+  as a number and place the image wrongly on the page.
+
 ## [1.5.2] - 2026-09-19
 
 ### Added

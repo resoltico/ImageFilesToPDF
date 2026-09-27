@@ -1,6 +1,6 @@
 "use strict";
 
-const { fixed2 } = require("./numbers.js");
+const { fixed2, positiveIntegerFrom } = require("./numbers.js");
 
 /*
  * The commands that turn prepared pages into a PDF, and the one question
@@ -38,12 +38,12 @@ function buildPdfcpuInfoArgv(pdfcpuPath, outputPath) {
     return [pdfcpuPath, "info", outputPath];
 }
 
-const PAGE_COUNT = /Page count:\s*(?<value>\d+)/u;
+const PAGE_COUNT = /^\s*Page count:[ \t]*(?<value>[^\r\n]*)$/gmu;
 
 function readPageCountFrom(infoOutput) {
-    const match = PAGE_COUNT.exec(String(infoOutput));
+    const matches = [...String(infoOutput).matchAll(PAGE_COUNT)];
 
-    return match ? Number(match.groups.value) : 0;
+    return matches.length === 1 ? positiveIntegerFrom(matches[0].groups.value) : 0;
 }
 
 function buildPdfcpuValidateArgv(pdfcpuPath, outputPath) {

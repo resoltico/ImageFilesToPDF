@@ -25,9 +25,9 @@ const {
  */
 
 const CHOICE_ROWS = [
+    { key: "mode", control: OUTPUT_MODE },
     { key: "paperSize", control: PAPER_SIZE },
-    { key: "orientation", control: ORIENTATION },
-    { key: "mode", control: OUTPUT_MODE }
+    { key: "orientation", control: ORIENTATION }
 ];
 
 /*

@@ -78,9 +78,9 @@ export function hasActionlint(probe = probeActionlint) {
 }
 
 /*
- * The workflows are the one part of this project that has never executed, so a
- * mistake in them surfaces on a first push rather than in the gate. actionlint
- * checks the schema, the expression syntax, and the shell inside `run:` steps.
+ * JavaScript tests do not validate workflow definitions. actionlint checks
+ * their schema, expression syntax, and the shell inside `run:` steps before
+ * those mistakes reach a hosted runner.
  *
  * It is optional in the same way shellcheck is: the gate must stay runnable on
  * a machine that does not have it, and CI installs it.

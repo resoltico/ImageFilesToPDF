@@ -91,7 +91,7 @@ test("the image count reaches the form that asks the questions", () => {
     // decision, and Cancel is the escape hatch.
     const present = scripted([{ answers: defaultAnswers() }]);
 
-    collectSettings(createFakeHost({}), { count: 231 }, BRIDGE, present);
+    collectSettings(createFakeHost({}), { context: { count: 231 } }, BRIDGE, present);
 
-    assert.match(present.seen[0].detail, /^231 images\. /u);
+    assert.match(present.seen[0].detail, /^You have selected 231 images\./u);
 });

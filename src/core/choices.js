@@ -46,11 +46,11 @@ const ORIENTATION = {
 };
 
 const OUTPUT_MODE = {
-    prompt: "Output:",
-    label: "Output:",
+    prompt: "How should the PDF files be grouped?",
+    label: "PDF files:",
     choices: [
-        { label: "One PDF with all images", value: "single" },
-        { label: "A separate PDF for each image", value: "separate" }
+        { label: "One PDF — one image per page", value: "single" },
+        { label: "Separate PDFs — one page per image", value: "separate" }
     ]
 };
 

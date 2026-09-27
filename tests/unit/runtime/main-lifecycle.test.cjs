@@ -36,10 +36,10 @@ function runWith(files) {
     const host = createFakeHost({ files });
     const done = [];
 
-    host.displayDialog = () => {
+    host.displayDialog = (message, options) => {
         done.push("dialog");
 
-        return { textReturned: "92" };
+        return { textReturned: "92", buttonReturned: options.defaultButton };
     };
     host.chooseFromList = (choices) => {
         done.push("asked");
@@ -99,10 +99,11 @@ test("a whole run, in order", () => {
         "pause",
         "asked",
         "asked",
+        "asked",
         "dialog",
         "dialog",
         "asked",
-        "asked",
+        "dialog",
         "expect 2/1",
         "beginning 1 x.png",
         "finished Preparing",

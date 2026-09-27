@@ -83,7 +83,7 @@ test("what comes back is answers the form could have been given", () => {
     assert.deepEqual(rememberedAnswers(encode(settings)), {
         paperSize: "US Letter",
         orientation: "Landscape",
-        mode: "A separate PDF for each image",
+        mode: "Separate PDFs — one page per image",
         background: "#C7DAE8",
         dpi: "600",
         quality: "80"

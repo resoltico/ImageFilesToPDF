@@ -33,7 +33,7 @@ test("an interactive run reports completion in a dialog", () => {
     // option is now the common case: one PDF with all the images.
     assert.equal(execute(host, ["/a/x.png"], false), undefined);
     assert.equal(pdfsIn(host).length, 1);
-    assert.match(host.dialogs.at(-1).message, /Created one PDF/u);
+    assert.match(host.dialogs.at(-1).message, /Created 1 PDF/u);
     assert.match(host.dialogs.at(-1).message, /\/a\/output_/u);
 });
 
@@ -49,7 +49,7 @@ test("an interactive run in single mode names the file it produced", () => {
 
     assert.equal(execute(host, ["/a/x.png"], false), undefined);
     assert.equal(pdfsIn(host).length, 1);
-    assert.match(host.dialogs.at(-1).message, /Created one PDF/u);
+    assert.match(host.dialogs.at(-1).message, /Created 1 PDF/u);
     assert.match(host.dialogs.at(-1).message, /\/a\/output_/u);
 });
 

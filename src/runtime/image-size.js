@@ -43,7 +43,13 @@ const ORIENTATION_ABSENT = /field "orientation" not found/u;
 
 function readOrientation(app, vipsheaderPath, imagePath) {
     try {
-        return readField(app, vipsheaderPath, imagePath, "orientation");
+        const orientation = readField(app, vipsheaderPath, imagePath, "orientation");
+
+        if (orientation > LAST_TURNED) {
+            throw new Error(`vipsheader returned an invalid orientation: ${orientation}`);
+        }
+
+        return orientation;
     } catch (error) {
         if (ORIENTATION_ABSENT.test(errorMessage(error))) {
             return UPRIGHT;

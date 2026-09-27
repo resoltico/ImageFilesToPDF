@@ -65,15 +65,15 @@ test("a batch that appended nothing is caught", () => {
     );
 });
 
-test("an ordinary job is not asked how many pages it has", () => {
+test("a one-page PDF has its page count verified too", () => {
     const host = createFakeHost({ files: ["/a/x.png"] });
     const job = makeJob(host);
 
     createAndValidatePdf(job, `${job.workspace}/out.pdf`, [`${job.workspace}/p.jpg`]);
 
-    assert.deepEqual(
-        host.commands.filter((command) => command.includes("'info'")),
-        []
+    assert.equal(
+        host.commands.filter((command) => command.includes("'info'")).length,
+        1
     );
 });
 

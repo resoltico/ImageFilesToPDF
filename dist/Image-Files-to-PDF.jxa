@@ -90,6 +90,14 @@ const DECIMAL_PLACES = 2;
 const MILLISECONDS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
 
+function positiveIntegerFrom(text) {
+    const value = Number(text);
+
+    return /^\d+$/u.test(String(text).trim()) && Number.isSafeInteger(value) && value > 0
+        ? value
+        : 0;
+}
+
 function parseInteger(value, minimum, maximum, label) {
     const numeric = Number(value);
 
@@ -131,10 +139,10 @@ function formatDuration(milliseconds) {
     const seconds = totalSeconds % SECONDS_PER_MINUTE;
 
     if (minutes <= 0) {
-        return `${seconds} second(s)`;
+        return plural(seconds, "second");
     }
 
-    return `${minutes} minute(s), ${seconds} second(s)`;
+    return `${plural(minutes, "minute")}, ${plural(seconds, "second")}`;
 }
 
 const UTF8_WIDTHS = [
@@ -659,11 +667,11 @@ const ORIENTATION = {
 };
 
 const OUTPUT_MODE = {
-    prompt: "Output:",
-    label: "Output:",
+    prompt: "How should the PDF files be grouped?",
+    label: "PDF files:",
     choices: [
-        { label: "One PDF with all images", value: "single" },
-        { label: "A separate PDF for each image", value: "separate" }
+        { label: "One PDF — one image per page", value: "single" },
+        { label: "Separate PDFs — one page per image", value: "separate" }
     ]
 };
 
@@ -734,9 +742,9 @@ function valueOfLabel(control, label) {
 
 
 const CHOICE_ROWS = [
+    { key: "mode", control: OUTPUT_MODE },
     { key: "paperSize", control: PAPER_SIZE },
-    { key: "orientation", control: ORIENTATION },
-    { key: "mode", control: OUTPUT_MODE }
+    { key: "orientation", control: ORIENTATION }
 ];
 
 const COLOUR_ROW = { key: "background", control: BACKGROUND };
@@ -800,30 +808,96 @@ function formRows(answers, invalid) {
     return [...choices, colour, ...numbers];
 }
 
+/* ===== src/core/output-description.js ===== */
+
+
+function selectionContext(selection) {
+    return {
+        count: selection.images.length,
+        selectedFolders: selection.selectedFolders ?? 0,
+        folders: [...new Set(selection.images.map((image) => image.folder))],
+        rejected: selection.rejected ?? []
+    };
+}
+
+function selectionSummary({ count = 0, selectedFolders = 0 } = {}) {
+    if (count === 0) {
+        return "Choose how to save your images as PDF files.";
+    }
+
+    return selectedFolders > 0
+        ? `Found ${plural(count, "image")} in your selection, including subfolders.`
+        : `You have selected ${plural(count, "image")}.`;
+}
+
+function outputSummary(mode, count) {
+    return mode === "single"
+        ? `1 PDF with ${plural(count, "page")}`
+        : plural(count, "single-page PDF");
+}
+
+function outputAlternatives(count = 0) {
+    if (count === 0) {
+        return "Save one PDF with a page for each image, or a single-page PDF per image.";
+    }
+
+    if (count === 1) {
+        return "Either option creates 1 PDF with 1 page; only the filename differs.";
+    }
+
+    return `For this selection: ${outputSummary("single", count)}, or ` +
+        `${outputSummary("separate", count)}.`;
+}
+
+const PAGE_LAYOUT_NOTE = "Each image gets its own page, centred without " +
+    "cropping. The original files are not changed.";
+const ORDER_NOTE = "Pages follow the full path, with 2 before 10, not the " +
+    "order you clicked.";
+
+function destinationSummary({ folders = [] } = {}, mode = "both") {
+    if (folders.length === 0) {
+        return "";
+    }
+
+    if (folders.length === 1 || mode === "single") {
+        return `Save to: ${folders[0]}`;
+    }
+
+    const separate = "Separate PDFs save in each folder you selected, or " +
+        `beside each image you selected: ${plural(folders.length, "folder")}.`;
+
+    return mode === "separate"
+        ? separate
+        : `One PDF saves to: ${folders[0]}\n${separate}`;
+}
+
 /* ===== src/core/form.js ===== */
 
 
-const CREATE_BUTTON = "Create PDF";
+const CREATE_BUTTON = "Create";
 const CANCEL_BUTTON = "Cancel";
 
 const BACKGROUND_NOTE = "Page background presets: #FFFFFF white, " +
     "#000000 black, #8E79E0 purple, #204486 dark blue.";
 
-function invitation(count) {
-    const opening = count > 0
-        ? `${count} ${count === 1 ? "image" : "images"}. Choose how the ` +
-            "pages are built, then create the PDF."
-        : "Choose how the pages are built, then create the PDF.";
-
-    return `${opening}\n${BACKGROUND_NOTE}`;
+function invitation(context = {}) {
+    return [
+        selectionSummary(context),
+        PAGE_LAYOUT_NOTE,
+        outputAlternatives(context.count),
+        ORDER_NOTE,
+        destinationSummary(context),
+        BACKGROUND_NOTE
+    ].filter(Boolean).join("\n");
 }
 
-function formSpec(answers = defaultAnswers(), problems = [], count = 0) {
+function formSpec(answers = defaultAnswers(), problems = [], context = {}) {
     return {
         title: APP_NAME,
-        detail: problems.length > 0
-            ? problems.map((problem) => problem.message).join("\n")
-            : invitation(count),
+        detail: [
+            ...problems.map((problem) => problem.message),
+            invitation(context)
+        ].join("\n"),
         rows: formRows(answers, new Set(problems.map((problem) => problem.key))),
         buttons: [CREATE_BUTTON, CANCEL_BUTTON]
     };
@@ -1072,12 +1146,12 @@ function buildPdfcpuInfoArgv(pdfcpuPath, outputPath) {
     return [pdfcpuPath, "info", outputPath];
 }
 
-const PAGE_COUNT = /Page count:\s*(?<value>\d+)/u;
+const PAGE_COUNT = /^\s*Page count:[ \t]*(?<value>[^\r\n]*)$/gmu;
 
 function readPageCountFrom(infoOutput) {
-    const match = PAGE_COUNT.exec(String(infoOutput));
+    const matches = [...String(infoOutput).matchAll(PAGE_COUNT)];
 
-    return match ? Number(match.groups.value) : 0;
+    return matches.length === 1 ? positiveIntegerFrom(matches[0].groups.value) : 0;
 }
 
 function buildPdfcpuValidateArgv(pdfcpuPath, outputPath) {
@@ -1631,7 +1705,7 @@ function makeColourCombo(ns, row, rect) {
 
 const ROW_HEIGHT = 32;
 const LABEL_WIDTH = 140;
-const CONTROL_WIDTH = 230;
+const CONTROL_WIDTH = 320;
 const NUMBER_WIDTH = 70;
 
 const COLOUR_WIDTH = 100;
@@ -1754,11 +1828,18 @@ function buildForm(bridge, spec, widgets) {
             labelRect(index, rowCount)
         ));
 
-        controls[row.key] = ADD_ROW[row.kind](
+        const control = ADD_ROW[row.kind](
             context,
             row,
             controlRect(index, rowCount)
         );
+
+        control.setAccessibilityLabel(row.label);
+        control.setAccessibilityHelp([
+            row.invalid ? "Invalid value. Correct this setting." : "",
+            row.hint ?? row.options.map((option) => option.label).join("; ")
+        ].filter(Boolean).join(" "));
+        controls[row.key] = control;
     });
 
     return { view, controls };
@@ -1778,7 +1859,6 @@ const WIDGETS = {
     markHintInvalid,
     makeAlert
 };
-
 
 
 const RESPONSE_ABORT = -1001;
@@ -2147,54 +2227,6 @@ function promptInteger(app, control, opening) {
     return askUntil(app, { ...control, defaultAnswer: opening }, readNumber);
 }
 
-/* ===== src/runtime/dialogs.js ===== */
-
-
-
-const CUSTOM_COLOUR = "Custom colour...";
-
-const COLOUR_QUESTION = { prompt: "Page background as six hexadecimal digits:" };
-
-function openingChoice(opening) {
-    const preset = BACKGROUND.choices.find((choice) => choice.value === opening);
-
-    return preset ? preset.label : CUSTOM_COLOUR;
-}
-
-function promptColour(app, opening) {
-    return askUntil(app, { ...COLOUR_QUESTION, defaultAnswer: opening }, readColour);
-}
-
-function chooseColour(app, opening) {
-    const choice = app.chooseFromList(
-        [...labelsOf(BACKGROUND), CUSTOM_COLOUR],
-        {
-            withTitle: APP_NAME,
-            withPrompt: BACKGROUND.prompt,
-            defaultItems: [openingChoice(opening)]
-        }
-    );
-
-    if (!choice) {
-        throw new UserCancelled();
-    }
-
-    return String(choice[0]) === CUSTOM_COLOUR
-        ? promptColour(app, opening)
-        : valueOfLabel(BACKGROUND, choice[0]);
-}
-
-function collectDialogSettings(app, answers = defaultAnswers()) {
-    return {
-        paperSize: chooseRequired(app, PAPER_SIZE, answers.paperSize),
-        orientation: chooseRequired(app, ORIENTATION, answers.orientation),
-        dpi: promptInteger(app, RESOLUTION, answers.dpi),
-        quality: promptInteger(app, QUALITY, answers.quality),
-        mode: chooseRequired(app, OUTPUT_MODE, answers.mode),
-        background: chooseColour(app, answers.background)
-    };
-}
-
 /* ===== src/runtime/progress.js ===== */
 
 
@@ -2333,13 +2365,13 @@ function describeFailures(failures) {
         .map((entry) => `${entry.name}: ${entry.message}`);
 
     if (failures.length > shown.length) {
-        shown.push(`...and ${failures.length - shown.length} more failure(s).`);
+        shown.push(`...and ${plural(failures.length - shown.length, "more failure")}.`);
     }
 
-    return shown.join("\n");
+    return `Could not convert ${plural(failures.length, "image")}:\n${shown.join("\n")}`;
 }
 
-function describeRejections(rejected) {
+function describeRejections(rejected, heading = "Not converted:") {
     const shown = rejected
         .slice(0, MAXIMUM_SHOWN_FAILURES)
         .map((entry) => `${entry.name}: ${entry.reason}`);
@@ -2348,7 +2380,7 @@ function describeRejections(rejected) {
         shown.push(`...and ${rejected.length - shown.length} more.`);
     }
 
-    return `Not converted:\n${shown.join("\n")}`;
+    return `${heading}\n${shown.join("\n")}`;
 }
 
 function describeDestinations(outputs) {
@@ -2360,7 +2392,7 @@ function describeDestinations(outputs) {
 }
 
 function versionLine() {
-    return `\n${APP_NAME} ${VERSION}`;
+    return `${APP_NAME} ${VERSION}`;
 }
 
 function stoppedLine(result, pageCount) {
@@ -2372,47 +2404,36 @@ function stoppedLine(result, pageCount) {
         plural(pageCount - result.outputs.length, "image")} not converted.`;
 }
 
+function createdLine(mode, result, pageCount) {
+    if (result.outputs.length === 0) {
+        return "No PDF was created.";
+    }
+
+    return `Created ${outputSummary(
+        mode, mode === "single" ? pageCount : result.outputs.length
+    )}.`;
+}
+
 function completionMessage(mode, result, pageCount) {
     const rejected = result.rejected ?? [];
-    const notConverted = rejected.length > 0
-        ? `\n${describeRejections(rejected)}`
-        : "";
-    const stopped = stoppedLine(result, pageCount);
-
-    if (result.failures.length > 0) {
-        return [
-            `Finished with errors.\n`,
-            `Created: ${plural(result.outputs.length, "PDF")}`,
-            `Failed: ${result.failures.length + rejected.length}`,
-            stopped,
-            `Elapsed: ${result.elapsed}\n`,
-            result.outputs.length > 0
-                ? `In: ${describeDestinations(result.outputs)}\n`
-                : "",
-            describeFailures(result.failures),
-            notConverted,
-            versionLine()
-        ].filter(Boolean).join("\n");
-    }
-
-    if (mode === "single") {
-        return [
-            `Created one PDF from ${plural(pageCount, "image")}.\n`,
-            result.outputs[0],
-            notConverted,
-            `\nElapsed: ${result.elapsed}`,
-            versionLine()
-        ].filter(Boolean).join("\n");
-    }
+    const destination = mode === "single"
+        ? result.outputs[0]
+        : describeDestinations(result.outputs);
 
     return [
-        `Created ${plural(result.outputs.length, "PDF")}.\n`,
-        describeDestinations(result.outputs),
-        notConverted,
-        stopped && `\n${stopped}`,
-        `\nElapsed: ${result.elapsed}`,
+        result.failures.length > 0 ? "Finished with errors." : "",
+        [
+            createdLine(mode, result, pageCount),
+            stoppedLine(result, pageCount),
+            result.outputs.length > 0 ? `Saved to: ${destination}` : ""
+        ].filter(Boolean).join("\n"),
+        result.failures.length > 0 ? describeFailures(result.failures) : "",
+        rejected.length > 0
+            ? describeRejections(rejected, "Not included from your selection:")
+            : "",
+        `Elapsed: ${result.elapsed}`,
         versionLine()
-    ].filter(Boolean).join("\n");
+    ].filter(Boolean).join("\n\n");
 }
 
 function showCompletion(app, mode, result, pageCount) {
@@ -2423,6 +2444,104 @@ function showCompletion(app, mode, result, pageCount) {
     });
 }
 
+/* ===== src/runtime/settings-review.js ===== */
+
+
+function confirmAction(app, message, button) {
+    const answer = app.displayDialog(message, {
+        withTitle: APP_NAME,
+        buttons: [CANCEL_BUTTON, button],
+        defaultButton: button,
+        cancelButton: CANCEL_BUTTON
+    });
+
+    if (answer.buttonReturned !== button) {
+        throw new UserCancelled();
+    }
+}
+
+function reviewSelection(app, context) {
+    const rejected = context.rejected ?? [];
+
+    if (rejected.length > 0) {
+        confirmAction(app, [
+            describeRejections(rejected, `${plural(rejected.length, "item")} ` +
+                "in your selection cannot be included:"),
+            `Continue with ${plural(context.count, "image")}?`
+        ].join("\n\n"), "Continue");
+    }
+}
+
+function confirmSettings(app, settings, context) {
+    const output = context.count > 0
+        ? `Create ${outputSummary(settings.mode, context.count)}?`
+        : "Create the PDF files?";
+
+    confirmAction(app, [
+        output,
+        PAGE_LAYOUT_NOTE,
+        `${labelOfValue(PAPER_SIZE, settings.paperSize)}, ${settings.orientation}; ` +
+            `${settings.dpi} DPI; JPEG quality ${settings.quality}.`,
+        `Page background: ${settings.background}.`,
+        destinationSummary(context, settings.mode)
+    ].filter(Boolean).join("\n"), CREATE_BUTTON);
+
+    return settings;
+}
+
+/* ===== src/runtime/dialogs.js ===== */
+
+
+
+const CUSTOM_COLOUR = "Custom colour...";
+
+const COLOUR_QUESTION = { prompt: "Page background as six hexadecimal digits:" };
+
+function openingChoice(opening) {
+    const preset = BACKGROUND.choices.find((choice) => choice.value === opening);
+
+    return preset ? preset.label : CUSTOM_COLOUR;
+}
+
+function promptColour(app, opening) {
+    return askUntil(app, { ...COLOUR_QUESTION, defaultAnswer: opening }, readColour);
+}
+
+function chooseColour(app, opening) {
+    const choice = app.chooseFromList(
+        [...labelsOf(BACKGROUND), CUSTOM_COLOUR],
+        {
+            withTitle: APP_NAME,
+            withPrompt: BACKGROUND.prompt,
+            defaultItems: [openingChoice(opening)]
+        }
+    );
+
+    if (!choice) {
+        throw new UserCancelled();
+    }
+
+    return String(choice[0]) === CUSTOM_COLOUR
+        ? promptColour(app, opening)
+        : valueOfLabel(BACKGROUND, choice[0]);
+}
+
+function collectDialogSettings(app, answers = defaultAnswers(), context = {}) {
+    const settings = {
+        mode: chooseRequired(app, {
+            ...OUTPUT_MODE,
+            prompt: `${invitation(context)}\n\n${OUTPUT_MODE.prompt}`
+        }, answers.mode),
+        paperSize: chooseRequired(app, PAPER_SIZE, answers.paperSize),
+        orientation: chooseRequired(app, ORIENTATION, answers.orientation),
+        dpi: promptInteger(app, RESOLUTION, answers.dpi),
+        quality: promptInteger(app, QUALITY, answers.quality),
+        background: chooseColour(app, answers.background)
+    };
+
+    return confirmSettings(app, settings, context);
+}
+
 /* ===== src/runtime/settings-form.js ===== */
 
 function defaultMemory() {
@@ -2431,47 +2550,21 @@ function defaultMemory() {
 
 
 function formRound(bridge, present, state) {
-    const outcome = present(
-        bridge,
-        formSpec(state.answers, state.problems, state.count)
-    );
+    try {
+        const outcome = present(
+            bridge,
+            formSpec(state.answers, state.problems, state.context)
+        );
 
-    if (!outcome) {
-        return { unavailable: true };
-    }
-
-    if (outcome.cancelled) {
-        throw new UserCancelled();
-    }
-
-    const read = readAnswers(outcome.answers);
-
-    return read.settings
-        ? { settings: read.settings }
-        : { answers: outcome.answers, problems: read.problems };
-}
-
-function collectViaForm(bridge, present, opening = {}) {
-    let state = { ...opening };
-
-    for (;;) {
-        const round = formRound(bridge, present, state);
-
-        if (round.unavailable) {
+        if (!outcome) {
             return null;
         }
 
-        if (round.settings) {
-            return round.settings;
+        if (outcome.cancelled) {
+            throw new UserCancelled();
         }
 
-        state = { ...round, count: opening.count };
-    }
-}
-
-function attemptForm(bridge, present, opening) {
-    try {
-        return collectViaForm(bridge, present, opening);
+        return { ...readAnswers(outcome.answers), answers: outcome.answers };
     } catch (error) {
         if (isUserCancelled(error)) {
             throw error;
@@ -2481,31 +2574,49 @@ function attemptForm(bridge, present, opening) {
     }
 }
 
+function collectViaForm(bridge, present, opening = {}) {
+    let state = { ...opening };
+
+    for (;;) {
+        const round = formRound(bridge, present, state);
+
+        if (!round) {
+            return { answers: state.answers ?? defaultAnswers() };
+        }
+
+        if (round.settings) {
+            return { settings: round.settings };
+        }
+
+        state = { ...state, ...round };
+    }
+}
+
 function collectSettings(
     app,
     opening = {},
     bridge = appkitBridge(globalThis.ObjC, globalThis.$),
     present = presentForm
 ) {
-    if (bridge) {
-        const settings = attemptForm(bridge, present, opening);
+    const outcome = bridge
+        ? collectViaForm(bridge, present, opening)
+        : { answers: opening.answers ?? defaultAnswers() };
 
-        if (settings) {
-            return settings;
-        }
-    }
-
-    return collectDialogSettings(app, opening.answers ?? defaultAnswers());
+    return outcome.settings ?? collectDialogSettings(
+        app, outcome.answers, opening.context
+    );
 }
 
-function settingsFor(app, invocation, count, injected = {}) {
+function settingsFor(app, invocation, context, injected = {}) {
     if (invocation.headless) {
         return normalizeSettings(invocation.settings);
     }
 
+    reviewSelection(app, context);
+
     const { openMemory = defaultMemory, bridge, present } = injected;
     const memory = openMemory();
-    const opening = { count, answers: rememberedAnswers(memory.recall()) };
+    const opening = { context, answers: rememberedAnswers(memory.recall()) };
     const settings = normalizeSettings(
         bridge || present
             ? collectSettings(app, opening, bridge, present)
@@ -2893,13 +3004,16 @@ function collectImageFiles(app, inputItems, tree = null) {
     const items = inputItems.length > 0 ? inputItems : finderSelection();
     const outcome = { images: [], rejected: [], taken: new Set() };
 
-    for (const root of selectedItems(tree, items, outcome.rejected)) {
+    const roots = selectedItems(tree, items, outcome.rejected);
+
+    for (const root of roots) {
         admit(app, tree, root, outcome);
     }
 
     return {
         images: sortImageRecords(outcome.images),
-        rejected: outcome.rejected
+        rejected: outcome.rejected,
+        selectedFolders: roots.filter((root) => root.kind === "directory").length
     };
 }
 
@@ -2954,7 +3068,7 @@ function describeIncomplete(result) {
 
 function describeNoImages(rejected) {
     if (rejected.length === 0) {
-        return "No images selected.\n\nSelect one or more image files in " +
+        return "No images selected.\n\nSelect image files or folders in " +
             `Finder, then run the action again.\n\nSupported: ${
                 supportedFormatList()}.`;
     }
@@ -3005,9 +3119,9 @@ function readField(app, vipsheaderPath, imagePath, field) {
         [vipsheaderPath, "-f", field, imagePath],
         `reading the image ${field}`
     );
-    const value = parseInt(String(text).trim(), 10);
+    const value = positiveIntegerFrom(text);
 
-    if (!isFinite(value) || value < 1) {
+    if (value === 0) {
         throw new Error(`vipsheader returned an invalid ${field}: ${text}`);
     }
 
@@ -3020,9 +3134,9 @@ function readBandCount(app, vipsheaderPath, imagePath) {
         [vipsheaderPath, "-f", "bands", imagePath],
         "reading image bands"
     );
-    const value = parseInt(String(text).trim(), 10);
+    const value = positiveIntegerFrom(text);
 
-    if (!isFinite(value) || value < 1) {
+    if (value === 0) {
         throw new Error(`vipsheader returned an invalid band count: ${text}`);
     }
 
@@ -3032,8 +3146,10 @@ function readBandCount(app, vipsheaderPath, imagePath) {
 const FIELD_ABSENT = /field "n-pages" not found/u;
 
 function countFrom(text) {
-    return /^\d+$/u.test(text) && Number(text) > 0
-        ? { pages: Number(text) }
+    const pages = positiveIntegerFrom(text);
+
+    return pages > 0
+        ? { pages }
         : { unknown: `vipsheader reported the page count as "${text}"` };
 }
 
@@ -3085,7 +3201,13 @@ const ORIENTATION_ABSENT = /field "orientation" not found/u;
 
 function readOrientation(app, vipsheaderPath, imagePath) {
     try {
-        return readField(app, vipsheaderPath, imagePath, "orientation");
+        const orientation = readField(app, vipsheaderPath, imagePath, "orientation");
+
+        if (orientation > LAST_TURNED) {
+            throw new Error(`vipsheader returned an invalid orientation: ${orientation}`);
+        }
+
+        return orientation;
     } catch (error) {
         if (ORIENTATION_ABSENT.test(errorMessage(error))) {
             return UPRIGHT;
@@ -3637,6 +3759,10 @@ function verifyEveryPageArrived(job, stagedPath, expected) {
         "counting the pages"
     ));
 
+    if (found === 0) {
+        throw new Error("the PDF page count could not be verified");
+    }
+
     if (found !== expected) {
         throw new Error(
             `the PDF has ${found} pages where ${expected} were imported`
@@ -3664,9 +3790,7 @@ function createAndValidatePdf(job, stagedPath, pagePaths) {
 
     verifyFileWritten(job.app, stagedPath, "partial PDF");
 
-    if (batches.length > 1) {
-        verifyEveryPageArrived(job, stagedPath, pagePaths.length);
-    }
+    verifyEveryPageArrived(job, stagedPath, pagePaths.length);
 
     job.progress.phase("Validating PDF");
     runArgv(
@@ -3862,10 +3986,10 @@ function createJob(app, settings, timestamp, tools) {
     };
 }
 
-function prepareJob(app, invocation, tools, count) {
+function prepareJob(app, invocation, tools, context) {
     return createJob(
         app,
-        settingsFor(app, invocation, count),
+        settingsFor(app, invocation, context),
         invocation.timestamp || makeTimestamp(new Date()),
         tools
     );
@@ -3873,7 +3997,7 @@ function prepareJob(app, invocation, tools, count) {
 
 function reportingJob(app, invocation, tools, work) {
     const images = work.images.length;
-    const job = prepareJob(app, invocation, tools, images);
+    const job = prepareJob(app, invocation, tools, selectionContext(work));
 
     job.rename = createRenamer(globalThis.ObjC, globalThis.$);
     job.progress = work.report;
@@ -3925,7 +4049,7 @@ function convert(app, prepared, report, startedAt) {
 
     report.pause();
 
-    const job = reportingJob(app, invocation, tools, { images, report });
+    const job = reportingJob(app, invocation, tools, { ...selection, report });
     const result = runJob(job, images);
 
     result.elapsed = formatDuration(new Date() - startedAt);

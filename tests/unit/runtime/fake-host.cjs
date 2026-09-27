@@ -1,5 +1,7 @@
 "use strict";
 
+const { boundedDialog } = require("./fake-dialogs.cjs");
+
 /*
  * A fake JXA host with a small in-memory filesystem.
  *
@@ -78,7 +80,7 @@ function dialogSurface(host) {
         displayDialog(message, options) {
             host.dialogs.push({ message, options });
 
-            return { textReturned: host.nextAnswer ?? "92" };
+            return { textReturned: host.nextAnswer ?? "92", buttonReturned: options.defaultButton };
         },
 
         chooseFromList(choices) {
@@ -134,7 +136,11 @@ function createFakeHost(settings = {}) {
         }
     };
 
-    return Object.assign(host, dialogSurface(host), renamerOn(fs));
+    const surface = dialogSurface(host);
+
+    surface.displayDialog = boundedDialog(surface.displayDialog);
+
+    return Object.assign(host, surface, renamerOn(fs));
 }
 
 module.exports = { createFakeHost, parseArgv, WORKSPACE };

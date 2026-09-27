@@ -12,11 +12,11 @@ const { VERSION } = require("../../../src/core/version.js");
 test("completionMessage reports a single PDF", () => {
     const message = completionMessage(
         "single",
-        { outputs: ["/a/out.pdf"], failures: [], elapsed: "2 second(s)" },
+        { outputs: ["/a/out.pdf"], failures: [], elapsed: "2 seconds" },
         3
     );
 
-    assert.match(message, /Created one PDF from 3 images/u);
+    assert.match(message, /Created 1 PDF with 3 pages/u);
     assert.match(message, /\/a\/out\.pdf/u);
     assert.match(message, /Image Files to PDF \d+\.\d+\.\d+/u);
 });
@@ -27,40 +27,40 @@ test("completionMessage reports separate PDFs and their failures", () => {
         {
             outputs: ["/Users/someone/Pictures/a.pdf", "/Users/someone/Pictures/b.pdf"],
             failures: [],
-            elapsed: "1 second(s)"
+            elapsed: "1 second"
         },
         2
     );
 
-    assert.match(clean, /Created 2 PDFs\./u);
+    assert.match(clean, /Created 2 single-page PDFs\./u);
     assert.match(clean, /\/Users\/someone\/Pictures\//u, "the folder they went to");
 
-    const failures = Array.from({ length: 15 }, (ignored, index) => `img${index}.png: broke`);
+    const failures = Array.from({ length: 15 }, (ignored, index) => ({ name: `img${index}.png`, message: "broke" }));
     const withErrors = completionMessage(
         "separate",
-        { outputs: [], failures, elapsed: "1 second(s)" },
+        { outputs: [], failures, elapsed: "1 second" },
         15
     );
 
     assert.match(withErrors, /Finished with errors/u);
-    assert.match(withErrors, /Failed: 15/u);
-    assert.match(withErrors, /and 3 more failure\(s\)/u);
+    assert.match(withErrors, /Could not convert 15 images:/u);
+    assert.match(withErrors, /and 3 more failures/u);
 });
 
 test("showCompletion puts the message in a dialog", () => {
     const app = createFakeApp();
 
-    showCompletion(app, "single", { outputs: ["/a.pdf"], failures: [], elapsed: "1 second(s)" }, 1);
-    assert.match(app.dialogs[0].message, /Created one PDF/u);
+    showCompletion(app, "single", { outputs: ["/a.pdf"], failures: [], elapsed: "1 second" }, 1);
+    assert.match(app.dialogs[0].message, /Created 1 PDF/u);
     assert.equal(app.dialogs[0].options.buttons.length, 1, "acknowledgement only");
 });
 
 test("the failure list is truncated at the documented limit", () => {
     // `>` rather than `>=`: with exactly the limit, nothing is elided.
-    const exactly = Array.from({ length: 12 }, (ignored, index) => `f${index}: broke`);
+    const exactly = Array.from({ length: 12 }, (ignored, index) => ({ name: `f${index}`, message: "broke" }));
     const atLimit = completionMessage(
         "separate",
-        { outputs: [], failures: exactly, elapsed: "1 second(s)" },
+        { outputs: [], failures: exactly, elapsed: "1 second" },
         12
     );
 
@@ -68,11 +68,11 @@ test("the failure list is truncated at the documented limit", () => {
 
     const overLimit = completionMessage(
         "separate",
-        { outputs: [], failures: [...exactly, { name: "f12", message: "broke", command: "" }], elapsed: "1 second(s)" },
+        { outputs: [], failures: [...exactly, { name: "f12", message: "broke", command: "" }], elapsed: "1 second" },
         13
     );
 
-    assert.match(overLimit, /and 1 more failure\(s\)/u);
+    assert.match(overLimit, /and 1 more failure/u);
 });
 
 test("the completion wording is exactly what was designed", () => {
@@ -84,20 +84,17 @@ test("the completion wording is exactly what was designed", () => {
         {
             outputs: ["/Users/someone/Desktop/output_20260904_120000.pdf"],
             failures: [],
-            elapsed: "3 second(s)"
+            elapsed: "3 seconds"
         },
         4
     );
 
     assert.equal(single, [
-        "Created one PDF from 4 images.",
-        "",
-        "/Users/someone/Desktop/output_20260904_120000.pdf",
-        "",
-        "Elapsed: 3 second(s)",
-        "",
+        "Created 1 PDF with 4 pages.\n" +
+            "Saved to: /Users/someone/Desktop/output_20260904_120000.pdf",
+        "Elapsed: 3 seconds",
         `Image Files to PDF ${VERSION}`
-    ].join("\n"));
+    ].join("\n\n"));
 });
 
 test("the separate and failure wordings are pinned too", () => {
@@ -106,40 +103,30 @@ test("the separate and failure wordings are pinned too", () => {
         {
             outputs: ["/Users/someone/Pictures/a.pdf", "/Users/someone/Pictures/b.pdf"],
             failures: [],
-            elapsed: "5 second(s)"
+            elapsed: "5 seconds"
         },
         2
     );
 
     assert.equal(separate, [
-        "Created 2 PDFs.",
-        "",
-        "/Users/someone/Pictures/",
-        "",
-        "Elapsed: 5 second(s)",
-        "",
+        "Created 2 single-page PDFs.\nSaved to: /Users/someone/Pictures/",
+        "Elapsed: 5 seconds",
         `Image Files to PDF ${VERSION}`
-    ].join("\n"));
+    ].join("\n\n"));
 
     const failed = completionMessage(
         "separate",
-        { outputs: ["/a/x.pdf"], failures: [{ name: "b.png", message: "broke", command: "" }], elapsed: "1 second(s)" },
+        { outputs: ["/a/x.pdf"], failures: [{ name: "b.png", message: "broke", command: "" }], elapsed: "1 second" },
         2
     );
 
     assert.equal(failed, [
         "Finished with errors.",
-        "",
-        "Created: 1 PDF",
-        "Failed: 1",
-        "Elapsed: 1 second(s)",
-        "",
-        // Where the PDFs that were made actually went, which a failed run
-        // used not to say at all.
-        "In: /a/",
-        "",
-        "b.png: broke",
-        "",
+        // Where the PDFs that were made actually went: a run with failures
+        // still produced files, and they have to be findable.
+        "Created 1 single-page PDF.\nSaved to: /a/",
+        "Could not convert 1 image:\nb.png: broke",
+        "Elapsed: 1 second",
         `Image Files to PDF ${VERSION}`
-    ].join("\n"));
+    ].join("\n\n"));
 });

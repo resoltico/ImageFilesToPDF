@@ -76,7 +76,7 @@ test("a failure names the file once", () => {
         `the record carries the name; the message must not repeat it: ${failure.message}`
     );
 
-    results.elapsed = "1 second(s)";
+    results.elapsed = "1 second";
     results.rejected = [];
 
     assert.ok(

@@ -64,10 +64,10 @@ test("everything in the background control is a colour", () => {
     );
 });
 
-test("the background sits where it always sat, between mode and resolution", () => {
+test("grouping comes first, followed by page appearance and encoding", () => {
     assert.deepEqual(
         formSpec().rows.map((row) => row.key),
-        ["paperSize", "orientation", "mode", "background", "dpi", "quality"]
+        ["mode", "paperSize", "orientation", "background", "dpi", "quality"]
     );
 });
 
@@ -75,7 +75,7 @@ test("the defaults are the ones the dialogs would have offered first", () => {
     assert.deepEqual(defaultAnswers(), {
         paperSize: "A4",
         orientation: "Portrait",
-        mode: "One PDF with all images",
+        mode: "One PDF — one image per page",
         background: "#FFFFFF",
         dpi: "300",
         quality: "92"
@@ -111,14 +111,14 @@ test("several problems stay on separate lines", () => {
         { key: "quality", message: "second problem" }
     ]);
 
-    assert.deepEqual(spec.detail.split("\n"), ["first problem", "second problem"]);
+    assert.deepEqual(spec.detail.split("\n").slice(0, 2), ["first problem", "second problem"]);
 });
 
 test("with nothing wrong the form explains itself instead", () => {
     const spec = formSpec();
 
     assert.equal(spec.title, APP_NAME);
-    assert.match(spec.detail, /Choose how the pages are built/u);
+    assert.match(spec.detail, /Each image gets its own page/u);
     assert.deepEqual(spec.buttons, [CREATE_BUTTON, CANCEL_BUTTON]);
-    assert.equal(spec.buttons[0], "Create PDF", "the first button is the action");
+    assert.equal(spec.buttons[0], "Create", "the first button is the action");
 });

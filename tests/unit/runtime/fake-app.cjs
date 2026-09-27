@@ -1,5 +1,7 @@
 "use strict";
 
+const { boundedDialog } = require("./fake-dialogs.cjs");
+
 /*
  * A stand-in for the JavaScript for Automation host application.
  *
@@ -90,7 +92,7 @@ function dialogSurface(app) {
                 throw answer;
             }
 
-            return { textReturned: answer ?? "" };
+            return { textReturned: answer ?? "", buttonReturned: options.defaultButton };
         },
 
         chooseFromList(options, settings) {
@@ -131,7 +133,11 @@ function createFakeApp(responses = []) {
         }
     };
 
-    return Object.assign(app, dialogSurface(app));
+    const surface = dialogSurface(app);
+
+    surface.displayDialog = boundedDialog(surface.displayDialog);
+
+    return Object.assign(app, surface);
 }
 
 function failing(message) {

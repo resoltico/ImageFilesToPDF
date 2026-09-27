@@ -28,7 +28,7 @@ test("the completion dialog is a notice, not a question", () => {
     showCompletion(app, "single", {
         outputs: ["/a/out.pdf"],
         failures: [],
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, 1);
 
     assert.deepEqual(app.dialogs.at(-1).options, {
@@ -44,7 +44,7 @@ test("each failure keeps its own line", () => {
     const message = completionMessage("separate", {
         outputs: [],
         failures: [{ name: "one.png", message: "broke", command: "" }, { name: "two.png", message: "also broke", command: "" }],
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, 2);
 
     assert.ok(

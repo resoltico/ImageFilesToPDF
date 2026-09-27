@@ -1,5 +1,6 @@
 "use strict";
 
+const { selectionContext } = require("../core/output-description.js");
 const { calculatePageGeometry } = require("../core/geometry.js");
 const { isSeparateMode } = require("../core/settings.js");
 const { makeTimestamp } = require("../core/timestamps.js");
@@ -47,10 +48,10 @@ function createJob(app, settings, timestamp, tools) {
     };
 }
 
-function prepareJob(app, invocation, tools, count) {
+function prepareJob(app, invocation, tools, context) {
     return createJob(
         app,
-        settingsFor(app, invocation, count),
+        settingsFor(app, invocation, context),
         invocation.timestamp || makeTimestamp(new Date()),
         tools
     );
@@ -65,7 +66,7 @@ function prepareJob(app, invocation, tools, count) {
  */
 function reportingJob(app, invocation, tools, work) {
     const images = work.images.length;
-    const job = prepareJob(app, invocation, tools, images);
+    const job = prepareJob(app, invocation, tools, selectionContext(work));
 
     job.rename = createRenamer(globalThis.ObjC, globalThis.$);
     job.progress = work.report;

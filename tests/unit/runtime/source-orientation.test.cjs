@@ -23,8 +23,7 @@ test("the size read is the size the image will have, not the size stored", () =>
         ["4", { width: 400, height: 200 }],
         ["5", { width: 200, height: 400 }],
         ["6", { width: 200, height: 400 }],
-        ["8", { width: 200, height: 400 }],
-        ["9", { width: 400, height: 200 }]
+        ["8", { width: 200, height: 400 }]
     ]) {
         const app = createFakeApp([
             ["'width'", "400\n"],

@@ -1,6 +1,7 @@
 "use strict";
 
 const { buildPageCountArgv, hasAlphaBand } = require("../core/commands.js");
+const { positiveIntegerFrom } = require("../core/numbers.js");
 const { errorMessage } = require("../core/errors.js");
 const { runArgv } = require("./shell.js");
 
@@ -14,9 +15,9 @@ function readField(app, vipsheaderPath, imagePath, field) {
         [vipsheaderPath, "-f", field, imagePath],
         `reading the image ${field}`
     );
-    const value = parseInt(String(text).trim(), 10);
+    const value = positiveIntegerFrom(text);
 
-    if (!isFinite(value) || value < 1) {
+    if (value === 0) {
         throw new Error(`vipsheader returned an invalid ${field}: ${text}`);
     }
 
@@ -29,9 +30,9 @@ function readBandCount(app, vipsheaderPath, imagePath) {
         [vipsheaderPath, "-f", "bands", imagePath],
         "reading image bands"
     );
-    const value = parseInt(String(text).trim(), 10);
+    const value = positiveIntegerFrom(text);
 
-    if (!isFinite(value) || value < 1) {
+    if (value === 0) {
         throw new Error(`vipsheader returned an invalid band count: ${text}`);
     }
 
@@ -51,9 +52,10 @@ function readBandCount(app, vipsheaderPath, imagePath) {
 const FIELD_ABSENT = /field "n-pages" not found/u;
 
 function countFrom(text) {
-    // Parsed strictly: parseInt would read "2junk" as two.
-    return /^\d+$/u.test(text) && Number(text) > 0
-        ? { pages: Number(text) }
+    const pages = positiveIntegerFrom(text);
+
+    return pages > 0
+        ? { pages }
         : { unknown: `vipsheader reported the page count as "${text}"` };
 }
 

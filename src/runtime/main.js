@@ -69,7 +69,7 @@ function convert(app, prepared, report, startedAt) {
     // need no window still does not get one.
     report.pause();
 
-    const job = reportingJob(app, invocation, tools, { images, report });
+    const job = reportingJob(app, invocation, tools, { ...selection, report });
     const result = runJob(job, images);
 
     result.elapsed = formatDuration(new Date() - startedAt);

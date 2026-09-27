@@ -69,7 +69,7 @@ test("clicking Cancel is an answer, not a failure", () => {
 });
 
 test("a form that never appeared is reported as unavailable", () => {
-    // The watchdog aborting means nobody answered, which cannot be told from
+    // An explicit host abort means nobody answered, which cannot be told from
     // an invisible window. Reporting it as a cancellation would silently drop
     // the run; reporting it as unavailable falls back to the dialogs.
     const { outcome } = present([ABORT]);
@@ -97,8 +97,8 @@ test("the alert carries the form's own title, detail and buttons", () => {
     const [alert] = bridge.state.alerts;
 
     assert.equal(alert.messageText, spec.title);
-    assert.equal(alert.informativeText, "something was wrong");
-    assert.deepEqual(alert.buttons, ["Create PDF", "Cancel"]);
+    assert.equal(alert.informativeText, spec.detail);
+    assert.deepEqual(alert.buttons, ["Create", "Cancel"]);
     assert.ok(alert.accessoryView, "the form must be attached to the alert");
     assert.equal(alert.accessoryView.kind, "view");
 });

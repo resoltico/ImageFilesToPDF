@@ -24,6 +24,8 @@ const {
     valueOfLabel
 } = require("../core/choices.js");
 const { defaultAnswers } = require("../core/form-rows.js");
+const { invitation } = require("../core/form.js");
+const { confirmSettings } = require("./settings-review.js");
 
 const CUSTOM_COLOUR = "Custom colour...";
 
@@ -72,15 +74,20 @@ function chooseColour(app, opening) {
         : valueOfLabel(BACKGROUND, choice[0]);
 }
 
-function collectDialogSettings(app, answers = defaultAnswers()) {
-    return {
+function collectDialogSettings(app, answers = defaultAnswers(), context = {}) {
+    const settings = {
+        mode: chooseRequired(app, {
+            ...OUTPUT_MODE,
+            prompt: `${invitation(context)}\n\n${OUTPUT_MODE.prompt}`
+        }, answers.mode),
         paperSize: chooseRequired(app, PAPER_SIZE, answers.paperSize),
         orientation: chooseRequired(app, ORIENTATION, answers.orientation),
         dpi: promptInteger(app, RESOLUTION, answers.dpi),
         quality: promptInteger(app, QUALITY, answers.quality),
-        mode: chooseRequired(app, OUTPUT_MODE, answers.mode),
         background: chooseColour(app, answers.background)
     };
+
+    return confirmSettings(app, settings, context);
 }
 
 module.exports = { chooseColour, collectDialogSettings };

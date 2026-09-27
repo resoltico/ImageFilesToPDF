@@ -11,25 +11,34 @@ const { completionMessage } = require("../../../src/runtime/completion.js");
 const { VERSION } = require("../../../src/core/version.js");
 
 test("a run that produced nothing does not claim a destination", () => {
-    // "In: ..." with no outputs would name a folder nothing was written to.
+    // "Saved to: ..." with no outputs would name a folder nothing was written to.
     const message = completionMessage("separate", {
         outputs: [],
         failures: [{ name: "a.png", message: "broke", command: "" }, { name: "b.png", message: "broke", command: "" }],
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, 2);
 
     // Pinned whole: an empty line here is the absence of a destination, and
-    // "In:" alone would still pass if something else were put in its place.
+    // "Saved to:" alone would still pass if something else were put in its place.
     assert.equal(message, [
-        "Finished with errors.\n",
-        "Created: 0 PDFs",
-        "Failed: 2",
-        "Elapsed: 1 second(s)\n",
-        "a.png: broke\nb.png: broke",
-        `\nImage Files to PDF ${VERSION}`
-    ].join("\n"));
-    assert.match(message, /Created: 0 PDFs/u);
-    assert.match(message, /Failed: 2/u);
+        "Finished with errors.",
+        "No PDF was created.",
+        "Could not convert 2 images:\na.png: broke\nb.png: broke",
+        "Elapsed: 1 second",
+        `Image Files to PDF ${VERSION}`
+    ].join("\n\n"));
+});
+
+test("a combined run that failed says no PDF, not zero single-page PDFs", () => {
+    const message = completionMessage("single", {
+        outputs: [],
+        failures: [{ name: "a.png", message: "broke", command: "" }],
+        elapsed: "1 second"
+    }, 3);
+
+    assert.match(message, /^Finished with errors\.\n\nNo PDF was created\.\n\n/u);
+    assert.ok(!message.includes("single-page"), message);
+    assert.ok(!message.includes("Saved to"), message);
 });
 
 test("a result predating the rejection list still reports", () => {
@@ -38,10 +47,10 @@ test("a result predating the rejection list still reports", () => {
     const message = completionMessage("single", {
         outputs: ["/a/out.pdf"],
         failures: [],
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, 1);
 
-    assert.match(message, /Created one PDF from 1 image/u);
+    assert.match(message, /Created 1 PDF with 1 page/u);
     assert.ok(!message.includes("Not converted"), message);
 });
 
@@ -50,25 +59,26 @@ test("a combined PDF still says what it left out", () => {
         outputs: ["/a/out.pdf"],
         failures: [],
         rejected: [{ name: "anim.gif", reason: "not a supported format" }],
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, 2);
 
-    assert.match(message, /Created one PDF from 2 images/u);
-    assert.match(message, /Not converted:\nanim\.gif: not a supported format/u);
+    assert.match(message, /Created 1 PDF with 2 pages/u);
+    assert.match(message,
+        /\n\nNot included from your selection:\nanim\.gif: not a supported format\n\n/u);
 });
 
-test("failures and rejections are counted together, not separately", () => {
-    // Both are files the person asked for and did not get.
+test("failed images and rejected selection items are distinct counts", () => {
+    // A rejected folder is not one failed image; the units must stay distinct.
     const message = completionMessage("separate", {
         outputs: ["/a/one.pdf"],
         failures: [{ name: "b.png", message: "broke", command: "" }],
         rejected: [{ name: "c.gif", reason: "not a supported format" }],
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, 3);
 
-    assert.match(message, /Failed: 2/u);
-    assert.match(message, /b\.png: broke/u);
-    assert.match(message, /c\.gif: not a supported format/u);
+    assert.match(message, /\n\nCould not convert 1 image:\nb\.png: broke\n\n/u);
+    assert.match(message,
+        /\n\nNot included from your selection:\nc\.gif: not a supported format\n\n/u);
 });
 
 test("outputs spread across folders name every folder", () => {
@@ -78,7 +88,7 @@ test("outputs spread across folders name every folder", () => {
     const message = completionMessage("separate", {
         outputs: ["/a/one.pdf", "/b/two.pdf", "/a/three.pdf"],
         failures: [],
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, 3);
 
     // One per line: run together, "/a//b/" names a folder that does not exist.
@@ -89,11 +99,11 @@ test("outputs in one folder name it plainly, not as a list", () => {
     const message = completionMessage("separate", {
         outputs: ["/a/one.pdf", "/a/two.pdf"],
         failures: [],
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, 2);
 
     assert.ok(!message.includes("folders:"), message);
-    assert.match(message, /\n\/a\/\n/u);
+    assert.match(message, /Saved to: \/a\/\n/u);
 });
 
 test("a rejection list at the limit is not summarised", () => {
@@ -107,7 +117,7 @@ test("a rejection list at the limit is not summarised", () => {
         outputs: [],
         failures: [{ name: "a.png", message: "broke", command: "" }],
         rejected,
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, 1);
 
     assert.ok(!message.includes("more."), message);
@@ -123,7 +133,7 @@ test("a rejection list past the limit says how many were withheld", () => {
         outputs: [],
         failures: [{ name: "a.png", message: "broke", command: "" }],
         rejected,
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, 1);
 
     assert.match(message, /\.\.\.and 2 more\./u, message);

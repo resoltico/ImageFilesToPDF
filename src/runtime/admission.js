@@ -119,13 +119,16 @@ function collectImageFiles(app, inputItems, tree = null) {
     const items = inputItems.length > 0 ? inputItems : finderSelection();
     const outcome = { images: [], rejected: [], taken: new Set() };
 
-    for (const root of selectedItems(tree, items, outcome.rejected)) {
+    const roots = selectedItems(tree, items, outcome.rejected);
+
+    for (const root of roots) {
         admit(app, tree, root, outcome);
     }
 
     return {
         images: sortImageRecords(outcome.images),
-        rejected: outcome.rejected
+        rejected: outcome.rejected,
+        selectedFolders: roots.filter((root) => root.kind === "directory").length
     };
 }
 

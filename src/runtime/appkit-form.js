@@ -100,11 +100,18 @@ function buildForm(bridge, spec, widgets) {
             labelRect(index, rowCount)
         ));
 
-        controls[row.key] = ADD_ROW[row.kind](
+        const control = ADD_ROW[row.kind](
             context,
             row,
             controlRect(index, rowCount)
         );
+
+        control.setAccessibilityLabel(row.label);
+        control.setAccessibilityHelp([
+            row.invalid ? "Invalid value. Correct this setting." : "",
+            row.hint ?? row.options.map((option) => option.label).join("; ")
+        ].filter(Boolean).join(" "));
+        controls[row.key] = control;
     });
 
     return { view, controls };

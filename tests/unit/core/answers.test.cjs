@@ -28,7 +28,7 @@ test("the default answers produce settings the validator accepts", () => {
 test("labels are translated to the values the pipeline stores", () => {
     const { settings } = answering({
         paperSize: "US Letter",
-        mode: "A separate PDF for each image"
+        mode: "Separate PDFs — one page per image"
     });
 
     assert.equal(settings.paperSize, "Letter");

@@ -20,7 +20,7 @@ const LISTS = [PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND];
 test("every prompt asks about its subject in plain words", () => {
     assert.equal(PAPER_SIZE.prompt, "Paper size:");
     assert.equal(ORIENTATION.prompt, "Orientation:");
-    assert.equal(OUTPUT_MODE.prompt, "Output:");
+    assert.equal(OUTPUT_MODE.prompt, "How should the PDF files be grouped?");
     assert.equal(BACKGROUND.prompt, "Page background:");
 });
 
@@ -35,7 +35,7 @@ test("no prompt restates the options listed beneath it", () => {
             );
         }
 
-        assert.ok(control.prompt.length <= 20, `${control.prompt} is terse`);
+        assert.match(control.prompt, /[:?]$/u, "a prompt asks a question");
     }
 });
 
@@ -92,7 +92,7 @@ test("each background label carries the value it selects", () => {
 });
 
 test("the common case is offered first", () => {
-    assert.equal(defaultLabelOf(OUTPUT_MODE), "One PDF with all images");
+    assert.equal(defaultLabelOf(OUTPUT_MODE), "One PDF — one image per page");
     assert.equal(defaultLabelOf(PAPER_SIZE), "A4");
     assert.equal(defaultLabelOf(ORIENTATION), "Portrait");
     assert.equal(defaultLabelOf(BACKGROUND), "White (#FFFFFF)");

@@ -45,11 +45,11 @@ test("zeroPad pads to width and never truncates", () => {
 });
 
 test("formatDuration reads naturally at each scale", () => {
-    assert.equal(formatDuration(-1), "0 second(s)");
-    assert.equal(formatDuration(0), "0 second(s)");
-    assert.equal(formatDuration(1499), "1 second(s)");
-    assert.equal(formatDuration(61000), "1 minute(s), 1 second(s)");
-    assert.equal(formatDuration(3600000), "60 minute(s), 0 second(s)");
+    assert.equal(formatDuration(-1), "0 seconds");
+    assert.equal(formatDuration(0), "0 seconds");
+    assert.equal(formatDuration(1499), "1 second");
+    assert.equal(formatDuration(61000), "1 minute, 1 second");
+    assert.equal(formatDuration(3600000), "60 minutes, 0 seconds");
 });
 
 test("plural says one thing in the singular", () => {

@@ -28,7 +28,8 @@ test("promptInteger re-asks until the answer is valid", () => {
             return { textReturned: "" };
         }
 
-        const answer = answers[Math.min(index, answers.length - 1)];
+        assert.ok(index < answers.length, "the answer script was exhausted");
+        const answer = answers[index];
 
         index += 1;
 
@@ -36,7 +37,7 @@ test("promptInteger re-asks until the answer is valid", () => {
     };
 
     assert.equal(promptInteger(app, RESOLUTION, "300"), 600);
-    // Three rejections, each followed by an explanatory dialog.
+    // Each of the three rejections explains the problem in the next prompt.
     assert.equal(app.dialogs.filter((dialog) => /whole number/u.test(dialog.message)).length, 3);
 });
 
@@ -64,7 +65,8 @@ test("promptInteger rejects a number with anything attached to it", () => {
             return { textReturned: "" };
         }
 
-        const answer = answers[Math.min(index, answers.length - 1)];
+        assert.ok(index < answers.length, "the answer script was exhausted");
+        const answer = answers[index];
 
         index += 1;
 
@@ -108,7 +110,8 @@ test("a number outside the range is refused, not accepted", () => {
             return { textReturned: "" };
         }
 
-        const answer = answers[Math.min(index, answers.length - 1)];
+        assert.ok(index < answers.length, "the answer script was exhausted");
+        const answer = answers[index];
 
         index += 1;
 

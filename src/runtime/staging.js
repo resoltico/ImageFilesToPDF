@@ -24,10 +24,9 @@ function importBatch(job, stagedPath, pages) {
 }
 
 /*
- * A batch that appends nothing while exiting zero is a failure mode chunking
- * introduces and a single import did not have, so when the pages were handed
- * over in more than one group the PDF is asked how many pages it ended up
- * with. One group is the ordinary case and is left alone.
+ * Structural validity does not establish page completeness. Every import,
+ * including a single-page or single-batch import, must contain exactly the
+ * prepared pages before publication can claim an output filename.
  */
 function verifyEveryPageArrived(job, stagedPath, expected) {
     const found = readPageCountFrom(runArgv(
@@ -35,6 +34,10 @@ function verifyEveryPageArrived(job, stagedPath, expected) {
         buildPdfcpuInfoArgv(job.tools.pdfcpu, stagedPath),
         "counting the pages"
     ));
+
+    if (found === 0) {
+        throw new Error("the PDF page count could not be verified");
+    }
 
     if (found !== expected) {
         throw new Error(
@@ -63,9 +66,7 @@ function createAndValidatePdf(job, stagedPath, pagePaths) {
 
     verifyFileWritten(job.app, stagedPath, "partial PDF");
 
-    if (batches.length > 1) {
-        verifyEveryPageArrived(job, stagedPath, pagePaths.length);
-    }
+    verifyEveryPageArrived(job, stagedPath, pagePaths.length);
 
     job.progress.phase("Validating PDF");
     runArgv(

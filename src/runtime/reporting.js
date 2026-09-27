@@ -36,7 +36,7 @@ const {
  */
 function describeNoImages(rejected) {
     if (rejected.length === 0) {
-        return "No images selected.\n\nSelect one or more image files in " +
+        return "No images selected.\n\nSelect image files or folders in " +
             `Finder, then run the action again.\n\nSupported: ${
                 supportedFormatList()}.`;
     }

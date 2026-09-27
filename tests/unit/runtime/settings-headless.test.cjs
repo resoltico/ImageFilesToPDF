@@ -15,6 +15,7 @@ const test = require("node:test");
 const { settingsFor } = require("../../../src/runtime/settings-form.js");
 const { encode } = require("../../../src/core/preferences.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
+const { boundedDialog } = require("./fake-dialogs.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
 
 const LAST_RUN = normalizeSettings({
@@ -55,9 +56,10 @@ function acceptingHost() {
     const host = createFakeHost({});
 
     host.chooseFromList = (choices, options) => options.defaultItems;
-    host.displayDialog = (message, options) => ({
-        textReturned: options.defaultAnswer
-    });
+    host.displayDialog = boundedDialog((message, options) => ({
+        textReturned: options.defaultAnswer,
+        buttonReturned: options.defaultButton
+    }));
 
     return host;
 }
@@ -75,7 +77,7 @@ test("a headless run does not open the memory at all", () => {
         quality: 92
     };
     const invocation = { headless: true, settings: given };
-    const settings = settingsFor(acceptingHost(), invocation, 1, { openMemory: memory.open });
+    const settings = settingsFor(acceptingHost(), invocation, { count: 1 }, { openMemory: memory.open });
 
     assert.deepEqual(settings, normalizeSettings(given));
     assert.equal(memory.state.opened, 0, "nothing was opened");
@@ -101,7 +103,7 @@ test("a headless configuration that is not settings is refused, not asked about"
         const memory = memoryHolding(encode(LAST_RUN));
 
         assert.throws(
-            () => settingsFor(host, { headless: true, settings: configuration }, 1, { openMemory: memory.open }),
+            () => settingsFor(host, { headless: true, settings: configuration }, { count: 1 }, { openMemory: memory.open }),
             /Unsupported|must be/u,
             JSON.stringify(configuration)
         );

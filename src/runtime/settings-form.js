@@ -6,6 +6,7 @@ const { isUserCancelled, UserCancelled } = require("../core/errors.js");
 const { appkitBridge } = require("./objc-bridge.js");
 const { presentForm } = require("./appkit.js");
 const { collectDialogSettings } = require("./dialogs.js");
+const { reviewSelection } = require("./settings-review.js");
 const { defaultAnswers } = require("../core/form-rows.js");
 const { normalizeSettings } = require("../core/settings.js");
 const { encode, rememberedAnswers } = require("../core/preferences.js");
@@ -25,63 +26,29 @@ function defaultMemory() {
  */
 
 /*
- * One pass: present, and report what came back as either unusable, the
- * settings, or the answers to try again with.
- */
-function formRound(bridge, present, state) {
-    const outcome = present(
-        bridge,
-        formSpec(state.answers, state.problems, state.count)
-    );
-
-    if (!outcome) {
-        return { unavailable: true };
-    }
-
-    if (outcome.cancelled) {
-        throw new UserCancelled();
-    }
-
-    const read = readAnswers(outcome.answers);
-
-    return read.settings
-        ? { settings: read.settings }
-        : { answers: outcome.answers, problems: read.problems };
-}
-
-/*
- * Redisplayed with the previous answers and every problem at once, so
- * correcting a mistyped DPI does not mean answering the other five again.
- */
-function collectViaForm(bridge, present, opening = {}) {
-    // Nothing wrong yet, and answers only if the last run left any. What an
-    // absent set shows is formSpec's to say: stating the defaults again here
-    // would be a second copy of them, free to drift from the first.
-    let state = { ...opening };
-
-    for (;;) {
-        const round = formRound(bridge, present, state);
-
-        if (round.unavailable) {
-            return null;
-        }
-
-        if (round.settings) {
-            return round.settings;
-        }
-
-        state = { ...round, count: opening.count };
-    }
-}
-
-/*
+ * One pass: present, and report what came back as either unusable (null),
+ * the settings, or the answers to try again with and what is wrong with them.
+ *
  * A cancellation is an answer and must be honoured. Anything else the form
  * throws is treated as the form being unusable, because falling back to
  * dialogs that work is better than failing the run over a widget.
  */
-function attemptForm(bridge, present, opening) {
+function formRound(bridge, present, state) {
     try {
-        return collectViaForm(bridge, present, opening);
+        const outcome = present(
+            bridge,
+            formSpec(state.answers, state.problems, state.context)
+        );
+
+        if (!outcome) {
+            return null;
+        }
+
+        if (outcome.cancelled) {
+            throw new UserCancelled();
+        }
+
+        return { ...readAnswers(outcome.answers), answers: outcome.answers };
     } catch (error) {
         if (isUserCancelled(error)) {
             throw error;
@@ -92,9 +59,37 @@ function attemptForm(bridge, present, opening) {
 }
 
 /*
- * The opening state of both front ends: how many images were found, and the
- * answers to start from when the last run left some. They are the same
- * answers either way -- a form that cannot be shown must not also forget.
+ * Redisplayed with the previous answers and every problem at once, so
+ * correcting a mistyped DPI does not mean answering the other five again.
+ * A form that stops working part way hands the dialogs the answers last
+ * submitted, not the ones it opened with: corrections already made are not
+ * asked for twice. Edits never submitted are lost with the widget.
+ */
+function collectViaForm(bridge, present, opening = {}) {
+    // Nothing wrong yet, and answers only if the last run left any. What an
+    // absent set shows is formSpec's to say: stating the defaults again here
+    // would be a second copy of them, free to drift from the first.
+    let state = { ...opening };
+
+    for (;;) {
+        const round = formRound(bridge, present, state);
+
+        if (!round) {
+            return { answers: state.answers ?? defaultAnswers() };
+        }
+
+        if (round.settings) {
+            return { settings: round.settings };
+        }
+
+        state = { ...state, ...round };
+    }
+}
+
+/*
+ * The opening state of both front ends: what was selected, and the answers
+ * to start from when the last run left some. They are the same answers either
+ * way -- a form that cannot be shown must not also forget.
  */
 function collectSettings(
     app,
@@ -102,23 +97,22 @@ function collectSettings(
     bridge = appkitBridge(globalThis.ObjC, globalThis.$),
     present = presentForm
 ) {
-    if (bridge) {
-        const settings = attemptForm(bridge, present, opening);
+    const outcome = bridge
+        ? collectViaForm(bridge, present, opening)
+        : { answers: opening.answers ?? defaultAnswers() };
 
-        if (settings) {
-            return settings;
-        }
-    }
-
-    return collectDialogSettings(app, opening.answers ?? defaultAnswers());
+    return outcome.settings ?? collectDialogSettings(
+        app, outcome.answers, opening.context
+    );
 }
 
 /*
  * A configuration file is the whole of what a headless run is told, and it
  * has to mean the same thing every time it is used. So nothing is read from
- * the last run and nothing is written for the next -- and nothing is even
- * opened: the memory arrives as something to open rather than something
- * already open, and this branch returns before it can be.
+ * the last run, nothing is written for the next, and nothing is asked --
+ * not even whether to go on without a rejected item. The memory arrives as
+ * something to open rather than something already open, and this branch
+ * returns before it can be.
  *
  * Which branch is taken is what the invocation says it is, never what the
  * settings look like. Reading it off them -- "there are none, so somebody
@@ -126,14 +120,16 @@ function collectSettings(
  * `false` or `0` got it wrong: a headless run opened a dialog and waited for
  * an answer nobody was there to give.
  */
-function settingsFor(app, invocation, count, injected = {}) {
+function settingsFor(app, invocation, context, injected = {}) {
     if (invocation.headless) {
         return normalizeSettings(invocation.settings);
     }
 
+    reviewSelection(app, context);
+
     const { openMemory = defaultMemory, bridge, present } = injected;
     const memory = openMemory();
-    const opening = { count, answers: rememberedAnswers(memory.recall()) };
+    const opening = { context, answers: rememberedAnswers(memory.recall()) };
     const settings = normalizeSettings(
         bridge || present
             ? collectSettings(app, opening, bridge, present)

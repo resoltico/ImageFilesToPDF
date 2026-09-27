@@ -69,12 +69,12 @@ test("an interactive run shows the completion and answers with nothing", () => {
     const answer = reportResult(app, job, {
         outputs: ["/a/x.pdf"],
         failures: [],
-        elapsed: "1 second(s)"
+        elapsed: "1 second"
     }, { headless: false, pageCount: 1 });
 
     assert.equal(answer, undefined);
     assert.equal(app.dialogs.length, 1);
-    assert.match(app.dialogs[0].message, /Created 1 PDF\./u);
+    assert.match(app.dialogs[0].message, /Created 1 single-page PDF\./u);
     assert.match(app.dialogs[0].message, /\/a\//u, "and where it went");
 });
 

@@ -1,8 +1,9 @@
 # Image Files to PDF — macOS
 
 A source-controlled macOS Finder Quick Action that converts selected images
-into one combined PDF or separate PDFs by invoking the
-system-installed `vips` and `pdfcpu` command-line tools.
+into PDFs with **one image on each page**, using the system-installed
+`vips` and `pdfcpu` command-line tools. Choose one multi-page PDF or a separate
+single-page PDF for each image. It does not make collages or contact sheets.
 
 The production artifact is one generated JavaScript for Automation (JXA) file
 that is pasted into Shortcuts. Node.js is a development-only tool. It is not
@@ -96,6 +97,33 @@ though vips can read them: only the first frame would be taken, an SVG would
 land as a stamp because the pipeline never upscales, and RAW is a processing
 job rather than a conversion.
 
+## What will be created?
+
+Every image gets its own page, centred on it without cropping. The first
+setting, **PDF files**, only groups those pages into files:
+
+- **One PDF — one image per page:** 12 images make one PDF with 12 pages.
+- **Separate PDFs — one page per image:** 12 images make 12 single-page PDFs.
+
+With one image, either choice makes one single-page PDF; only the name differs.
+A combined PDF is named `output_` plus the date and time, and a separate PDF
+takes its image's name plus the date and time. Existing files are never
+replaced. If an image fails, combined mode creates no PDF, while separate mode
+keeps the PDFs that succeeded and reports the failures.
+
+Before anything is created, the settings window says how many images were
+selected, or found in selected folders, what each choice would make of them, and
+where the PDFs will be saved. Pages follow the full path in natural order, so 2
+comes before 10; the order you clicked in Finder does not count. Selected items
+that cannot be converted are listed before the settings, and you can cancel
+there. Pages are JPEG-compressed, PNGs included, and the original files are
+never changed.
+
+Each PDF is checked for exactly the expected number of pages and validated
+before it gets its name. The completion message gives the PDFs and pages
+actually saved and where they went. Images that could not be converted are
+listed apart from selected items that were never included.
+
 ## Current controls
 
 - A4 or Letter page size
@@ -104,7 +132,7 @@ job rather than a conversion.
   imported image, which A4 reaches at 1042 DPI, so it is derived from the
   largest paper size rather than chosen
 - JPEG quality from 1 through 100
-- one combined PDF or one PDF per image
+- one PDF with one image per page, or separate single-page PDFs
 - page background: any colour, given as six hexadecimal digits, with white,
   black, purple `#8E79E0` and dark blue `#204486` offered as presets
 

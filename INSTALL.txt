@@ -46,6 +46,23 @@ Install the Quick Action
 
 10. Save the shortcut as "Image Files to PDF".
 
+Use it
+======
+
+Select image files or folders in Finder and run the Quick Action. Selected
+folders are searched recursively. Each image occupies its own PDF page; this
+is not a collage or contact-sheet action.
+
+"One PDF — one image per page" combines the pages into one file.
+"Separate PDFs — one page per image" saves one single-page file per image.
+With one image both options make one single-page PDF, but use different
+filename prefixes. The settings window explains the count and save location.
+Pages use JPEG compression without changing the original image files.
+
+Review any selection problems, choose the settings, and click Create. With
+stepwise dialogs, the last dialog confirms the settings before files are
+created. Completion reports the PDFs saved and anything not converted.
+
 Remove it
 =========
 

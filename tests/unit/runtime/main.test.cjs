@@ -55,7 +55,7 @@ test("a headless run returns JSON describing what it produced", () => {
 
     assert.deepEqual(result.outputs, ["/a/output_20260904_010203.pdf"]);
     assert.deepEqual(result.failures, []);
-    assert.match(result.elapsed, /second\(s\)/u);
+    assert.match(result.elapsed, /seconds?/u);
 });
 
 test("a headless run in separate mode reports each file it produced", () => {
@@ -117,7 +117,7 @@ test("elapsed time is measured from the start of the run", () => {
 
     // A sign error here would still produce a plausible-looking string, so
     // the value is checked rather than only its shape.
-    assert.match(result.elapsed, /^\d+ second\(s\)$/u);
+    assert.match(result.elapsed, /^\d+ seconds?$/u);
     assert.ok(
         Number(result.elapsed.split(" ")[0]) < 60,
         `a local run should not take minutes: ${result.elapsed}`

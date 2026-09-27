@@ -22,12 +22,12 @@ test("a run that was asked to stop says so, and what it did not reach", () => {
     const message = completionMessage("separate", {
         outputs: ["/a/1.pdf", "/a/2.pdf"],
         failures: [],
-        elapsed: "3 second(s)",
+        elapsed: "3 seconds",
         rejected: [],
         stopped: true
     }, 20);
 
-    assert.match(message, /Created 2 PDFs\./u);
+    assert.match(message, /Created 2 single-page PDFs\./u);
     assert.match(message, /Stopped\. 18 images not converted\./u);
 });
 
@@ -39,7 +39,7 @@ test("a stopped run counts every image no PDF came out of", () => {
     const message = completionMessage("separate", {
         outputs: ["/a/1.pdf"],
         failures: [{ name: "b.png", message: "broke" }],
-        elapsed: "3 second(s)",
+        elapsed: "3 seconds",
         rejected: [],
         stopped: true
     }, 20);
@@ -48,7 +48,7 @@ test("a stopped run counts every image no PDF came out of", () => {
     // run produced no PDF for, and the failure is accounted for separately on
     // its own line.
     assert.match(message, /Stopped\. 19 images not converted\./u);
-    assert.match(message, /Failed: 1/u);
+    assert.match(message, /Could not convert 1 image:/u);
     assert.match(message, /Finished with errors\./u);
 });
 
@@ -57,7 +57,7 @@ test("a run nobody stopped says nothing about stopping", () => {
         const message = completionMessage(mode, {
             outputs: ["/a/1.pdf"],
             failures: [],
-            elapsed: "1 second(s)",
+            elapsed: "1 second",
             rejected: []
         }, 1);
 
@@ -69,7 +69,7 @@ test("a stop with one image left says image, not images", () => {
     const message = completionMessage("separate", {
         outputs: ["/a/1.pdf"],
         failures: [],
-        elapsed: "1 second(s)",
+        elapsed: "1 second",
         rejected: [],
         stopped: true
     }, 2);

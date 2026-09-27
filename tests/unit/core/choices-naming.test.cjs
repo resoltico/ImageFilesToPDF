@@ -27,7 +27,7 @@ test("every control has a form label as well as a dialog prompt", () => {
     const controls = [
         [PAPER_SIZE, "Paper size:"],
         [ORIENTATION, "Orientation:"],
-        [OUTPUT_MODE, "Output:"],
+        [OUTPUT_MODE, "PDF files:"],
         [BACKGROUND, "Page background:"],
         [RESOLUTION, "Resolution:"],
         [QUALITY, "JPEG quality:"]

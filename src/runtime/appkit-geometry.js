@@ -4,14 +4,13 @@
  * Three columns: the name of the setting, the control, and — for the two that
  * take a number — the bounds it accepts.
  *
- * Widths were measured rather than guessed. At the 13 point system font the
- * longest label renders 110 points wide and the longest menu item 187, so a
- * number field needs only enough room for four digits and the rest of its
- * column can carry the hint.
+ * The grouping choices state the page layout as well as the file grouping.
+ * The native integration suite checks their measured cell widths against the
+ * space reserved here; number fields keep the remaining space for their hints.
  */
 const ROW_HEIGHT = 32;
 const LABEL_WIDTH = 140;
-const CONTROL_WIDTH = 230;
+const CONTROL_WIDTH = 320;
 const NUMBER_WIDTH = 70;
 
 // Room for a colour and the button that opens the list beside it. Wider than
