@@ -4,6 +4,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.5.3] - 2026-09-27
+
 ### Changed
 
 - The output choice now reads **One PDF — one image per page** or **Separate
