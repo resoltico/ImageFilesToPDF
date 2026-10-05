@@ -56,7 +56,10 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
+      # Runner images may contain stale Homebrew metadata.
+      - run: brew update
       - run: brew install vips pdfcpu qpdf poppler libtiff shellcheck actionlint
+      - run: node tools/check-pdfcpu.mjs
       - run: npm ci --ignore-scripts
       - run: npm run quality
       # form.sh, the last suite, leaves a picture of the settings form in

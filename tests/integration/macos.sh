@@ -29,7 +29,7 @@ if pdfcpu validate --mode=strict "$WORK/absent.pdf" >"$WORK/config.err" 2>&1; th
     fail "the incompatible configuration negative control unexpectedly passed"
 fi
 grep -q "configuration reset required" "$WORK/config.err" ||
-    fail "the negative control did not reach the configuration schema check"
+    fail "configuration schema check not reached: $(cat "$WORK/config.err")"
 
 # run_headless <config> <image>...
 # osascript forwards "--" into run(); --headless must still be recognized.

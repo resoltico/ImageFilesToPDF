@@ -14,6 +14,7 @@ committed artifact fails instead of shipping.
 The macOS integration gate needs the real tools and is run separately:
 
 ```sh
+brew update
 brew install vips pdfcpu qpdf poppler libtiff shellcheck actionlint
 npm run test:integration:macos
 ```
@@ -138,6 +139,7 @@ The Node version appears in `.node-version`, `mise.toml` and `engines`. The
 gate asserts they agree, but nothing watches for newer releases: Dependabot
 does not track version files, so bumping is a deliberate manual step.
 
-The Homebrew tools are not pinned at all — CI installs the current ones on
+The Homebrew tools are not pinned — CI refreshes Homebrew metadata and installs
+the current tools on
 every run, so a breaking change there surfaces as a failing integration job
 rather than as a silent drift.

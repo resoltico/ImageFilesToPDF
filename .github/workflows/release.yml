@@ -31,7 +31,10 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
+      # Runner images may contain stale Homebrew metadata.
+      - run: brew update
       - run: brew install vips pdfcpu qpdf poppler libtiff shellcheck actionlint
+      - run: node tools/check-pdfcpu.mjs
       - run: npm ci --ignore-scripts
       # The tag is a claim about which version is shipping, and it is the one
       # claim the repository cannot contradict on its own.
