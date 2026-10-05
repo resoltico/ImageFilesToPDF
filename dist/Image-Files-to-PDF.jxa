@@ -196,7 +196,7 @@ const PAGE_DEFINITIONS = {
 
 const MINIMUM_DPI = 72;
 
-const PDFCPU_PIXEL_LIMIT = 104857600;
+const PDFCPU_PIXEL_LIMIT = 100000000;
 const POINTS_PER_INCH = 72;
 
 function squareInchesOf({ widthPoints, heightPoints }) {

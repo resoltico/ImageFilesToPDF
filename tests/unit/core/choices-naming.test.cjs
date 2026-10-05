@@ -40,7 +40,7 @@ test("every control has a form label as well as a dialog prompt", () => {
 });
 
 test("the numeric controls state their bounds beside the field, not in the name", () => {
-    assert.equal(RESOLUTION.hint, "72–1041 DPI");
+    assert.equal(RESOLUTION.hint, "72–1017 DPI");
     assert.equal(QUALITY.hint, "1–100, 90–95 is typical");
 
     for (const control of [RESOLUTION, QUALITY]) {

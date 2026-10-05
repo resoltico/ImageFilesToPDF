@@ -16,6 +16,9 @@ Notable changes to this project are documented in this file. The format is based
   for its version. Releases include the full `LICENSE` as an attested asset.
 - **Breaking:** pdfcpu 0.16.1 or later is required. Older releases and prerelease
   builds are unsupported; run `brew update` and `brew upgrade pdfcpu` to upgrade.
+- **Breaking:** the maximum resolution is now 1017 DPI, reduced from 1041,
+  to fit pdfcpu's stateless 100,000,000-pixel image limit. Settings above the
+  new ceiling must be lowered before conversion.
 - PDF creation, page counting and strict validation use pdfcpu's stateless
   `--conf disable` mode. Personal pdfcpu settings, fonts and certificates are
   no longer loaded.

@@ -70,7 +70,7 @@ test("a rejected answer is explained where it is corrected", () => {
 
     assert.equal(
         again.message,
-        `Resolution: enter a whole number from 72 to 1041.\n\n${RESOLUTION.prompt}`,
+        `Resolution: enter a whole number from 72 to 1017.\n\n${RESOLUTION.prompt}`,
         "the reason, and then the question again"
     );
     assert.equal(again.options.defaultAnswer, "3O0", "holding what was typed");

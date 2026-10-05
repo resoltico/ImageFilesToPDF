@@ -66,7 +66,7 @@ test("a bad answer redisplays the form with the problem and the rest intact", ()
     const [, redisplayed] = present.seen;
     const paperRow = redisplayed.rows.find((row) => row.key === "paperSize");
 
-    assert.match(redisplayed.detail, /enter a whole number from 72 to 1041/u);
+    assert.match(redisplayed.detail, /enter a whole number from 72 to 1017/u);
     assert.equal(paperRow.value, "US Letter");
 });
 

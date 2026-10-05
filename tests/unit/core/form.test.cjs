@@ -85,7 +85,7 @@ test("the defaults are the ones the dialogs would have offered first", () => {
 test("the number rows carry the range that validates them", () => {
     assert.equal(rowFor("dpi").kind, "number");
     assert.equal(rowFor("dpi").minimum, 72);
-    assert.equal(rowFor("dpi").maximum, 1041);
+    assert.equal(rowFor("dpi").maximum, 1017);
     assert.equal(rowFor("quality").minimum, 1);
     assert.equal(rowFor("quality").maximum, 100);
 });
@@ -95,12 +95,12 @@ test("previous answers are carried back into a redisplayed form", () => {
     // field discards the other five.
     const spec = formSpec(
         { ...defaultAnswers(), paperSize: "US Letter", dpi: "600" },
-        [{ key: "dpi", message: "Resolution: enter a whole number from 72 to 1041." }]
+        [{ key: "dpi", message: "Resolution: enter a whole number from 72 to 1017." }]
     );
 
     assert.equal(rowFor("paperSize", spec).value, "US Letter");
     assert.equal(rowFor("dpi", spec).value, "600");
-    assert.match(spec.detail, /enter a whole number from 72 to 1041/u);
+    assert.match(spec.detail, /enter a whole number from 72 to 1017/u);
 });
 
 test("several problems stay on separate lines", () => {

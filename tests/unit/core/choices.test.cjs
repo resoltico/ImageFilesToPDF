@@ -41,7 +41,7 @@ test("no prompt restates the options listed beneath it", () => {
 
 test("the numeric prompts state the range they will accept", () => {
     // Otherwise a rejection is the first time anyone learns it.
-    assert.match(RESOLUTION.prompt, /\(72–1041\)/u);
+    assert.match(RESOLUTION.prompt, /\(72–1017\)/u);
     assert.match(QUALITY.prompt, /\(1–100/u);
     assert.match(QUALITY.prompt, /90–95 is typical/u);
 });

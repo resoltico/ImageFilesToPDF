@@ -4,8 +4,7 @@
  * The DPI ceiling, which is arithmetic rather than taste.
  *
  * A page rendered at N DPI is an image, and pdfcpu refuses images above 100
- * megapixels. The tool offered 1200 for months: A4 at 1200 DPI is 139.2 MP,
- * so every run at the advertised maximum failed.
+ * megapixels in its stateless configuration.
  */
 
 const assert = require("node:assert/strict");
@@ -19,8 +18,7 @@ const {
 
 test("the DPI ceiling is the one pdfcpu will actually accept", () => {
     // A page rendered at N DPI is an image, and pdfcpu refuses images over
-    // 100 megapixels. Offering 1200 meant every run at the advertised maximum
-    // failed with "image pixel count 139201551 exceeds limit 104857600".
+    // 100,000,000 pixels in stateless mode.
     const POINTS_PER_INCH = 72;
     const pixelsAt = (dpi, page) =>
         Math.round((page.widthPoints / POINTS_PER_INCH) * dpi)
@@ -34,7 +32,7 @@ test("the DPI ceiling is the one pdfcpu will actually accept", () => {
     }
 
     // And it is the true maximum, not a cautious number: one more breaks the
-    // largest page. Measured against the real tool at 1041 and 1042.
+    // largest page. Measured against the real tool at 1017 and 1018.
     // By area in points: comparing pixel counts at 1 DPI rounds both pages to
     // single digits and picks the wrong one.
     const area = (page) => page.widthPoints * page.heightPoints;
@@ -50,6 +48,6 @@ test("the DPI ceiling is the one pdfcpu will actually accept", () => {
 test("the ceiling follows the paper sizes rather than being written down", () => {
     // Adding a larger paper size must lower the maximum, not silently
     // reintroduce one the pipeline refuses.
-    assert.equal(MAXIMUM_DPI, 1041, "A4 is the largest page currently offered");
+    assert.equal(MAXIMUM_DPI, 1017, "A4 is the largest page currently offered");
     assert.ok(MAXIMUM_DPI > MINIMUM_DPI);
 });

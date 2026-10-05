@@ -57,7 +57,7 @@ test("placement never depends on the resolution", () => {
     // and 51 mm at 600, because the page was a larger number of pixels while
     // the image stayed the same number.
     const source = { width: 1200, height: 800 };
-    const points = [72, 150, 300, 600, 1041].map((dpi) => {
+    const points = [72, 150, 300, 600, 1017].map((dpi) => {
         const placement = calculatePlacement(
             calculatePageGeometry(settings({ dpi })),
             source

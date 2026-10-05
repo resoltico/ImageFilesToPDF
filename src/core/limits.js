@@ -28,16 +28,14 @@ const MINIMUM_DPI = 72;
  * at N DPI is exactly that: an image. The ceiling is therefore not a matter of
  * taste but of arithmetic, and it belongs to whichever paper size is largest.
  *
- * Measured before it was derived: A4 at 1200 DPI is 9924 x 14028 = 139.2 MP,
- * and every such run failed with "image pixel count 139201551 exceeds limit
- * 104857600". Testing either side of the computed bound then agreed with it
- * exactly — A4 succeeds at 1041 and fails at 1042, Letter succeeds at 1058
- * and fails at 1059.
+ * Stateless pdfcpu defaults to 100,000,000 pixels. With rounded canvas sizes,
+ * A4 at 1017 DPI imports successfully (99,987,936 pixels); 1018 DPI is rejected
+ * (100,187,551 pixels). The CI tool check verifies the backend default.
  *
- * Derived rather than written down as 1041, so that adding a paper size
- * cannot quietly reintroduce a maximum the pipeline will not accept.
+ * Deriving the DPI ceiling from the largest paper size keeps the offered
+ * settings within that backend limit.
  */
-const PDFCPU_PIXEL_LIMIT = 104857600;
+const PDFCPU_PIXEL_LIMIT = 100000000;
 const POINTS_PER_INCH = 72;
 
 function squareInchesOf({ widthPoints, heightPoints }) {

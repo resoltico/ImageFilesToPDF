@@ -11,7 +11,7 @@ test("promptInteger accepts a value inside the range", () => {
 
     app.nextAnswer = " 300 ";
     assert.equal(promptInteger(app, RESOLUTION, "300"), 300);
-    assert.match(app.dialogs[0].message, /Resolution in DPI \(72–1041\)/u);
+    assert.match(app.dialogs[0].message, /Resolution in DPI \(72–1017\)/u);
 });
 
 test("promptInteger re-asks until the answer is valid", () => {
@@ -44,7 +44,7 @@ test("promptInteger re-asks until the answer is valid", () => {
 test("promptInteger accepts the exact ends of the range", () => {
     // The bounds are inclusive; `>` or `<` instead of `>=` or `<=` would
     // reject the very values the prompt advertises.
-    for (const answer of ["72", "1041"]) {
+    for (const answer of ["72", "1017"]) {
         const app = createFakeApp();
 
         app.nextAnswer = answer;

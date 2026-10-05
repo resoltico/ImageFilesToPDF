@@ -138,8 +138,8 @@ listed apart from selected items that were never included.
 
 - A4 or Letter page size
 - portrait or landscape orientation
-- DPI from 72 through 1041 — the ceiling is pdfcpu's 100-megapixel limit on an
-  imported image, which A4 reaches at 1042 DPI, so it is derived from the
+- DPI from 72 through 1017 — the ceiling is pdfcpu's 100-megapixel limit on an
+  imported image, which A4 exceeds at 1018 DPI, so it is derived from the
   largest paper size rather than chosen
 - JPEG quality from 1 through 100
 - one PDF with one image per page, or separate single-page PDFs

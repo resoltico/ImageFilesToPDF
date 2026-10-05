@@ -35,7 +35,7 @@ test("chooseRequired treats a dismissed list as cancellation", () => {
 test("collectDialogSettings asks for every setting", () => {
     const app = createFakeApp();
 
-    // Valid for both prompts: DPI accepts 72–1041, quality accepts 1–100.
+    // Valid for both prompts: DPI accepts 72–1017, quality accepts 1–100.
     app.nextAnswer = "92";
     const settings = collectDialogSettings(app);
 
@@ -87,7 +87,7 @@ test("the prompts name what they are asking about", () => {
     }
 
     // A rejected answer must not be the first time the range is mentioned.
-    assert.match(asked, /72–1041/u);
+    assert.match(asked, /72–1017/u);
     assert.match(asked, /1–100/u);
 });
 

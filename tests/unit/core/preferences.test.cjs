@@ -24,7 +24,7 @@ const PAPERS = ["A4", "Letter"];
 const ORIENTATIONS = ["Portrait", "Landscape"];
 const MODES = ["single", "separate"];
 const COLOURS = ["#FFFFFF", "#000000", "#8E79E0", "#204486", "#C7DAE8", "#7F7F7F"];
-const NUMBERS = [[72, 1], [300, 92], [1041, 100], [600, 50]];
+const NUMBERS = [[72, 1], [300, 92], [1017, 100], [600, 50]];
 
 function combinations(choices) {
     return choices.reduce(

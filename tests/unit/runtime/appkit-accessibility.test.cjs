@@ -24,6 +24,6 @@ test("invalid inputs expose their state without dropping their correction guidan
     const { controls } = buildForm(createFakeObjC(), spec, WIDGETS);
 
     assert.equal(controls.dpi.accessibilityHelp,
-        "Invalid value. Correct this setting. 72–1041 DPI");
+        "Invalid value. Correct this setting. 72–1017 DPI");
     assert.ok(!controls.quality.accessibilityHelp.includes("Invalid"));
 });

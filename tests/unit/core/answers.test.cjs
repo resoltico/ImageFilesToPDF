@@ -56,7 +56,7 @@ test("a colour arrives as a colour, chosen or typed", () => {
 
 test("numbers are accepted at both ends of their range", () => {
     assert.equal(answering({ dpi: "72" }).settings.dpi, 72);
-    assert.equal(answering({ dpi: "1041" }).settings.dpi, 1041);
+    assert.equal(answering({ dpi: "1017" }).settings.dpi, 1017);
     assert.equal(answering({ quality: "1" }).settings.quality, 1);
     assert.equal(answering({ quality: "100" }).settings.quality, 100);
 });
@@ -64,9 +64,9 @@ test("numbers are accepted at both ends of their range", () => {
 test("a number outside its range is refused, naming the range", () => {
     assert.deepEqual(answering({ dpi: "71" }).problems, [{
         key: "dpi",
-        message: "Resolution: enter a whole number from 72 to 1041."
+        message: "Resolution: enter a whole number from 72 to 1017."
     }]);
-    assert.equal(answering({ dpi: "1042" }).problems.length, 1);
+    assert.equal(answering({ dpi: "1018" }).problems.length, 1);
     assert.equal(answering({ quality: "0" }).problems.length, 1);
     assert.equal(answering({ quality: "101" }).problems.length, 1);
 });

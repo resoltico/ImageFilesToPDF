@@ -80,7 +80,7 @@ test("a row named in the problems is marked, and the others are not", () => {
     // Reading which field is wrong and seeing it should not be different jobs.
     const spec = formSpec(
         { ...require("../../../src/core/form.js").defaultAnswers(), dpi: "nope" },
-        [{ key: "dpi", message: "Resolution: enter a whole number from 72 to 1041." }]
+        [{ key: "dpi", message: "Resolution: enter a whole number from 72 to 1017." }]
     );
     const bridge = createFakeObjC();
     const { controls } = buildForm(bridge, spec, WIDGETS);

@@ -85,7 +85,7 @@ test("an option is a title, in the order it was added", () => {
 test("a hint has no chrome of any kind", () => {
     // Built from the same NSTextField as an input. A bezel or a background
     // would make a read-only note look like somewhere to type.
-    const hint = makeHint(bridge().ns, "72–1041 DPI", RECT);
+    const hint = makeHint(bridge().ns, "72–1017 DPI", RECT);
 
     assert.equal(hint.bezeled, false);
     assert.equal(hint.selectable, false);

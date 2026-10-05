@@ -113,7 +113,7 @@ test("each numeric field is told the bounds it accepts", () => {
         .filter((child) => child.editable === false)
         .map((child) => child.stringValue);
 
-    assert.ok(hints.includes("72–1041 DPI"), hints.join(" | "));
+    assert.ok(hints.includes("72–1017 DPI"), hints.join(" | "));
     assert.ok(hints.includes("1–100, 90–95 is typical"), hints.join(" | "));
 });
 

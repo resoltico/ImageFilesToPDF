@@ -58,7 +58,7 @@ test("the page size never drifts with DPI", () => {
 
 test("the pixel canvas scales with DPI", () => {
     assert.equal(calculatePageGeometry(settings({ dpi: 72 })).widthPixels, 595);
-    assert.equal(calculatePageGeometry(settings({ dpi: 1041 })).widthPixels, 8607);
+    assert.equal(calculatePageGeometry(settings({ dpi: 1017 })).widthPixels, 8408);
 });
 
 test("what pdfcpu receives is the size readers call A4", () => {
