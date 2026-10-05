@@ -54,13 +54,13 @@ attested on GitHub, which is not checkable by someone holding a file that does
 not name its repository.
 
 Nothing in the header is typed twice. The version and URL come from
-`package.json`, the copyright line from `LICENSE`, and the macOS floor from
+`package.json`, the copyright notice from `package.json`, and the macOS floor from
 `tools/release.mjs`. The URL is stated in four places — both npm forms, the
 README and INSTALL.txt — and the gate refuses them if they disagree, because a
 stale address in the file a user follows is worse than no address.
 
-Verified to fail: a README naming a different repository, and a `LICENSE` that
-no longer carries a copyright line to quote. Licensing tests check MPL metadata,
+Verified to fail: a README naming a different repository, and missing or invalid copyright
+metadata in `package.json`. Licensing tests check MPL metadata,
 its project-wide notice, and the preserved MPL and version-specific source
 notices in the standalone artifact. LICENSE is included in the release upload,
 attestation subjects and attestation verification loop.

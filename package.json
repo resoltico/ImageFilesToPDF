@@ -36,5 +36,6 @@
   },
   "overrides": {
     "qs": "6.16.0"
-  }
+  },
+  "copyright": "2026 Ervins Strauhmanis"
 }

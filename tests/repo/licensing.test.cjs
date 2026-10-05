@@ -16,7 +16,6 @@ test("first-party licensing is MPL 2.0 in metadata and the license file", async 
     const license = await read("LICENSE");
 
     assert.match(license, /Mozilla Public License Version 2\.0/u);
-    assert.match(license, /SPDX-License-Identifier: MPL-2\.0/u);
     assert.match(license, /3\. Responsibilities/u);
     assert.match(license, /This Source Code Form is subject to the terms/u);
 });

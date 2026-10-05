@@ -15,9 +15,9 @@ const FILES = {
     "package.json": JSON.stringify({
         version: "9.9.9",
         license: "MPL-2.0",
+        copyright: "2026 Someone",
         homepage: "https://github.com/someone/Project"
-    }),
-    LICENSE: "Mozilla Public License Version 2.0\n\nCopyright (c) 2026 Someone\n\nThis Source Code Form is subject to the terms...\n"
+    })
 };
 
 const read = (relative) => Promise.resolve(FILES[relative]);
@@ -56,43 +56,21 @@ test("it says the comments were stripped and where they went", async () => {
     assert.match(banner, /Generated file\. Edit the sources and rebuild/u);
 });
 
-test("a LICENSE that stops naming a holder is an error, not a blank", async () => {
+test("missing or invalid copyright metadata is refused", async () => {
     const { readMetadata } = await load();
 
-    await assert.rejects(
-        () => readMetadata(
-            (relative) => Promise.resolve(
-                relative === "LICENSE" ? "Mozilla Public License Version 2.0\n" : FILES[relative]
-            ),
-            "12.3"
-        ),
-        /LICENSE no longer carries a copyright line/u
-    );
+    await Promise.all([undefined, 2026, "", "   "].map((copyright) =>
+        assert.rejects(
+            () => readMetadata(() => Promise.resolve(JSON.stringify({copyright})), "12.3"),
+            /package.json no longer carries a copyright notice/u
+        )));
 });
 
-test("the copyright is taken whole, however it is worded", async () => {
-    const { copyrightFrom } = await load();
+test("the copyright notice is preserved with outer whitespace removed", async () => {
+    const { readMetadata } = await load();
+    const metadata = await readMetadata(() => Promise.resolve(JSON.stringify({
+        copyright: "  2019-2026 A. Person and others  "
+    })), "12.3");
 
-    assert.equal(
-        copyrightFrom("Mozilla Public License Version 2.0\n\nCopyright (c) 2019-2026 A. Person and others  \n"),
-        "2019-2026 A. Person and others"
-    );
-});
-
-test("the notice line is taken, not a sentence that mentions it", async () => {
-    // The line stands on its own; prose about it does not, and quoting the
-    // prose would put half a sentence in the header of every copy shipped.
-    const { copyrightFrom } = await load();
-
-    assert.equal(
-        copyrightFrom([
-            "Mozilla Public License Version 2.0",
-            "",
-            "Retain the Copyright (c) notice in every copy.",
-            "",
-            "Copyright (c) 2026 Someone",
-            ""
-        ].join("\n")),
-        "2026 Someone"
-    );
+    assert.equal(metadata.copyright, "2019-2026 A. Person and others");
 });

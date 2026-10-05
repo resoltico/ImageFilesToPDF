@@ -88,7 +88,7 @@ started with; a build step that changed the program cannot reach the disk.
 The parsing lives in `tools/javascript.mjs`, the CommonJS shapes in
 `tools/commonjs.mjs`, the removal in `tools/excise.mjs`, and the header in
 `tools/banner.mjs`, which quotes the version and URL from `package.json` and
-the copyright line from `LICENSE` so the artifact cannot misstate them.
+the copyright notice from `package.json` so the artifact cannot misstate them.
 
 First-party contributions are covered by MPL 2.0; the root
 `LICENSE` applies to source, tests, tools and accompanying project files. Do not

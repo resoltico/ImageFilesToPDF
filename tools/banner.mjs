@@ -7,23 +7,9 @@
  * the build is attested on GitHub and a file that does not name its repository
  * cannot be checked against that attestation.
  *
- * Nothing here is typed twice. The version and the URL come from package.json,
- * the copyright line from LICENSE, and the macOS floor from release.mjs, so a
- * banner that disagrees with the repository is not something anyone has to
- * notice.
+ * Version, URL, license and copyright come from package.json; the macOS floor
+ * comes from release.mjs. The generated banner cannot drift from those facts.
  */
-
-const COPYRIGHT = /^Copyright \(c\) (?<value>.+)/mu;
-
-export function copyrightFrom(license) {
-    const match = COPYRIGHT.exec(license);
-
-    if (!match) {
-        throw new Error("LICENSE no longer carries a copyright line to quote");
-    }
-
-    return match.groups.value.trim();
-}
 
 /*
  * Everything the banner says about this repository, gathered from the files
@@ -33,11 +19,15 @@ export function copyrightFrom(license) {
 export async function readMetadata(read, minimumMacos) {
     const packageJson = JSON.parse(await read("package.json"));
 
+    if (typeof packageJson.copyright !== "string" || !packageJson.copyright.trim()) {
+        throw new Error("package.json no longer carries a copyright notice");
+    }
+
     return {
         version: packageJson.version,
         homepage: packageJson.homepage,
         license: packageJson.license,
-        copyright: copyrightFrom(await read("LICENSE")),
+        copyright: packageJson.copyright.trim(),
         minimumMacos
     };
 }
