@@ -90,7 +90,14 @@ The parsing lives in `tools/javascript.mjs`, the CommonJS shapes in
 `tools/banner.mjs`, which quotes the version and URL from `package.json` and
 the copyright line from `LICENSE` so the artifact cannot misstate them.
 
+First-party contributions are covered by MPL 2.0; the root
+`LICENSE` applies to source, tests, tools and accompanying project files. Do not
+replace third-party notices or licensing when importing code. The generated
+header retains the MPL notice and links to the source for its version.
+
 Edit the sources, run `npm run release`, and commit both.
+
+`LICENSE` ships as an attested asset containing the complete MPL 2.0 terms.
 
 `INSTALL.txt` ships with it, and is deliberately plain text rather than
 Markdown. It is a release asset: someone downloads it alongside the `.jxa` and

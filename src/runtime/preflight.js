@@ -1,6 +1,6 @@
 "use strict";
 
-const { shellJoin } = require("../core/shell.js");
+const { shellJoin, shellQuote } = require("../core/shell.js");
 const {
     buildVipsProbeArgv,
     buildPdfcpuProbeArgv,
@@ -8,7 +8,7 @@ const {
     isPdfcpuUsable,
     describeSetupProblems
 } = require("../core/preflight.js");
-const { findTool, TOOL_NAMES } = require("./tools.js");
+const { findTool, TOOL_NAMES, TOOL_SEARCH_PATH } = require("./tools.js");
 
 /*
  * Everything that can be checked before the user is asked anything.
@@ -18,7 +18,7 @@ const { findTool, TOOL_NAMES } = require("./tools.js");
  */
 
 /*
- * The probes are expected to fail: they name a file that cannot exist. The
+ * The vips probe fails on a missing file; pdfcpu reports its version. The
  * suffix merges stderr and forces a zero exit so the output can be read
  * directly instead of being recovered from a thrown error. It is a fixed
  * string, never anything the user supplied.
@@ -33,13 +33,13 @@ function probe(app, argv) {
 
 function hasHomebrew(app) {
     try {
-        return Boolean(app.doShellScript("command -v brew 2>/dev/null || true"));
+        return Boolean(app.doShellScript(`PATH=${shellQuote(TOOL_SEARCH_PATH)}; command -v brew 2>/dev/null || true`));
     } catch {
         return false;
     }
 }
 
-const CAPABILITY_PROBES = {
+const TOOL_PROBES = {
     vips: {
         build: buildVipsProbeArgv,
         usable: isVipsUsable,
@@ -47,8 +47,7 @@ const CAPABILITY_PROBES = {
     },
     pdfcpu: {
         build: buildPdfcpuProbeArgv,
-        usable: isPdfcpuUsable,
-        flags: "--mode=strict"
+        usable: isPdfcpuUsable
     }
 };
 
@@ -59,7 +58,7 @@ function inspectTool(app, name) {
         return { tool: name, kind: "missing", path: "" };
     }
 
-    const capability = CAPABILITY_PROBES[name];
+    const capability = TOOL_PROBES[name];
 
     if (capability && !capability.usable(probe(app, capability.build(found)))) {
         return {

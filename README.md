@@ -27,7 +27,17 @@ The gate holds the artifact to that floor; `QA.md` describes how.
 brew install vips pdfcpu
 ```
 
-`vipsheader` is installed with `vips`.
+`vipsheader` is installed with `vips`. pdfcpu 0.16.1 or later is required;
+older releases and prerelease builds are unsupported. For an existing install:
+
+```sh
+brew update
+brew upgrade pdfcpu
+```
+
+Every pdfcpu command uses `--conf disable`, so the action uses built-in settings
+without reading or changing your pdfcpu configuration, user fonts or certificate
+store. Image-only PDFs do not need those resources.
 
 ## Install in Shortcuts
 
@@ -212,17 +222,12 @@ is missing something is told immediately, in one message naming every problem,
 with the command that fixes it — rather than after the settings have been
 filled in.
 
-The check is a capability probe, not a presence check. Each tool is run with
-the exact flags the pipeline uses, against a path that cannot exist: a build
-that understands the flags fails on the missing file, one that does not fails
-on the flag. That distinction matters, because pdfcpu changed how it parses
-flags — an older build is installed, on PATH, and rejects `--mode=strict` on
-every run with an error that points nowhere.
-
-A version comparison would be the wrong instrument here: `--export-profile` is
-a backward-compatible alias that current libvips no longer advertises but still
-accepts, so what matters is whether this build takes the flags, not what it is
-called.
+vips is checked with the exact flags the pipeline uses against a missing input.
+pdfcpu is checked using `pdfcpu version`, which does not load configuration, and
+must report a stable version at or above the release floor. Conversion and
+strict validation run with `--conf disable`; an old personal `config.yml` cannot
+block the action or change its output settings. No older pdfcpu command syntax
+or configuration migration is supported.
 
 ## Processing contract
 
@@ -312,7 +317,7 @@ the artifact on build, so that header is the one thing in it that is prose.
 ## Verifying a download
 
 Every file a release offers — the artifact, the checksum manifest and
-`INSTALL.txt` — is signed with a GitHub build attestation, which records that
+`INSTALL.txt` and `LICENSE` — is signed with a GitHub build attestation, which records that
 this repository's release workflow built it from a specific commit:
 
 ```sh
@@ -323,6 +328,18 @@ shasum --check SHA256SUMS
 The artifact is rebuilt on a clean runner during the release and required to
 reproduce the committed bytes exactly, so what is signed is both built by CI
 and identical to what is in the repository.
+
+## License
+
+First-party project files use the
+[Mozilla Public License 2.0](https://mozilla.org/MPL/2.0/) (`MPL-2.0`); see
+`LICENSE` for the notice and full terms. Dependencies retain their own licenses.
+
+When distributing covered files or modifications, preserve the license notices
+and provide the covered source under MPL 2.0 as required by the license.
+The standalone JXA header identifies the source for its version; the release
+includes `LICENSE`. The source files in the repository are the preferred form
+for modification; the generated bundle has its explanatory comments removed.
 
 ## Working on it
 

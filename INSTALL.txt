@@ -1,4 +1,4 @@
-IMAGE FILES TO PDF 1.5.3 - SHORTCUTS INSTALLATION
+IMAGE FILES TO PDF 1.5.4 - SHORTCUTS INSTALLATION
 
 Source, releases and build attestation:
 
@@ -22,12 +22,30 @@ macOS 12.3 or later.
 The Shortcuts app is macOS 12 and later; 12.3 is the point at which its
 JavaScript engine supports everything this action uses.
 
+License terms
+=============
+
+This project uses the Mozilla Public License 2.0 (MPL-2.0).
+The full text is supplied in LICENSE and at https://mozilla.org/MPL/2.0/.
+The JXA header links to the corresponding source. Keep its license and source
+notices when sharing the action.
+vips, pdfcpu and development dependencies retain their own licenses.
+
 Runtime tools
 =============
 
 Open Terminal and run:
 
     brew install vips pdfcpu
+
+Requires stable pdfcpu 0.16.1 or later; older releases and prereleases are
+unsupported. To upgrade an existing installation:
+
+    brew update
+    brew upgrade pdfcpu
+
+The action runs pdfcpu with --conf disable. It uses built-in settings without
+reading or changing your personal pdfcpu configuration.
 
 Install the Quick Action
 ========================

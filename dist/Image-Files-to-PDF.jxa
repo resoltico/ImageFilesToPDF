@@ -1,9 +1,14 @@
 /*
- * Image Files to PDF 1.5.3
+ * Image Files to PDF 1.5.4
  * https://github.com/resoltico/ImageFilesToPDF
  *
  * Copyright (c) 2026 Ervins Strauhmanis
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: MPL-2.0
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ * Source Code Form: https://github.com/resoltico/ImageFilesToPDF/tree/v1.5.4
  *
  * Generated file. Edit the sources and rebuild; changes made to this copy are
  * overwritten and are not covered by any test. Comments are stripped on build:
@@ -18,7 +23,7 @@
 /* ===== src/core/version.js ===== */
 
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.5.3";
+const VERSION = "1.5.4";
 
 /* ===== src/core/executables.js ===== */
 
@@ -1137,13 +1142,13 @@ function buildPdfcpuImportArgv(pdfcpuPath, outputPath, pagePaths, geometry) {
         "sc:1 rel"
     ].join(", ");
 
-    return [pdfcpuPath, "import", "--", description, outputPath].concat(
+    return [pdfcpuPath, "import", "--conf", "disable", "--", description, outputPath].concat(
         pagePaths
     );
 }
 
 function buildPdfcpuInfoArgv(pdfcpuPath, outputPath) {
-    return [pdfcpuPath, "info", outputPath];
+    return [pdfcpuPath, "info", "--conf", "disable", outputPath];
 }
 
 const PAGE_COUNT = /^\s*Page count:[ \t]*(?<value>[^\r\n]*)$/gmu;
@@ -1155,7 +1160,7 @@ function readPageCountFrom(infoOutput) {
 }
 
 function buildPdfcpuValidateArgv(pdfcpuPath, outputPath) {
-    return [pdfcpuPath, "validate", "--mode=strict", outputPath];
+    return [pdfcpuPath, "validate", "--conf", "disable", "--mode=strict", outputPath];
 }
 
 /* ===== src/core/batching.js ===== */
@@ -1198,9 +1203,10 @@ function batchPages(pagePaths, fixedArgv, budget = COMMAND_BUDGET_BYTES) {
 /* ===== src/core/preflight.js ===== */
 
 
+const MINIMUM_PDFCPU_VERSION = "0.16.1";
+
 const PROBE_IMAGE = "/nonexistent-image-files-to-pdf-preflight.png";
 const PROBE_OUTPUT = "/nonexistent-image-files-to-pdf-preflight.v";
-const PROBE_PDF = "/nonexistent-image-files-to-pdf-preflight.pdf";
 const PROBE_WIDTH = "10";
 
 function buildVipsProbeArgv(vipsPath) {
@@ -1218,7 +1224,7 @@ function buildVipsProbeArgv(vipsPath) {
 }
 
 function buildPdfcpuProbeArgv(pdfcpuPath) {
-    return [pdfcpuPath, "validate", "--mode=strict", PROBE_PDF];
+    return [pdfcpuPath, "version"];
 }
 
 function isVipsUsable(probeOutput) {
@@ -1226,7 +1232,22 @@ function isVipsUsable(probeOutput) {
 }
 
 function isPdfcpuUsable(probeOutput) {
-    return /mode=strict/u.test(String(probeOutput));
+    const match = /^version: v(?<version>\d+\.\d+\.\d+)[ \t]*$/mu.exec(String(probeOutput));
+
+    if (!match) {
+        return false;
+    }
+
+    const actual = match.groups.version.split(".").map(Number);
+    const minimum = MINIMUM_PDFCPU_VERSION.split(".").map(Number);
+
+    for (let index = 0; index < minimum.length; index += 1) {
+        if (actual[index] !== minimum[index]) {
+            return actual[index] > minimum[index];
+        }
+    }
+
+    return true;
 }
 
 const INSTALL_COMMAND = "brew install vips pdfcpu";
@@ -1237,15 +1258,23 @@ function describeProblem(problem) {
         return `- ${problem.tool} is not installed.`;
     }
 
+    if (problem.tool === "pdfcpu") {
+        return `- pdfcpu could not report a supported stable version. ` +
+            `Version ${MINIMUM_PDFCPU_VERSION} or later is required.`;
+    }
+
     return `- ${problem.tool} is installed but too old: it does not accept ` +
         `${problem.flags}.`;
 }
 
 function describeSetupProblems(problems, hasHomebrew) {
+    const commands = problems.some((problem) => problem.kind === "unusable")
+        ? `${INSTALL_COMMAND}\nbrew upgrade vips pdfcpu`
+        : INSTALL_COMMAND;
     const remedy = hasHomebrew
-        ? `Run this in Terminal:\n\n${INSTALL_COMMAND}`
+        ? `Run this in Terminal:\n\n${commands}`
         : `Install Homebrew first, from ${HOMEBREW_URL}\n\n` +
-            `then run:\n\n${INSTALL_COMMAND}`;
+            `then run:\n\n${commands}`;
 
     return `Setup needed.\n\n${problems.map(describeProblem).join("\n")}\n\n${remedy}`;
 }
@@ -1511,13 +1540,13 @@ function probe(app, argv) {
 
 function hasHomebrew(app) {
     try {
-        return Boolean(app.doShellScript("command -v brew 2>/dev/null || true"));
+        return Boolean(app.doShellScript(`PATH=${shellQuote(TOOL_SEARCH_PATH)}; command -v brew 2>/dev/null || true`));
     } catch {
         return false;
     }
 }
 
-const CAPABILITY_PROBES = {
+const TOOL_PROBES = {
     vips: {
         build: buildVipsProbeArgv,
         usable: isVipsUsable,
@@ -1525,8 +1554,7 @@ const CAPABILITY_PROBES = {
     },
     pdfcpu: {
         build: buildPdfcpuProbeArgv,
-        usable: isPdfcpuUsable,
-        flags: "--mode=strict"
+        usable: isPdfcpuUsable
     }
 };
 
@@ -1537,7 +1565,7 @@ function inspectTool(app, name) {
         return { tool: name, kind: "missing", path: "" };
     }
 
-    const capability = CAPABILITY_PROBES[name];
+    const capability = TOOL_PROBES[name];
 
     if (capability && !capability.usable(probe(app, capability.build(found)))) {
         return {

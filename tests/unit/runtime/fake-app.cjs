@@ -56,9 +56,10 @@ function cannedAnswer(app, command) {
         return String(app[field[1]] ?? field[2]);
     }
 
-    if (command.includes("nonexistent-image-files-to-pdf-preflight")) {
+    if (command.includes("nonexistent-image-files-to-pdf-preflight") ||
+        (command.includes("pdfcpu") && command.includes("'version'"))) {
         return command.includes("pdfcpu")
-            ? "validating(mode=strict) ... no such file"
+            ? "version: v0.16.1"
             : "VipsForeignLoad: file does not exist";
     }
 

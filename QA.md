@@ -34,15 +34,16 @@ alongside.
 ## Preflight
 
 The external tools are checked before the user is asked anything, and every
-problem is reported together. The checks are capability probes rather than
-presence or version tests: each tool runs with the flags the pipeline uses
-against a path that cannot exist, and the failure it gives back says whether
-it understood them.
+problem is reported together. vips is probed with the pipeline flags against a
+missing input. pdfcpu must report a stable release at or above the supported
+floor; its version command does not load configuration.
 
-Covered by tests: a healthy machine, each tool missing individually and all at
-once, a tool present but too old for `--mode=strict` or `--export-profile`, a
-probe that cannot run at all, and a machine without Homebrew. The tests also
-assert that no dialog is shown before the checks complete.
+Covered by tests: a healthy machine, missing tools, unsupported and prerelease
+pdfcpu versions, vips without the required flags, probes that cannot run, and
+Homebrew discovery. No dialog is shown before the checks complete. The macOS
+integration gate supplies an incompatible personal pdfcpu configuration and
+checks that conversion succeeds without modifying it; a negative control
+confirms that ordinary configuration-dependent pdfcpu commands reject it.
 
 ## What the artifact says about itself
 
@@ -59,7 +60,10 @@ README and INSTALL.txt — and the gate refuses them if they disagree, because a
 stale address in the file a user follows is worse than no address.
 
 Verified to fail: a README naming a different repository, and a `LICENSE` that
-no longer carries a copyright line to quote.
+no longer carries a copyright line to quote. Licensing tests check MPL metadata,
+its project-wide notice, and the preserved MPL and version-specific source
+notices in the standalone artifact. LICENSE is included in the release upload,
+attestation subjects and attestation verification loop.
 
 ## Comments in the artifact
 
@@ -865,9 +869,9 @@ exactly. That is what makes the attestation worth having: what is signed was
 both built by CI and is identical to what was reviewed in the repository.
 
 Every file the release offers is an attested subject: the artifact, the
-checksum manifest and INSTALL.txt. Attesting only the manifest would cover what
-the manifest lists and leave the manifest and the instructions uncovered, and
-all three are things a person downloads and acts on.
+checksum manifest, INSTALL.txt and LICENSE. Attesting only the manifest would
+cover what it lists and leave the other release files uncovered, although each
+is a file a person downloads and relies on.
 
 That job installs nothing. It holds the write and signing permissions, so the
 less code that runs there the better, and all it needs is the release notes out
@@ -2006,7 +2010,8 @@ to fail when the fix is reverted:
 | Defect | Caught by |
 | --- | --- |
 | `--headless` not recognised through `osascript`'s `--` separator | unit + integration |
-| `pdfcpu validate -mode strict` rejected by pflag | unit + integration |
+| pdfcpu commands loading an incompatible personal configuration | unit + integration |
+| Unsupported pdfcpu release accepted by setup | unit + integration |
 | `colourspace srgb` ignoring embedded ICC profiles | unit + integration |
 | `--size=both` upscaling small images | unit + integration |
 | Stale `dist/` passing the gate | gate ordering |

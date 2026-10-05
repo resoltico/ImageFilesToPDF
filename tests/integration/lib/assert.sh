@@ -59,7 +59,7 @@ assert_page_size() {
 assert_valid_pdf() {
     local report
     test -s "$1"
-    pdfcpu validate --mode=strict "$1"
+    pdfcpu validate --conf disable --mode=strict "$1"
 
     # Kept rather than discarded: a bare non-zero exit aborts the run with
     # nothing to read, and qpdf's whole value here is what it says.

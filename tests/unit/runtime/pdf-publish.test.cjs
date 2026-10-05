@@ -16,7 +16,7 @@ test("createAndValidatePdf imports then validates strictly", () => {
 
     assert.match(ordered[0], /'import'/u);
     assert.match(ordered[1], /'info'/u);
-    assert.match(ordered[2], /'validate' '--mode=strict'/u);
+    assert.match(ordered[2], /'validate' '--conf' 'disable' '--mode=strict'/u);
 });
 
 test("a stale partial file is cleared before the PDF is built", () => {

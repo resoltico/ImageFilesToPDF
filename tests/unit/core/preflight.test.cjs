@@ -20,11 +20,9 @@ test("the vips probe uses the flags the pipeline depends on", () => {
     assert.ok(argv.some((argument) => /nonexistent/u.test(argument)));
 });
 
-test("the pdfcpu probe uses the flag form the pipeline depends on", () => {
-    const argv = buildPdfcpuProbeArgv("/opt/homebrew/bin/pdfcpu");
-
-    assert.deepEqual(argv.slice(1, 3), ["validate", "--mode=strict"]);
-    assert.ok(/nonexistent/u.test(argv[3]));
+test("the pdfcpu version probe does not load user configuration", () => {
+    assert.deepEqual(buildPdfcpuProbeArgv("/opt/homebrew/bin/pdfcpu"),
+        ["/opt/homebrew/bin/pdfcpu", "version"]);
 });
 
 test("vips is usable when it got as far as reaching for the file", () => {
@@ -43,12 +41,16 @@ test("a vips that said nothing at all is not usable", () => {
     assert.equal(isVipsUsable("dyld: Library not loaded: libvips.42.dylib"), false);
 });
 
-test("pdfcpu is usable only when it echoes the mode it understood", () => {
-    assert.equal(isPdfcpuUsable("validating(mode=strict) /x.pdf ..."), true);
-    // The older parser reads the flag as a filename instead.
-    assert.equal(isPdfcpuUsable('strict needs extension ".pdf".'), false);
-    assert.equal(isPdfcpuUsable("mode must be one of: r(elaxed), s(trict)"), false);
-    assert.equal(isPdfcpuUsable(""), false);
+test("pdfcpu requires a stable release at or above the release floor", () => {
+    for (const version of ["0.16.1", "0.16.2", "0.17.0", "1.0.0"]) {
+        assert.equal(isPdfcpuUsable(`version: v${version}\n commit: Homebrew`), true);
+    }
+    for (const version of ["0.16.0", "0.15.99", "0.12.1", "0.16.1-rc.1", "0.17.0-dev"]) {
+        assert.equal(isPdfcpuUsable(`version: v${version}`), false);
+    }
+    for (const output of ["", "Segmentation fault", "configuration reset required", "version: v0.16.1junk"]) {
+        assert.equal(isPdfcpuUsable(output), false);
+    }
 });
 
 test("a missing tool is described plainly, with the command that fixes it", () => {
@@ -62,16 +64,17 @@ test("a missing tool is described plainly, with the command that fixes it", () =
     assert.match(message, /brew install vips pdfcpu/u);
 });
 
-test("an outdated tool says so, and names the flags it lacks", () => {
+test("unsupported pdfcpu reports its release requirement and upgrade command", () => {
     // "Installed" and "works" are different things, and the difference is
     // exactly what sends someone chasing a validation error instead.
     const message = describeSetupProblems(
-        [{ tool: "pdfcpu", kind: "unusable", flags: "--mode=strict" }],
+        [{ tool: "pdfcpu", kind: "unusable", flags: "version" }],
         true
     );
 
-    assert.match(message, /pdfcpu is installed but too old/u);
-    assert.match(message, /--mode=strict/u);
+    assert.match(message, /pdfcpu could not report a supported stable version/u);
+    assert.match(message, /Version 0\.16\.1 or later is required/u);
+    assert.match(message, /brew upgrade vips pdfcpu/u);
 });
 
 test("every problem is reported at once, not just the first", () => {
@@ -79,7 +82,7 @@ test("every problem is reported at once, not just the first", () => {
         [
             { tool: "vips", kind: "missing" },
             { tool: "vipsheader", kind: "missing" },
-            { tool: "pdfcpu", kind: "unusable", flags: "--mode=strict" }
+            { tool: "pdfcpu", kind: "unusable", flags: "version" }
         ],
         true
     );
@@ -89,7 +92,7 @@ test("every problem is reported at once, not just the first", () => {
     assert.deepEqual(message.split("\n\n")[1].split("\n"), [
         "- vips is not installed.",
         "- vipsheader is not installed.",
-        "- pdfcpu is installed but too old: it does not accept --mode=strict."
+        "- pdfcpu could not report a supported stable version. Version 0.16.1 or later is required."
     ]);
 });
 
@@ -107,8 +110,7 @@ test("the probes name a file that cannot exist", () => {
     // fails on the file and one that does not fails on the flag. An empty or
     // plausible path would make the probe a real conversion.
     const argvs = [
-        buildVipsProbeArgv("/v/vips"),
-        buildPdfcpuProbeArgv("/v/pdfcpu")
+        buildVipsProbeArgv("/v/vips")
     ];
 
     for (const argv of argvs) {

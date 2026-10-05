@@ -19,11 +19,20 @@ source "$ROOT/tests/integration/lib/fixtures.sh"
 require_tools
 create_fixtures "$WORK"
 
+# A pre-schema configuration must block normal pdfcpu use, but never the action.
+# Keep this isolated from the user's actual configuration.
+export PDFCPU_CONFIG_ROOT="$WORK/config-root"
+mkdir -p "$PDFCPU_CONFIG_ROOT/pdfcpu"
+printf 'validationMode: relaxed\n' >"$WORK/config-before.yml"
+cp "$WORK/config-before.yml" "$PDFCPU_CONFIG_ROOT/pdfcpu/config.yml"
+if pdfcpu validate --mode=strict "$WORK/absent.pdf" >"$WORK/config.err" 2>&1; then
+    fail "the incompatible configuration negative control unexpectedly passed"
+fi
+grep -q "configuration reset required" "$WORK/config.err" ||
+    fail "the negative control did not reach the configuration schema check"
+
 # run_headless <config> <image>...
-#
-# Invoked with osascript's "--" separator, which osascript forwards into
-# run(). The runtime must still recognise --headless, or this blocks on a GUI
-# dialog instead of running.
+# osascript forwards "--" into run(); --headless must still be recognized.
 run_headless() {
     osascript -l JavaScript "$SCRIPT" -- --headless "$@" >/dev/null
 }
@@ -35,6 +44,21 @@ run_headless() {
 write_config "$WORK/combined.json" A4 Portrait "Single PDF" "#FFFFFF" 20260904_010203
 run_headless "$WORK/combined.json" \
     "$WORK/page 10 'quoted'.jpg" "$WORK/page 2.png"
+
+# Reject a previously supported release even when it reports a normal version.
+cat >"$WORK/pdfcpu-old" <<'SH'
+#!/bin/sh
+printf 'version: v0.16.0\n'
+SH
+chmod +x "$WORK/pdfcpu-old"
+if IMAGE_FILES_TO_PDF_PDFCPU="$WORK/pdfcpu-old" \
+    osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/combined.json" \
+    "$WORK/page 2.png" >"$WORK/old.out" 2>"$WORK/old.err"; then
+    fail "an unsupported pdfcpu release was accepted"
+fi
+grep -q "Version 0.16.1 or later is required" "$WORK/old.err" ||
+    fail "the release refusal did not explain the requirement"
+test ! -e "$WORK/output_20260904_010203_2.pdf"
 
 COMBINED="$WORK/output_20260904_010203.pdf"
 assert_valid_pdf "$COMBINED"
@@ -81,8 +105,7 @@ assert_pixel "$WORK/colour.png" 297 421 224 16 16 18 \
     "Display P3 source must be ICC-converted, not passed through"
 
 # ---------------------------------------------------------------------------
-# A 64x64 source centred on a 595x842 page covers only the middle. If the
-# thumbnail stage upscales, it would span the full page width instead.
+# A 64px source must cover only the middle of the page.
 # ---------------------------------------------------------------------------
 
 write_config "$WORK/tiny.json" A4 Portrait "Single PDF" "#FFFFFF" 20260904_040506
@@ -95,8 +118,7 @@ assert_pixel "$WORK/tiny-page.png" 397 421 255 255 255 10 \
     "a 64px source must not be upscaled to fill the page"
 
 # ---------------------------------------------------------------------------
-# A HEIC, the format an iPhone actually produces, and a multi-page TIFF, which
-# vips would otherwise read the first page of without saying so.
+# Accept iPhone HEIC; refuse multi-page TIFF instead of losing pages.
 # ---------------------------------------------------------------------------
 
 write_config "$WORK/heic.json" A4 Portrait "Single PDF" "#FFFFFF" 20260904_070809
@@ -124,4 +146,5 @@ test -s "$WORK/output_20260904_050607.pdf"
 test "$(vipsheader -f width "$WORK/tiny.png")" = 64
 test "$(vipsheader -f width "$WORK/page 2.png")" = 900
 
+cmp "$WORK/config-before.yml" "$PDFCPU_CONFIG_ROOT/pdfcpu/config.yml"
 printf 'macOS JXA integration passed\n'

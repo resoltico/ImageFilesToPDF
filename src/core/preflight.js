@@ -3,23 +3,14 @@
 const { FAIL_ON_DAMAGE } = require("./commands.js");
 
 /*
- * Capability probes for the external tools.
- *
- * Presence is not enough. pdfcpu changed how it parses flags, so a build that
- * is installed and on PATH can still reject `--mode=strict` and fail every run
- * at validation with a message that points at nothing. A version comparison
- * would be the wrong instrument: `--export-profile` is a backward-compatible
- * alias that newer libvips no longer advertises but still accepts, so the
- * question is whether this build takes the flags we use, not what it is called.
- *
- * Each probe therefore runs the real tool with the real flags against a path
- * that cannot exist. A tool that understands the flags fails on the missing
- * file; one that does not fails on the flag, and says so differently.
+ * vips is probed with the required flags against a missing input. pdfcpu has
+ * a release floor: version does not load or initialize user configuration.
  */
+
+const MINIMUM_PDFCPU_VERSION = "0.16.1";
 
 const PROBE_IMAGE = "/nonexistent-image-files-to-pdf-preflight.png";
 const PROBE_OUTPUT = "/nonexistent-image-files-to-pdf-preflight.v";
-const PROBE_PDF = "/nonexistent-image-files-to-pdf-preflight.pdf";
 const PROBE_WIDTH = "10";
 
 function buildVipsProbeArgv(vipsPath) {
@@ -37,7 +28,7 @@ function buildVipsProbeArgv(vipsPath) {
 }
 
 function buildPdfcpuProbeArgv(pdfcpuPath) {
-    return [pdfcpuPath, "validate", "--mode=strict", PROBE_PDF];
+    return [pdfcpuPath, "version"];
 }
 
 /*
@@ -54,13 +45,24 @@ function isVipsUsable(probeOutput) {
     return /VipsForeignLoad/u.test(String(probeOutput));
 }
 
-/*
- * pdfcpu echoes "validating(mode=strict)" once it has understood the flag.
- * The older parser reads `--mode=strict` as a filename and complains that
- * "strict needs extension .pdf" instead.
- */
+/* Stable releases only; an unrecognised or prerelease version fails closed. */
 function isPdfcpuUsable(probeOutput) {
-    return /mode=strict/u.test(String(probeOutput));
+    const match = /^version: v(?<version>\d+\.\d+\.\d+)[ \t]*$/mu.exec(String(probeOutput));
+
+    if (!match) {
+        return false;
+    }
+
+    const actual = match.groups.version.split(".").map(Number);
+    const minimum = MINIMUM_PDFCPU_VERSION.split(".").map(Number);
+
+    for (let index = 0; index < minimum.length; index += 1) {
+        if (actual[index] !== minimum[index]) {
+            return actual[index] > minimum[index];
+        }
+    }
+
+    return true;
 }
 
 const INSTALL_COMMAND = "brew install vips pdfcpu";
@@ -71,20 +73,28 @@ function describeProblem(problem) {
         return `- ${problem.tool} is not installed.`;
     }
 
+    if (problem.tool === "pdfcpu") {
+        return `- pdfcpu could not report a supported stable version. ` +
+            `Version ${MINIMUM_PDFCPU_VERSION} or later is required.`;
+    }
+
     return `- ${problem.tool} is installed but too old: it does not accept ` +
         `${problem.flags}.`;
 }
 
 /*
- * One message listing everything that is wrong, and one command that fixes it.
+ * One message lists every problem and the installation or upgrade commands.
  * Reporting only the first problem makes the user install, retry, and discover
  * the next one.
  */
 function describeSetupProblems(problems, hasHomebrew) {
+    const commands = problems.some((problem) => problem.kind === "unusable")
+        ? `${INSTALL_COMMAND}\nbrew upgrade vips pdfcpu`
+        : INSTALL_COMMAND;
     const remedy = hasHomebrew
-        ? `Run this in Terminal:\n\n${INSTALL_COMMAND}`
+        ? `Run this in Terminal:\n\n${commands}`
         : `Install Homebrew first, from ${HOMEBREW_URL}\n\n` +
-            `then run:\n\n${INSTALL_COMMAND}`;
+            `then run:\n\n${commands}`;
 
     return `Setup needed.\n\n${problems.map(describeProblem).join("\n")}\n\n${remedy}`;
 }

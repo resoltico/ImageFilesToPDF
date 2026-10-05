@@ -6,10 +6,10 @@
  * unfailable, and a stage that silently produced nothing would go unnoticed.
  *
  *   vips <operation> <in> <out> ...
- *   pdfcpu import -- <description> <out> <page>...
+ *   pdfcpu import --conf disable -- <description> <out> <page>...
  */
 
-const IMPORT_PAGES_START = 5;
+const IMPORT_PAGES_START = 7;
 
 /*
  * pdfcpu appends to a PDF that already exists, so its page count is what
@@ -17,7 +17,7 @@ const IMPORT_PAGES_START = 5;
  * not tell a batch that appended nothing from one that worked.
  */
 function importPages(state, argv) {
-    const [target] = argv.slice(4);
+    const [target] = argv.slice(6);
 
     state.files.add(target);
     state.pages.set(

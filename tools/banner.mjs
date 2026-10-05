@@ -13,7 +13,7 @@
  * notice.
  */
 
-const COPYRIGHT = /^Copyright \(c\) (?<value>.+)$/mu;
+const COPYRIGHT = /^Copyright \(c\) (?<value>.+)/mu;
 
 export function copyrightFrom(license) {
     const match = COPYRIGHT.exec(license);
@@ -43,9 +43,8 @@ export async function readMetadata(read, minimumMacos) {
 }
 
 /*
- * SPDX rather than the full notice: an identifier is unambiguous, machine
- * readable, and one line, and the text it names is a click away at a URL the
- * banner already carries.
+ * The standalone artifact retains the MPL notice and the source location for
+ * its version even when copied without the repository or release assets.
  */
 export function renderBanner(meta) {
     return `/*
@@ -54,6 +53,11 @@ export function renderBanner(meta) {
  *
  * Copyright (c) ${meta.copyright}
  * SPDX-License-Identifier: ${meta.license}
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ * Source Code Form: ${meta.homepage}/tree/v${meta.version}
  *
  * Generated file. Edit the sources and rebuild; changes made to this copy are
  * overwritten and are not covered by any test. Comments are stripped on build:

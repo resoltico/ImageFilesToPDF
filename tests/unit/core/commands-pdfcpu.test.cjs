@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
+    buildPdfcpuInfoArgv,
     readPageCountFrom,
     buildPdfcpuImportArgv,
     buildPdfcpuValidateArgv
@@ -24,6 +25,8 @@ test("pdfcpu import describes the page and preserves page order", () => {
         [
             "pdfcpu",
             "import",
+            "--conf",
+            "disable",
             "--",
             "dim:595.28 841.89, pos:c, sc:1 rel",
             "/tmp/output.pdf",
@@ -44,14 +47,14 @@ test("pdfcpu import requires at least one page", () => {
     );
 });
 
-test("pdfcpu validate uses the only flag form pflag accepts", () => {
-    // pflag reads "-mode strict" as the short cluster "-m ode" and then takes
-    // "strict" for a filename; "--mode strict" is rejected outright.
-    const argv = buildPdfcpuValidateArgv("pdfcpu", "/tmp/output.pdf");
+test("pdfcpu validation is strict and independent of user configuration", () => {
+    assert.deepEqual(buildPdfcpuValidateArgv("pdfcpu", "/tmp/output.pdf"),
+        ["pdfcpu", "validate", "--conf", "disable", "--mode=strict", "/tmp/output.pdf"]);
+});
 
-    assert.deepEqual(argv, ["pdfcpu", "validate", "--mode=strict", "/tmp/output.pdf"]);
-    assert.ok(!argv.includes("-mode"));
-    assert.ok(!argv.includes("strict"));
+test("pdfcpu page counting is independent of user configuration", () => {
+    assert.deepEqual(buildPdfcpuInfoArgv("pdfcpu", "/tmp/output.pdf"),
+        ["pdfcpu", "info", "--conf", "disable", "/tmp/output.pdf"]);
 });
 
 test("a PDF that reports no page count reads as none", () => {

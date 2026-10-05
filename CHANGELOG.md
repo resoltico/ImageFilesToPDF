@@ -4,6 +4,30 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.5.4] - 2026-10-05
+
+### Changed
+
+- Starting with 1.5.4, first-party project files are licensed under Mozilla
+  Public License 2.0 (`MPL-2.0`). Earlier published versions remain under MIT;
+  dependencies retain their own licenses. Distributors must preserve notices
+  and make covered source and modifications available as required by MPL 2.0.
+- The standalone JXA header includes the MPL notice and a link to the source
+  for its version. Releases include the full `LICENSE` as an attested asset.
+- **Breaking:** pdfcpu 0.16.1 or later is required. Older releases and prerelease
+  builds are unsupported; run `brew update` and `brew upgrade pdfcpu` to upgrade.
+- PDF creation, page counting and strict validation use pdfcpu's stateless
+  `--conf disable` mode. Personal pdfcpu settings, fonts and certificates are
+  no longer loaded.
+
+### Fixed
+
+- An incompatible personal pdfcpu configuration no longer produces a false
+  "installed but too old" setup error. Setup checks the supported release floor
+  without loading configuration and includes an upgrade command when needed.
+- Setup recognizes Homebrew in its standard installation locations when
+  Shortcuts provides a minimal PATH.
+
 ## [1.5.3] - 2026-09-27
 
 ### Changed

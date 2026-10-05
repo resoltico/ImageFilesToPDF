@@ -59,11 +59,11 @@ test("a tool that is present but too old is reported as such", () => {
     // rejects the flag the pipeline uses on every single run.
     const host = createFakeHost({});
 
-    host.preflight = 'strict needs extension ".pdf".';
+    host.preflight = "version: v0.16.0";
 
     assert.throws(() => checkTools(host), (error) => {
-        assert.match(error.message, /pdfcpu is installed but too old/u);
-        assert.match(error.message, /--mode=strict/u);
+        assert.match(error.message, /pdfcpu could not report a supported stable version/u);
+        assert.match(error.message, /Version 0\.16\.1 or later is required/u);
 
         return true;
     });
@@ -115,14 +115,15 @@ test("a probe that cannot run at all is treated as unusable", () => {
     const inner = host.doShellScript;
 
     host.doShellScript = (command) => {
-        if (command.includes("nonexistent-image-files-to-pdf-preflight")) {
+        if (command.includes("nonexistent-image-files-to-pdf-preflight") ||
+            command.includes("'version'")) {
             throw new Error("could not spawn");
         }
 
         return inner(command);
     };
 
-    assert.throws(() => checkTools(host), /pdfcpu is installed but too old/u);
+    assert.throws(() => checkTools(host), /pdfcpu could not report a supported stable version/u);
 });
 
 test("a failing Homebrew check is treated as Homebrew being absent", () => {

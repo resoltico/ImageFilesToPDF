@@ -32,15 +32,15 @@ const INSTALLED_TOOLS = [
 ];
 
 /*
- * The preflight probes deliberately name a file that cannot exist; a
- * healthy tool answers about the file, not about the flags. A test can
- * override `preflight` to stand in for an outdated tool, or `brew` for a
+ * vips answers about the missing probe file; pdfcpu reports its version.
+ * A test can override `preflight` to stand in for an unusable tool, or `brew` for a
  * machine without Homebrew.
  */
 function setupAnswer(host, command) {
-    if (command.includes("nonexistent-image-files-to-pdf-preflight")) {
+    if (command.includes("nonexistent-image-files-to-pdf-preflight") ||
+        (command.includes("pdfcpu") && command.includes("'version'"))) {
         return host.preflight ?? (command.includes("pdfcpu")
-            ? "validating(mode=strict) ... no such file"
+            ? "version: v0.16.1"
             : "VipsForeignLoad: file does not exist");
     }
 

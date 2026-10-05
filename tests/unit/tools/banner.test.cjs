@@ -14,10 +14,10 @@ const load = () => import("../../../tools/banner.mjs");
 const FILES = {
     "package.json": JSON.stringify({
         version: "9.9.9",
-        license: "MIT",
+        license: "MPL-2.0",
         homepage: "https://github.com/someone/Project"
     }),
-    LICENSE: "MIT License\n\nCopyright (c) 2026 Someone\n\nPermission is...\n"
+    LICENSE: "Mozilla Public License Version 2.0\n\nCopyright (c) 2026 Someone\n\nThis Source Code Form is subject to the terms...\n"
 };
 
 const read = (relative) => Promise.resolve(FILES[relative]);
@@ -29,7 +29,10 @@ test("the banner is quoted from the repository, not retyped", async () => {
     assert.match(banner, /Image Files to PDF 9\.9\.9/u);
     assert.match(banner, /https:\/\/github\.com\/someone\/Project/u);
     assert.match(banner, /Copyright \(c\) 2026 Someone/u);
-    assert.match(banner, /SPDX-License-Identifier: MIT/u);
+    assert.match(banner, /SPDX-License-Identifier: MPL-2\.0/u);
+    assert.match(banner, /This Source Code Form is subject to the terms/u);
+    assert.match(banner, /https:\/\/mozilla\.org\/MPL\/2\.0\//u);
+    assert.match(banner, /Source Code Form: https:\/\/github\.com\/someone\/Project\/tree\/v9\.9\.9/u);
     assert.match(banner, /Requires macOS 12\.3 or later/u);
 });
 
@@ -59,7 +62,7 @@ test("a LICENSE that stops naming a holder is an error, not a blank", async () =
     await assert.rejects(
         () => readMetadata(
             (relative) => Promise.resolve(
-                relative === "LICENSE" ? "MIT License\n" : FILES[relative]
+                relative === "LICENSE" ? "Mozilla Public License Version 2.0\n" : FILES[relative]
             ),
             "12.3"
         ),
@@ -71,7 +74,7 @@ test("the copyright is taken whole, however it is worded", async () => {
     const { copyrightFrom } = await load();
 
     assert.equal(
-        copyrightFrom("MIT License\n\nCopyright (c) 2019-2026 A. Person and others  \n"),
+        copyrightFrom("Mozilla Public License Version 2.0\n\nCopyright (c) 2019-2026 A. Person and others  \n"),
         "2019-2026 A. Person and others"
     );
 });
@@ -83,7 +86,7 @@ test("the notice line is taken, not a sentence that mentions it", async () => {
 
     assert.equal(
         copyrightFrom([
-            "MIT License",
+            "Mozilla Public License Version 2.0",
             "",
             "Retain the Copyright (c) notice in every copy.",
             "",

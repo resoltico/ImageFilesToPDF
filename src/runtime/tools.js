@@ -79,4 +79,4 @@ function findTool(app, executableName) {
     return searchPath(app, executableName);
 }
 
-module.exports = { TOOL_NAMES, findTool };
+module.exports = { TOOL_NAMES, TOOL_SEARCH_PATH, findTool };
