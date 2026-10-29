@@ -2,46 +2,63 @@
 
 ## Reporting
 
-This is a personal tool with no support commitment. Open an issue, or contact
-the author directly if the problem should not be public first.
+This personal project has no support commitment. Use the repository issue tracker
+for public reports. Request a private reporting channel before sharing sensitive
+files, paths or details in an issue.
 
-## What the tool does with your files
+## File-safety boundary
 
-- Source images are read, never modified.
-- A selected folder is read through, and only images are taken from it. Links
-  are not followed, so a walk cannot leave the folder it was given. Application
-  packages and hidden items are passed over.
-- Output PDFs are written beside their source — beside the first selected image
-  for one combined PDF, beside each image for separate ones — and never
-  overwrite an existing file: the name is suffixed until it is free, and
-  publication is a non-clobbering `mv -n`, falling back to `cp -n` verified by
-  size, followed by a re-check.
-- Intermediates are held in a private `mktemp -d` directory and removed on
-  success and on failure. The directory is checked against the expected
-  `mktemp` shape before anything is removed recursively.
-- A finished PDF that cannot be published is the one exception: it is moved to
-  a recovery folder and the failure message says where, rather than being
-  deleted along with the workspace. It has been imported and validated by that
-  point, so removing it would destroy completed work over a naming clash.
-- Nothing is sent anywhere. The tool makes no network requests.
+Source images are read and copied, never modified by the action. Folder traversal
+does not follow links or enter packages; hidden entries are skipped by the walk.
+Explicit selection is validated independently. Required file-kind, package,
+identity and source-capture capabilities must be available; processing does not
+fall back to weaker checks.
 
-## Shell safety
+Each admitted source is captured into an owned private workspace. Inspection and
+decoding consume the same captured bytes. Required facts are checked around
+capture, and observed changes are refused. Coarse filesystem timestamps cannot
+establish an adversarial atomic snapshot of a changing original.
 
-Every external command is built as an argument vector and quoted through a
-single function (`src/core/shell.js`), so a filename can never be interpreted
-as shell syntax. That function rejects NUL bytes, and the unit tests execute
-hostile filenames — quotes, `$HOME; touch NO`, newlines, globs — through
-`/bin/sh` to confirm each argument survives as exactly one value.
+Publication uses native exact-path hard linking or exclusive rename of an owned
+destination copy. Only classified collisions are retried. Existing files,
+directories, pipes and links are not replaced or written inside. Native identity
+and size confirm the actual output before the validated workspace copy is
+released. Unsupported atomic-publication routes fail with recovery.
 
-ESLint runs in its strictest mode, which rejects `eval`, `new Function` and
-their implied forms. Every binary the action runs is named in
-`src/core/executables.js` and nowhere else, and the gate refuses an absolute
-executable path written anywhere else under `src/` — so the action's external
-surface is a file you can read rather than something to reassemble.
+One registered artifact lifecycle controls workspace retention. Validated,
+unconfirmed work remains owned through faults and cancellation. A recovery copy
+must succeed and pass native checks before the original is released. Uncertain
+validation candidates are identified separately from validated recoveries.
+Cleanup removes owned resources; it does not adopt paths based on spelling or
+infer ownership from an unknown existence result. Recovery and unresolved-work
+locations may intentionally remain in the system temporary directory.
 
-## The released file
+## Commands and trust
 
-Every file a release offers is signed with a GitHub build attestation, and the
-artifact is rebuilt on a clean runner during the release and required to
-reproduce the committed bytes exactly. `README.md` and `INSTALL.txt` give the
-command to check it.
+External commands use argument vectors quoted by
+`src/runtime/backend-shell.js`; NUL bytes are rejected. Executable names are
+centralized in `src/runtime/backend-executables.js`, with source rules restricting
+absolute executable paths elsewhere. Native publication uses numeric error
+classification and immediate native identity checks.
+
+The action runs with its host/user permissions and trusts the installed vips,
+pdfcpu and supporting system tools. Explicit backend overrides select trusted
+executable paths; they are not a sandbox. The action does not make network
+requests. Installing/updating tools and verifying GitHub attestations require
+network access.
+
+pdfcpu commands use `--conf disable`, without reading or changing personal
+configuration, fonts or certificate stores. Interactive preferences store page
+settings only, under `com.resoltico.ImageFilesToPDF`. Diagnostics can contain
+source/output paths and underlying commands; review them before sharing.
+
+## Distribution integrity
+
+The release workflow requires the generated artifact to reproduce committed
+bytes. It verifies checksums and build attestations before publication and checks
+that the tag still identifies the commit being released. The JXA, checksum
+manifest, installation instructions and license are attestation subjects.
+
+[README.md](README.md#verify-a-download) describes download verification.
+Checksums and attestations do not verify an installed pasted copy in Shortcuts;
+replace it with the complete verified artifact when installing a build.

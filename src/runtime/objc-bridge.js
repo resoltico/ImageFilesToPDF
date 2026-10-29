@@ -13,6 +13,8 @@
  * exists would be pointing its dependency at the wrong thing.
  */
 
+const MODAL_UNAVAILABLE = -1001;
+
 function appkitBridge(objc, ns) {
     if (!objc || !ns) {
         return null;
@@ -22,9 +24,11 @@ function appkitBridge(objc, ns) {
         objc.import("AppKit");
 
         return { objc, ns };
-    } catch {
-        return null;
+    } catch (error) {
+        // JXA's observed framework-not-found exception has no numeric code.
+        if (error?.name === "Error" && error.message === "nothing found to import") { return null; }
+        throw error;
     }
 }
 
-module.exports = { appkitBridge };
+module.exports = { appkitBridge, MODAL_UNAVAILABLE };

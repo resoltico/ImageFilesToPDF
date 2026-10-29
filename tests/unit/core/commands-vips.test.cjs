@@ -7,7 +7,7 @@ const {
     buildFlattenArgv,
     buildGravityArgv,
     hasAlphaBand
-} = require("../../../src/core/commands.js");
+} = require("../../../src/runtime/backend-commands.js");
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
 
 const geometry = calculatePageGeometry({
@@ -15,7 +15,7 @@ const geometry = calculatePageGeometry({
     orientation: "Portrait",
     dpi: 300,
     quality: 92,
-    mode: "Single PDF",
+    mode: "single",
     background: "#FFFFFF"
 });
 
@@ -97,24 +97,6 @@ test("gravity centres on the page and strips metadata", () => {
     );
 });
 
-test("gravity validates the quality it is given", () => {
-    assert.throws(
-        () => buildGravityArgv("vips", "a.v", "p.jpg", {
-            geometry,
-            quality: 0,
-            background: "#FFFFFF"
-        }),
-        /Quality must be/u
-    );
-    assert.throws(
-        () => buildGravityArgv("vips", "a.v", "p.jpg", {
-            geometry,
-            quality: 101,
-            background: "#FFFFFF"
-        }),
-        /Quality must be/u
-    );
-});
 
 test("hasAlphaBand reads the decoded image, not the extension", () => {
     assert.equal(hasAlphaBand(2), true, "grey + alpha");

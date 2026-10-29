@@ -29,7 +29,7 @@ vips copy "$WORK/tiny.svg" "$WORK/tiny.png"
 
 # render <stamp> <background> <image> <name>
 render() {
-    write_config "$WORK/config.json" A4 Portrait "Single PDF" "$2" "$1"
+    write_config "$WORK/config.json" A4 Portrait "single" "$2" "$1"
     osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$3" \
         >/dev/null 2>&1
     assert_valid_pdf "$WORK/output_$1.pdf"

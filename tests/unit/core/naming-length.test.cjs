@@ -10,8 +10,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { outputNameForSeparate, nextUniquePath } = require("../../../src/core/naming.js");
-const { utf8Length } = require("../../../src/core/numbers.js");
+const { outputNameForSeparate } = require("../../../src/core/naming.js");
+const { utf8Length } = require("../../../src/core/utf8.js");
 
 const BUDGET = 255;
 const TIMESTAMP = "20260907_010203";
@@ -52,16 +52,7 @@ test("the budget is counted in bytes, and never cuts a character in half", () =>
     }
 });
 
-test("there is room left for the collision suffix", () => {
-    // A name that fits only until it needs _2 is a name that fits until the
-    // second run of the day.
-    const name = nameFor("x".repeat(300));
-    const taken = new Set([`/a/${name}`]);
-    const next = nextUniquePath(`/a/${name}`, (path) => taken.has(path));
 
-    assert.ok(utf8Length(next.slice("/a/".length)) <= BUDGET, next.length);
-    assert.ok(next.endsWith("_2.pdf"));
-});
 
 test("the room reserved follows the timestamp it is given", () => {
     // A headless caller supplies its own, and a constant reserve would
@@ -80,29 +71,4 @@ test("a stem cut short does not end in a dot or an underscore", () => {
         /[._]_20260907_010203\.pdf$/u
     );
     assert.match(nameFor("a".repeat(300)), /^a+_20260907_010203\.pdf$/u);
-});
-
-test("a newline in the parent folder does not stop the numbering", () => {
-    // The extension is read off the end rather than matched across the whole
-    // path: a pattern could not reach it past a newline, and a folder with
-    // one in its name is a folder this action handles everywhere else.
-    const taken = new Set(["/Scans\n2026/photo.pdf"]);
-
-    assert.equal(
-        nextUniquePath("/Scans\n2026/photo.pdf", (path) => taken.has(path)),
-        "/Scans\n2026/photo_2.pdf"
-    );
-});
-
-test("a name that is not a PDF is refused rather than numbered", () => {
-    assert.throws(
-        () => nextUniquePath("/a/notes.txt", () => true),
-        /Cannot generate a unique PDF path/u
-    );
-});
-
-test("the extension is matched whatever its case", () => {
-    const taken = new Set(["/a/b.PDF"]);
-
-    assert.equal(nextUniquePath("/a/b.PDF", (path) => taken.has(path)), "/a/b_2.PDF");
 });

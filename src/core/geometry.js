@@ -1,6 +1,5 @@
 "use strict";
 
-const { normalizeSettings } = require("./settings.js");
 const {
     POINTS_PER_INCH,
     PAGE_DEFINITIONS
@@ -11,9 +10,8 @@ const {
  * canvas scales. That way the published PDF is always precisely A4 or Letter.
  */
 function calculatePageGeometry(settings) {
-    const normalized = normalizeSettings(settings);
-    const definition = PAGE_DEFINITIONS[normalized.paperSize];
-    const portrait = normalized.orientation !== "Landscape";
+    const definition = PAGE_DEFINITIONS[settings.paperSize];
+    const portrait = settings.orientation !== "Landscape";
     const widthPoints = portrait
         ? definition.widthPoints
         : definition.heightPoints;
@@ -22,11 +20,11 @@ function calculatePageGeometry(settings) {
         : definition.widthPoints;
 
     return {
-        widthPixels: Math.round(widthPoints / POINTS_PER_INCH * normalized.dpi),
-        heightPixels: Math.round(heightPoints / POINTS_PER_INCH * normalized.dpi),
+        widthPixels: Math.round(widthPoints / POINTS_PER_INCH * settings.dpi),
+        heightPixels: Math.round(heightPoints / POINTS_PER_INCH * settings.dpi),
         widthPoints,
         heightPoints,
-        dpi: normalized.dpi
+        dpi: settings.dpi
     };
 }
 

@@ -72,7 +72,7 @@ test("the graph walk sees a package when there is one", () => {
     reach("tools/build.mjs", seen, bare);
 
     assert.ok(
-        [...bare.keys()].includes("acorn"),
-        `the builder does reach acorn: ${[...bare.keys()]}`
+        [...bare.keys()].includes("esbuild"),
+        `the builder does reach esbuild: ${[...bare.keys()]}`
     );
 });

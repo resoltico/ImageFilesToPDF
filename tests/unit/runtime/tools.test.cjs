@@ -23,13 +23,9 @@ test("an unset environment variable is not an error", () => {
     assert.equal(findTool(app, "vips"), HOMEBREW);
 });
 
-test("an override that is not executable is ignored", () => {
-    const app = createFakeApp([
-        ["printenv", "/custom/vips\n"],
-        ["'/custom/vips'", failing("1")]
-    ]);
-
-    assert.equal(findTool(app, "vips"), HOMEBREW);
+test("an invalid explicit override fails instead of selecting a different tool", () => {
+    const app = createFakeApp([["printenv", "/custom/vips\n"],["'/custom/vips'", failing("1")]]);
+    assert.throws(() => findTool(app, "vips"), /Requested vips is not executable: \/custom\/vips/u);
 });
 
 test("the first executable candidate is used", () => {
@@ -132,4 +128,24 @@ test("the direct candidates cover the same three package prefixes", () => {
         "/usr/local/bin/pdfcpu",
         "/opt/local/bin/pdfcpu"
     ]);
+});
+
+test("an explicitly empty override is refused instead of falling back",()=>{
+    const app=createFakeApp([["printenv",""]]);
+    assert.throws(()=>findTool(app,"vips"),/empty path/u);
+});
+
+test("unexpected environment read failure and cancellation cannot choose another tool",()=>{
+    for(const number of [126,-128]){
+        const error=Object.assign(new Error("unavailable"),{errorNumber:number});
+        const app=createFakeApp([["printenv",error]]);
+        assert.throws(()=>findTool(app,"vips"));
+    }
+});
+
+test("PATH-search faults and native stop requests cannot disappear as missing tools",()=>{
+    for(const error of [new TypeError("bad bridge"),new ReferenceError("bad bridge"),Object.assign(new Error("stop"),{errorNumber:-128})]){
+        const app=createFakeApp([["printenv",failing("unset")],["'/opt/homebrew/bin/vips'",failing("absent")],["'/usr/local/bin/vips'",failing("absent")],["'/opt/local/bin/vips'",failing("absent")],["command -v",error]]);
+        assert.throws(()=>findTool(app,"vips"));
+    }
 });

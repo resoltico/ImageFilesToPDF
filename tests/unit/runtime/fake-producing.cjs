@@ -17,6 +17,9 @@ const IMPORT_PAGES_START = 7;
  * not tell a batch that appended nothing from one that worked.
  */
 function importPages(state, argv) {
+    for (const page of argv.slice(IMPORT_PAGES_START)) {
+        if (!state.files.has(page)) { throw new Error(`pdfcpu input absent: ${page}`); }
+    }
     const [target] = argv.slice(6);
 
     state.files.add(target);
@@ -26,12 +29,16 @@ function importPages(state, argv) {
     );
 }
 
-function produceOutput(state, argv, command) {
-    if (!command.includes("pdfcpu")) {
-        state.files.add(String(argv[3]).replace(/\[.*$/u, ""));
-
-        return "";
+function produceRaster(state, argv) {
+    if (["thumbnail", "flatten", "gravity"].includes(argv[1]) && !state.files.has(argv[2])) {
+        throw new Error(`vips input absent: ${argv[2]}`);
     }
+    state.files.add(String(argv[3]).replace(/\[.*$/u, ""));
+    return "";
+}
+
+function produceOutput(state, argv, command) {
+    if (!command.includes("pdfcpu")) { return produceRaster(state, argv); }
 
     if (argv[1] === "import") {
         importPages(state, argv);

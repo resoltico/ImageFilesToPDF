@@ -1,145 +1,118 @@
 # Contributing
 
-## Working on this
+## Setup and commands
+
+Use the Node pin in `.node-version`; `mise install` reads the matching
+`mise.toml` declaration. `package.json` declares the npm pin and minimum engines.
+Install npm, then restore the locked development dependencies:
 
 ```sh
-npm ci
-npm run release
+npm install --global "$(node --print 'require("./package.json").packageManager')"
+npm ci --ignore-scripts
 ```
 
-`npm run release` regenerates `dist/` and runs the full gate. `npm run quality`
-runs the gate without regenerating, which is what CI does, so that a stale
-committed artifact fails instead of shipping.
+Keep optional platform packages enabled: the pinned esbuild installation uses
+them. No development package is a runtime dependency of the generated JXA.
 
-The macOS integration gate needs the real tools and is run separately:
+| Command | Purpose |
+| --- | --- |
+| `npm run build` | Regenerate JXA and checksum manifest |
+| `npm run quality` | Full source/test/mutation/freshness gate without rebuilding |
+| `npm run test:integration:macos` | Real macOS/backend/filesystem/renderer suites |
+| `npm run release` | Local build followed by the full quality gate; does not publish |
+
+For native integration, install the same tools required by CI:
 
 ```sh
 brew update
 brew install vips pdfcpu qpdf poppler libtiff shellcheck actionlint
-npm run test:integration:macos
 ```
 
-## What the gate enforces
+See [QA.md](QA.md) for verification requirements and live-host checks.
+Commit generated JXA and checksums alongside source changes that affect them.
 
-`QA.md` is the contract. It specifies every check, its threshold, and why the
-guard exists — file size, coverage, ESLint mode, the language target, mutation
-score, and the facts that must agree across files.
+## Source and ownership boundaries
 
-This file does not restate those rules, so that there is one place to change
-when they move.
+- `src/core/` owns portable settings, source policy, planning, ordering, naming,
+  geometry, artifact-retention policy and outcome vocabulary.
+- `src/application/` owns controller decisions and document/resource sequencing
+  through explicit ports. Core and application import no native/UI adapters.
+- `src/runtime/` owns composition, native/platform/backend operations, transport
+  parsing and presentation. Host globals and Apple Event cancellation translation
+  belong here.
+- `src/entry.js` exports the production `run` capability.
 
-Two things worth knowing before you write code, because they shape where things
-go rather than merely passing or failing:
+`tools/lint/boundaries.mjs` enforces import direction and host-global boundaries.
+Required source/filesystem/publication capabilities fail setup when absent.
+Optional UI, progress and preferences can be unavailable; programming faults must
+remain diagnosable rather than silently triggering fallback.
 
-- **A test belongs in `tests/unit/` if it takes its world by parameter, and in
-  `tests/repo/` if it inspects the real repository.** Only the former is
-  meaningful under mutation, where the tree is deliberately altered.
-- **Rules that are switched off are listed with their reasons** in
-  `tools/eslint/rules.mjs`. Add to that list only with a reason, never in bulk.
+`src/core/settings.js` owns canonical settings, defaults and legal choice IDs.
+`src/runtime/choices.js` derives offered IDs and bounds, adding presentation
+captions. Text fields are parsed at adapter boundaries and use the common
+all-issues validator. Numeric RGB components belong to colour policy; vips
+comma-separated vectors belong to the backend adapter.
 
-## Source layout
+`src/core/artifacts.js` owns retention policy. Each artifact is registered before
+PDF creation, and executor/publication/workspace cleanup consult that same record.
+`building` is disposable; `validating` and `validated` retain unresolved work;
+`released` means confirmed publication or recovery permits release. Unknown facts
+fail closed. Do not insert fallible owner registration after validation, infer
+ownership from filenames, or discard a confirmed destination after a reporting fault.
 
-`src/` holds small single-purpose CommonJS modules so each can be required and
-unit tested on its own:
+The document/run outcomes own source mappings, counts and actual saved/recovery
+locations. Progress counters do not establish publication. Keep issue meaning
+separate from interface wording and technical diagnostics.
 
-- `src/core/` — the portable planner: settings, geometry, paths, naming,
-  ordering, shell quoting, argv construction, invocation parsing, preflight
-  probes, errors.
-- `src/runtime/` — the macOS host: shell execution, tool discovery, preflight,
-  workspace, dialogs, the AppKit form, input resolution, page preparation, PDF
-  creation, publication, job assembly, entry point.
+## Tests and build
 
-Two front ends ask for the settings, and `settings-form.js` chooses between
-them: the AppKit form first, the stepwise dialogs if it cannot be presented.
-Both are driven from the same control definitions in `src/core/choices.js`,
-so they cannot offer different options or accept different values — there is a
-test asserting exactly that.
+Tests that inject ports/fixtures belong in `tests/unit/`; tests that inspect the
+real checkout belong in `tests/repo/`. Mutation testing runs unit files. All
+production sources and applicable build rules must remain discoverable by their
+gates. Keep behavioral expectations independent of implementation calculations.
 
-`appkit-widgets.js` is the only module that touches AppKit, and it takes the
-ObjC namespace as a parameter rather than reaching for the `$` global. That is
-what lets the form composition be unit tested against a fake. What a fake
-cannot establish is that AppKit renders any of it; that was verified by
-running a probe inside the Shortcuts helper, and is why the fallback exists.
+ESLint uses `js.configs.all`; exceptions and tuned rules are justified in
+`tools/eslint/rules.mjs`. Group modules by responsibility and lifetime, respecting
+the active ESLint rules rather than splitting by incidental implementation order.
 
-The runtime layer takes `app` as a parameter rather than reaching for a global,
-which is what lets the whole macOS host be driven from Node by a fake host with
-an in-memory filesystem — including the non-clobbering publish, which a
-stateless stub cannot exercise.
+`tools/scoped-bundle.mjs` uses the exact esbuild development pin from
+`package.json`: neutral IIFE bundling, Safari 15.4 target, compact whitespace,
+readable identifiers and a top-level `run(input, parameters)` bridge. Built-in
+availability is checked separately; the compiler supplies no polyfills. The build
+rejects omitted source files and external runtime imports.
 
-Each module has its own test file under `tests/unit/core/` or
-`tests/unit/runtime/`.
+Native probes use explicit entry files importing production modules through
+`tools/build-probe.mjs`. They must not append private global calls to the
+production bundle or expose private production APIs. Production end-to-end tests
+invoke the actual generated script.
 
-## The released artifact
+Qualify build/toolchain changes with independent clean Linux/macOS restores and
+compare bytes. The Node pin is mirrored in `.node-version`, `mise.toml` and
+`package.json` engines and checked for agreement. CI installs the declared npm
+pin. Homebrew tools are deliberately unpinned and refreshed in CI.
 
-Do not edit it. `dist/Image-Files-to-PDF.jxa` is generated from the modules
-under `src/` by `tools/bundle.mjs`, which concatenates the module bodies with
-their `require`, `module.exports` and strict directive removed. Everything then
-shares one script scope and `run` stays top level, where `osascript` finds it.
-The bundler fails the build on a duplicate top-level name or an out-of-order
-dependency.
+## Documentation and releases
 
-Those are found in the syntax tree rather than by matching lines, so what the
-build recognises does not depend on how the sources happen to be formatted. The
-same applies to the comments, which are removed from the artifact — the file is
-pasted into a Shortcuts editor whose size ceiling nobody knows, and the header
-says where the sources are. What is removed is removed by byte range, and the
-build then asserts that what is left has the same token sequence as what it
-started with; a build step that changed the program cannot reach the disk.
+Keep user guidance in [README.md](README.md), the machine contract in
+[HEADLESS.md](HEADLESS.md), verification in [QA.md](QA.md), and security boundaries
+in [SECURITY.md](SECURITY.md). `INSTALL.txt` is a plain-text release asset; retain
+its version heading and actionable installation/removal instructions.
+Keep operational docs about supported current behavior. Store run-specific logs,
+artifact hashes, audit narratives and superseded evidence outside these guides.
 
-The parsing lives in `tools/javascript.mjs`, the CommonJS shapes in
-`tools/commonjs.mjs`, the removal in `tools/excise.mjs`, and the header in
-`tools/banner.mjs`, which quotes the version and URL from `package.json` and
-the copyright notice from `package.json` so the artifact cannot misstate them.
+`tools/banner.mjs` derives version, repository and MPL notices from metadata.
+First-party source, tests, tools and docs are covered by the canonical root
+`LICENSE`. Preserve third-party notices. Generated JXA retains its source/license
+notice, and releases include the complete license.
 
-First-party contributions are covered by MPL 2.0; the root
-`LICENSE` applies to source, tests, tools and accompanying project files. Do not
-replace third-party notices or licensing when importing code. The generated
-header retains the MPL notice and links to the source for its version.
+Release publication requires separate authorization. An authorized `v<version>`
+tag must match the repository's version declarations and dated release notes.
+Pushing it triggers `.github/workflows/release.yml`, which qualifies source on
+macOS, verifies committed artifact freshness, rebuilds and compares bytes, then
+attests and publishes the JXA, checksum manifest, `INSTALL.txt` and `LICENSE`.
+The publish job rechecks checksums, attestations and tag identity. Its release
+helpers remain dependency-free and it does not restore an npm cache.
 
-Edit the sources, run `npm run release`, and commit both.
-
-`LICENSE` ships as an attested asset containing the complete MPL 2.0 terms.
-
-`INSTALL.txt` ships with it, and is deliberately plain text rather than
-Markdown. It is a release asset: someone downloads it alongside the `.jxa` and
-opens it in a text editor, where `##` and backticks would be clutter rather
-than formatting. The repository's own documents are Markdown because they are
-read rendered on GitHub. Do not convert it.
-
-## Releasing
-
-A release is a tag. Pushing `v<version>` runs the release workflow, which
-qualifies the tagged source on macOS, rebuilds the artifact on a clean runner,
-and publishes it with a build attestation.
-
-Three things are checked that a local build cannot check:
-
-- **The tag names the version the repository already agrees on.**
-  `tools/check-tag.mjs` compares it against the value the consistency gate
-  derives from all six declarations of it, so tagging cannot paper over a
-  disagreement.
-- **The build is reproducible.** CI runs `npm run check-dist` first, so the
-  committed artifact is proven to match `src/` while it is still untouched,
-  then rebuilds and requires `git diff --exit-code -- dist/` to be clean. What
-  is attested is therefore both built on GitHub and identical to what was
-  reviewed here.
-- **The tag still points at the commit being built.** A tag can be moved after
-  it is pushed; the publish job re-resolves it and `gh release create
-  --verify-tag` refuses one that has since changed.
-
-Release notes come from `CHANGELOG.md` rather than a per-tag file, because a
-second copy of the same prose is a second thing to keep in agreement.
-
-Building locally is unchanged: `npm run release` still builds and gates, and
-the committed `dist/` is still what the repository is reviewed against.
-
-## Bumping Node
-
-The Node version appears in `.node-version`, `mise.toml` and `engines`. The
-gate asserts they agree, but nothing watches for newer releases: Dependabot
-does not track version files, so bumping is a deliberate manual step.
-
-The Homebrew tools are not pinned — CI refreshes Homebrew metadata and installs
-the current tools on
-every run, so a breaking change there surfaces as a failing integration job
-rather than as a silent drift.
+Release notes are extracted from `CHANGELOG.md`. Follow its writing rules in
+`AGENTS.md`; do not maintain a second release-summary source. Editing source or
+committing to `main` does not authorize a version bump, tag or release.

@@ -50,11 +50,14 @@ function installClasses(ns, state, application) {
         NSSelectorFromString: (name) => `sel:${name}`,
         NSModalPanelRunLoopMode: "NSModalPanelRunLoopMode",
         NSView: { alloc: { initWithFrame: makeView } },
+        NSScrollView: { alloc: { initWithFrame: makeView } },
+        NSTextView: { alloc: { initWithFrame: (rect) => ({ ...makeField(rect), textContainer: {} }) } },
         NSTextField: { alloc: { initWithFrame: makeField } },
         NSPopUpButton: { alloc: { initWithFramePullsDown: makePopup } },
         NSComboBox: { alloc: { initWithFrame: makeCombo } },
         NSColor: colourClass(),
         NSFont: {
+            systemFontSize: 13,
             systemFontOfSize: (size) => ({ kind: "font", size }),
             boldSystemFontOfSize: (size) => ({ kind: "font", size, bold: true })
         },

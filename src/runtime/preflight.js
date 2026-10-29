@@ -1,13 +1,14 @@
 "use strict";
+const { OperationError } = require("../core/errors.js");
 
-const { shellJoin, shellQuote } = require("../core/shell.js");
+const { shellJoin, shellQuote } = require("./backend-shell.js");
 const {
     buildVipsProbeArgv,
     buildPdfcpuProbeArgv,
     isVipsUsable,
     isPdfcpuUsable,
     describeSetupProblems
-} = require("../core/preflight.js");
+} = require("./backend-preflight.js");
 const { findTool, TOOL_NAMES, TOOL_SEARCH_PATH } = require("./tools.js");
 
 /*
@@ -80,7 +81,7 @@ function checkTools(app) {
     const problems = results.filter((result) => result.kind !== "ok");
 
     if (problems.length > 0) {
-        throw new Error(describeSetupProblems(problems, hasHomebrew(app)));
+        throw new OperationError(describeSetupProblems(problems, hasHomebrew(app)));
     }
 
     const tools = {};

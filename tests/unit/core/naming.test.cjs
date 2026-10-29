@@ -5,7 +5,6 @@ const test = require("node:test");
 const {
     outputNameForCombined,
     outputNameForSeparate,
-    nextUniquePath,
     stagedPdfPath
 } = require("../../../src/core/naming.js");
 const { makeTimestamp } = require("../../../src/core/timestamps.js");
@@ -47,35 +46,13 @@ test("output names are derived from the mode", () => {
     );
 });
 
-test("nextUniquePath returns the path when it is free", () => {
-    assert.equal(nextUniquePath("/tmp/b.pdf", () => false), "/tmp/b.pdf");
-});
 
-test("nextUniquePath starts suffixing at 2", () => {
-    // With only the original occupied, the first candidate must be _2. A
-    // sequence starting at 3 would still satisfy the two-occupied case below,
-    // so this is the assertion that pins the starting point.
-    const occupied = new Set(["/tmp/a.pdf"]);
 
-    assert.equal(
-        nextUniquePath("/tmp/a.pdf", (candidate) => occupied.has(candidate)),
-        "/tmp/a_2.pdf"
-    );
-});
 
-test("nextUniquePath suffixes past every occupied candidate", () => {
-    const occupied = new Set(["/tmp/a.pdf", "/tmp/a_2.pdf"]);
 
-    assert.equal(
-        nextUniquePath("/tmp/a.pdf", (candidate) => occupied.has(candidate)),
-        "/tmp/a_3.pdf"
-    );
-});
 
-test("nextUniquePath refuses paths it cannot suffix or exhausts", () => {
-    assert.throws(() => nextUniquePath("/tmp/a.txt", () => true), /Cannot generate/u);
-    assert.throws(() => nextUniquePath("/tmp/a.pdf", () => true), /Could not create/u);
-});
+
+
 
 test("stagedPdfPath stays inside the workspace and sanitizes its token", () => {
     // Never beside the images: a file pdfcpu writes into the output folder
@@ -101,24 +78,14 @@ test("a staged name cannot escape the workspace", () => {
     }
 });
 
-test("the .pdf suffix must be at the very end", () => {
-    // Unanchored, a path merely containing ".pdf" would be accepted and the
-    // uniquified name would be built around the wrong suffix.
-    assert.throws(
-        () => nextUniquePath("/tmp/a.pdf.bak", () => true),
-        /Cannot generate/u
-    );
-});
 
-test("the unique-path search is bounded", () => {
-    let probed = 0;
 
-    assert.throws(() => nextUniquePath("/tmp/a.pdf", () => {
-        probed += 1;
 
-        return true;
-    }), /Could not create/u);
-    // Bounded, and the bound is not off by one: 2..9999 inclusive plus the
-    // original path.
-    assert.equal(probed, 9999);
+
+test("publication collision candidates preserve the full name and bound suffix vocabulary",()=>{
+    const {collisionPath,MAXIMUM_SUFFIX}=require("../../../src/core/naming.js");
+    assert.equal(collisionPath("/a/file.pdf",1),"/a/file.pdf");
+    assert.equal(collisionPath("/a/file.pdf",2),"/a/file_2.pdf");
+    assert.equal(collisionPath("/a\nfolder/file.PDF",9999),"/a\nfolder/file_9999.PDF");
+    assert.equal(MAXIMUM_SUFFIX,10000);assert.throws(()=>collisionPath("/a/notes.txt",2),/Cannot generate/u);
 });

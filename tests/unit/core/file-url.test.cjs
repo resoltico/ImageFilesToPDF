@@ -13,7 +13,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { decodeFileUrl } = require("../../../src/core/invocation.js");
+const { decodeFileUrl } = require("../../../src/runtime/invocation-syntax.js");
 
 test("a URL that will not decode is refused, not guessed at", () => {
     /*

@@ -18,7 +18,7 @@ const {
     BACKGROUND,
     labelOfValue,
     valueOfLabel
-} = require("../../../src/core/choices.js");
+} = require("../../../src/runtime/choices.js");
 
 test("a value that is offered under no label is refused, not guessed at", () => {
     // The inverse of choosing: it is only ever asked about a value that came

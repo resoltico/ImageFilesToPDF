@@ -7,7 +7,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { collectImageFiles } = require("../../../src/runtime/admission.js");
+const { collectImageFiles } = require("./fake-selection.cjs");
 const { createFakeApp } = require("./fake-app.cjs");
 const { treeOf } = require("./fake-tree.cjs");
 
@@ -114,21 +114,11 @@ test("a subfolder that could not be read is named, not passed over", () => {
     assert.deepEqual(rejected, [{
         path: "/Trip/Locked",
         name: "Locked",
-        reason: "could not be read"
+        reason: "could not be read", code: "selection-refused", stage: "selection"
     }]);
 });
 
-test("without a tree a folder is refused, not walked", () => {
-    // No ObjC bridge: the files that were selected directly are converted as
-    // they always were, and the folder is turned away with a reason.
-    const { images, rejected, selectedFolders } = collectImageFiles(
-        appWith(["/Trip"]),
-        ["/Trip", "/a/photo.png"]
-    );
-
-    assert.equal(selectedFolders, 0);
-    assert.deepEqual(images.map((image) => image.originalName), ["photo.png"]);
-    assert.deepEqual(rejected.map((entry) => entry.reason), [
-        "a folder; select the images inside it"
-    ]);
+test("missing mandatory tree fails setup for every selection", () => {
+    const { collectImageFiles: collect } = require("../../../src/runtime/admission.js");
+    assert.throws(() => collect(createFakeApp(), ["/photos", "/photos/photo.png"], null), /Required filesystem/u);
 });

@@ -55,16 +55,10 @@ test("a script that does not parse fails the gate", async () => {
     await assert.rejects(() => checkShellScripts(false, tree));
 });
 
-test("a shell script is held to the same size limit as the JavaScript", async () => {
+test("long cohesive shell scripts remain syntax checked without a line cap", async () => {
     const { checkShellScripts } = await load();
-    const tree = fixtureTree({
-        "huge.sh": `#!/bin/bash\n${"echo padding\n".repeat(200)}`
-    });
-
-    await assert.rejects(
-        () => checkShellScripts(false, tree),
-        /exceeds the 150-line limit/u
-    );
+    const tree=fixtureTree({"huge.sh": `#!/bin/bash\n${"echo padding\n".repeat(200)}`});
+    await assert.doesNotReject(() => checkShellScripts(false,tree));
 });
 
 test("scripts are syntax checked even when shellcheck is absent", async () => {

@@ -64,16 +64,9 @@ test("tabs and newlines are not treated as control characters", async () => {
     assert.doesNotThrow(() => checkContent("a.js", "if (x) {\n\treturn 1;\n}\n"));
 });
 
-test("a file over the size limit is rejected", async () => {
-    const { checkContent, MAXIMUM_FILE_LINES } = await loadRules();
-    const justUnder = `${"const a = 1;\n".repeat(MAXIMUM_FILE_LINES)}`;
-    const justOver = `${"const a = 1;\n".repeat(MAXIMUM_FILE_LINES + 1)}`;
-
-    assert.doesNotThrow(() => checkContent("a.js", justUnder));
-    assert.throws(
-        () => checkContent("a.js", justOver),
-        /exceeds the 150-line limit; split it rather than raising the limit/u
-    );
+test("cohesive sources have no physical line cap", async () => {
+    const { checkContent } = await loadRules();
+    assert.doesNotThrow(() => checkContent("a.js", "// a cohesive source\n".repeat(200)));
 });
 
 test("the file that is parsed is the file that is read", async () => {

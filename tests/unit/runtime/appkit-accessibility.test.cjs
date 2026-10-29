@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { formSpec, defaultAnswers } = require("../../../src/core/form.js");
+const { formSpec, defaultAnswers } = require("../../../src/runtime/form.js");
 const { buildForm } = require("../../../src/runtime/appkit-form.js");
 const { WIDGETS } = require("../../../src/runtime/appkit.js");
 const { createFakeObjC } = require("./fake-objc.cjs");

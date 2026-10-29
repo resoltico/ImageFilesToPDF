@@ -11,11 +11,11 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { settingsFor } = require("../../../src/runtime/settings-form.js");
-const { encode, rememberedAnswers } = require("../../../src/core/preferences.js");
+const { chooseSettings } = require("../../../src/runtime/settings-form.js");
+const { encode, rememberedAnswers } = require("../../../src/runtime/settings-preferences.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
-const { defaultAnswers } = require("../../../src/core/form-rows.js");
-const { readAnswers } = require("../../../src/core/answers.js");
+const { defaultAnswers } = require("../../../src/runtime/form-rows.js");
+const { readAnswers } = require("../../../src/runtime/answers.js");
 const { boundedDialog } = require("./fake-dialogs.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
 
@@ -67,7 +67,7 @@ function acceptingHost() {
 
 test("an interactive run opens on the last one and remembers this one", () => {
     const memory = memoryHolding(encode(LAST_RUN));
-    const settings = settingsFor(acceptingHost(), {}, { count: 1 }, { openMemory: memory.open });
+    const settings = chooseSettings(acceptingHost(), { count: 1 }, { openMemory: memory.open });
 
     assert.deepEqual(settings, LAST_RUN, "the last run's answers were offered back");
     assert.deepEqual(
@@ -79,7 +79,7 @@ test("an interactive run opens on the last one and remembers this one", () => {
 
 test("a run with nothing to remember opens on the compiled defaults", () => {
     const memory = memoryHolding("");
-    const settings = settingsFor(acceptingHost(), {}, { count: 1 }, { openMemory: memory.open });
+    const settings = chooseSettings(acceptingHost(), { count: 1 }, { openMemory: memory.open });
 
     assert.deepEqual(
         settings,
@@ -104,7 +104,7 @@ test("a run with nowhere to remember still gets the form", () => {
         return { answers: rememberedAnswers(encode(LAST_RUN)) };
     };
 
-    const settings = settingsFor(host, {}, { count: 1 }, {
+    const settings = chooseSettings(host, { count: 1 }, {
         openMemory: () => forgetful,
         bridge,
         present
@@ -123,7 +123,7 @@ test("a cancelled run leaves the last run's settings alone", () => {
 
     host.chooseFromList = () => false;
 
-    assert.throws(() => settingsFor(host, {}, { count: 1 }, { openMemory: memory.open }), /User cancelled/u);
+    assert.throws(() => chooseSettings(host, { count: 1 }, { openMemory: memory.open }), /User cancelled/u);
     assert.deepEqual(memory.state.wrote, []);
 });
 
@@ -140,7 +140,7 @@ test("a remembered colour that is no preset is offered back as a colour", () => 
         return options.defaultItems;
     };
 
-    settingsFor(host, {}, { count: 1 }, { openMemory: memory.open });
+    chooseSettings(host, { count: 1 }, { openMemory: memory.open });
     assert.ok(
         asked.includes("Custom colour..."),
         `the colour list opened on ${JSON.stringify(asked)}`

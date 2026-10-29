@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { collectSettings } = require("../../../src/runtime/settings-form.js");
-const { defaultAnswers } = require("../../../src/core/form.js");
+const { defaultAnswers } = require("../../../src/runtime/form.js");
 const { createFakeApp } = require("./fake-app.cjs");
 
 const BRIDGE = { objc: {}, ns: {} };
@@ -13,8 +13,8 @@ function retryingPresenter(offered, throws) {
         offered.push(spec);
         if (offered.length === 1) {
             return { answers: {
-                ...defaultAnswers(), paperSize: "US Letter", orientation: "Landscape",
-                mode: "Separate PDFs — one page per image", dpi: "bad", background: "#000000"
+                ...defaultAnswers(), paperSize: "Letter", orientation: "Landscape",
+                mode: "separate", dpi: "bad", background: "#000000"
             } };
         }
         if (throws) {
@@ -43,15 +43,16 @@ function fallbackAfterRetry(throws) {
 }
 
 test("fallback keeps submitted corrections and selection context after a native retry fails", () => {
-    for (const throws of [false, true]) {
+    for (const throws of [false]) {
         const { app, offered, settings } = fallbackAfterRetry(throws);
 
         assert.deepEqual(settings, {
             paperSize: "Letter", orientation: "Landscape", mode: "separate",
             background: "#000000", dpi: 92, quality: 92
         });
-        assert.match(offered[1].detail, /You have selected 2 images/u);
-        assert.match(app.listPrompts[0].options.withPrompt, /Save to: \/Photos\//u);
+        assert.match(offered[1].fullDetail, /You have selected 2 images/u);
+        assert.match(app.listPrompts[0].options.withPrompt, /You have selected 2 images/u);
+        assert.match(app.dialogs.at(-1).message, /Save to: \/Photos\//u);
         assert.equal(app.dialogs[0].options.defaultAnswer, "bad");
         assert.match(app.dialogs.at(-1).message, /^Create 2 single-page PDFs/u);
     }
@@ -65,4 +66,8 @@ test("a cancellation thrown by the native host never starts fallback", () => {
         /User cancelled/u);
     assert.deepEqual(app.listPrompts, []);
     assert.deepEqual(app.dialogs, []);
+});
+
+test("a coding fault during correction is diagnosed instead of silently degrading", () => {
+    assert.throws(() => fallbackAfterRetry(true), /native window unavailable/u);
 });

@@ -12,7 +12,7 @@
  * helper, and is why appkit.js keeps the stepwise dialogs as a fallback.
  *
  * Deliberately branchless: anything with a decision in it belongs in
- * src/core/form.js, where it can be tested properly.
+ * src/runtime/form.js, where it can be tested properly.
  */
 
 const HINT_FONT_SIZE = 11;

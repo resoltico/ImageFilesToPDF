@@ -11,7 +11,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createMemory } = require("../../../src/runtime/preferences.js");
-const { DOMAIN, KEY } = require("../../../src/core/preferences.js");
+const { DOMAIN, KEY } = require("../../../src/runtime/settings-preferences.js");
 
 function suiteFor(state, settings) {
     return {
@@ -116,4 +116,31 @@ test("nothing remembered and nothing readable are one answer", () => {
         createMemory(...Object.values(bridge({ readThrows: true })).slice(0, 2)).recall(),
         ""
     );
+});
+
+test("optional preference write failure remains diagnostic", () => {
+    const { objc, ns } = bridge({ writeThrows: true });
+    const memory = createMemory(objc, ns);
+    memory.remember("{}");
+    assert.equal(memory.diagnostics[0].code, "preferences-write");
+});
+
+test("absence of either optional preferences capability is explicit without shared diagnostics",()=>{
+    const first=createMemory(null,()=>true);const second=createMemory({},null);
+    assert.equal(first.state,"unavailable");assert.equal(second.state,"unavailable");
+    assert.equal(first.recall(),"");assert.equal(first.remember("{}"),undefined);
+    assert.deepEqual(first.diagnostics,[]);assert.notEqual(first.diagnostics,second.diagnostics);
+});
+
+test("native preference faults remain observable while reads safely fall back",()=>{
+    const write=bridge({writeThrows:true});const memory=createMemory(write.objc,write.ns);
+    memory.remember("settings");assert.equal(memory.state,"available");
+    assert.match(memory.diagnostics[0].message,/./u);
+});
+
+test("native read and capability faults remain observable",()=>{
+    const read=bridge({readThrows:true});const unreadable=createMemory(read.objc,read.ns);
+    assert.equal(unreadable.recall(),"");assert.equal(unreadable.diagnostics[0].code,"preferences-read");
+    const absent=bridge({importThrows:true});const unavailable=createMemory(absent.objc,absent.ns);
+    assert.equal(unavailable.state,"unavailable");assert.equal(unavailable.diagnostics[0].code,"preferences-unavailable");
 });

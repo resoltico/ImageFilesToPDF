@@ -6,7 +6,7 @@
 # a volume has to detach it before the next one attaches its own, and what
 # detaching costs is not obvious from the attach.
 
-# attach_test_volume <format> <name>
+# attach_test_volume <format> <name> <owned-mountpoint>
 #
 # A volume of its own, so the publication can be exercised where the finished
 # PDF and the output folder are not on one filesystem -- and, for MS-DOS,
@@ -14,11 +14,12 @@
 # when a volume cannot be attached: whether that is possible is the machine's
 # decision rather than the code's.
 attach_test_volume() {
-    local format=$1 name=$2 image
-    image=$(mktemp -t "ImageFilesToPDF-$name").dmg
+    local format=$1 name=$2 mountpoint=$3 image
+    image="$WORK/$name.dmg"
+    mkdir "$mountpoint" || return 1
 
     hdiutil create -size 40m -fs "$format" -volname "$name" -quiet -ov "$image" &&
-        hdiutil attach -quiet "$image"
+        hdiutil attach -quiet -mountpoint "$mountpoint" "$image"
 }
 
 # detach_test_volume <volume>

@@ -41,14 +41,14 @@ run_headless() {
 # Combined PDF, A4 portrait, white background, natural page order
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/combined.json" A4 Portrait "Single PDF" "#FFFFFF" 20260904_010203
+write_config "$WORK/combined.json" A4 Portrait "single" "#FFFFFF" 20260904_010203
 run_headless "$WORK/combined.json" \
     "$WORK/page 10 'quoted'.jpg" "$WORK/page 2.png"
 
 # Reject a previously supported release even when it reports a normal version.
 cat >"$WORK/pdfcpu-old" <<'SH'
 #!/bin/sh
-printf 'version: v0.16.0\n'
+printf 'version: v0.16.3\n'
 SH
 chmod +x "$WORK/pdfcpu-old"
 if IMAGE_FILES_TO_PDF_PDFCPU="$WORK/pdfcpu-old" \
@@ -56,7 +56,7 @@ if IMAGE_FILES_TO_PDF_PDFCPU="$WORK/pdfcpu-old" \
     "$WORK/page 2.png" >"$WORK/old.out" 2>"$WORK/old.err"; then
     fail "an unsupported pdfcpu release was accepted"
 fi
-grep -q "Version 0.16.1 or later is required" "$WORK/old.err" ||
+grep -q "Version 0.16.4 or later is required" "$WORK/old.err" ||
     fail "the release refusal did not explain the requirement"
 test ! -e "$WORK/output_20260904_010203_2.pdf"
 
@@ -74,7 +74,7 @@ assert_pixel "$WORK/first.png" 30 42 223 41 53 28 \
 # page is background.sh; this is about the mode and the paper.
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/separate.json" Letter Landscape "Separate PDFs" "c7dae8" 20260904_020304
+write_config "$WORK/separate.json" Letter Landscape "separate" "c7dae8" 20260904_020304
 run_headless "$WORK/separate.json" "$WORK/alpha image.png"
 
 SEPARATE="$WORK/alpha image_20260904_020304.pdf"
@@ -95,7 +95,7 @@ test -s "$WORK/alpha image_20260904_020304_2.pdf"
 # renders it around (206,48,36), so green and blue are the discriminators.
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/colour.json" A4 Portrait "Single PDF" "#FFFFFF" 20260904_030405
+write_config "$WORK/colour.json" A4 Portrait "single" "#FFFFFF" 20260904_030405
 run_headless "$WORK/colour.json" "$WORK/wide gamut.png"
 
 COLOUR="$WORK/output_20260904_030405.pdf"
@@ -108,7 +108,7 @@ assert_pixel "$WORK/colour.png" 297 421 224 16 16 18 \
 # A 64px source must cover only the middle of the page.
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/tiny.json" A4 Portrait "Single PDF" "#FFFFFF" 20260904_040506
+write_config "$WORK/tiny.json" A4 Portrait "single" "#FFFFFF" 20260904_040506
 run_headless "$WORK/tiny.json" "$WORK/tiny.png"
 
 TINY="$WORK/output_20260904_040506.pdf"
@@ -121,7 +121,7 @@ assert_pixel "$WORK/tiny-page.png" 397 421 255 255 255 10 \
 # Accept iPhone HEIC; refuse multi-page TIFF instead of losing pages.
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/heic.json" A4 Portrait "Single PDF" "#FFFFFF" 20260904_070809
+write_config "$WORK/heic.json" A4 Portrait "single" "#FFFFFF" 20260904_070809
 run_headless "$WORK/heic.json" "$WORK/from iphone.heic"
 assert_valid_pdf "$WORK/output_20260904_070809.pdf"
 
@@ -137,7 +137,7 @@ grep -q "contains 2 pages" "$WORK/multipage.err" ||
 # The runtime must accept the invocation without osascript's "--" as well
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/plain.json" A4 Portrait "Single PDF" "#FFFFFF" 20260904_050607
+write_config "$WORK/plain.json" A4 Portrait "single" "#FFFFFF" 20260904_050607
 osascript -l JavaScript "$SCRIPT" \
     --headless "$WORK/plain.json" "$WORK/page 2.png" >/dev/null
 test -s "$WORK/output_20260904_050607.pdf"

@@ -21,7 +21,7 @@ function settings(overrides) {
         orientation: "Portrait",
         dpi: 300,
         quality: 92,
-        mode: "Single PDF",
+        mode: "single",
         background: "#FFFFFF",
         ...overrides
     };

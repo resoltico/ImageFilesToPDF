@@ -8,13 +8,9 @@
   "mutate": [
     "src/**/*.js",
     "tools/lint/**/*.mjs",
-    "tools/bundle.mjs",
     "tools/banner.mjs",
-    "tools/strip-comments.mjs",
     "tools/javascript.mjs",
-    "tools/excise.mjs",
-    "tools/bindings.mjs",
-    "tools/commonjs.mjs"
+    "tools/scoped-bundle.mjs"
   ],
   "reporters": [
     "html",

@@ -11,7 +11,7 @@ const {
     PADDING
 } = require("../../../src/runtime/appkit-geometry.js");
 const { WIDGETS } = require("../../../src/runtime/appkit.js");
-const { formSpec, defaultAnswers } = require("../../../src/core/form.js");
+const { formSpec, defaultAnswers } = require("../../../src/runtime/form.js");
 const { createFakeObjC } = require("./fake-objc.cjs");
 
 function build(spec = formSpec()) {
@@ -24,7 +24,7 @@ test("every row becomes a label, a control, and a hint where it has one", () => 
     const { spec, view, controls } = build();
     const withHints = spec.rows.filter((row) => row.hint).length;
 
-    assert.equal(view.subviews.length, spec.rows.length * 2 + withHints);
+    assert.equal(view.subviews.length, spec.rows.length * 2 + withHints + 1);
     assert.equal(Object.keys(controls).length, spec.rows.length);
     assert.equal(withHints, 3, "every row that is typed into states its rule");
 
@@ -122,7 +122,7 @@ test("the form is as tall as it has rows, plus its margins", () => {
 
     assert.equal(
         view.rect.height,
-        spec.rows.length * ROW_HEIGHT + PADDING * 2
+        spec.rows.length * ROW_HEIGHT + PADDING * 2 + 150
     );
     assert.equal(view.rect.width, FORM_WIDTH);
 });

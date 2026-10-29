@@ -38,7 +38,7 @@ function makeTimestamp(date) {
 }
 
 function isTimestamp(value) {
-    return TIMESTAMP_PATTERN.test(String(value));
+    return typeof value === "string" && TIMESTAMP_PATTERN.test(value);
 }
 
 /*
@@ -49,7 +49,7 @@ function isTimestamp(value) {
 function readTimestamp(value) {
     const text = String(value);
 
-    if (!isTimestamp(text)) {
+    if (!isTimestamp(value)) {
         throw new Error(
             `The timestamp must be ${TIMESTAMP_FORM}, for example ` +
             `${makeTimestamp(new Date())}. It names one file and cannot ` +

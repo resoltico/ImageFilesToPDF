@@ -1,108 +1,81 @@
 "use strict";
 
-const { normalizeColour, rgbOf } = require("./colour.js");
-const { parseInteger } = require("./numbers.js");
-const {
-    PAGE_DEFINITIONS,
-    MINIMUM_DPI,
-    MAXIMUM_DPI,
-    MINIMUM_QUALITY,
-    MAXIMUM_QUALITY
-} = require("./limits.js");
+const { normalizeColour } = require("./colour.js");
+const { PAGE_DEFINITIONS, MINIMUM_DPI, MAXIMUM_DPI,
+    MINIMUM_QUALITY, MAXIMUM_QUALITY } = require("./limits.js");
 
-/*
- * What a setting means, and validation of whatever arrives from the form,
- * the dialogs or a headless configuration file. What the tools will accept
- * is limits.js.
+/** @typedef {{paperSize:"A4"|"Letter", orientation:"Portrait"|"Landscape", mode:"single"|"separate", dpi:number, quality:number, background:string}} ValidatedSettings
+ * Only validateSettings/normalizeSettings produce this record; execution and geometry consume it unchanged.
  */
-
-/*
- * The form and the dialogs offer "single" and "separate", which is what the
- * pipeline stores. The two older spellings are still taken because a headless
- * configuration written against an earlier release uses them, and a file that
- * worked yesterday has to work today.
- */
-const MODE_MAP = {
-    single: "single",
-    separate: "separate",
-    "Single PDF": "single",
-    "Separate PDFs": "separate"
+const DEFAULT_SETTINGS = Object.freeze({
+    paperSize: "A4", orientation: "Portrait", mode: "single",
+    dpi: 300, quality: 92, background: "#FFFFFF"
+});
+const SETTINGS_FIELDS = Object.keys(DEFAULT_SETTINGS);
+const SETTING_CHOICES = Object.freeze({ paperSize: Object.keys(PAGE_DEFINITIONS),
+    orientation: ["Portrait", "Landscape"], mode: ["single", "separate"] });
+const RULES = {
+    paperSize: { values: SETTING_CHOICES.paperSize, label: "Paper size" },
+    orientation: { values: SETTING_CHOICES.orientation, label: "Orientation" },
+    mode: { values: SETTING_CHOICES.mode, label: "Output mode" },
+    dpi: { minimum: MINIMUM_DPI, maximum: MAXIMUM_DPI, label: "DPI" },
+    quality: { minimum: MINIMUM_QUALITY, maximum: MAXIMUM_QUALITY, label: "Quality" }
 };
 
-function own(object, key) {
-    return Object.hasOwn(object, key);
-}
-
-function assertChoice(value, choices, label) {
-    const text = String(value);
-
-    if (!own(choices, text)) {
-        throw new Error(`Unsupported ${label}: ${text}`);
+function settingIssue(field, value) {
+    const rule = RULES[field];
+    if (field === "background") {
+        try {
+            normalizeColour(value);
+            return null;
+        } catch {
+            return { field, code: "colour", stage: "settings",
+                message: "Page background must be six hexadecimal digits, for example #C7DAE8." };
+        }
     }
-
-    return text;
-}
-
-/*
- * What vips is given for --background: the three components, always.
- *
- * It used to be one number for a grey and three for a colour, which is what
- * the table of four backgrounds held while there were only four. The reason
- * was that a one-band image could reach the flatten and take a single value
- * across its one band. It cannot. The resize stage converts to sRGB before
- * anything is flattened onto it, and measured, --export-profile=srgb turns a
- * one-band source into three bands and a two-band one into four. vips
- * broadcasts a single value across every band in any case, so the two forms
- * were the same instruction written two ways, and one of them is enough.
- *
- * Derived rather than tabulated, now that any colour is allowed: a table
- * would have to hold an entry for a value the user typed a moment ago.
- */
-function backgroundVector(background) {
-    const { red, green, blue } = rgbOf(background);
-
-    return [red, green, blue].join(",");
-}
-
-function normalizeSettings(settings) {
-    const paperSize = assertChoice(
-        settings.paperSize,
-        PAGE_DEFINITIONS,
-        "paper size"
-    );
-    const background = normalizeColour(settings.background);
-    const orientation = String(settings.orientation);
-    const modeKey = String(settings.mode);
-
-    if (orientation !== "Portrait" && orientation !== "Landscape") {
-        throw new Error(`Unsupported page orientation: ${orientation}`);
+    if (rule.values) {
+        return typeof value === "string" && rule.values.includes(value) ? null
+            : { field, code: "choice", stage: "settings",
+                message: `${rule.label} must be one of: ${rule.values.join(", ")}.` };
     }
-
-    if (!own(MODE_MAP, modeKey)) {
-        throw new Error(`Unsupported output mode: ${modeKey}`);
-    }
-
-    return {
-        paperSize,
-        orientation,
-        dpi: parseInteger(settings.dpi, MINIMUM_DPI, MAXIMUM_DPI, "DPI"),
-        quality: parseInteger(
-            settings.quality,
-            MINIMUM_QUALITY,
-            MAXIMUM_QUALITY,
-            "Quality"
-        ),
-        mode: MODE_MAP[modeKey],
-        background
-    };
+    return typeof value === "number" && Number.isInteger(value) &&
+        value >= rule.minimum && value <= rule.maximum ? null
+        : { field, code: "integer", stage: "settings",
+            message: `${rule.label} must be a whole number from ${rule.minimum} to ${rule.maximum}.` };
 }
 
-/*
- * Asked in two places -- which routine makes the PDFs, and how many units of
- * work the run has -- and they must not be able to disagree about it.
- */
+/** All settings issues are returned together; no JSON coercion or aliases. */
+function validateSettings(input) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+        return { issues: [{ code: "object", stage: "settings", message: "Settings must be an object." }] };
+    }
+    const issues = Object.keys(input).filter((key) => !SETTINGS_FIELDS.includes(key))
+        .map((field) => ({ field, code: "unknown", stage: "settings", message: `Unknown setting: ${field}.` }));
+    for (const field of SETTINGS_FIELDS) {
+        const issue = settingIssue(field, input[field]);
+        if (issue) {
+            issues.push(issue);
+        }
+    }
+    return issues.length > 0 ? { issues } : { issues: [], settings: {
+        paperSize: input.paperSize, orientation: input.orientation, mode: input.mode,
+        background: normalizeColour(input.background), dpi: input.dpi, quality: input.quality
+    } };
+}
+
+function normalizeSettings(input) {
+    const result = validateSettings(input);
+    if (result.issues.length > 0) {
+        const error = new Error(result.issues.map((issue) => issue.message).join("\n"));
+        error.issues = result.issues;
+        throw error;
+    }
+    return result.settings;
+}
+
 function isSeparateMode(settings) {
-    return settings.mode === MODE_MAP["Separate PDFs"];
+    return settings.mode === "separate";
 }
 
-module.exports = { isSeparateMode, backgroundVector, normalizeSettings };
+module.exports = { SETTING_CHOICES, DEFAULT_SETTINGS, SETTINGS_FIELDS, settingIssue, validateSettings,
+    normalizeSettings, isSeparateMode };

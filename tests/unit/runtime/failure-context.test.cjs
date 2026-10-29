@@ -9,7 +9,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { preparePages } = require("../../../src/runtime/pages.js");
+const { preparePage } = require("../../../src/runtime/pages.js");
 const { commandOf } = require("../../../src/core/errors.js");
 const { failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
@@ -23,8 +23,8 @@ test("naming the image keeps the command that failed underneath it", () => {
         failures: [["'thumbnail'", failing("vips: unable to load")]]
     });
 
-    assert.throws(() => preparePages(makeJob(app), [image]), (error) => {
-        assert.match(error.message, /^x\.png: /u, "the image is named");
+    assert.throws(() => preparePage(makeJob(app), image, 0), (error) => {
+        assert.match(error.message, /preparing the image/u, "the stage is named; document outcomes carry source paths");
         assert.match(commandOf(error), /thumbnail/u, "and the command survives");
 
         return true;

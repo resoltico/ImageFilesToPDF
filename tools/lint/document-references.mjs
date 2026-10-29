@@ -43,6 +43,12 @@ export async function missingReferences(documents, resolve = exists) {
     const named = new Map();
 
     documents.files.forEach((file, index) => {
+        // The shared baseline uses generic naming examples, not repository paths.
+        // Repository-specific guidance in AGENTS_EXTRA.md is still checked.
+        if (file === "AGENTS.md") {
+            return;
+        }
+
         for (const reference of referencesIn(documents.texts[index])) {
             named.set(reference.replace(/\/$/u, ""), file);
         }

@@ -19,7 +19,7 @@ const { createFakeApp } = require("./fake-app.cjs");
 globalThis.Application = () => ({ selection: () => [] });
 
 test("a headless invocation reads its settings from the config file", () => {
-    const config = '{"dpi":72,"timestamp":"20260904_010203"}';
+    const config = JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"single",dpi:72,quality:92,background:"#FFFFFF",timestamp:"20260904_010203"});
     const app = createFakeApp([["/bin/cat", config]]);
     const invocation = collectInvocation(
         app,
@@ -33,7 +33,7 @@ test("a headless invocation reads its settings from the config file", () => {
 });
 
 test("a headless config without a timestamp yields an empty one", () => {
-    const app = createFakeApp([["/bin/cat", '{"dpi":72}']]);
+    const app = createFakeApp([["/bin/cat", JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"single",dpi:72,quality:92,background:"#FFFFFF"})]]);
     const invocation = collectInvocation(
         app,
         ["--headless", "/tmp/c.json", "/a/1.png"],
@@ -75,4 +75,15 @@ test("a headless invocation without a config and an image is rejected", () => {
         () => collectInvocation(app, ["--headless", "/tmp/c.json"], true),
         /Headless usage/u
     );
+});
+
+test("malformed JSON and timestamp issues retain their specific request explanations",()=>{
+    const malformed=createFakeApp([["/bin/cat","{"]]);
+    assert.throws(()=>collectInvocation(malformed,["--headless","/config","/image.png"],true),/The headless configuration could not be read as JSON/u);
+    const data={paperSize:"A4",orientation:"Portrait",mode:"single",dpi:72,quality:92,background:"#FFFFFF",timestamp:false};
+    const app=createFakeApp([["/bin/cat",JSON.stringify(data)]]);
+    assert.throws(()=>collectInvocation(app,["--headless","/config","/image.png"],true),(error)=>{
+        assert.equal(error.issues[0].field,"timestamp");assert.equal(error.issues[0].code,"timestamp");assert.equal(error.issues[0].stage,"request");
+        assert.match(error.issues[0].message,/YYYYMMDD_HHMMSS/u);return true;
+    });
 });

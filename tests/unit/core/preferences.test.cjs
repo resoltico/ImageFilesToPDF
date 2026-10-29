@@ -16,8 +16,8 @@ const {
     KEY,
     encode,
     rememberedAnswers
-} = require("../../../src/core/preferences.js");
-const { readAnswers } = require("../../../src/core/answers.js");
+} = require("../../../src/runtime/settings-preferences.js");
+const { readAnswers } = require("../../../src/runtime/answers.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 const PAPERS = ["A4", "Letter"];
@@ -81,9 +81,9 @@ test("what comes back is answers the form could have been given", () => {
     });
 
     assert.deepEqual(rememberedAnswers(encode(settings)), {
-        paperSize: "US Letter",
+        paperSize: "Letter",
         orientation: "Landscape",
-        mode: "Separate PDFs — one page per image",
+        mode: "separate",
         background: "#C7DAE8",
         dpi: "600",
         quality: "80"

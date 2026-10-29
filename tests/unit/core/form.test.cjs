@@ -7,8 +7,8 @@ const {
     CANCEL_BUTTON,
     defaultAnswers,
     formSpec
-} = require("../../../src/core/form.js");
-const { BACKGROUND, PAPER_SIZE } = require("../../../src/core/choices.js");
+} = require("../../../src/runtime/form.js");
+const { BACKGROUND, PAPER_SIZE } = require("../../../src/runtime/choices.js");
 const { APP_NAME } = require("../../../src/core/version.js");
 
 function rowFor(key, spec = formSpec()) {
@@ -75,7 +75,7 @@ test("the defaults are the ones the dialogs would have offered first", () => {
     assert.deepEqual(defaultAnswers(), {
         paperSize: "A4",
         orientation: "Portrait",
-        mode: "One PDF — one image per page",
+        mode: "single",
         background: "#FFFFFF",
         dpi: "300",
         quality: "92"
@@ -94,11 +94,11 @@ test("previous answers are carried back into a redisplayed form", () => {
     // The point of showing every problem at once is lost if correcting one
     // field discards the other five.
     const spec = formSpec(
-        { ...defaultAnswers(), paperSize: "US Letter", dpi: "600" },
+        { ...defaultAnswers(), paperSize: "Letter", dpi: "600" },
         [{ key: "dpi", message: "Resolution: enter a whole number from 72 to 1017." }]
     );
 
-    assert.equal(rowFor("paperSize", spec).value, "US Letter");
+    assert.equal(rowFor("paperSize", spec).value, "Letter");
     assert.equal(rowFor("dpi", spec).value, "600");
     assert.match(spec.detail, /enter a whole number from 72 to 1017/u);
 });
@@ -118,7 +118,7 @@ test("with nothing wrong the form explains itself instead", () => {
     const spec = formSpec();
 
     assert.equal(spec.title, APP_NAME);
-    assert.match(spec.detail, /Each image gets its own page/u);
+    assert.match(spec.fullDetail, /Each image gets its own page/u);
     assert.deepEqual(spec.buttons, [CREATE_BUTTON, CANCEL_BUTTON]);
     assert.equal(spec.buttons[0], "Create", "the first button is the action");
 });

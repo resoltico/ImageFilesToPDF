@@ -1,8 +1,24 @@
 # Changelog
 
-Notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [Unreleased]
+
+- Headless JSON now requires six correctly typed settings, rejects unknown fields and historical mode labels, and validates timestamp whenever supplied; update existing configurations.
+- Headless receipts now use structured document states, source mappings, actual output/recovery paths and issues; update consumers to the [active contract](README.md#headless-request-and-receipt).
+- Requires stable pdfcpu 0.16.4 or later; run `brew update` and `brew upgrade pdfcpu` before using the updated action.
+- Development now requires Node 26.13.0 and npm 12.2.1 or later; local setup and CI install the declared npm pin.
+- Stop if owned intermediates cannot be released; retain cleanup diagnostics and confirmed PDFs, and verify recovery copies before releasing originals.
+- Register PDF ownership before creation; retain validated bytes across ownership faults and identify unconfirmed candidates after unexpected validation failures.
+- Retain confirmed outputs across allocation, failure-reporting and teardown faults; report document issues as incomplete and count prepared pages before batch handoffs.
+- Quarantine broken progress surfaces; derive legal UI choices from core definitions and show full rejection paths without false empty-folder claims.
+- Preserve exact native file identity values and confirm publication without cancellable Apple Event round trips.
+- Inspect and render one owned source copy at a time; refuse observed capture changes, APNG and unsupported disguised containers instead of silently losing content.
+- Import bounded page batches through one document executor; combined failures publish no subset, separate documents continue, and confirmed outputs survive cancellation.
+- Publication uses classified exact-path native claims, retries collisions with suffixes, confirms identity and retains validated PDFs for recovery when saving fails.
+- Invalid explicit backend overrides fail setup instead of silently selecting another executable.
+- Native forms and detail dialogs bound variable content while preserving full details and canonical settings; renderer faults remain diagnosable.
+- Build with pinned esbuild 0.28.2 and isolated module scopes; retain standalone JXA delivery, discover source dependencies and organize modules without a physical line cap.
+- Update ESLint, Stryker, Acorn, the qs override, transitive development dependencies and CI actions to current stable releases.
+- Generic path examples in the shared AGENTS.md baseline no longer fail repository-reference checks; document hygiene and supplement references remain checked.
 
 ## [1.5.4] - 2026-10-05
 

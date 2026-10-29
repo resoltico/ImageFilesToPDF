@@ -5,7 +5,7 @@ const test = require("node:test");
 const { buildForm } = require("../../../src/runtime/appkit-form.js");
 const { FORM_WIDTH } = require("../../../src/runtime/appkit-geometry.js");
 const { WIDGETS } = require("../../../src/runtime/appkit.js");
-const { formSpec } = require("../../../src/core/form.js");
+const { formSpec } = require("../../../src/runtime/form.js");
 const { createFakeObjC } = require("./fake-objc.cjs");
 
 function build(spec = formSpec()) {
@@ -79,7 +79,7 @@ test("no control runs off the edge of the form", () => {
 test("a row named in the problems is marked, and the others are not", () => {
     // Reading which field is wrong and seeing it should not be different jobs.
     const spec = formSpec(
-        { ...require("../../../src/core/form.js").defaultAnswers(), dpi: "nope" },
+        { ...require("../../../src/runtime/form.js").defaultAnswers(), dpi: "nope" },
         [{ key: "dpi", message: "Resolution: enter a whole number from 72 to 1017." }]
     );
     const bridge = createFakeObjC();
@@ -103,7 +103,7 @@ test("a row named in the problems is marked, and the others are not", () => {
 
 test("the rule a value breaks is marked along with the value", () => {
     const spec = formSpec(
-        { ...require("../../../src/core/form.js").defaultAnswers(), quality: "500" },
+        { ...require("../../../src/runtime/form.js").defaultAnswers(), quality: "500" },
         [{ key: "quality", message: "JPEG quality: enter a whole number from 1 to 100." }]
     );
     const bridge = createFakeObjC();
@@ -119,7 +119,7 @@ test("the rule a value breaks is marked along with the value", () => {
 
 test("a choice row can be marked too, not only a typed one", () => {
     // Rare, but reachable: an answer that is not one of the options at all.
-    const { defaultAnswers } = require("../../../src/core/form.js");
+    const { defaultAnswers } = require("../../../src/runtime/form.js");
     const spec = formSpec(
         { ...defaultAnswers(), paperSize: "Legal" },
         [{ key: "paperSize", message: 'Paper size: "Legal" is not one of the choices.' }]

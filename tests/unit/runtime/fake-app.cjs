@@ -45,10 +45,13 @@ const HEADER_FIELDS = [
     ["'width'", "width", 600],
     ["'height'", "height", 400],
     ["'orientation'", "orientation", 1],
-    ["n-pages", "pages", 1]
+    ["n-pages", "pages", 1],
+    ["'bands'", "bands", 3]
 ];
 
 function cannedAnswer(app, command) {
+    if (command.includes("printenv")) { throw Object.assign(new Error("unset"), { errorNumber: 1 }); }
+    if (command.includes("'-a'")) { return "vips-loader: pngload\n"; }
 
     const field = HEADER_FIELDS.find(([name]) => command.includes(name));
 
@@ -59,7 +62,7 @@ function cannedAnswer(app, command) {
     if (command.includes("nonexistent-image-files-to-pdf-preflight") ||
         (command.includes("pdfcpu") && command.includes("'version'"))) {
         return command.includes("pdfcpu")
-            ? "version: v0.16.1"
+            ? "version: v0.16.4"
             : "VipsForeignLoad: file does not exist";
     }
 
@@ -106,6 +109,11 @@ function dialogSurface(app) {
     };
 }
 
+function shellFailure(error, command) {
+    if (command.includes("printenv") && error.errorNumber === undefined) { error.errorNumber = 1; }
+    return error;
+}
+
 function createFakeApp(responses = []) {
     const app = {
         commands: [],
@@ -119,7 +127,7 @@ function createFakeApp(responses = []) {
             for (const [needle, result] of responses) {
                 if (command.includes(needle)) {
                     if (result instanceof Error) {
-                        throw result;
+                        throw shellFailure(result, command);
                     }
 
                     return result;
@@ -134,6 +142,7 @@ function createFakeApp(responses = []) {
         }
     };
 
+    app.sources = { capture: (ignored, path) => ({ path, identity: "1:2", version: "1" }), pngCount: () => app.pages ?? 1 };
     const surface = dialogSurface(app);
 
     surface.displayDialog = boundedDialog(surface.displayDialog);

@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { promptInteger } = require("../../../src/runtime/prompts.js");
-const { RESOLUTION } = require("../../../src/core/choices.js");
+const { RESOLUTION } = require("../../../src/runtime/choices.js");
 const { createFakeApp } = require("./fake-app.cjs");
 
 test("promptInteger accepts a value inside the range", () => {

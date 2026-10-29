@@ -11,7 +11,8 @@
   "homepage": "https://github.com/resoltico/ImageFilesToPDF",
   "author": "Ervins Strauhmanis",
   "engines": {
-    "node": ">=26.10.0"
+    "node": ">=26.13.0",
+    "npm": ">=12.2.1"
   },
   "scripts": {
     "build": "node tools/build.mjs",
@@ -28,14 +29,16 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@stryker-mutator/core": "10.0.0",
-    "@stryker-mutator/tap-runner": "10.0.0",
-    "acorn": "8.18.0",
-    "eslint": "10.11.0",
+    "@stryker-mutator/core": "10.1.1",
+    "@stryker-mutator/tap-runner": "10.1.1",
+    "acorn": "8.19.0",
+    "esbuild": "0.28.2",
+    "eslint": "10.13.0",
     "fast-check": "4.10.2"
   },
   "overrides": {
-    "qs": "6.16.0"
+    "qs": "6.17.1"
   },
-  "copyright": "2026 Ervins Strauhmanis"
+  "copyright": "2026 Ervins Strauhmanis",
+  "packageManager": "npm@12.2.1"
 }

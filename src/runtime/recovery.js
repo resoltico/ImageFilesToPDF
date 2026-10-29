@@ -1,8 +1,9 @@
 "use strict";
 
+const { releaseArtifact } = require("../core/artifacts.js");
+const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { setAside } = require("./rescue.js");
 const { closeStaging } = require("./staging-area.js");
-const { removeFile } = require("./shell.js");
 
 /*
  * What a failed publication leaves behind, and where the finished PDF goes.
@@ -35,14 +36,8 @@ function describeFailure(reasons, whereabouts) {
  * links into rather than refusing -- the link left inside it, which publish.js
  * adds once it has confirmed the file there is the one this run published.
  */
-function clearAway(job, outcome) {
-    if (outcome.staging) {
-        closeStaging(job.app, outcome.staging);
-    }
-
-    for (const path of outcome.mine ?? []) {
-        removeFile(job.app, path);
-    }
+function clearAway(app, outcome) {
+    return outcome.staging ? closeStaging(app, outcome.staging) : [];
 }
 
 /*
@@ -51,22 +46,31 @@ function clearAway(job, outcome) {
  * somewhere that will outlive the run and the message says where.
  *
  * Setting aside is best effort: when it fails the file stays where it was,
- * and the workspace has to stay with it. That is what the unpublished set
- * decides, so it is cleared only when the PDF is somewhere else.
+ * and the workspace has to stay with it. The artifact lifecycle retains it
+ * until the PDF is confirmed somewhere else.
  */
-function keep(job, paths, outcome) {
-    clearAway(job, outcome);
-
-    const recovered = setAside(job.app, paths.staged);
-
-    if (recovered !== paths.staged) {
-        job.unpublished.delete(paths.staged);
+function releaseRecoveredArtifact(job, staged, recovered, cleanup) {
+    if (recovered !== staged) {
+        try { releaseArtifact(job.artifacts, staged); }
+        catch (error) { cleanup.push(...issuesOf(error, "cleanup")); }
     }
+}
 
-    return new Error(describeFailure(
+function keep(job, paths, outcome) {
+    const cleanup = clearAway(job.app, outcome);
+
+    const rescue = setAside(job.app, paths.staged, job.publication.facts);
+    const recovered = rescue.path;
+
+    releaseRecoveredArtifact(job, paths.staged, recovered, cleanup);
+
+    const failure = new Error(describeFailure(
         outcome.reasons,
         `The finished PDF has been kept here:\n\n${recovered}`
     ));
+    failure.recovery = recovered;
+    failure.issues = [{ code: ISSUE.publication, stage: "publication", message: "The PDF could not be saved to its requested destination.", diagnostic: outcome.reasons }, ...cleanup, ...rescue.issues];
+    return failure;
 }
 
 module.exports = { keep, clearAway };

@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { collectViaForm } = require("../../../src/runtime/settings-form.js");
-const { defaultAnswers } = require("../../../src/core/form.js");
+const { defaultAnswers } = require("../../../src/runtime/form.js");
 
 const BRIDGE = { objc: {}, ns: {} };
 
@@ -37,7 +37,7 @@ test("the form's answers become the settings", () => {
     });
     assert.equal(present.seen.length, 1, "one good answer needs one form");
     assert.match(
-        present.seen[0].detail,
+        present.seen[0].fullDetail,
         /Each image gets its own page/u,
         "the first form has nothing to complain about yet"
     );
@@ -52,7 +52,7 @@ test("the form's answers become the settings", () => {
 });
 
 test("a bad answer redisplays the form with the problem and the rest intact", () => {
-    const typed = { ...defaultAnswers(), paperSize: "US Letter", dpi: "nope" };
+    const typed = { ...defaultAnswers(), paperSize: "Letter", dpi: "nope" };
     const present = scripted([
         { answers: typed },
         { answers: { ...typed, dpi: "600" } }
@@ -66,8 +66,8 @@ test("a bad answer redisplays the form with the problem and the rest intact", ()
     const [, redisplayed] = present.seen;
     const paperRow = redisplayed.rows.find((row) => row.key === "paperSize");
 
-    assert.match(redisplayed.detail, /enter a whole number from 72 to 1017/u);
-    assert.equal(paperRow.value, "US Letter");
+    assert.match(redisplayed.detail, /DPI must be a whole number from 72 to 1017/u);
+    assert.equal(paperRow.value, "Letter");
 });
 
 test("cancelling the form cancels the run", () => {
@@ -98,4 +98,15 @@ test("a remembered run is what the form opens on", () => {
 
     assert.equal(rows.find((row) => row.key === "background").value, "#C7DAE8");
     assert.equal(rows.find((row) => row.key === "dpi").value, "600");
+});
+
+test("optional preference diagnostics reach the run without changing valid settings",()=>{
+    const {chooseSettings}=require("../../../src/runtime/settings-form.js");
+    const {createFakeApp}=require("./fake-app.cjs");
+    for(const diagnostics of [undefined,[{code:"preferences-write",message:"denied"}]]) {
+        const context={diagnostics:[]};
+        const memory={recall:()=>"",remember:()=>undefined,...(diagnostics?{diagnostics}:{})};
+        const result=chooseSettings(createFakeApp(),context,{openMemory:()=>memory,bridge:BRIDGE,present:()=>({answers:defaultAnswers()})});
+        assert.equal(result.mode,"single");assert.deepEqual(context.diagnostics,diagnostics??[]);
+    }
 });

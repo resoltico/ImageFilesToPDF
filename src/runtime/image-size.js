@@ -1,7 +1,8 @@
 "use strict";
+const { OperationError } = require("../core/errors.js");
 
 const { errorMessage } = require("../core/errors.js");
-const { readField } = require("./source-image.js");
+
 
 /*
  * The size an image will have on the page, which is not the size stored in
@@ -41,12 +42,20 @@ function exchangesSides(orientation) {
  */
 const ORIENTATION_ABSENT = /field "orientation" not found/u;
 
+function readField(app, vipsheaderPath, imagePath, field) {
+    const { runArgv } = require("./shell.js");
+    const { positiveIntegerFrom } = require("../core/numbers.js");
+    const value = positiveIntegerFrom(runArgv(app, [vipsheaderPath, "-f", field, imagePath], `reading the image ${field}`));
+    if (value === 0) { throw new OperationError(`vipsheader returned an invalid ${field}: invalid numeric metadata`); }
+    return value;
+}
+
 function readOrientation(app, vipsheaderPath, imagePath) {
     try {
         const orientation = readField(app, vipsheaderPath, imagePath, "orientation");
 
         if (orientation > LAST_TURNED) {
-            throw new Error(`vipsheader returned an invalid orientation: ${orientation}`);
+            throw new OperationError(`vipsheader returned an invalid orientation: ${orientation}`);
         }
 
         return orientation;
@@ -68,4 +77,4 @@ function readImageSize(app, vipsheaderPath, imagePath) {
         : { width, height };
 }
 
-module.exports = { readImageSize };
+module.exports = { readField, readImageSize };

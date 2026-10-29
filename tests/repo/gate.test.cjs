@@ -13,7 +13,7 @@ test("the artifact names no executable the source does not", async () => {
     // The external surface is written down in one module. This asserts the
     // artifact contains exactly what that module names, which is a property
     // of src/ that check-dist carries through to dist/.
-    const { EXECUTABLES } = await import("../../src/core/executables.js");
+    const { EXECUTABLES } = await import("../../src/runtime/backend-executables.js");
     const { executablePathsIn } =
         await import("../../tools/lint/source-rules.mjs");
     const { renderRelease } = await import("../../tools/release.mjs");

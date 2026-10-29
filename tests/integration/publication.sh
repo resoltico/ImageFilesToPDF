@@ -34,7 +34,7 @@ vips copy "$WORK/blue.svg" "$WORK/photo.png"
 run() {
     local stamp=$1
     shift
-    write_config "$WORK/config.json" A4 Portrait "Single PDF" "#FFFFFF" "$stamp"
+    write_config "$WORK/config.json" A4 Portrait "single" "#FFFFFF" "$stamp"
     osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$@" \
         2>"$WORK/error.txt" || true
 }
@@ -82,6 +82,46 @@ test -L "$WORK/link/output_20260907_040404.pdf" ||
 assert_valid_pdf "$WORK/link/output_20260907_040404_2.pdf"
 assert_nothing_left_behind "$WORK/link"
 
+# Existing entry kinds must be left untouched by the actual product, in both modes.
+for mode in single separate; do
+    for kind in file directory fifo dangling symlink-directory; do
+        CASE="$WORK/occupied-$mode-$kind"
+        mkdir "$CASE"
+        cp "$WORK/photo.png" "$CASE/photo.png"
+        BASE="$CASE/output_20260907_041414.pdf"
+        if [[ "$mode" == separate ]]; then BASE="$CASE/photo_20260907_041414.pdf"; fi
+        case "$kind" in
+            file) printf 'untouched' > "$BASE" ;;
+            directory) mkdir "$BASE"; printf 'untouched' > "$BASE/child" ;;
+            fifo) mkfifo "$BASE" ;;
+            dangling) ln -s missing "$BASE" ;;
+            symlink-directory) mkdir "$CASE/target"; printf 'untouched' > "$CASE/target/child"; ln -s target "$BASE" ;;
+        esac
+        BEFORE=$(stat -f '%d:%i:%z:%HT' "$BASE")
+        write_config "$CASE/config.json" A4 Portrait "$mode" "#FFFFFF" 20260907_041414
+        node - "$SCRIPT" "$CASE/config.json" "$CASE/photo.png" "${BASE%.pdf}_2.pdf" > "$CASE/receipt.json" <<'NODE'
+const assert = require("node:assert/strict");
+const {spawnSync} = require("node:child_process");
+const [script,config,source,expected] = process.argv.slice(2);
+const result = spawnSync("/usr/bin/osascript", ["-l","JavaScript",script,"--headless",config,source], {encoding:"utf8",timeout:30000});
+assert.ifError(result.error);
+assert.equal(result.status,0,result.stderr);
+const receipt = JSON.parse(result.stdout);
+assert.equal(receipt.state,"complete");
+assert.equal(receipt.documents[0].output,expected);
+process.stdout.write(result.stdout);
+NODE
+        test "$(stat -f '%d:%i:%z:%HT' "$BASE")" = "$BEFORE" || fail "occupied $kind was replaced"
+        case "$kind" in
+            file) test "$(cat "$BASE")" = untouched ;;
+            directory) test "$(ls -A "$BASE")" = child; test "$(cat "$BASE/child")" = untouched ;;
+            dangling) test "$(readlink "$BASE")" = missing ;;
+            symlink-directory) test "$(readlink "$BASE")" = target; test "$(ls -A "$CASE/target")" = child ;;
+        esac
+        assert_valid_pdf "${BASE%.pdf}_2.pdf"
+    done
+done
+
 # ---------------------------------------------------------------------------
 # An output folder that cannot be written to. Every way of getting the PDF in
 # there is refused, so the finished PDF is set aside -- and the message has to
@@ -118,7 +158,7 @@ cp "$WORK/photo.png" "$WORK/denied/"
 chmod +a "$(id -un) deny add_file" "$WORK/denied"
 run 20260907_090909 "$WORK/denied/photo.png"
 
-grep -q 'Permission denied' "$WORK/error.txt" ||
+grep -q '"state":"denied"'  "$WORK/error.txt" ||
     fail "the system's own words are missing: $(cat "$WORK/error.txt")"
 grep -qiE 'drive|volume' "$WORK/error.txt" &&
     fail "a cause was named that was not established: $(cat "$WORK/error.txt")"

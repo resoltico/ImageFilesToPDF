@@ -1,5 +1,6 @@
 "use strict";
 
+const { runOutcome } = require("../core/outcomes.js");
 const { APP_NAME } = require("../core/version.js");
 const { supportedFormatList } = require("../core/paths.js");
 const { describeRejections, showCompletion } = require("./completion.js");
@@ -46,14 +47,12 @@ function describeNoImages(rejected) {
 
 function reportNoImages(app, headless, rejected) {
     if (headless) {
-        throw new Error(describeNoImages(rejected));
+        return runOutcome([], rejected, [{ code: "no-images", stage: "selection", message: describeNoImages(rejected) }]);
     }
 
-    app.displayDialog(describeNoImages(rejected), {
-        withTitle: APP_NAME,
-        buttons: ["OK"],
-        defaultButton: "OK"
-    });
+    const { showDetails } = require("./details-dialog.js");
+    showDetails(app, { title: APP_NAME, summary: "Nothing to convert.", detail: describeNoImages(rejected), buttons: ["OK"] });
+    return undefined;
 }
 
 /*
@@ -77,12 +76,12 @@ function reportHeadless(result, write = writeReceipt) {
     throw new Error(describeIncomplete(result));
 }
 
-function reportResult(app, job, result, options) {
+function reportResult(app, result, options) {
     if (options.headless) {
-        return reportHeadless(result);
+        return result;
     }
 
-    showCompletion(app, job.settings.mode, result, options.pageCount);
+    showCompletion(app, result);
 
     // Said out loud rather than fallen off the end of: nothing is the answer
     // here, and the host does something with an answer.

@@ -59,11 +59,11 @@ test("a tool that is present but too old is reported as such", () => {
     // rejects the flag the pipeline uses on every single run.
     const host = createFakeHost({});
 
-    host.preflight = "version: v0.16.0";
+    host.preflight = "version: v0.16.3";
 
     assert.throws(() => checkTools(host), (error) => {
         assert.match(error.message, /pdfcpu could not report a supported stable version/u);
-        assert.match(error.message, /Version 0\.16\.1 or later is required/u);
+        assert.match(error.message, /Version 0\.16\.4 or later is required/u);
 
         return true;
     });

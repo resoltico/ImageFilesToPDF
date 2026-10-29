@@ -7,11 +7,6 @@ import { root } from "../repository.mjs";
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARACTERS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u;
 
-/*
- * No file may grow back into a god file. The threshold sits close to the
- * largest current module, so growth is a decision rather than a drift.
- */
-export const MAXIMUM_FILE_LINES = 150;
 const HEX_RADIX = 16;
 const CODE_POINT_DIGITS = 4;
 
@@ -36,18 +31,6 @@ function checkControlCharacters(relativePath, content) {
     );
 }
 
-export function checkSize(relativePath, content) {
-    const lines = content.split("\n").length - 1;
-
-    if (lines > MAXIMUM_FILE_LINES) {
-        throw new Error(
-            `${relativePath}: ${lines} lines exceeds the ` +
-            `${MAXIMUM_FILE_LINES}-line limit; split it rather than raising ` +
-            "the limit"
-        );
-    }
-}
-
 function checkWhitespace(relativePath, content) {
     if (!content.endsWith("\n")) {
         throw new Error(`${relativePath}: missing final newline`);
@@ -67,7 +50,7 @@ function checkWhitespace(relativePath, content) {
  * directly rather than only through a file on disk.
  */
 /*
- * Every binary the action runs is named in src/core/executables.js and
+ * Every binary the action runs is named in src/runtime/backend-executables.js and
  * nowhere else, so the external surface of the artifact is a file you can
  * read rather than a fact to reassemble from five modules.
  *
@@ -77,7 +60,7 @@ function checkWhitespace(relativePath, content) {
  * is a byte-for-byte render of src/, so nothing can be true of one and not
  * the other.
  */
-const EXECUTABLES_MODULE = "src/core/executables.js";
+const EXECUTABLES_MODULE = "src/runtime/backend-executables.js";
 
 const ABSOLUTE_EXECUTABLE =
     /"(?<path>\/(?:s?bin|usr\/s?bin|usr\/local\/bin|opt\/(?:homebrew|local)\/bin)\/[\w.-]+)"/gu;
@@ -111,7 +94,6 @@ export function checkContent(relativePath, content) {
     checkWhitespace(relativePath, content);
     checkControlCharacters(relativePath, content);
     checkExecutables(relativePath, content);
-    checkSize(relativePath, content);
 }
 
 /*

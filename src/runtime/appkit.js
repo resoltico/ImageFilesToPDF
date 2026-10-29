@@ -1,5 +1,7 @@
 "use strict";
 
+const { MODAL_UNAVAILABLE } = require("./objc-bridge.js");
+const { makeDetails } = require("./details-dialog.js");
 const {
     makeView,
     makeLabel,
@@ -15,6 +17,7 @@ const { buildForm } = require("./appkit-form.js");
 
 // Gathered into one object so a test can substitute the whole widget layer.
 const WIDGETS = {
+    makeDetails,
     makeView,
     makeLabel,
     makeHint,
@@ -53,7 +56,6 @@ const WIDGETS = {
  * assumed: abortModal yields NSModalResponseAbort, which is -1001, and -1000
  * is NSModalResponseStop.
  */
-const RESPONSE_ABORT = -1001;
 const FIRST_BUTTON = 1000;
 
 function readControls(bridge, spec, controls) {
@@ -79,11 +81,9 @@ function readControls(bridge, spec, controls) {
             control.validateEditing;
         }
 
-        answers[row.key] = String(bridge.objc.unwrap(
-            row.kind === "choice"
-                ? control.titleOfSelectedItem
-                : control.stringValue
-        ));
+        answers[row.key] = row.kind === "choice"
+            ? row.options[Number(control.indexOfSelectedItem)].value
+            : String(bridge.objc.unwrap(control.stringValue));
     }
 
     return answers;
@@ -94,10 +94,12 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
     const alert = widgets.makeAlert(bridge.ns, spec);
 
     alert.accessoryView = view;
+    const focus = spec.rows.find((row) => row.invalid) ?? spec.rows.find((row) => row.kind === "number");
+    alert.window.initialFirstResponder = controls[focus.key];
 
     const response = Number(alert.runModal);
 
-    if (response === RESPONSE_ABORT) {
+    if (response === MODAL_UNAVAILABLE) {
         return null;
     }
 

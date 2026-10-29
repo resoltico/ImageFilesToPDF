@@ -10,48 +10,11 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    completionMessage,
-    showCompletion
-} = require("../../../src/runtime/completion.js");
 const { promptInteger } = require("../../../src/runtime/prompts.js");
-const { RESOLUTION } = require("../../../src/core/choices.js");
-const { readAnswers } = require("../../../src/core/answers.js");
-const { defaultAnswers } = require("../../../src/core/form.js");
+const { RESOLUTION } = require("../../../src/runtime/choices.js");
+const { readAnswers } = require("../../../src/runtime/answers.js");
+const { defaultAnswers } = require("../../../src/runtime/form.js");
 const { createFakeApp } = require("./fake-app.cjs");
-
-test("the completion dialog is a notice, not a question", () => {
-    // Without the button set macOS supplies a Cancel there is nothing to
-    // cancel, and an untitled dialog does not say which action produced it.
-    const app = createFakeApp();
-
-    showCompletion(app, "single", {
-        outputs: ["/a/out.pdf"],
-        failures: [],
-        elapsed: "1 second"
-    }, 1);
-
-    assert.deepEqual(app.dialogs.at(-1).options, {
-        withTitle: "Image Files to PDF",
-        buttons: ["OK"],
-        defaultButton: "OK"
-    });
-});
-
-test("each failure keeps its own line", () => {
-    // Run together they read as one sentence about a file that does not
-    // exist, which is worse than reporting only the first.
-    const message = completionMessage("separate", {
-        outputs: [],
-        failures: [{ name: "one.png", message: "broke", command: "" }, { name: "two.png", message: "also broke", command: "" }],
-        elapsed: "1 second"
-    }, 2);
-
-    assert.ok(
-        message.includes("one.png: broke\ntwo.png: also broke"),
-        message
-    );
-});
 
 test("a rejected answer is explained where it is corrected", () => {
     // This used to be a dialog of its own: it interrupted mid-answer, and the
@@ -70,7 +33,7 @@ test("a rejected answer is explained where it is corrected", () => {
 
     assert.equal(
         again.message,
-        `Resolution: enter a whole number from 72 to 1017.\n\n${RESOLUTION.prompt}`,
+        `DPI must be a whole number from 72 to 1017.\n\n${RESOLUTION.prompt}`,
         "the reason, and then the question again"
     );
     assert.equal(again.options.defaultAnswer, "3O0", "holding what was typed");

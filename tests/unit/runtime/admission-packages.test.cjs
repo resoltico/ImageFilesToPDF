@@ -9,7 +9,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { collectImageFiles } = require("../../../src/runtime/admission.js");
+const { collectImageFiles } = require("./fake-selection.cjs");
 const { createFakeApp } = require("./fake-app.cjs");
 const { treeOf } = require("./fake-tree.cjs");
 

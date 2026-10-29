@@ -50,7 +50,7 @@ const { describeUnresolved } = require("./reasons.js");
  * and a path is the only identity there is.
  */
 function inspect(tree, path) {
-    return tree ? tree.inspect(path) : { kind: null, identity: "" };
+    return tree.inspect(path);
 }
 
 function reportUnresolved(item, rejected) {
@@ -68,7 +68,7 @@ function reportUnresolved(item, rejected) {
  * separately, which is how they turn out to be one file.
  */
 function remember(found, tree, path) {
-    const standardized = tree ? tree.standardize(path) : path;
+    const standardized = tree.standardize(path);
 
     if (found.roots.has(standardized)) {
         return;

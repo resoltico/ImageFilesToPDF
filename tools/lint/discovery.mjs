@@ -1,6 +1,6 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { moduleOrder } from "../release.mjs";
+import { sourceFiles } from "../release.mjs";
 import { root } from "../repository.mjs";
 
 const SOURCE_EXTENSIONS = /\.(?:js|mjs|cjs)$/u;
@@ -65,11 +65,11 @@ export async function walk(directory, base = root, wanted = isSourceFile) {
  * Discovered rather than listed, and recursive, so a new module or a new
  * subdirectory cannot quietly escape the checks. Root-level configuration is
  * included explicitly: it is source too, and it was previously the one file
- * the size limit could not see.
+ * recursive discovery previously missed.
  */
 export async function lintableFiles() {
     return [
-        ...moduleOrder,
+        ...await sourceFiles(),
         ...await walk("tools"),
         ...await walk("tests"),
         "eslint.config.mjs"

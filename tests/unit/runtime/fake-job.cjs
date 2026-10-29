@@ -13,7 +13,7 @@ const geometry = calculatePageGeometry({
     orientation: "Portrait",
     dpi: 72,
     quality: 85,
-    mode: "Single PDF",
+    mode: "single",
     background: "#FFFFFF"
 });
 
@@ -24,9 +24,11 @@ function makeJob(app) {
         settings: { quality: 85, background: "#FFFFFF" },
         timestamp: "20260904_010203",
         workspace: "/tmp/ImageFilesToPDF.X",
-        unpublished: new Set(),
+        artifacts: new Map(),
+        cleanupIssues: [],
         progress: createProgress([]),
-        rename: app.renamer ?? null,
+        publication: app.publication,
+        sources: app.sources,
         tools: { vips: "/v/vips", vipsheader: "/v/vipsheader", pdfcpu: "/v/pdfcpu" }
     };
 }

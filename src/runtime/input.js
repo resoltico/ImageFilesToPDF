@@ -1,6 +1,8 @@
 "use strict";
+const { OperationError } = require("../core/errors.js");
 
-const { normalizeInvocationInput, decodeFileUrl } = require("../core/invocation.js");
+const { normalizeInvocationInput, decodeFileUrl } = require("./invocation-syntax.js");
+const { validateSettings } = require("../core/settings.js");
 const { readTimestamp } = require("../core/timestamps.js");
 const { readTextFile } = require("./shell.js");
 
@@ -74,53 +76,49 @@ function finderSelection() {
  * configuration file of `false` or `0` gets wrong: a headless run went to the
  * dialogs and waited for an answer nobody was there to give.
  */
+function parsedConfiguration(app, path) {
+    try { return JSON.parse(readTextFile(app, path)); }
+    catch (error) { throw new OperationError("The headless configuration could not be read as JSON.", { cause: error }); }
+}
+
+function readConfiguration(app, path) {
+    const configuration = parsedConfiguration(app, path);
+    if (!configuration || typeof configuration !== "object" || Array.isArray(configuration)) {
+        throw new OperationError("The headless configuration must be a JSON object of settings.");
+    }
+    return configuration;
+}
+
+function requestTimestamp(configuration, issues) {
+    if (!Object.hasOwn(configuration, "timestamp")) { return ""; }
+    try { return readTimestamp(configuration.timestamp); }
+    catch (error) {
+        issues.push({ field: "timestamp", code: "timestamp", stage: "request", message: error.message });
+        return "";
+    }
+}
+
+function validatedConfiguration(configuration) {
+    const pageSettings = { ...configuration };
+    delete pageSettings.timestamp;
+    const validated = validateSettings(pageSettings);
+    const timestamp = requestTimestamp(configuration, validated.issues);
+    if (validated.issues.length > 0) {
+        const failure = new OperationError(validated.issues.map((issue) => issue.message).join("\n"));
+        failure.issues = validated.issues;
+        throw failure;
+    }
+    return { settings: validated.settings, timestamp };
+}
+
 function collectInvocation(app, input, headless) {
     const items = normalizeInvocationInput(input);
-
-    if (!headless) {
-        // Settings come from dialogs, but only after the cheap checks have
-        // passed and there is actually something to convert.
-        return { headless: false, settings: null, timestamp: "", inputItems: items };
-    }
-
+    if (!headless) { return { headless: false, settings: null, timestamp: "", inputItems: items }; }
     if (items.length < HEADLESS_MINIMUM_ARGUMENTS) {
-        throw new Error(
-            "Headless usage: --headless /path/to/config.json /path/to/image ..."
-        );
+        throw new OperationError("Headless usage: --headless /path/to/config.json /path/to/image ...");
     }
-
-    const configuration = JSON.parse(readTextFile(app, String(items[1])));
-
-    /*
-     * Valid JSON is not yet a configuration. `null`, `false`, `0` and a bare
-     * string all parse, and asking any of them for a setting fails somewhere
-     * further along in words about the failure rather than about the file --
-     * "null is not an object", or an unsupported paper size that was never
-     * supported because there was never a paper size.
-     */
-    if (
-        !configuration ||
-        typeof configuration !== "object" ||
-        Array.isArray(configuration)
-    ) {
-        throw new Error(
-            "The headless configuration must be a JSON object of settings."
-        );
-    }
-
-    return {
-        headless: true,
-        settings: configuration,
-        // Read rather than taken. It goes straight into an output filename,
-        // and a filename is one path component: "2026/09/12" is a perfectly
-        // good string and put the PDF in a folder nobody asked for. Refused
-        // here, before an image is touched, so the caller is told which value
-        // was wrong rather than finding the output somewhere else.
-        timestamp: configuration.timestamp
-            ? readTimestamp(configuration.timestamp)
-            : "",
-        inputItems: items.slice(HEADLESS_FIRST_IMAGE_INDEX)
-    };
+    return { headless: true, ...validatedConfiguration(readConfiguration(app, String(items[1]))),
+        inputItems: items.slice(HEADLESS_FIRST_IMAGE_INDEX) };
 }
 
 module.exports = {

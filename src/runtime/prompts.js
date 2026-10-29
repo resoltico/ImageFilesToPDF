@@ -1,9 +1,10 @@
 "use strict";
 
+const { hostError } = require("./cancellation.js");
 const { UserCancelled, errorMessage } = require("../core/errors.js");
 const { APP_NAME } = require("../core/version.js");
-const { labelsOf, valueOfLabel } = require("../core/choices.js");
-const { readNumber } = require("../core/answers.js");
+const { labelsOf, valueOfLabel, labelOfValue } = require("./choices.js");
+const { readNumber } = require("./answers.js");
 
 /*
  * Asking one question at a time, where there is no form to ask six at once.
@@ -21,7 +22,7 @@ function chooseRequired(app, control, opening) {
     const choice = app.chooseFromList(labelsOf(control), {
         withTitle: APP_NAME,
         withPrompt: control.prompt,
-        defaultItems: [opening]
+        defaultItems: [labelOfValue(control, opening)]
     });
 
     if (!choice) {
@@ -46,12 +47,17 @@ function chooseRequired(app, control, opening) {
  * displayDialog raises when the person cancels, and that call sits outside
  * the try deliberately: cancelling is a decision, not an unusable answer.
  */
+function nativeDialog(app, message, options) {
+    try { return app.displayDialog(message, options); }
+    catch (error) { throw hostError(error); }
+}
+
 function askUntil(app, question, read) {
     let answer = question.defaultAnswer;
     let problem = "";
 
     for (;;) {
-        const response = app.displayDialog(
+        const response = nativeDialog(app,
             problem ? `${problem}\n\n${question.prompt}` : question.prompt,
             {
                 withTitle: APP_NAME,

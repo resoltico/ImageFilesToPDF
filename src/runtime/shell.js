@@ -1,8 +1,10 @@
 "use strict";
+const { hostError } = require("./cancellation.js");
 
-const { CAT, RM } = require("../core/executables.js");
-const { shellJoin } = require("../core/shell.js");
-const { errorMessage, summarizeCommand } = require("../core/errors.js");
+const { CAT, RM } = require("./backend-executables.js");
+const { shellJoin } = require("./backend-shell.js");
+const { ISSUE, issuesOf } = require("../core/outcomes.js");
+const { OperationError, errorMessage } = require("../core/errors.js");
 
 /*
  * Running a command and taking what it printed.
@@ -20,17 +22,18 @@ function runArgv(app, argumentsList, label) {
 
     try {
         return app.doShellScript(command);
-    } catch (error) {
+    } catch (caught) {
+        const error = hostError(caught);
         const context = label ? ` while ${label}` : "";
 
-        const failure = new Error(
+        const failure = new OperationError(
             `Command failed${context}.\n\n${errorMessage(error)}`,
             { cause: error }
         );
 
         // Carried alongside the message so the presenter can decide: shown in
         // a log, withheld from a dialog.
-        failure.command = summarizeCommand(command);
+        failure.command = command;
 
         throw failure;
     }
@@ -44,25 +47,21 @@ function runArgv(app, argumentsList, label) {
  * What silence means is the caller's to decide, and every caller of this has
  * an answer for it.
  */
-function tryArgv(app, argumentsList) {
-    try {
-        return app.doShellScript(shellJoin(argumentsList));
-    } catch {
-        return "";
-    }
-}
 
 function readTextFile(app, path) {
     return runArgv(app, [CAT, path], "reading headless configuration");
 }
 
-function removeFile(app, path) {
-    if (!path) {
-        return;
+function cleanupArgv(app, argumentsList) {
+    try { runArgv(app, argumentsList, "removing owned temporary work"); return { state: "removed" }; }
+    catch (error) {
+        const [issue] = issuesOf(error, "cleanup");
+        return { state: "failed", issue: { ...issue, code: issue.code === ISSUE.operation ? ISSUE.cleanup : issue.code } };
     }
-
-    // A temporary file that cannot be removed must not fail the run.
-    tryArgv(app, [RM, "-f", path]);
 }
 
-module.exports = { runArgv, tryArgv, readTextFile, removeFile };
+function removeFile(app, path) {
+    return path ? cleanupArgv(app, [RM, "-f", path]) : { state: "removed" };
+}
+
+module.exports = { runArgv, readTextFile, removeFile, cleanupArgv };

@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { presentForm } = require("../../../src/runtime/appkit.js");
-const { formSpec, defaultAnswers } = require("../../../src/core/form.js");
+const { formSpec, defaultAnswers } = require("../../../src/runtime/form.js");
 const { createFakeObjC } = require("./fake-objc.cjs");
 
 const CREATE = 1000;
@@ -106,7 +106,7 @@ test("the alert carries the form's own title, detail and buttons", () => {
 test("the current answers are preselected rather than left at the top", () => {
     // A redisplayed form that resets every popup would lose the answers it
     // exists to preserve.
-    const answers = { ...defaultAnswers(), paperSize: "US Letter", dpi: "600" };
+    const answers = { ...defaultAnswers(), paperSize: "Letter", dpi: "600" };
     const { bridge } = present([CREATE], formSpec(answers, [
         { key: "dpi", message: "fix the DPI" }
     ]));
@@ -127,17 +127,14 @@ test("edited values come back out, not the values that went in", () => {
 
     bridge.ns.NSPopUpButton.alloc.initWithFramePullsDown = (rect, pullsDown) => {
         const popup = original(rect, pullsDown);
-        const select = popup.selectItemWithTitle;
-
-        popup.selectItemWithTitle = (title) => select(
-            title === "A4" ? "US Letter" : title
-        );
+        const select = popup.selectItemAtIndex;
+        popup.selectItemAtIndex = (index) => select(popup.items[0].title === "A4" ? 1 : index);
 
         return popup;
     };
 
     const outcome = presentForm(bridge, spec);
 
-    assert.equal(outcome.answers.paperSize, "US Letter");
+    assert.equal(outcome.answers.paperSize, "Letter");
 });
 
