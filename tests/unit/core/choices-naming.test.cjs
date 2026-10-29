@@ -9,7 +9,7 @@ const {
     BACKGROUND,
     RESOLUTION,
     QUALITY
-} = require("../../../src/core/choices.js");
+} = require("../../../src/runtime/choices.js");
 
 /*
  * What each control is called, in each of the two places it appears.

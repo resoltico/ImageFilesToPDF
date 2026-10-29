@@ -9,7 +9,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { collectImageFiles } = require("../../../src/runtime/admission.js");
+const { collectImageFiles } = require("./fake-selection.cjs");
 const { createFakeApp } = require("./fake-app.cjs");
 
 test("an input that named itself and did not resolve is reported", () => {
@@ -27,12 +27,12 @@ test("an input that named itself and did not resolve is reported", () => {
         {
             path: "",
             name: "./second.jpg",
-            reason: "not an absolute path to a file"
+            reason: "not an absolute path to a file", code: "selection-refused", stage: "selection"
         },
         {
             path: "",
             name: "~/Pictures/third.png",
-            reason: "not an absolute path to a file"
+            reason: "not an absolute path to a file", code: "selection-refused", stage: "selection"
         }
     ]);
 });

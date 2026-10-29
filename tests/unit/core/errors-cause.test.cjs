@@ -10,8 +10,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     UserCancelled,
-    commandOf,
-    describeForLog
+    commandOf
 } = require("../../../src/core/errors.js");
 
 function wrap(error, layers) {
@@ -32,7 +31,7 @@ test("a cause that refers back to itself cannot spin", () => {
 
     first.cause = second;
 
-    assert.equal(describeForLog(second), "second");
+    assert.equal(commandOf(second), "");
 });
 
 test("the command is found however deeply it is wrapped", () => {

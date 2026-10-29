@@ -1,14 +1,13 @@
 "use strict";
 
 const { zeroPad } = require("../core/numbers.js");
-const { errorMessage } = require("../core/errors.js");
-const { assertSinglePage } = require("./source-image.js");
+const { inspectSource } = require("./source-image.js");
 const {
     resizeToPage,
     flattenIfTransparent,
     layOutOnPage
 } = require("./page-stages.js");
-const { removeFile } = require("./shell.js");
+const { removeOwned } = require("./owned-cleanup.js");
 
 /*
  * Preparation of one source image into one page-sized JPEG.
@@ -56,11 +55,11 @@ function renderPage(job, imageFile, paths) {
  * one page each.
  */
 function sweepUp(job, paths, keeping) {
-    removeFile(job.app, paths.preparedPath);
-    removeFile(job.app, paths.flattenedPath);
+    removeOwned(job, paths.preparedPath);
+    removeOwned(job, paths.flattenedPath);
 
     if (!keeping) {
-        removeFile(job.app, paths.pagePath);
+        removeOwned(job, paths.pagePath);
     }
 }
 
@@ -69,55 +68,17 @@ function preparePage(job, imageFile, index) {
     const paths = workspacePaths(job, index);
     let made = false;
 
-    assertSinglePage(job, imageFile);
-
     try {
-        renderPage(job, imageFile, paths);
+        const captured = job.sources.capture(imageFile.path, `${job.workspace}/input-${index}`);
+        const descriptor = inspectSource(job, captured);
+        renderPage(job, { ...imageFile, path: captured.path, descriptor }, paths);
         made = true;
 
         return paths.pagePath;
     } finally {
+        removeOwned(job, `${job.workspace}/input-${index}`);
         sweepUp(job, paths, made);
     }
 }
 
-/*
- * Names the image once. A combined run has no other place to say which one
- * failed, and a separate run does the same at its own boundary, so the name
- * appears exactly once either way.
- */
-function withImageName(imageFile, produce) {
-    try {
-        return produce();
-    } catch (error) {
-        throw new Error(`${imageFile.originalName}: ${errorMessage(error)}`, {
-            cause: error
-        });
-    }
-}
-
-/*
- * The loop owns the unit, so the loop opens it and closes it. Preparing a page
- * used to announce itself from inside preparePage, one level below the only
- * code that knows an image is one of several -- and the matching close lived
- * three modules away, in publication, where a failed image never reached it.
- *
- * One unit finishes with each page prepared; the PDF made from them is the
- * last unit, and createCombinedPdf closes that one.
- */
-function preparePages(job, imageFiles) {
-    return imageFiles.map((imageFile, index) => {
-        job.progress.beginning(index + 1, imageFile.originalName);
-
-        const page = withImageName(
-            imageFile,
-            () => preparePage(job, imageFile, index)
-        );
-
-        job.progress.finished("Preparing");
-
-        return page;
-    });
-}
-
-module.exports = { preparePage, preparePages };
+module.exports = { preparePage };

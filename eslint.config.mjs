@@ -43,8 +43,8 @@ export default [
     { rules: { ...deliberateExceptions, ...tunedRules } },
 
     {
-        // Portable planning core: CommonJS for Node, concatenated for JXA.
-        files: ["src/core/**/*.js"],
+        // Portable planning core: CommonJS for Node, isolated by esbuild for JXA.
+        files: ["src/core/**/*.js", "src/application/**/*.js", "src/entry.js"],
         languageOptions: {
             ecmaVersion: JXA_ECMA_VERSION,
             sourceType: "commonjs",
@@ -80,7 +80,7 @@ export default [
     },
 
     {
-        files: ["tests/**/*.cjs"],
+        files: ["tests/**/*.cjs", "tests/**/*.js"],
         languageOptions: {
             ecmaVersion: "latest",
             sourceType: "commonjs",

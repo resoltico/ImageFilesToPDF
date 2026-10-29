@@ -4,100 +4,97 @@ Source, releases and build attestation:
 
     https://github.com/resoltico/ImageFilesToPDF
 
-Verifying what you downloaded
-=============================
+Requirements
+============
 
-Every file in the release is signed with a GitHub build attestation. With the
-GitHub CLI installed, from the folder you downloaded them into:
+macOS 12.3 or later, with Shortcuts. The Quick Action needs no Node.js runtime.
+Install its command-line tools in Terminal:
+
+    brew install vips pdfcpu
+
+vipsheader comes with vips. Requires stable pdfcpu 0.16.4 or later. To upgrade:
+
+    brew update
+    brew upgrade pdfcpu
+
+pdfcpu runs with --conf disable, without personal configuration, fonts or
+certificates. See QA.md in the repository for current verification limits.
+
+Verify a download
+=================
+
+The release workflow attests the JXA, checksum manifest, installation
+instructions and license. With GitHub CLI installed, from the download folder:
 
     gh attestation verify "Image-Files-to-PDF.jxa" \
         --repo resoltico/ImageFilesToPDF
     shasum --check SHA256SUMS
 
-Requirements
-============
-
-macOS 12.3 or later.
-
-The Shortcuts app is macOS 12 and later; 12.3 is the point at which its
-JavaScript engine supports everything this action uses.
-
-License terms
-=============
-
-This project uses the Mozilla Public License 2.0 (MPL-2.0).
-The full text is supplied in LICENSE and at https://mozilla.org/MPL/2.0/.
-The JXA header links to the corresponding source. Keep its license and source
-notices when sharing the action.
-vips, pdfcpu and development dependencies retain their own licenses.
-
-Runtime tools
-=============
-
-Open Terminal and run:
-
-    brew install vips pdfcpu
-
-Requires stable pdfcpu 0.16.1 or later; older releases and prereleases are
-unsupported. To upgrade an existing installation:
-
-    brew update
-    brew upgrade pdfcpu
-
-The action runs pdfcpu with --conf disable. It uses built-in settings without
-reading or changing your personal pdfcpu configuration.
-
 Install the Quick Action
 ========================
 
-1. Open the Shortcuts app.
-2. Create a new shortcut.
-3. Open the shortcut details.
-4. Enable "Use as Quick Action".
-5. Enable Finder.
-6. Configure the shortcut to receive Files from Finder.
-7. Add "Run JavaScript for Mac Automation".
-8. Delete the example code in that action.
-9. Paste the complete contents of:
+1. Open Shortcuts and create a new shortcut.
+2. In its details, enable "Use as Quick Action" and Finder.
+3. Configure it to receive Files from Finder.
+4. Add "Run JavaScript for Mac Automation".
+5. Replace the example code with the COMPLETE contents of the downloaded
+   Image-Files-to-PDF.jxa. In a repository checkout, that file is at
+   dist/Image-Files-to-PDF.jxa.
+6. Name the shortcut "Image Files to PDF".
 
-       dist/Image-Files-to-PDF.jxa
-
-10. Save the shortcut as "Image Files to PDF".
+To install a changed build, replace the complete pasted script. Download
+checksums do not verify an installed pasted copy.
 
 Use it
 ======
 
-Select image files or folders in Finder and run the Quick Action. Selected
-folders are searched recursively. Each image occupies its own PDF page; this
-is not a collage or contact-sheet action.
+Select images or folders in Finder and run the Quick Action. Folder traversal
+is recursive; it skips hidden entries, links, packages and unsupported names.
+Explicitly selected hidden images are considered; selected links/packages are
+refused. Duplicate images are converted once, in natural full-path order.
 
-"One PDF — one image per page" combines the pages into one file.
-"Separate PDFs — one page per image" saves one single-page file per image.
-With one image both options make one single-page PDF, but use different
-filename prefixes. The settings window explains the count and save location.
-Pages use JPEG compression without changing the original image files.
+Supported extensions: jpg, jpeg, png, heic, heif, tif, tiff, webp and avif.
+Actual content must be a supported single-image raster. Animated, multipage,
+corrupt, unknown or disguised unsupported content is refused.
 
-Review any selection problems, choose the settings, and click Create. With
-stepwise dialogs, the last dialog confirms the settings before files are
-created. Completion reports the PDFs saved and anything not converted.
+Review selection problems, choose the six page settings, then click Create.
+Stepwise dialogs end with confirmation. Each image gets its own centred,
+JPEG-compressed PDF page without cropping or enlargement. Originals stay intact.
+
+"One PDF - one image per page" combines the pages into one document.
+"Separate PDFs - one page per image" creates a single-page document per image.
+Images found through a selected folder save there; explicit files save beside
+their source. A combined PDF uses the first ordered image's destination.
+Existing entries are never overwritten; filename collisions receive suffixes.
+
+Combined mode publishes no subset after a candidate failure. Separate mode
+continues ordinary failures, while cancellation, cleanup or software faults can
+stop remaining work. Completion identifies saved/recovered work, failures and
+work not started. Follow any reported recovery or unconfirmed-candidate path;
+those files may intentionally remain in the system temporary directory.
 
 Remove it
 =========
 
-1. In the Shortcuts app, delete the "Image Files to PDF" shortcut.
-2. To forget the settings it remembered, open Terminal and run:
+1. Delete the "Image Files to PDF" shortcut in Shortcuts.
+2. To forget the page settings shared by installed copies, run:
 
        defaults delete com.resoltico.ImageFilesToPDF
 
-That is everything it leaves on your Mac. It keeps one preferences entry,
-under that name, holding the page setup of your last run, and nothing about
-your images. Its working files go in the system temporary folder and are
-cleared away as each run ends; a run that could not save a finished PDF leaves
-them in place on purpose, and the message says where they are.
+The preference domain stores page settings only. Working files are normally
+cleaned; inspect any intentionally retained recovery/workspace locations named
+by a run before removing them. The action does not automatically delete your
+source images or saved PDFs.
 
-vips and pdfcpu are yours rather than this action's, and anything else on your
-Mac may be using them, so they are left alone. Remove them with
+vips and pdfcpu may be used by other software. If nothing needs them, remove:
 
     brew uninstall vips pdfcpu
 
-if nothing else needs them.
+License terms
+=============
+
+First-party project files use Mozilla Public License 2.0 (MPL-2.0).
+The complete terms are in LICENSE and at https://mozilla.org/MPL/2.0/.
+Preserve license/source notices and provide covered source as required by the
+license when distributing covered files or modifications. The JXA header
+identifies its corresponding source. Dependencies retain their own licenses.

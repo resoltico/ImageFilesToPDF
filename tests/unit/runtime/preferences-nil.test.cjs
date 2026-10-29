@@ -12,7 +12,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createMemory } = require("../../../src/runtime/preferences.js");
-const { KEY } = require("../../../src/core/preferences.js");
+const { KEY } = require("../../../src/runtime/settings-preferences.js");
 
 function suiteFor(state, settings) {
     return {

@@ -17,8 +17,6 @@ const { copyBeside } = require("../../../src/runtime/output-copy.js");
 const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob } = require("./fake-job.cjs");
 
-const DIRECT_CLAIM = "ln' '/a/p.pdf'";
-const STAGED_FACTS = "stat' '-f%d:%i:%z' '/a/.ImageFilesToPDF";
 const AREA = {
     directory: "/a/.ImageFilesToPDF-test",
     file: "/a/.ImageFilesToPDF-test/ready.pdf"
@@ -37,10 +35,10 @@ test("a place that cannot be made is not one this run may clear away", () => {
         const host = createFakeHost(settings);
         const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024);
 
-        assert.equal(outcome.made, false, "nothing of it is this run's");
-        assert.match(outcome.reasons[0], /File exists/u);
+        assert.equal(outcome.area, null, "nothing of it is this run's");
+        assert.match(outcome.error.message, /File exists/u);
         assert.match(
-            outcome.reasons[0],
+            outcome.error.message,
             /making a place for the PDF in the output folder/u,
             "and which step it was"
         );
@@ -62,8 +60,8 @@ test("a copy that failed still made the place it was going into", () => {
     });
     const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024);
 
-    assert.equal(outcome.made, true);
-    assert.match(outcome.reasons[0], /no space left/u);
+    assert.equal(outcome.area, AREA);
+    assert.match(outcome.error.message, /no space left/u);
 });
 
 test("a copy is checked against the size it should have", () => {
@@ -71,17 +69,19 @@ test("a copy is checked against the size it should have", () => {
         files: ["/a/p.pdf"],
         failures: [[`stat' '-f%d:%i:%z' '${AREA.file}'`, "16777232:5:7"]]
     });
+    const {facts} = host.publication;
+    host.publication.facts=(path)=>path===AREA.file?{identity:"16777232:5",size:7}:facts(path);
     const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024);
 
-    assert.equal(outcome.made, true, "and it is still this run's to clear away");
-    assert.match(outcome.reasons[0], /7 bytes where 1024 were expected/u);
+    assert.equal(outcome.area, AREA, "and it is still this run's to clear away");
+    assert.match(outcome.error.message, /7 bytes where 1024 were expected/u);
 });
 
 test("a source that could not be measured is never copied successfully", () => {
     const host = createFakeHost({ files: ["/a/p.pdf"] });
     const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, -1);
 
-    assert.match(outcome.reasons[0], /-1 were expected/u);
+    assert.match(outcome.error.message, /-1 were expected/u);
 });
 
 test("neither file being measurable is not a match", () => {
@@ -91,22 +91,26 @@ test("neither file being measurable is not a match", () => {
         files: ["/a/p.pdf"],
         failures: [["/usr/bin/stat", new Error("stat: denied")]]
     });
+    host.publication.facts=()=>({identity:"",size:-1});
     const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, -1);
 
-    assert.deepEqual(outcome.reasons, ["the staged file is -1 bytes where -1 were expected"]);
+    assert.equal(outcome.error.message, "the staged file is -1 bytes where -1 were expected");
 });
 
 test("a truncated copy never wears the finished PDF's name", () => {
     const host = createFakeHost({
         files: ["/a/p.pdf"],
         failures: [
-            [DIRECT_CLAIM, new Error("Operation not permitted")],
-            [STAGED_FACTS, "16777232:5:7"]
         ]
     });
 
+    const {facts} = host.publication;
+    host.publication.facts=(path)=>path.includes(".ImageFilesToPDF")?{identity:"16777232:5",size:7}:facts(path);
+    host.publication.link = () => ({ state: "unsupported" });
+    const job = makeJob(host);
+    job.artifacts.set("/a/p.pdf",{path:"/a/p.pdf",state:"validated"});
     assert.throws(
-        () => publishPdf(makeJob(host), "/a/p.pdf", "/a/out.pdf"),
+        () => publishPdf(job, "/a/p.pdf", "/a/out.pdf"),
         /7 bytes where 1024 were expected/u
     );
     assert.ok(!host.files.has("/a/out.pdf"), "and nothing is at the output name");
@@ -115,4 +119,10 @@ test("a truncated copy never wears the finished PDF's name", () => {
         [],
         "and the place it was copied into is gone"
     );
+});
+
+test("a faulted facts reader retains destination-area ownership and the original exception",()=>{
+    const host=createFakeHost({files:["/a/p.pdf"]});host.publication.facts=()=>{throw new TypeError("facts failed");};
+    const outcome=copyBeside(makeJob(host),"/a/p.pdf",AREA,1024);
+    assert.equal(outcome.state,"failed");assert.equal(outcome.area,AREA);assert.ok(outcome.error instanceof TypeError);
 });

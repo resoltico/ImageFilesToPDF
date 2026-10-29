@@ -14,6 +14,9 @@ import { checkToolchain } from "./lint/toolchain.mjs";
 import { checkIgnores } from "./lint/ignore-rules.mjs";
 import { checkDocumentReferences } from "./lint/document-references.mjs";
 
+import { checkBoundaries } from "./lint/boundaries.mjs";
+
+await checkBoundaries();
 const files = await lintableFiles();
 
 for (const relativePath of files) {

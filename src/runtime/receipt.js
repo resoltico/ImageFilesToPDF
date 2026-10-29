@@ -54,34 +54,16 @@ function writeReceipt(text, ns = foundation(globalThis.ObjC, globalThis.$)) {
  * its outputs and exited zero. What it had managed is not the same as what it
  * was asked for.
  */
-function isCompleteSuccess(result) {
-    return !result.stopped &&
-        result.failures.length === 0 &&
-        (result.rejected ?? []).length === 0;
-}
+function isCompleteSuccess(result) { return result.state === "complete"; }
 
 function describeIncomplete(result) {
-    const rejected = (result.rejected ?? []).length;
-    /*
-     * Named for what each one counts. "not converted" read as a total, and
-     * `rejected` is not one: it holds what admission refused before any
-     * conversion began, so a stopped run of three images with one output
-     * reported "0 not converted" while two had produced nothing.
-     */
-    const counts = [
-        `${result.outputs.length} produced`,
-        `${result.failures.length} failed`,
-        `${rejected} refused before conversion`
-    ];
-    const stopped = result.stopped ? " The run was stopped." : "";
-
-    return `The request was not completely honoured: ${
-        counts.join(", ")}.${stopped}`;
+    const saved = result.documents.filter((document) => document.state === "saved").length;
+    const recovered = result.documents.filter((document) => document.state === "recovered").length;
+    const details = [...result.issues, ...result.documents.flatMap((document) => document.issues)]
+        .map((issue) => [issue.message, issue.diagnostic ? JSON.stringify(issue.diagnostic) : ""].filter(Boolean).join("\n"));
+    const recoveries = result.documents.filter((document) => document.recovery).map((document) => document.recovery);
+    return [`The request was ${result.state}: ${saved} saved, ${recovered} recovered, ${result.rejected.length} refused.`,
+        ...details, ...recoveries].join("\n\n");
 }
 
-module.exports = {
-    foundation,
-    writeReceipt,
-    isCompleteSuccess,
-    describeIncomplete
-};
+module.exports = { foundation, writeReceipt, isCompleteSuccess, describeIncomplete };

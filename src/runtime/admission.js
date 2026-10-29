@@ -1,5 +1,6 @@
 "use strict";
 
+const { selectionReason, selectionRefusal } = require("../core/selection-policy.js");
 const { basename, dirname } = require("../core/paths.js");
 const { sortImageRecords } = require("../core/ordering.js");
 const { imagesInFolder } = require("./expand.js");
@@ -59,13 +60,9 @@ function admitFolder(tree, path, outcome) {
  * twice. Asking the shell instead followed it -- test -f reports on the
  * target -- so a link and the file it points to were two images.
  */
-const KIND_REASONS = {
-    package: "a package, not a folder of images",
-    other: "a link; select the file it points to"
-};
-
 function reasonFor(app, root) {
-    return KIND_REASONS[root.kind] ?? rejectionReason(app, root.path);
+    return ["package", "other"].includes(root.kind)
+        ? selectionReason(root.kind, root.path, false) : rejectionReason(app, root.path);
 }
 
 /*
@@ -94,7 +91,7 @@ function admit(app, tree, root, outcome) {
         return;
     }
 
-    const reason = reasonFor(app, root);
+    const reason = root.kind === "file" && !root.identity ? "could not be identified" : reasonFor(app, root);
 
     if (reason) {
         outcome.rejected.push(rejection(root.path, reason));
@@ -104,18 +101,15 @@ function admit(app, tree, root, outcome) {
 
     // Which file, not which spelling: a folder walked before this request may
     // have taken the same photograph under the name it is stored as.
-    if (!outcome.taken.has(root.identity || root.path)) {
-        outcome.taken.add(root.identity || root.path);
+    if (!outcome.taken.has(root.identity)) {
+        outcome.taken.add(root.identity);
         outcome.images.push(record(root.path, dirname(root.path)));
     }
 }
 
-/*
- * The tree is what makes a selected folder mean the images inside it. Without
- * one -- no ObjC bridge -- a folder is refused with a reason instead, and the
- * files that were selected directly are converted as they always were.
- */
+/* Mandatory tree facts apply to directly selected files as well as folders. */
 function collectImageFiles(app, inputItems, tree = null) {
+    if (!tree) { throw new Error("Required filesystem capabilities are unavailable."); }
     const items = inputItems.length > 0 ? inputItems : finderSelection();
     const outcome = { images: [], rejected: [], taken: new Set() };
 
@@ -127,7 +121,7 @@ function collectImageFiles(app, inputItems, tree = null) {
 
     return {
         images: sortImageRecords(outcome.images),
-        rejected: outcome.rejected,
+        rejected: outcome.rejected.map(selectionRefusal),
         selectedFolders: roots.filter((root) => root.kind === "directory").length
     };
 }

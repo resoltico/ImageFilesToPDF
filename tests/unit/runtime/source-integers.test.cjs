@@ -2,7 +2,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { readField, readBandCount, readPageCount } = require("../../../src/runtime/source-image.js");
+const { readField } = require("../../../src/runtime/image-size.js");
+const { readBandCount, readPageCount } = require("../../../src/runtime/source-image.js");
 const { readImageSize } = require("../../../src/runtime/image-size.js");
 const { createFakeApp } = require("./fake-app.cjs");
 

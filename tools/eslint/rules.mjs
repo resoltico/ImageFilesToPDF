@@ -18,7 +18,7 @@ export const deliberateExceptions = {
     // are ordered semantically, which carries more meaning than the alphabet.
     "sort-keys": "off",
     // Requires alphabetical imports. Imports are grouped by dependency layer,
-    // which mirrors the bundle order.
+    // and makes their layer visible.
     "sort-imports": "off",
     // Ternaries express short either/or values; banning them outright would
     // force longer, less readable branching.
@@ -36,8 +36,7 @@ export const deliberateExceptions = {
  */
 export const tunedRules = {
     // Function declarations, consistently. `all` defaults to expressions;
-    // declarations read better in a concatenated script and they hoist, which
-    // the bundle relies on.
+    // declarations name responsibilities consistently and hoist within module scope.
     "func-style": ["error", "declaration", { allowArrowFunctions: true }],
     // 0, 1 and -1 are index arithmetic and comparator results, not magic
     // values. Every number encoding a real decision must still be named.
@@ -71,7 +70,7 @@ export const tunedRules = {
         "error",
         {
             capIsNewExceptions: ["Path", "Application"],
-            capIsNewExceptionPattern: "^(?:[\\w$]+\\.)*NS"
+            capIsNewExceptionPattern: "^(?:[\\w$]+\\.)*(?:NS|CG|CF)"
         }
     ],
     /*

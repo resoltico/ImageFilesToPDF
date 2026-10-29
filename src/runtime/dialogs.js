@@ -1,7 +1,8 @@
 "use strict";
 
+const { normalizeSettings } = require("../core/settings.js");
 const { UserCancelled } = require("../core/errors.js");
-const { readColour } = require("../core/answers.js");
+const { readColour } = require("./answers.js");
 const { chooseRequired, askUntil, promptInteger } = require("./prompts.js");
 
 /*
@@ -22,9 +23,9 @@ const {
     QUALITY,
     labelsOf,
     valueOfLabel
-} = require("../core/choices.js");
-const { defaultAnswers } = require("../core/form-rows.js");
-const { invitation } = require("../core/form.js");
+} = require("./choices.js");
+const { defaultAnswers } = require("./form-rows.js");
+const { selectionSummary, outputAlternatives } = require("./output-description.js");
 const { confirmSettings } = require("./settings-review.js");
 
 const CUSTOM_COLOUR = "Custom colour...";
@@ -78,7 +79,7 @@ function collectDialogSettings(app, answers = defaultAnswers(), context = {}) {
     const settings = {
         mode: chooseRequired(app, {
             ...OUTPUT_MODE,
-            prompt: `${invitation(context)}\n\n${OUTPUT_MODE.prompt}`
+            prompt: [selectionSummary(context), outputAlternatives(context.count), OUTPUT_MODE.prompt].join("\n")
         }, answers.mode),
         paperSize: chooseRequired(app, PAPER_SIZE, answers.paperSize),
         orientation: chooseRequired(app, ORIENTATION, answers.orientation),
@@ -87,7 +88,7 @@ function collectDialogSettings(app, answers = defaultAnswers(), context = {}) {
         background: chooseColour(app, answers.background)
     };
 
-    return confirmSettings(app, settings, context);
+    return confirmSettings(app, normalizeSettings(settings), context);
 }
 
 module.exports = { chooseColour, collectDialogSettings };

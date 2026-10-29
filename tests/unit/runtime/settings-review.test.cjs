@@ -4,8 +4,8 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { reviewSelection, confirmSettings } = require("../../../src/runtime/settings-review.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
-const { readAnswers } = require("../../../src/core/answers.js");
-const { defaultAnswers } = require("../../../src/core/form.js");
+const { readAnswers } = require("../../../src/runtime/answers.js");
+const { defaultAnswers } = require("../../../src/runtime/form.js");
 const { createFakeApp } = require("./fake-app.cjs");
 
 const SETTINGS = normalizeSettings(readAnswers(defaultAnswers()).settings);
@@ -43,7 +43,7 @@ test("fallback confirmation states the actual settings and count", () => {
     assert.equal(app.dialogs[0].message, [
         "Create 1 PDF with 2 pages?",
         "Each image gets its own page, centred without cropping. " +
-            "The original files are not changed.",
+            "The original files are\n not changed.",
         "A4, Portrait; 300 DPI; JPEG quality 92.",
         "Page background: #FFFFFF.",
         "Save to: /a/"

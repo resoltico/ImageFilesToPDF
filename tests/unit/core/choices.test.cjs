@@ -12,7 +12,7 @@ const {
     labelsOf,
     defaultLabelOf,
     valueOfLabel
-} = require("../../../src/core/choices.js");
+} = require("../../../src/runtime/choices.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 const LISTS = [PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND];
@@ -108,7 +108,7 @@ const BASELINE = {
     orientation: "Portrait",
     dpi: Number(RESOLUTION.defaultAnswer),
     quality: Number(QUALITY.defaultAnswer),
-    mode: "Single PDF",
+    mode: "single",
     background: "#FFFFFF"
 };
 

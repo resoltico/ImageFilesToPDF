@@ -6,7 +6,7 @@ const {
     normalizeInvocationInput,
     isHeadlessInput,
     decodeFileUrl
-} = require("../../../src/core/invocation.js");
+} = require("../../../src/runtime/invocation-syntax.js");
 
 test("headless is detected through osascript's argument separator", () => {
     // osascript forwards its own "--" into run(), so the script's first

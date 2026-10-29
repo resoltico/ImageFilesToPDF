@@ -1,7 +1,7 @@
 "use strict";
 
-const { MKTEMP, RM } = require("../core/executables.js");
-const { runArgv, tryArgv } = require("./shell.js");
+const { MKTEMP, RM } = require("./backend-executables.js");
+const { runArgv, cleanupArgv } = require("./shell.js");
 
 /*
  * Private temporary workspace lifecycle.
@@ -32,11 +32,11 @@ function createWorkspace(app) {
 
 function removeWorkspace(app, path) {
     if (!path || !WORKSPACE_PATTERN.test(path)) {
-        return;
+        return { state: "skipped" };
     }
 
     // Cleanup failure must not mask the original outcome.
-    tryArgv(app, [RM, "-rf", path]);
+    return cleanupArgv(app, [RM, "-rf", path]);
 }
 
 function nonce() {

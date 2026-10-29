@@ -9,6 +9,7 @@
  * answers can both be driven from here.
  */
 
+const { nativeAttributes } = require("./fake-attributes.cjs");
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createTree, kindFrom } = require("../../../src/runtime/tree.js");
@@ -17,12 +18,13 @@ function bridgeOf(world = {}, imports = []) {
     const ns = (value) => ({
         boxed: value,
         // stringByStandardizingPath is a property, not a call.
-        stringByStandardizingPath: value.replace("/../t", "")
+        stringByStandardizingPath: String(value).replace("/../t", "")
     });
 
+    Object.assign(ns, { NSFileType: "NSFileType", NSFileSystemNumber: "NSFileSystemNumber", NSFileSystemFileNumber: "NSFileSystemFileNumber" });
     ns.NSFileManager = {
         defaultManager: {
-            attributesOfItemAtPathError: (path) => world.attributes?.[path.boxed],
+            attributesOfItemAtPathError: (path) => nativeAttributes(world.attributes?.[path.boxed]),
             contentsOfDirectoryAtPathError: (path) => world.entries?.[path.boxed]
         }
     };
@@ -35,7 +37,7 @@ function bridgeOf(world = {}, imports = []) {
     const objc = {
         import: (name) => imports.push(name),
         deepUnwrap: (value) => value ?? null,
-        unwrap: (value) => `standard:${value}`
+        unwrap: (value) => value?.boxed ?? value
     };
 
     return { objc, ns, ref: () => ({}) };
@@ -122,7 +124,7 @@ test("a path is standardized, so the same folder is one folder", () => {
 
     assert.equal(
         createTree(objc, ns, ref).standardize("/t/../t"),
-        "standard:/t"
+        "/t"
     );
 });
 

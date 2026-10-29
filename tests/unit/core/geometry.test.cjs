@@ -14,7 +14,7 @@ function settings(overrides) {
         orientation: "Portrait",
         dpi: 300,
         quality: 92,
-        mode: "Single PDF",
+        mode: "single",
         background: "#FFFFFF",
         ...overrides
     };
@@ -68,6 +68,7 @@ test("what pdfcpu receives is the size readers call A4", () => {
     assert.equal(fixed2(a4.heightPoints), "841.89");
 });
 
-test("invalid settings are rejected before any geometry is produced", () => {
-    assert.throws(() => calculatePageGeometry(settings({ dpi: 0 })), /DPI must be/u);
+test("settings are validated at entry before calculating geometry", () => {
+    const { normalizeSettings } = require("../../../src/core/settings.js");
+    assert.throws(() => calculatePageGeometry(normalizeSettings({ paperSize: "A4", orientation: "Portrait", mode: "single", dpi: 0, quality: 92, background: "#FFFFFF" })), /DPI/u);
 });

@@ -1,13 +1,12 @@
 "use strict";
 
-const { utf8Length, truncateToBytes } = require("./numbers.js");
+const { utf8Length, truncateToBytes } = require("./utf8.js");
 const { fileStem, sanitizeFilename } = require("./paths.js");
 
 /*
  * Output filename construction and collision avoidance.
  */
 
-const FIRST_SUFFIX = 2;
 const MAXIMUM_SUFFIX = 10000;
 
 /*
@@ -84,22 +83,8 @@ function stemOf(path) {
  * Never overwrite: append _2, _3 and so on until the path is free. The caller
  * supplies the existence predicate so this stays pure.
  */
-function nextUniquePath(initialPath, exists) {
-    if (!exists(initialPath)) {
-        return initialPath;
-    }
-
-    const stem = stemOf(initialPath);
-
-    for (let suffix = FIRST_SUFFIX; suffix < MAXIMUM_SUFFIX; suffix += 1) {
-        const candidate = `${stem}_${suffix}${initialPath.slice(-EXTENSION.length)}`;
-
-        if (!exists(candidate)) {
-            return candidate;
-        }
-    }
-
-    throw new Error("Could not create a unique output filename.");
+function collisionPath(initialPath, attempt) {
+    return attempt === 1 ? initialPath : `${stemOf(initialPath)}_${attempt}${initialPath.slice(-EXTENSION.length)}`;
 }
 
 /*
@@ -117,8 +102,9 @@ function stagedPdfPath(workspace, token) {
 }
 
 module.exports = {
+    collisionPath,
+    MAXIMUM_SUFFIX,
     outputNameForCombined,
     outputNameForSeparate,
-    nextUniquePath,
     stagedPdfPath
 };

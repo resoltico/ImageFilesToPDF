@@ -124,15 +124,8 @@ function openPanel(bridge = appkitBridge(globalThis.ObjC, globalThis.$), now = D
         return null;
     }
 
-    try {
-        const view = build(bridge.ns);
-
-        return panelSink(view, bridge.ns, now, allowWindows(bridge.ns));
-    } catch {
-        // No window server, no AppKit, a host that refuses one of these
-        // objects: the run says what it can elsewhere and converts the same.
-        return null;
-    }
+    const view = build(bridge.ns);
+    return panelSink(view, bridge.ns, now, allowWindows(bridge.ns));
 }
 
 module.exports = { APPEARANCE_DELAY, build, panelSink, openPanel };

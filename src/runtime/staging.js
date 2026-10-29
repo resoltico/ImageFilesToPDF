@@ -1,13 +1,13 @@
 "use strict";
+const { OperationError } = require("../core/errors.js");
 
 const {
     buildPdfcpuImportArgv,
     buildPdfcpuInfoArgv,
     readPageCountFrom,
     buildPdfcpuValidateArgv
-} = require("../core/pdfcpu.js");
-const { batchPages } = require("../core/batching.js");
-const { runArgv, removeFile } = require("./shell.js");
+} = require("./backend-pdfcpu.js");
+const { runArgv } = require("./shell.js");
 const { verifyFileWritten } = require("./asking.js");
 
 /*
@@ -36,44 +36,21 @@ function verifyEveryPageArrived(job, stagedPath, expected) {
     ));
 
     if (found === 0) {
-        throw new Error("the PDF page count could not be verified");
+        throw new OperationError("the PDF page count could not be verified");
     }
 
     if (found !== expected) {
-        throw new Error(
+        throw new OperationError(
             `the PDF has ${found} pages where ${expected} were imported`
         );
     }
 }
 
-function createAndValidatePdf(job, stagedPath, pagePaths) {
-    job.progress.phase("Creating PDF");
-    removeFile(job.app, stagedPath);
-
-    const batches = batchPages(
-        pagePaths,
-        buildPdfcpuImportArgv(
-            job.tools.pdfcpu,
-            stagedPath,
-            pagePaths.slice(0, 1),
-            job.geometry
-        )
-    );
-
-    for (const pages of batches) {
-        importBatch(job, stagedPath, pages);
-    }
-
+function validatePdf(job, stagedPath, expected) {
     verifyFileWritten(job.app, stagedPath, "partial PDF");
-
-    verifyEveryPageArrived(job, stagedPath, pagePaths.length);
-
+    verifyEveryPageArrived(job, stagedPath, expected);
     job.progress.phase("Validating PDF");
-    runArgv(
-        job.app,
-        buildPdfcpuValidateArgv(job.tools.pdfcpu, stagedPath),
-        "validating PDF"
-    );
+    runArgv(job.app, buildPdfcpuValidateArgv(job.tools.pdfcpu, stagedPath), "validating PDF");
 }
 
-module.exports = { createAndValidatePdf };
+module.exports = { importBatch, validatePdf };

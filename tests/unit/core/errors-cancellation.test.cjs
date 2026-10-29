@@ -10,6 +10,7 @@
  * always read the chain for exactly this reason.
  */
 
+const { hostError } = require("../../../src/runtime/cancellation.js");
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
@@ -38,7 +39,7 @@ function hostCancellation() {
 test("a cancellation is one however many layers are over it", () => {
     for (const depth of [0, 1, 2, 5]) {
         assert.equal(isUserCancelled(wrap(new UserCancelled(), depth)), true, `own, ${depth}`);
-        assert.equal(isUserCancelled(wrap(hostCancellation(), depth)), true, `host, ${depth}`);
+        assert.equal(isUserCancelled(wrap(hostError(hostCancellation()), depth)), true, `host, ${depth}`);
     }
 });
 
@@ -88,7 +89,7 @@ test("a cancellation the runtime wraps the way it really wraps them", () => {
     // shaped to pass: a message about the stage, the original underneath.
     const inner = hostCancellation();
     const command = new Error("Command failed while preparing the image.", {
-        cause: inner
+        cause: hostError(inner)
     });
     const named = new Error(`photo.png: ${command.message}`, { cause: command });
 

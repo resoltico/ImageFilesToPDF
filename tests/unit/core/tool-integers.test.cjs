@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { positiveIntegerFrom } = require("../../../src/core/numbers.js");
-const { readPageCountFrom } = require("../../../src/core/pdfcpu.js");
+const { readPageCountFrom } = require("../../../src/runtime/backend-pdfcpu.js");
 
 test("tool integers must be whole, positive, decimal and exactly representable", () => {
     for (const [text, value] of [["1", 1], [" 2\n", 2], ["0012", 12],

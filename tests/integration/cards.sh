@@ -18,13 +18,13 @@ WORK=$(mktemp -d -t ImageFilesToPDF-cards)
 # A FAT label is eleven characters at most; a longer one is dropped and
 # the volume mounts as NO NAME.
 FAT_NAME=IMGPDFTEST
-FAT_VOLUME="/Volumes/$FAT_NAME"
+FAT_VOLUME="$WORK/mount-FAT32"
 EXFAT_NAME=IMGPDFEXF
-EXFAT_VOLUME="/Volumes/$EXFAT_NAME"
+EXFAT_VOLUME="$WORK/mount-exFAT"
 
 cleanup() {
-    hdiutil detach -quiet "$FAT_VOLUME" 2>/dev/null || true
-    hdiutil detach -quiet "$EXFAT_VOLUME" 2>/dev/null || true
+    hdiutil detach -force -quiet "$FAT_VOLUME" 2>/dev/null || true
+    hdiutil detach -force -quiet "$EXFAT_VOLUME" 2>/dev/null || true
     rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -41,9 +41,9 @@ solid_svg "$WORK/blue.svg" 64 64 "#3080c0"
 vips copy "$WORK/blue.svg" "$WORK/photo.png"
 
 run() {
-    local stamp=$1
-    shift
-    write_config "$WORK/config.json" A4 Portrait "Single PDF" "#FFFFFF" "$stamp"
+    local stamp=$1 mode=$2
+    shift 2
+    write_config "$WORK/config.json" A4 Portrait "$mode" "#FFFFFF" "$stamp"
     osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$@" \
         2>"$WORK/error.txt" || true
 }
@@ -64,9 +64,9 @@ assert_nothing_left_behind() {
 # name that is taken -- so that is what publishes there.
 # ---------------------------------------------------------------------------
 
-if attach_test_volume "MS-DOS FAT32" "$FAT_NAME"; then
+if attach_test_volume "MS-DOS FAT32" "$FAT_NAME" "$FAT_VOLUME"; then
     cp "$WORK/photo.png" "$FAT_VOLUME/"
-    run 20260907_050505 "$FAT_VOLUME/photo.png"
+    run 20260907_050505 single "$FAT_VOLUME/photo.png"
 
     FLAT="$FAT_VOLUME/output_20260907_050505.pdf"
     assert_valid_pdf "$FLAT"
@@ -76,11 +76,17 @@ if attach_test_volume "MS-DOS FAT32" "$FAT_NAME"; then
     # and neither is one held by a link with nothing at the end of it, which
     # is the shape that reads as free to everything except the taking.
     printf 'someone elses document' > "$FAT_VOLUME/output_20260907_060606.pdf"
-    run 20260907_060606 "$FAT_VOLUME/photo.png"
+    run 20260907_060606 single "$FAT_VOLUME/photo.png"
 
     test "$(cat "$FAT_VOLUME/output_20260907_060606.pdf")" = "someone elses document" ||
         fail "a file that was already there was overwritten"
     assert_valid_pdf "$FAT_VOLUME/output_20260907_060606_2.pdf"
+    assert_nothing_left_behind "$FAT_VOLUME"
+    printf 'another document' > "$FAT_VOLUME/photo_20260907_060607.pdf"
+    run 20260907_060607 separate "$FAT_VOLUME/photo.png"
+    test "$(cat "$FAT_VOLUME/photo_20260907_060607.pdf")" = "another document" ||
+        fail "separate publication replaced an occupied name"
+    assert_valid_pdf "$FAT_VOLUME/photo_20260907_060607_2.pdf"
     assert_nothing_left_behind "$FAT_VOLUME"
     detach_test_volume "$FAT_VOLUME"
 else
@@ -98,9 +104,9 @@ fi
 # finished PDF has to be somewhere the message names.
 # ---------------------------------------------------------------------------
 
-if attach_test_volume "ExFAT" "$EXFAT_NAME"; then
+if attach_test_volume "ExFAT" "$EXFAT_NAME" "$EXFAT_VOLUME"; then
     cp "$WORK/photo.png" "$EXFAT_VOLUME/"
-    run 20260907_070707 "$EXFAT_VOLUME/photo.png"
+    run 20260907_070707 single "$EXFAT_VOLUME/photo.png"
 
     test ! -e "$EXFAT_VOLUME/output_20260907_070707.pdf" ||
         fail "a name was created on a volume that cannot take one whole"
@@ -108,7 +114,7 @@ if attach_test_volume "ExFAT" "$EXFAT_NAME"; then
         fail "something of the run reached the card: $(ls -a "$EXFAT_VOLUME")"
     assert_nothing_left_behind "$EXFAT_VOLUME"
 
-    grep -q 'the output name could not be created in one step' "$WORK/error.txt" ||
+    grep -q '"state":"unsupported"'  "$WORK/error.txt" ||
         fail "the message does not say what failed: $(cat "$WORK/error.txt")"
     # What the system said about the operation it actually refused. Measured
     # on exFAT: ln reports "Operation not supported" from beside the
@@ -122,7 +128,17 @@ if attach_test_volume "ExFAT" "$EXFAT_NAME"; then
         "$WORK/error.txt" | head -1)
     test -n "$KEPT" || fail "no recovery path was named: $(cat "$WORK/error.txt")"
     assert_valid_pdf "$KEPT"
-    rm -rf "$(dirname "$KEPT")"
+    # Retain the validated recovery as failure evidence; its log spelling alone
+    # is not sufficient authority to recursively delete the containing folder.
+    run 20260907_070708 separate "$EXFAT_VOLUME/photo.png"
+    test -z "$(find "$EXFAT_VOLUME" -maxdepth 1 -name '*.pdf')" ||
+        fail "separate publication left a PDF on exFAT"
+    assert_nothing_left_behind "$EXFAT_VOLUME"
+    grep -q '"state":"unsupported"' "$WORK/error.txt" || fail "separate exFAT was not classified"
+    KEPT=$(sed -n 's/^\(\/var\/folders\/.*ImageFilesToPDF-recovered[^ ]*\.pdf\).*/\1/p' \
+        "$WORK/error.txt" | head -1)
+    test -n "$KEPT" || fail "separate exFAT recovery was not named"
+    assert_valid_pdf "$KEPT"
 
     detach_test_volume "$EXFAT_VOLUME"
 else

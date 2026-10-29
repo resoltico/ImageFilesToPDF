@@ -1,8 +1,8 @@
 "use strict";
 
-const { MKDIR, RMDIR } = require("../core/executables.js");
+const { MKDIR, RMDIR } = require("./backend-executables.js");
 const { dirname } = require("../core/paths.js");
-const { runArgv, tryArgv, removeFile } = require("./shell.js");
+const { runArgv, cleanupArgv, removeFile } = require("./shell.js");
 const { nonce } = require("./workspace.js");
 
 /*
@@ -47,10 +47,8 @@ function openStaging(app, area) {
  * something else has written into is left alone rather than emptied.
  */
 function closeStaging(app, area) {
-    removeFile(app, area.file);
-
-    // A directory that cannot be removed is not a failure of the run.
-    tryArgv(app, [RMDIR, area.directory]);
+    const outcomes = [removeFile(app, area.file), cleanupArgv(app, [RMDIR, area.directory])];
+    return outcomes.filter((outcome) => outcome.state === "failed").map((outcome) => outcome.issue);
 }
 
 module.exports = { stagingArea, openStaging, closeStaging };

@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { preparePage, preparePages } = require("../../../src/runtime/pages.js");
+const { preparePage } = require("../../../src/runtime/pages.js");
 const { createFakeApp, failing } = require("./fake-app.cjs");
 const { createFakeHost } = require("./fake-host.cjs");
 const { makeJob, imageOf } = require("./fake-job.cjs");
@@ -62,8 +62,8 @@ test("intermediates are removed even when a stage fails", () => {
 
     assert.equal(
         removals.length,
-        3,
-        "prepared, flattened and the page it had already written"
+        4,
+        "captured input, prepared, flattened and the page it had already written"
     );
 });
 
@@ -89,23 +89,13 @@ test("a stage that reports success but writes nothing is detected", () => {
     }
 });
 
-test("preparePages numbers the pages in order", () => {
-    const app = createFakeApp([["'bands'", "3"]]);
-    const files = ["a.png", "b.png", "c.png"].map((name) => ({ path: `/a/${name}`, originalName: name }));
-
-    assert.deepEqual(preparePages(makeJob(app), files), [
-        "/tmp/ImageFilesToPDF.X/000001-page.jpg",
-        "/tmp/ImageFilesToPDF.X/000002-page.jpg",
-        "/tmp/ImageFilesToPDF.X/000003-page.jpg"
-    ]);
-});
-
 
 test("a multi-page image is refused before any page is prepared", () => {
     // The refusal lives in preparePage, and nothing here proved it was still
     // wired in: removing the call would silently restore the old behaviour of
     // taking page one and dropping the rest.
     const app = createFakeApp([["'n-pages'", "3\n"]]);
+    app.pages = 3;
 
     assert.throws(
         () => preparePage(makeJob(app), imageOf("/a/x.png"), 0),

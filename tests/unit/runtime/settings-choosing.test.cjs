@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { collectSettings } = require("../../../src/runtime/settings-form.js");
-const { defaultAnswers } = require("../../../src/core/form.js");
+const { defaultAnswers } = require("../../../src/runtime/form.js");
 const { createFakeHost } = require("./fake-host.cjs");
 
 const BRIDGE = { objc: {}, ns: {} };
@@ -51,14 +51,14 @@ test("a form that cannot present falls back rather than failing the run", () => 
     assert.ok(host.listPrompts.length > 0);
 });
 
-test("a form that throws falls back too", () => {
+test("a form coding fault remains identifiable", () => {
     const host = createFakeHost({});
     const broken = () => {
         throw new Error("NSAlert exploded");
     };
 
-    assert.ok(collectSettings(host, {}, BRIDGE, broken).paperSize);
-    assert.ok(host.listPrompts.length > 0);
+    assert.throws(() => collectSettings(host, {}, BRIDGE, broken), /NSAlert exploded/u);
+    assert.equal(host.listPrompts.length, 0);
 });
 
 test("but a cancellation is honoured, not turned into dialogs", () => {
@@ -79,7 +79,7 @@ test("the form is preferred when it works", () => {
         host,
         {},
         BRIDGE,
-        scripted([{ answers: { ...defaultAnswers(), paperSize: "US Letter" } }])
+        scripted([{ answers: { ...defaultAnswers(), paperSize: "Letter" } }])
     );
 
     assert.equal(settings.paperSize, "Letter");
@@ -93,5 +93,5 @@ test("the image count reaches the form that asks the questions", () => {
 
     collectSettings(createFakeHost({}), { context: { count: 231 } }, BRIDGE, present);
 
-    assert.match(present.seen[0].detail, /^You have selected 231 images\./u);
+    assert.match(present.seen[0].fullDetail, /^You have selected 231 images\./u);
 });

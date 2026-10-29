@@ -4,10 +4,10 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     invitation, formSpec, defaultAnswers, BACKGROUND_NOTE
-} = require("../../../src/core/form.js");
+} = require("../../../src/runtime/form.js");
 
 test("one selected image is acknowledged in a complete sentence", () => {
-    assert.equal(formSpec(defaultAnswers(), [], { count: 1 }).detail, [
+    assert.equal(formSpec(defaultAnswers(), [], { count: 1 }).fullDetail, [
         "You have selected 1 image.",
         "Each image gets its own page, centred without cropping. " +
             "The original files are not changed.",
@@ -19,7 +19,7 @@ test("one selected image is acknowledged in a complete sentence", () => {
 
 test("folder discoveries and destination are explained before creation", () => {
     const context = { count: 231, selectedFolders: 1, folders: ["/Selected/"] };
-    const { detail } = formSpec(defaultAnswers(), [], context);
+    const { fullDetail: detail } = formSpec(defaultAnswers(), [], context);
 
     assert.match(detail, /^Found 231 images in your selection, including subfolders\./u);
     assert.match(detail, /1 PDF with 231 pages, or 231 single-page PDFs/u);
@@ -31,20 +31,20 @@ test("validation precedes but never replaces the selection and output contract",
     const context = { count: 2 };
     const problems = [{ key: "dpi", message: "DPI: not a number" }];
 
-    assert.equal(formSpec(defaultAnswers(), problems, context).detail,
-        `DPI: not a number\n${invitation(context)}`);
+    assert.equal(formSpec(defaultAnswers(), problems, context).fullDetail,
+        invitation(context));
 });
 
 test("changing grouping cannot leave a stale count preview", () => {
     const answers = defaultAnswers();
     const first = formSpec(answers, [], { count: 3 });
     const second = formSpec({
-        ...answers, mode: "Separate PDFs — one page per image"
+        ...answers, mode: "separate"
     }, [], { count: 3 });
 
-    assert.equal(first.detail, second.detail);
+    assert.equal(first.fullDetail, second.fullDetail);
     assert.notEqual(first.rows[0].value, second.rows[0].value);
-    assert.match(first.detail, /1 PDF with 3 pages, or 3 single-page PDFs/u);
+    assert.match(first.fullDetail, /1 PDF with 3 pages, or 3 single-page PDFs/u);
 });
 
 test("an unknown count is not invented, but the page layout remains explicit", () => {

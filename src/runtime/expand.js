@@ -53,7 +53,7 @@ function childrenOf(tree, folder, names) {
  * something nobody asked for.
  */
 function consider(path, entry, taken, outcome) {
-    if (entry.kind === "missing") {
+    if (entry.kind === "missing" || (entry.kind === "file" && !entry.identity)) {
         outcome.problems.push({ path, reason: UNEXAMINABLE });
 
         return;
@@ -104,7 +104,7 @@ function walk(tree, folder, taken, outcome) {
  * the run because a folder above it was selected too.
  */
 function emptiness(outcome) {
-    return outcome.found.length === 0 && !outcome.alreadyTaken
+    return outcome.found.length === 0 && !outcome.alreadyTaken && outcome.problems.length === 0
         ? "contains no supported images"
         : "";
 }

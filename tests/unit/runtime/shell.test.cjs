@@ -4,7 +4,6 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     runArgv,
-    tryArgv,
     readTextFile,
     removeFile
 } = require("../../../src/runtime/shell.js");
@@ -97,13 +96,10 @@ test("removeFile ignores an absent path and a failing removal", () => {
     assert.deepEqual(app.commands, ["'/bin/rm' '-f' '/tmp/x'"]);
 });
 
-test("tryArgv takes silence for an answer", () => {
-    // Nothing here has a reader: the caller decides what no text means, and
-    // a command that failed and a command that printed nothing say it the
-    // same way.
-    const app = createFakeApp([["/bin/stat", failing("No such file")]]);
 
-    assert.equal(tryArgv(app, ["/bin/stat", "-f%d:%i:%z", "/gone"]), "");
-    assert.deepEqual(app.commands, ["'/bin/stat' '-f%d:%i:%z' '/gone'"]);
-    assert.equal(tryArgv(createFakeApp([["/bin/stat", "16:7:9"]]), ["/bin/stat"]), "16:7:9");
+test("technical diagnostics retain a full long argv outside the main explanation",()=>{
+    const input="x".repeat(6000);const app=createFakeApp([["/bin/tool",new Error("failed")]]);
+    assert.throws(()=>runArgv(app,["/bin/tool",input],"reading source"),(error)=>{
+        assert.equal(error.command,`'/bin/tool' '${input}'`);assert.ok(!error.message.includes(input));return true;
+    });
 });

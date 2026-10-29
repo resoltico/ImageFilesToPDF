@@ -10,7 +10,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { collectImageFiles } = require("../../../src/runtime/admission.js");
+const { collectImageFiles } = require("./fake-selection.cjs");
 const { createFakeApp } = require("./fake-app.cjs");
 const { treeOf } = require("./fake-tree.cjs");
 
@@ -131,16 +131,7 @@ test("a folder beside one whose name it starts with is still its own folder", ()
     ]);
 });
 
-test("without a tree, a photo inside a refused folder is still converted", () => {
-    // The folder is turned away rather than walked, so nothing else will find
-    // that photo.
-    const { images, rejected } = collectImageFiles(
-        appWith(["/Trip"]),
-        ["/Trip", "/Trip/a.png"]
-    );
-
-    assert.deepEqual(images.map((image) => image.path), ["/Trip/a.png"]);
-    assert.deepEqual(rejected.map((entry) => entry.reason), [
-        "a folder; select the images inside it"
-    ]);
+test("missing mandatory tree fails setup for every selection", () => {
+    const { collectImageFiles: nativeCollect } = require("../../../src/runtime/admission.js");
+    assert.throws(() => nativeCollect(createFakeApp(), ["/photos", "/photos/photo.png"], null), /Required filesystem/u);
 });

@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
 const test = require("node:test");
-const { shellQuote, shellJoin } = require("../../../src/core/shell.js");
+const { shellQuote, shellJoin } = require("../../../src/runtime/backend-shell.js");
 
 const NUL = String.fromCharCode(0);
 

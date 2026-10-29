@@ -1,6 +1,6 @@
 "use strict";
 
-const { DOMAIN, KEY } = require("../core/preferences.js");
+const { DOMAIN, KEY } = require("./settings-preferences.js");
 
 /*
  * Where the record is kept: a defaults domain of this action's own.
@@ -39,7 +39,9 @@ function present(value) {
 }
 
 function memoryOn(objc, ns, suite) {
+    const diagnostics = [];
     return {
+        state: "available", diagnostics,
         // Nothing there and nothing readable are the same answer -- and on a
         // first run there is nothing there, which comes back as a wrapped nil
         // rather than as a missing value.
@@ -48,7 +50,8 @@ function memoryOn(objc, ns, suite) {
                 const held = suite.stringForKey(ns(KEY));
 
                 return present(held) ? String(objc.unwrap(held)) : "";
-            } catch {
+            } catch (error) {
+                diagnostics.push({ code: "preferences-read", message: String(error) });
                 return "";
             }
         },
@@ -59,9 +62,8 @@ function memoryOn(objc, ns, suite) {
         remember(text) {
             try {
                 suite.setObjectForKey(ns(text), ns(KEY));
-            } catch {
-                // The next run opens on the defaults, which is what it did
-                // before there was anything to remember.
+            } catch (error) {
+                diagnostics.push({ code: "preferences-write", message: String(error) });
             }
         }
     };
@@ -95,7 +97,7 @@ const FORGETFUL = Object.freeze({
  */
 function createMemory(objc, ns) {
     if (!objc || !ns) {
-        return FORGETFUL;
+        return { ...FORGETFUL, state: "unavailable", diagnostics: [] };
     }
 
     try {
@@ -103,9 +105,9 @@ function createMemory(objc, ns) {
 
         const suite = ns.NSUserDefaults.alloc.initWithSuiteName(ns(DOMAIN));
 
-        return present(suite) ? memoryOn(objc, ns, suite) : FORGETFUL;
-    } catch {
-        return FORGETFUL;
+        return present(suite) ? memoryOn(objc, ns, suite) : { ...FORGETFUL, state: "unavailable", diagnostics: [] };
+    } catch (error) {
+        return { ...FORGETFUL, state: "unavailable", diagnostics: [{ code: "preferences-unavailable", message: String(error) }] };
     }
 }
 

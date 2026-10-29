@@ -1,357 +1,178 @@
 # Image Files to PDF — macOS
 
-A source-controlled macOS Finder Quick Action that converts selected images
-into PDFs with **one image on each page**, using the system-installed
-`vips` and `pdfcpu` command-line tools. Choose one multi-page PDF or a separate
-single-page PDF for each image. It does not make collages or contact sheets.
+A Finder Quick Action that converts local images into PDFs, with one image on
+each page. Choose one multi-page PDF or one single-page PDF per image. Images
+are centred without cropping or enlargement; originals are never modified.
 
-The production artifact is one generated JavaScript for Automation (JXA) file
-that is pasted into Shortcuts. Node.js is a development-only tool. It is not
-used by the Quick Action.
-
-Source, releases and build attestation: https://github.com/resoltico/ImageFilesToPDF
+Source and releases: https://github.com/resoltico/ImageFilesToPDF
 
 ## Requirements
 
-**macOS 12.3 or later.**
+- macOS 12.3 or later, with Shortcuts.
+- `vips`, `vipsheader` and stable pdfcpu 0.16.4 or later.
 
-The bound comes from the delivery mechanism rather than the code: the Shortcuts
-app arrived on the Mac in macOS 12 Monterey, and 12.3 is the point at which its
-JavaScript engine supports everything this action uses.
-
-The gate holds the artifact to that floor; `QA.md` describes how.
-
-## Runtime installation
+Install the runtime tools with Homebrew:
 
 ```sh
 brew install vips pdfcpu
 ```
 
-`vipsheader` is installed with `vips`. pdfcpu 0.16.1 or later is required;
-older releases and prerelease builds are unsupported. For an existing install:
+`vipsheader` comes with `vips`. To upgrade pdfcpu:
 
 ```sh
 brew update
 brew upgrade pdfcpu
 ```
 
-Every pdfcpu command uses `--conf disable`, so the action uses built-in settings
-without reading or changing your pdfcpu configuration, user fonts or certificate
-store. Image-only PDFs do not need those resources.
+The Quick Action runs one standalone JavaScript for Automation (JXA) file.
+Node.js and npm are needed only for development. See [QA.md](QA.md) for the
+compatibility assumptions and current live-host verification limits.
 
 ## Install in Shortcuts
 
-1. Open **Shortcuts** and create a new shortcut.
-2. Enable **Use as Quick Action** and **Finder** in the shortcut details.
-3. Configure it to receive **Files** from Finder.
-4. Add **Run JavaScript for Mac Automation**.
-5. Delete the example code.
-6. Paste all of `dist/Image-Files-to-PDF.jxa`.
-7. Save the shortcut as **Image Files to PDF**.
+1. Obtain `Image-Files-to-PDF.jxa` from a release, or use the repository copy
+   at `dist/Image-Files-to-PDF.jxa`.
+2. In Shortcuts, create a shortcut and enable **Use as Quick Action → Finder**
+   in its details. Configure it to receive **Files** from Finder.
+3. Add **Run JavaScript for Mac Automation** and replace its example code with
+   the complete JXA file.
+4. Name the shortcut **Image Files to PDF**.
 
-The script uses files supplied by Shortcuts. If it receives no explicit input,
-it falls back to Finder's current selection.
+Select files or folders in Finder and run the Quick Action. When Shortcuts
+supplies no input, the interactive action uses Finder's current selection.
+To install a changed build, replace the entire pasted script in the shortcut.
 
-## Selecting a folder
+[INSTALL.txt](INSTALL.txt) contains plain-text installation and removal instructions.
 
-Selecting a folder converts the images inside it, through every subfolder.
-Hidden items, application packages, links and files that are not images are
-passed over without comment — a folder of documents does not produce a
-complaint for every document. A folder that cannot be read is reported by
-name, including a subfolder: the images found elsewhere are still converted,
-and you are told which folder could not be opened rather than left to notice
-that something is missing. A folder that holds no supported images is reported
-too.
+## Supported images and selection
 
-Selecting a folder and a file inside it does not convert that file twice, in
-whichever order they are selected, and neither does selecting the same
-photograph under two names: a Mac is case-insensitive as it comes, so
-`A.jpg` and `a.jpg` are one file and are converted once. Every file you
-select by hand is answered on its own terms — converted, or refused with a
-reason — even when its folder is selected too, and even when another name for
-the same file was refused. A symbolic link is refused rather than followed,
-for the same reason a folder's images are not looked for beyond it. A hidden photograph you pick
-out yourself is converted, though the walk passes over hidden files it finds
-on its own, and a file that cannot be converted still says so. A package
-selected directly — an application, a photo library — is refused rather than
-opened, so nothing is ever written inside a bundle.
+Supported filename extensions are `.jpg`, `.jpeg`, `.png`, `.heic`, `.heif`,
+`.tif`, `.tiff`, `.webp` and `.avif`. The installed decoder must support the
+format, and the actual content must be a supported single-image raster.
+Animated PNG/WebP, multi-image containers, corrupt or indeterminate metadata,
+and disguised SVG, PDF or RAW content are refused.
 
-The PDF is written to the folder you selected: one combined PDF inside it, or
-separate PDFs inside it, rather than scattered through the subfolders the
-images came from. Images are ordered by their whole path, so each folder's
-images stay together and in order.
+Selected folders are searched recursively. The walk skips hidden entries,
+packages, links and unsupported filenames. Explicitly selected hidden images
+are considered. Selected links and packages are refused; links are not followed.
+Unreadable folders or entries are reported, without treating an incomplete
+search as an empty folder.
 
-Before anything is converted, the settings window says how many images were
-found. Selecting a folder can mean a great many, and that number is there so
-that Cancel is a decision rather than a guess.
+Folder overlap, case aliases and hard links are deduplicated by file identity.
+Explicit requests are checked for eligibility before deduplication, so a refused
+alias does not suppress an eligible image. Ordering uses natural comparison of
+full paths: `2` precedes `10`, independently of selection order.
 
-## Supported images
+Images discovered through a selected folder save into that selected folder,
+including images found in its subfolders. Explicit files save beside their
+source. A combined document uses the first ordered image's destination folder.
 
-JPEG, PNG, HEIC/HEIF, TIFF, WebP and AVIF — the still-image formats vips reads
-that belong on a page. HEIC matters in particular: it is what an iPhone
-produces, and those photos are Display P3, which the colour handling below
-converts correctly.
+## Settings and output
 
-`brew install vips` requires libheif, libtiff, webp and jpeg-xl, so these are
-available on any machine that followed the installation above.
+| Setting | Accepted values | Interactive default |
+| --- | --- | --- |
+| PDF files | One PDF with one image per page; separate PDFs with one page per image | One PDF |
+| Paper | A4 or US Letter | A4 |
+| Orientation | Portrait or Landscape | Portrait |
+| Resolution | Integer 72–1017 DPI | 300 DPI |
+| JPEG quality | Integer 1–100 | 92 |
+| Background | Six hexadecimal sRGB digits, optional `#` | `#FFFFFF` |
 
-**Multi-page images are refused, not truncated.** vips reads the first page of
-a multi-page TIFF, HEIC or AVIF unless asked for more, so a multi-page scan
-would otherwise contribute one page and lose the rest silently. Such a file is
-reported instead, naming the page count, so it can be split first. Verified
-against vips 8.18.6; a later vips may change this, and the check reads the page
-count rather than assuming it.
+The background presets are white, black, purple `#8E79E0` and dark blue
+`#204486`. You can type a custom colour; spaces and letter case are normalized.
+The opaque background fills margins and transparent pixels without recolouring
+opaque image content. Every PDF page uses JPEG compression.
 
-GIF, animated WebP, SVG, PDF and camera RAW are deliberately not accepted even
-though vips can read them: only the first frame would be taken, an SVG would
-land as a stamp because the pipeline never upscales, and RAW is a processing
-job rather than a conversion.
+Selection refusals are shown before conversion. The settings form shows the
+candidate count and destinations, preserves draft answers during correction,
+and reports all detected field errors together. Variable detail is selectable
+and scrollable. When the native form capability is unavailable, stepwise dialogs
+use the same validation and end with a confirmation. Coding faults are diagnosed.
 
-## What will be created?
+Confirmed interactive settings are remembered under
+`com.resoltico.ImageFilesToPDF`, shared by all installed copies of this action.
+Invalid stored records use the defaults. Headless runs neither read nor write
+these preferences. To reset them:
 
-Every image gets its own page, centred on it without cropping. The first
-setting, **PDF files**, only groups those pages into files:
-
-- **One PDF — one image per page:** 12 images make one PDF with 12 pages.
-- **Separate PDFs — one page per image:** 12 images make 12 single-page PDFs.
-
-With one image, either choice makes one single-page PDF; only the name differs.
-A combined PDF is named `output_` plus the date and time, and a separate PDF
-takes its image's name plus the date and time. Existing files are never
-replaced. If an image fails, combined mode creates no PDF, while separate mode
-keeps the PDFs that succeeded and reports the failures.
-
-Before anything is created, the settings window says how many images were
-selected, or found in selected folders, what each choice would make of them, and
-where the PDFs will be saved. Pages follow the full path in natural order, so 2
-comes before 10; the order you clicked in Finder does not count. Selected items
-that cannot be converted are listed before the settings, and you can cancel
-there. Pages are JPEG-compressed, PNGs included, and the original files are
-never changed.
-
-Each PDF is checked for exactly the expected number of pages and validated
-before it gets its name. The completion message gives the PDFs and pages
-actually saved and where they went. Images that could not be converted are
-listed apart from selected items that were never included.
-
-## Current controls
-
-- A4 or Letter page size
-- portrait or landscape orientation
-- DPI from 72 through 1017 — the ceiling is pdfcpu's 100-megapixel limit on an
-  imported image, which A4 exceeds at 1018 DPI, so it is derived from the
-  largest paper size rather than chosen
-- JPEG quality from 1 through 100
-- one PDF with one image per page, or separate single-page PDFs
-- page background: any colour, given as six hexadecimal digits, with white,
-  black, purple `#8E79E0` and dark blue `#204486` offered as presets
-
-All six are asked on one form. The background is a list you can also type
-into: pick one of the four presets, or write a colour of your own — `#C7DAE8`,
-`c7dae8` and ` C7DAE8 ` are all the same colour, and all accepted. Everything
-in that control is a colour, the presets included, so what it shows is
-`#FFFFFF` rather than the word for it, it says `or type #RRGGBB` beside
-itself, and the line above the form says which code is which colour. A mistyped number or colour is reported alongside every other problem,
-with the answers already given left in place, so correcting it does not mean
-answering the rest again.
-
-The page background fills the area around an image and shows behind
-transparent pixels. It does not recolour anything opaque: a screenshot with a
-white background stays white.
-
-What you chose last time is what the next run opens on — all six settings,
-kept together under a preferences domain of this action's own rather than the
-Shortcuts helper's. Every remembered value is shown on the form before
-anything is converted, so nothing is applied that you have not seen. Runs
-driven by a configuration file are unaffected in both directions: that file
-says everything about the run it describes.
-
-Every copy of the action shares one set of remembered settings, so a workflow
-you keep for testing and one you use for real will change each other's. To
-forget everything and start from the defaults again:
-
-```
+```sh
 defaults delete com.resoltico.ImageFilesToPDF
 ```
 
-The form is drawn with AppKit through the JXA ObjC bridge. That it displays
-at all inside a Shortcuts action is measured rather than assumed: a probe run
-inside `ShortcutsMacHelper` showed a real `NSAlert` with an accessory view
-presenting and being answered, without raising the process activation policy
-and so without a Dock icon appearing mid-action.
+A combined PDF is named `output_YYYYMMDD_HHMMSS.pdf`. Separate PDFs use each
+image's sanitized stem followed by the timestamp. Collisions receive numeric
+suffixes; existing files, directories, pipes and links are never overwritten.
 
-That is a fact about macOS 15.7, not a promise about the next one, so the
-stepwise dialogs remain as a live fallback. If AppKit cannot be reached, or
-the form cannot be presented, the action asks the same six questions one at a
-time and works exactly as before — offering the four presets and, if you want
-a colour of your own, asking for it.
+Combined mode publishes no subset if a candidate fails. Separate mode continues
+ordinary document failures; cancellation, cleanup failures and software faults
+can stop remaining work. Completion distinguishes saved, recovered, failed,
+cancelled and not-started documents and includes full relevant paths.
 
-## While it runs
+## Processing and recovery
 
-A small panel appears, showing what the action is doing — which file it is
-preparing, then creating, validating and saving the PDF — with a count of the
-images and a bar. It floats above the Finder window you started from, never
-takes focus, and closes before the message that says what was produced.
+Each source is copied into a private workspace before inspection. The same
+owned bytes are inspected and decoded, with identity/version checks around
+capture. Observed changes or unreadable required facts cause refusal. Coarse
+filesystem timestamps cannot guarantee an atomic snapshot of a concurrently
+modified original.
 
-It does not appear at all for a run that is over in a moment; there is no
-point flashing a window up on the way past. It goes out of the way while the
-settings are being asked, and comes back when there is work to report.
+The pipeline applies orientation and embedded ICC profiles, converts to sRGB,
+flattens transparency, and places the image on a page-sized JPEG canvas.
+Placement is independent of DPI: one source pixel has a natural size of one
+point, scaled down to fit and never enlarged. Paper dimensions are exactly
+A4 (595.28 × 841.89 pt) or Letter (612 × 792 pt).
 
-The same report is written to JavaScript for Automation's own progress object,
-which Script Editor, a script applet and the system script menu display in
-their own way. The two are not alternatives: they are different hosts, and a
-run may be either. If neither can be shown, the conversion is exactly the
-same — a report about the work never becomes part of the work.
+Pages are imported in batches bounded by 32 queued pages, 64 MiB of encoded
+page data and command length. One newly prepared page may temporarily coexist
+with the queue; an oversized page is imported alone before another source is
+prepared. Exact page count and strict PDF validation are required before saving.
+pdfcpu runs with `--conf disable`, without personal configuration, fonts or
+certificates.
 
-## When an image is damaged
+Publication uses exact-path native hard links or exclusive rename of an owned
+destination copy. Identity and size must confirm the actual final path before
+ownership is released. APFS and HFS+ support the link route; FAT32 supports the
+exclusive-rename route. exFAT cannot provide the required publication primitive,
+so saving there fails with recovery instead of exposing a partial final file.
 
-A photograph that is cut short — an interrupted download, a card that was
-pulled out mid-write — is refused rather than converted into whatever could be
-read from it. It is named in the report, and in Separate PDFs mode the rest of
-the selection still converts.
+A validated PDF that cannot be saved is copied to a recovery location and
+checked before the workspace original is released. If recovery cannot be
+confirmed, the original workspace is retained. An unexpected validation fault
+can retain an explicitly unconfirmed candidate; it is not counted as a validated
+recovery. Follow the reported path and status when recovering work.
 
-This is a deliberate trade. Such a file used to produce a page with part of a
-picture on it and a PDF that said nothing was wrong, which is worse than being
-told: a conversion you can see failed is a conversion you can do something
-about.
+Stop requests are checked at safe boundaries. Confirmed outputs remain saved,
+including when a stop arrives during publication. A broken progress surface is
+quarantined while healthy surfaces continue; optional observer faults retain
+diagnostics. Temporary resources are cleaned as their lifetimes end, except
+work intentionally retained for recovery or uncertainty.
 
-## When the tools are missing
+## Headless request and receipt
 
-Nothing is asked of the user until the tools have been checked. A machine that
-is missing something is told immediately, in one message naming every problem,
-with the command that fixes it — rather than after the settings have been
-filled in.
+Use `osascript` with a strict JSON settings file for automation. The complete
+request, receipt and exit-status contract is in [HEADLESS.md](HEADLESS.md).
 
-vips is checked with the exact flags the pipeline uses against a missing input.
-pdfcpu is checked using `pdfcpu version`, which does not load configuration, and
-must report a stable version at or above the release floor. Conversion and
-strict validation run with `--conf disable`; an old personal `config.yml` cannot
-block the action or change its output settings. No older pdfcpu command syntax
-or configuration migration is supported.
+## Verify a download
 
-## Processing contract
-
-For every source image, the runtime:
-
-1. reads the source's pixel dimensions, works out where it sits on the page,
-   and fits it to that placement while converting to sRGB, in a single
-   `vips thumbnail` stage;
-2. flattens an alpha channel onto the chosen background when the decoded image
-   has one;
-3. centres the image on an exact page-sized canvas and saves a
-   metadata-stripped JPEG page;
-4. imports the page or ordered pages with `pdfcpu` using `sc:1 rel`, in
-   groups when there are more pages than one command line can carry;
-5. validates the temporary PDF in strict mode;
-6. publishes the PDF without overwriting an existing path.
-
-Publishing is all or nothing. Every name this action writes to is one it
-takes first, in a single operation that either creates the name or leaves it
-alone — so nothing half finished appears under the name of your document, and
-an existing file is never replaced: not a file, not a folder, not a named
-pipe, not even a link whose target is gone. When the finished PDF is on the
-same drive as the folder it belongs in, which is the ordinary case, taking the
-name *is* the whole publication and no other file of ours ever appears there.
-Otherwise the PDF is copied into a hidden folder this action makes for itself
-beside the destination, and put onto its final name from there in one step
-that refuses a name already in use — including on a card formatted for
-cameras, which is tested against real ones.
-
-A few drives can do neither, exFAT being the one you are likely to meet: some
-large camera cards are formatted that way. Saving to one of those stops rather
-than working around it. Nothing is written to the drive, the finished PDF is
-kept, and the message says what could not be done and where your PDF is.
-
-When a save does fail, the message says what happened and then quotes the
-system's own explanation of it. It does not guess: a folder that denies
-permission and a drive that cannot do the job are different problems, and you
-are told which one you have rather than being sent to look at the drive.
-
-A saved PDF is checked for being the one that was made: the output path is
-asked which file it holds, and only the file this run put there counts. Some
-other file of the right shape is not evidence — another program's PDF is one
-too. Until that check passes the finished PDF stays where it was built, and
-this action removes only names it took itself, which it knows because taking
-them is how it got them. If publication fails the PDF is kept somewhere it
-will survive and the message says where it is.
-
-The source images are never modified. Temporary work is held in a private
-`mktemp` directory and removed on success or failure.
-
-### Colour management
-
-The resize stage passes `--export-profile=srgb`, which performs a real ICC
-transform when the source carries an embedded profile. This matters for
-ordinary files: macOS screenshots are Display P3, and cameras often tag Adobe
-RGB. Converting with a bare `colourspace srgb` stage instead ignores the
-embedded profile and silently shifts those colours — a pure red reproduces as
-`206,48,36` rather than `224,16,16`.
-
-### Scaling
-
-Where an image sits on the page is decided in points, from the image's own
-pixel dimensions, before any raster exists: one source pixel is one point, and
-that natural size is scaled down to fit the page and never enlarged beyond it.
-Upscaling invents pixels, and produces a blurry page and a much larger file.
-
-Deciding it from the pixel canvas instead makes the resolution setting move the
-picture. The same photograph covered 102 mm across at 300 DPI and 51 mm at 600,
-because a higher resolution made the page a larger number of pixels while the
-image stayed the same number of pixels. Measured after the change, one image
-covers 210.3 × 140.4 mm at 150, 300 and 600 DPI alike.
-
-### Page size
-
-Pages are exactly ISO A4 (595.28 × 841.89 pt) or US Letter (612 × 792 pt) at
-every DPI. Page dimensions are defined in points and the pixel canvas is
-derived from them, so the published size never drifts with the DPI setting.
-
-## Knowing which build is installed
-
-A Shortcut holds a pasted copy of the artifact, which cannot be checked against
-`dist/SHA256SUMS`. Two things identify it anyway: the completion dialog ends
-with the version, and the pasted text opens with a header naming the version,
-the repository it was built from, and the licence. Comments are stripped from
-the artifact on build, so that header is the one thing in it that is prose.
-
-## Verifying a download
-
-Every file a release offers — the artifact, the checksum manifest and
-`INSTALL.txt` and `LICENSE` — is signed with a GitHub build attestation, which records that
-this repository's release workflow built it from a specific commit:
+The release workflow attests the JXA, checksum manifest, installation instructions
+and license. From the download directory, with GitHub CLI installed:
 
 ```sh
 gh attestation verify "Image-Files-to-PDF.jxa" --repo resoltico/ImageFilesToPDF
 shasum --check SHA256SUMS
 ```
 
-The artifact is rebuilt on a clean runner during the release and required to
-reproduce the committed bytes exactly, so what is signed is both built by CI
-and identical to what is in the repository.
+An attestation identifies the workflow and source commit. A checksum verifies
+the downloaded JXA bytes; it does not verify a copy pasted into Shortcuts.
+The script header and completion details identify its declared version.
 
-## License
+## Development and license
 
-First-party project files use the
-[Mozilla Public License 2.0](https://mozilla.org/MPL/2.0/) (`MPL-2.0`); see
-`LICENSE` for the notice and full terms. Dependencies retain their own licenses.
+[CONTRIBUTING.md](CONTRIBUTING.md) covers setup, source boundaries and release
+operation. [QA.md](QA.md) defines verification requirements and limits.
+[SECURITY.md](SECURITY.md) describes trust and file-safety boundaries.
 
-When distributing covered files or modifications, preserve the license notices
-and provide the covered source under MPL 2.0 as required by the license.
-The standalone JXA header identifies the source for its version; the release
-includes `LICENSE`. The source files in the repository are the preferred form
-for modification; the generated bundle has its explanatory comments removed.
-
-## Working on it
-
-`CONTRIBUTING.md` covers the layout and the workflow. `QA.md` is the contract:
-what the gate enforces, at what thresholds, and why each guard exists.
-
-```sh
-npm ci
-npm run release
-```
-
-The released artifact has no dependencies of its own beyond `vips` and
-`pdfcpu`. ESLint, Stryker and acorn — which the build uses to find what it
-removes — are development dependencies, pinned to exact versions, and none of
-them reaches the artifact.
+First-party files use [Mozilla Public License 2.0](LICENSE) (`MPL-2.0`).
+Preserve license/source notices and provide covered source as required by that
+license when distributing covered files or modifications. Dependencies retain
+their own licenses. The generated JXA carries the MPL and corresponding-source
+notices; releases include the complete `LICENSE`.

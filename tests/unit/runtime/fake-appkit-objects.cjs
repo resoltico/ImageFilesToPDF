@@ -78,6 +78,8 @@ function makePopup(rect, pullsDown) {
     });
 
     popup.addItemWithTitle = (title) => items.push({ title, image: null });
+    popup.selectItemAtIndex = (index) => { popup.selected = items[index]?.title; };
+    Object.defineProperty(popup, "indexOfSelectedItem", { get: () => items.findIndex((item) => item.title === popup.selected) });
     popup.selectItemWithTitle = (title) => {
         popup.selected = title;
     };
@@ -93,6 +95,7 @@ function makePopup(rect, pullsDown) {
 function makeAlert(state) {
     const alert = {
         kind: "alert",
+        window: {},
         buttons: [],
         accessoryView: null,
         messageText: "",

@@ -1,15 +1,14 @@
 "use strict";
+const { hostError } = require("./cancellation.js");
 
-const { formSpec } = require("../core/form.js");
-const { readAnswers } = require("../core/answers.js");
-const { isUserCancelled, UserCancelled } = require("../core/errors.js");
+const { formSpec } = require("./form.js");
+const { readAnswers } = require("./answers.js");
+const { UserCancelled } = require("../core/errors.js");
 const { appkitBridge } = require("./objc-bridge.js");
 const { presentForm } = require("./appkit.js");
 const { collectDialogSettings } = require("./dialogs.js");
-const { reviewSelection } = require("./settings-review.js");
-const { defaultAnswers } = require("../core/form-rows.js");
-const { normalizeSettings } = require("../core/settings.js");
-const { encode, rememberedAnswers } = require("../core/preferences.js");
+const { defaultAnswers } = require("./form-rows.js");
+const { encode, rememberedAnswers } = require("./settings-preferences.js");
 const { createMemory } = require("./preferences.js");
 
 function defaultMemory() {
@@ -30,8 +29,8 @@ function defaultMemory() {
  * the settings, or the answers to try again with and what is wrong with them.
  *
  * A cancellation is an answer and must be honoured. Anything else the form
- * throws is treated as the form being unusable, because falling back to
- * dialogs that work is better than failing the run over a widget.
+ * throws remains a diagnostic. Only an explicit unavailable outcome falls
+ * back; programming faults do not silently change interfaces.
  */
 function formRound(bridge, present, state) {
     try {
@@ -49,12 +48,8 @@ function formRound(bridge, present, state) {
         }
 
         return { ...readAnswers(outcome.answers), answers: outcome.answers };
-    } catch (error) {
-        if (isUserCancelled(error)) {
-            throw error;
-        }
-
-        return null;
+    } catch (caught) {
+        throw hostError(caught);
     }
 }
 
@@ -106,41 +101,20 @@ function collectSettings(
     );
 }
 
-/*
- * A configuration file is the whole of what a headless run is told, and it
- * has to mean the same thing every time it is used. So nothing is read from
- * the last run, nothing is written for the next, and nothing is asked --
- * not even whether to go on without a rejected item. The memory arrives as
- * something to open rather than something already open, and this branch
- * returns before it can be.
- *
- * Which branch is taken is what the invocation says it is, never what the
- * settings look like. Reading it off them -- "there are none, so somebody
- * must be here to ask" -- is a guess, and a configuration file holding
- * `false` or `0` got it wrong: a headless run opened a dialog and waited for
- * an answer nobody was there to give.
- */
-function settingsFor(app, invocation, context, injected = {}) {
-    if (invocation.headless) {
-        return normalizeSettings(invocation.settings);
-    }
-
-    reviewSelection(app, context);
-
+/* Interactive collection returns the canonical record supplied by the common validator. */
+function chooseSettings(app, context, injected = {}) {
     const { openMemory = defaultMemory, bridge, present } = injected;
     const memory = openMemory();
     const opening = { context, answers: rememberedAnswers(memory.recall()) };
-    const settings = normalizeSettings(
-        bridge || present
-            ? collectSettings(app, opening, bridge, present)
-            : collectSettings(app, opening)
-    );
+    const settings = bridge || present
+        ? collectSettings(app, opening, bridge, present) : collectSettings(app, opening);
 
     // Confirmed and valid, and before any image is touched: a preference is
     // not made wrong by a photograph that fails to convert later.
     memory.remember(encode(settings));
+    context.diagnostics?.push(...(memory.diagnostics ?? []));
 
     return settings;
 }
 
-module.exports = { collectViaForm, collectSettings, settingsFor };
+module.exports = { collectViaForm, collectSettings, chooseSettings };

@@ -19,14 +19,14 @@ test("a production module may not name an executable directly", async () => {
         // Named in full: the whole point is to say where it does belong.
         new RegExp(
             "src/runtime/pages\\.js: names /bin/cp directly; every executable " +
-            "belongs in src/core/executables\\.js, which is the one place " +
+            "belongs in src/runtime/backend-executables\\.js, which is the one place " +
             "the action.s external surface is written down",
             "u"
         )
     );
     assert.throws(
         () => checkContent(
-            "src/core/commands.js",
+            "src/runtime/backend-commands.js",
             'const tool = "/opt/homebrew/bin/ghostscript";\n'
         ),
         /ghostscript/u
@@ -37,7 +37,7 @@ test("the module that owns them may name them, and tests may too", async () => {
     const { checkContent } = await loadRules();
 
     assert.doesNotThrow(
-        () => checkContent("src/core/executables.js", 'const MV = "/bin/mv";\n')
+        () => checkContent("src/runtime/backend-executables.js", 'const MV = "/bin/mv";\n')
     );
     // A fixture path in a test is an assertion, not an invocation.
     assert.doesNotThrow(

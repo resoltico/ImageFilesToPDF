@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { collectDialogSettings } = require("../../../src/runtime/dialogs.js");
 const { chooseRequired } = require("../../../src/runtime/prompts.js");
-const { PAPER_SIZE } = require("../../../src/core/choices.js");
+const { PAPER_SIZE } = require("../../../src/runtime/choices.js");
 const { createFakeApp } = require("./fake-app.cjs");
 
 test("chooseRequired returns the value behind the chosen label", () => {
@@ -39,9 +39,7 @@ test("collectDialogSettings asks for every setting", () => {
     app.nextAnswer = "92";
     const settings = collectDialogSettings(app);
 
-    assert.deepEqual(Object.keys(settings), [
-        "mode", "paperSize", "orientation", "dpi", "quality", "background"
-    ]);
+    assert.deepEqual(Object.keys(settings).sort(), ["background", "dpi", "mode", "orientation", "paperSize", "quality"]);
     assert.equal(app.listPrompts.length, 4);
 });
 

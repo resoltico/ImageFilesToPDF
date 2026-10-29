@@ -3,7 +3,7 @@
 const { produceOutput } = require("./fake-producing.cjs");
 const { testPath } = require("./fake-testing.cjs");
 const { createIdentities } = require("./fake-identity.cjs");
-const { stat } = require("./fake-measuring.cjs");
+const { stat, sizeOf } = require("./fake-measuring.cjs");
 const { move, copy, link, remove } = require("./fake-writing.cjs");
 const {
     makeDirectory,
@@ -33,6 +33,7 @@ function createFilesystem(seed, executables, empty, settings = {}) {
 
     return {
         files: state.files,
+        facts: (path) => state.files.has(path) ? { identity: state.identities.of(path), size: sizeOf(state, path) } : { identity: "", size: -1 },
         sizes: state.sizes,
         test: (rest) => testPath(state, rest),
         exclusiveRename: (from, to) => exclusiveRename(state, from, to),

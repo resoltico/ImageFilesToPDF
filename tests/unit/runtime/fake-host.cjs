@@ -40,7 +40,7 @@ function setupAnswer(host, command) {
     if (command.includes("nonexistent-image-files-to-pdf-preflight") ||
         (command.includes("pdfcpu") && command.includes("'version'"))) {
         return host.preflight ?? (command.includes("pdfcpu")
-            ? "version: v0.16.1"
+            ? "version: v0.16.4"
             : "VipsForeignLoad: file does not exist");
     }
 
@@ -93,6 +93,30 @@ function dialogSurface(host) {
     };
 }
 
+function nativePorts(fs, host) {
+    const publication = {
+        facts: fs.facts,
+        link(from, to) {
+            try { fs.test(["-e", to, "-o", "-L", to]); return { state: "exists" }; } catch {
+                // This fixture positively classified the path as unoccupied.
+            }
+            fs.link([from, to]);
+            return { state: "created" };
+        },
+        rename(from, to) { return { state: fs.exclusiveRename(from, to) ? "created" : "exists" }; }
+    };
+    const sources = {
+        capture(from, path) { fs.copy([from, path]); return { path, identity: from, version: "1" }; },
+        pngCount: () => host.pages ?? 1
+    };
+    return { publication, sources };
+}
+
+function shellFailure(error, command) {
+    if (command.includes("printenv") && error.errorNumber === undefined) { error.errorNumber = 1; }
+    return error;
+}
+
 function createFakeHost(settings = {}) {
     const fs = createFilesystem(
         settings.files ?? [],
@@ -126,7 +150,7 @@ function createFakeHost(settings = {}) {
 
             if (injected !== undefined) {
                 if (injected instanceof Error) {
-                    throw injected;
+                    throw shellFailure(injected, command);
                 }
 
                 return injected;
@@ -140,7 +164,7 @@ function createFakeHost(settings = {}) {
 
     surface.displayDialog = boundedDialog(surface.displayDialog);
 
-    return Object.assign(host, surface, renamerOn(fs));
+    return Object.assign(host, surface, renamerOn(fs), nativePorts(fs, host));
 }
 
 module.exports = { createFakeHost, parseArgv, WORKSPACE };

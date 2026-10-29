@@ -1,10 +1,9 @@
 "use strict";
 
-const { basename } = require("../core/paths.js");
-const { UserCancelled } = require("../core/errors.js");
+const { releaseArtifact } = require("../core/artifacts.js");
+const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { keep, clearAway } = require("./recovery.js");
-const { fileFacts } = require("./file-facts.js");
-const { removeFile } = require("./shell.js");
+const { removeOwned } = require("./owned-cleanup.js");
 
 /*
  * What the output path holds, and letting go once that is settled.
@@ -36,70 +35,33 @@ function isPublished(published, outcome) {
 }
 
 /*
- * ln links into a folder standing at the output path rather than refusing it,
- * so the claim may have gone inside one. The link there is this run's own
- * only if it is the file this run published, which is a question with an
- * exact answer -- and only then is it this run's to remove.
- */
-function strayInside(app, paths, outcome) {
-    const inside = `${paths.final}/${basename(outcome.claimed)}`;
-
-    return fileFacts(app, inside).identity === outcome.claimedIdentity
-        ? [inside]
-        : [];
-}
-
-/*
  * Letting go of both copies, in this order: the drop decides whether runJob
  * keeps the workspace, so it comes before the copy it was protecting goes.
  * One of these rather than two, because an abandoned publication that turns
  * out to have published needs exactly the same.
  */
 function settled(job, paths, outcome) {
-    job.unpublished.delete(paths.staged);
-    clearAway(job, outcome);
-    removeFile(job.app, paths.staged);
+    releaseArtifact(job.artifacts, paths.staged);
+    job.cleanupIssues.push(...clearAway(job.app, outcome));
+    removeOwned(job, paths.staged);
+    if (job.cleanupIssues.some((issue) => issue.code === ISSUE.cancelled)) { job.progress.requestStop(); }
 }
 
 function confirm(job, paths, outcome) {
-    const published = fileFacts(job.app, paths.final);
+    const published = job.publication.facts(paths.final);
 
     if (!isPublished(published, outcome)) {
         throw keep(job, paths, {
             ...outcome,
-            mine: strayInside(job.app, paths, outcome),
             reasons: [
                 `the output path does not hold the PDF this run published:\n\n${paths.final}`
             ]
         });
     }
 
-    settled(job, paths, outcome);
+    outcome.state = "confirmed";
+    try { settled(job, paths, outcome); }
+    catch (error) { job.cleanupIssues.push(...issuesOf(error, "cleanup")); }
 }
 
-/*
- * Stopped before it could be published, or stopped after it was: an
- * interrupted call is not proof that the filesystem did nothing.
- *
- * So the output path is asked the same question a successful claim asks it.
- * If it holds this run's file the PDF was published after all, and is let go
- * of exactly as a confirmed publication is; the caller stops afterwards. If
- * it does not, nothing was published: the staging place goes and the PDF is
- * dropped from the unpublished set, which says there is nothing to recover --
- * the workspace takes it on the way out. That is the difference from a
- * refusal, which keeps it because the person needs it back.
- */
-function abandon(job, paths, outcome) {
-    if (isPublished(fileFacts(job.app, paths.final), outcome)) {
-        settled(job, paths, outcome);
-
-        return true;
-    }
-
-    clearAway(job, outcome);
-    job.unpublished.delete(paths.staged);
-
-    throw new UserCancelled();
-}
-
-module.exports = { isPublished, confirm, abandon };
+module.exports = { isPublished, confirm };

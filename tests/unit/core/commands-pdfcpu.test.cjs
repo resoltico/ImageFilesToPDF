@@ -7,7 +7,7 @@ const {
     readPageCountFrom,
     buildPdfcpuImportArgv,
     buildPdfcpuValidateArgv
-} = require("../../../src/core/pdfcpu.js");
+} = require("../../../src/runtime/backend-pdfcpu.js");
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
 
 const geometry = calculatePageGeometry({
@@ -15,7 +15,7 @@ const geometry = calculatePageGeometry({
     orientation: "Portrait",
     dpi: 300,
     quality: 92,
-    mode: "Single PDF",
+    mode: "single",
     background: "#FFFFFF"
 });
 

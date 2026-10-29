@@ -1,7 +1,9 @@
 "use strict";
+const { OperationError } = require("../core/errors.js");
+const { hostError } = require("./cancellation.js");
 
-const { TEST } = require("../core/executables.js");
-const { shellJoin } = require("../core/shell.js");
+const { TEST } = require("./backend-executables.js");
+const { shellJoin } = require("./backend-shell.js");
 const { isUserCancelled } = require("../core/errors.js");
 
 /*
@@ -81,7 +83,8 @@ function isRegularNonEmpty(app, path) {
         app.doShellScript(shellJoin([TEST, "-f", path, "-a", "-s", path]));
 
         return true;
-    } catch (error) {
+    } catch (caught) {
+        const error = hostError(caught);
         if (isUserCancelled(error)) {
             throw error;
         }
@@ -92,7 +95,7 @@ function isRegularNonEmpty(app, path) {
 
 function verifyFileWritten(app, path, label) {
     if (!isRegularNonEmpty(app, path)) {
-        throw new Error(
+        throw new OperationError(
             `${label} is not a file with anything in it:\n\n${path}`
         );
     }

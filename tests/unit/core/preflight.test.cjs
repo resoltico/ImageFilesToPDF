@@ -8,7 +8,7 @@ const {
     isVipsUsable,
     isPdfcpuUsable,
     describeSetupProblems
-} = require("../../../src/core/preflight.js");
+} = require("../../../src/runtime/backend-preflight.js");
 
 test("the vips probe uses the flags the pipeline depends on", () => {
     const argv = buildVipsProbeArgv("/opt/homebrew/bin/vips");
@@ -42,13 +42,13 @@ test("a vips that said nothing at all is not usable", () => {
 });
 
 test("pdfcpu requires a stable release at or above the release floor", () => {
-    for (const version of ["0.16.1", "0.16.2", "0.17.0", "1.0.0"]) {
+    for (const version of ["0.16.4", "0.16.5", "0.17.0", "1.0.0"]) {
         assert.equal(isPdfcpuUsable(`version: v${version}\n commit: Homebrew`), true);
     }
-    for (const version of ["0.16.0", "0.15.99", "0.12.1", "0.16.1-rc.1", "0.17.0-dev"]) {
+    for (const version of ["0.16.3", "0.16.1", "0.15.99", "0.12.1", "0.16.4-rc.1", "0.17.0-dev"]) {
         assert.equal(isPdfcpuUsable(`version: v${version}`), false);
     }
-    for (const output of ["", "Segmentation fault", "configuration reset required", "version: v0.16.1junk"]) {
+    for (const output of ["", "Segmentation fault", "configuration reset required", "version: v0.16.4junk"]) {
         assert.equal(isPdfcpuUsable(output), false);
     }
 });
@@ -73,7 +73,7 @@ test("unsupported pdfcpu reports its release requirement and upgrade command", (
     );
 
     assert.match(message, /pdfcpu could not report a supported stable version/u);
-    assert.match(message, /Version 0\.16\.1 or later is required/u);
+    assert.match(message, /Version 0\.16\.4 or later is required/u);
     assert.match(message, /brew upgrade vips pdfcpu/u);
 });
 
@@ -92,7 +92,7 @@ test("every problem is reported at once, not just the first", () => {
     assert.deepEqual(message.split("\n\n")[1].split("\n"), [
         "- vips is not installed.",
         "- vipsheader is not installed.",
-        "- pdfcpu could not report a supported stable version. Version 0.16.1 or later is required."
+        "- pdfcpu could not report a supported stable version. Version 0.16.4 or later is required."
     ]);
 });
 

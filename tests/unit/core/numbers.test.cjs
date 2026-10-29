@@ -2,31 +2,9 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    utf8Length,
-    truncateToBytes,
-    parseInteger,
-    plural,
-    fixed2,
-    zeroPad,
-    formatDuration
-} = require("../../../src/core/numbers.js");
-
-test("parseInteger accepts whole numbers inside the range", () => {
-    assert.equal(parseInteger(72, 72, 1200, "DPI"), 72);
-    assert.equal(parseInteger(1200, 72, 1200, "DPI"), 1200);
-    assert.equal(parseInteger("300", 72, 1200, "DPI"), 300);
-});
-
-test("parseInteger rejects anything else", () => {
-    for (const invalid of [71, 1201, 72.5, "x", Infinity, NaN, null]) {
-        assert.throws(
-            () => parseInteger(invalid, 72, 1200, "DPI"),
-            /DPI must be a whole number from 72 to 1200/u,
-            `expected ${String(invalid)} to be rejected`
-        );
-    }
-});
+const { utf8Length, truncateToBytes } = require("../../../src/core/utf8.js");
+const { fixed2, zeroPad } = require("../../../src/core/numbers.js");
+const { plural, formatDuration } = require("../../../src/runtime/formatting.js");
 
 test("fixed2 trims insignificant trailing zeros only", () => {
     assert.equal(fixed2(595.2756), "595.28");

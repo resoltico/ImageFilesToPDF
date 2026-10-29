@@ -4,10 +4,9 @@ const {
     buildThumbnailArgv,
     buildFlattenArgv,
     buildGravityArgv
-} = require("../core/commands.js");
+} = require("./backend-commands.js");
 const { calculatePlacement } = require("../core/geometry.js");
 const { readBandCount, hasAlphaBand } = require("./source-image.js");
-const { readImageSize } = require("./image-size.js");
 const { runArgv } = require("./shell.js");
 const { verifyFileWritten } = require("./asking.js");
 
@@ -27,7 +26,7 @@ const { verifyFileWritten } = require("./asking.js");
 function resizeToPage(job, imageFile, preparedPath) {
     const placement = calculatePlacement(
         job.geometry,
-        readImageSize(job.app, job.tools.vipsheader, imageFile.path)
+        imageFile.descriptor
     );
 
     runArgv(

@@ -1,15 +1,21 @@
 "use strict";
 
-const { selectionContext } = require("../core/output-description.js");
+const { OperationError } = require("../core/errors.js");
 const { calculatePageGeometry } = require("../core/geometry.js");
 const { isSeparateMode } = require("../core/settings.js");
-const { makeTimestamp } = require("../core/timestamps.js");
 const { createWorkspace, removeWorkspace } = require("./workspace.js");
-const { createRenamer } = require("./exclusive-rename.js");
-const { settingsFor } = require("./settings-form.js");
 const { createProgress } = require("./progress.js");
-const { createCombinedPdf } = require("./pdf.js");
-const { createSeparatePdfs } = require("./pdf-separate.js");
+const { executeDocuments } = require("../application/documents.js");
+const { documentPlan } = require("../core/document-plan.js");
+const { runOutcome, issuesOf } = require("../core/outcomes.js");
+const { registerArtifact, hasRetainedArtifacts } = require("../core/artifacts.js");
+const { stagedPdfPath } = require("../core/naming.js");
+const { preparePage } = require("./pages.js");
+const { removeOwned, requireReleasedResources } = require("./owned-cleanup.js");
+const { importBatch, validatePdf } = require("./staging.js");
+const { publishPdf } = require("./publish.js");
+const { buildPdfcpuImportArgv } = require("./backend-pdfcpu.js");
+const { commandLengthOf, COMMAND_BUDGET_BYTES } = require("./backend-batching.js");
 
 /*
  * Assembling a run and carrying it out, which is a separate job from deciding
@@ -37,59 +43,62 @@ function createJob(app, settings, timestamp, tools) {
         tools,
         geometry: calculatePageGeometry(settings),
         workspace: createWorkspace(app),
-        // Validated PDFs this run has produced and not yet published.
-        unpublished: new Set(),
-        // Reports nowhere until reportingJob hands over the run's own.
+        // Authoritative artifact lifecycles, registered before PDF bytes exist.
+        artifacts: new Map(),
+        cleanupIssues: [],
+        // Reports nowhere until the composition root supplies run progress.
         progress: createProgress([]),
-        // The exclusive rename, where the host can reach it. reportingJob
-        // supplies it for the same reason it supplies progress: the bridge
-        // belongs to the run rather than to the job's shape.
-        rename: null
+        // Native publication operations come from the composition root.
+        // Their bridge belongs to the run rather than to the job's shape.
+        publication: null
     };
 }
 
-function prepareJob(app, invocation, tools, context) {
-    return createJob(
-        app,
-        settingsFor(app, invocation, context),
-        invocation.timestamp || makeTimestamp(new Date()),
-        tools
-    );
-}
+function documentPorts(job) {
+    return {
+        allocate: (index) => registerArtifact(job.artifacts, stagedPdfPath(job.workspace, index)),
+        beginning: (source, index, documentIndex) => job.progress.beginning(documentIndex + index + 1, source.originalName),
+        prepare(source, index) {
+            requireReleasedResources(job);
+            const path = preparePage(job, source, index);
+            requireReleasedResources(job);
+            const {size} = job.publication.facts(path);
+            if (size < 0) { removeOwned(job, path); throw new OperationError("Page size is unknown."); }
+            return { path, size };
+        },
+        fits: (staged, pages) => commandLengthOf(buildPdfcpuImportArgv(job.tools.pdfcpu, staged, pages, job.geometry)) <= COMMAND_BUDGET_BYTES,
+        import(staged, pages) {
+            job.progress.phase("Creating PDF");
+            importBatch(job, staged, pages);
+        },
+        validate(staged, expected) {
+            requireReleasedResources(job);
+            validatePdf(job, staged, expected);
+        },
+        publish: (staged, destination) => publishPdf(job, staged, destination),
+        remove: (path) => removeOwned(job, path),
+        prepared: () => { if (!isSeparateMode(job.settings)) { job.progress.finished("Preparing"); } },
+        completed: (record) => job.progress.finished(record.state === "saved" ? "Saved" : "Finished")
+    };
+ }
 
-/*
- * The report belongs to the run rather than to the job: it was alive before
- * there was a job, saying which tools were being checked and which folders
- * were being read, and it outlives the job to be closed before anything is
- * displayed. What the job is given is that same object, told how much work
- * there is now that the images have been counted and the settings answered.
- */
-function reportingJob(app, invocation, tools, work) {
-    const images = work.images.length;
-    const job = prepareJob(app, invocation, tools, selectionContext(work));
-
-    job.rename = createRenamer(globalThis.ObjC, globalThis.$);
-    job.progress = work.report;
-    work.report.expect({ units: unitsOf(job.settings, images), images });
-
-    return job;
+function cleanupJob(job, issues) {
+    job.progress.diagnostics.push(...job.cleanupIssues);
+    try {
+        if (!hasRetainedArtifacts(job.artifacts)) {
+            const removed = removeWorkspace(job.app, job.workspace);
+            if (removed.state === "failed") { job.progress.diagnostics.push(removed.issue); }
+        }
+    } catch (error) { issues.push(...issuesOf(error, "cleanup")); }
 }
 
 function runJob(job, imageFiles) {
-    const create = isSeparateMode(job.settings)
-        ? createSeparatePdfs
-        : createCombinedPdf;
-
-    try {
-        return create(job, imageFiles);
-    } finally {
-        // A workspace still holding a validated PDF outlives the run. It has
-        // been imported and validated by then, and the message that reported
-        // the failure sent the user to it.
-        if (job.unpublished.size === 0) {
-            removeWorkspace(job.app, job.workspace);
-        }
-    }
+    const plans = documentPlan(job.settings, imageFiles, job.timestamp);
+    const issues = [], records = [];
+    try { executeDocuments(documentPorts(job), plans, records); }
+    catch (error) { issues.push(...issuesOf(error, "execution")); }
+    finally { cleanupJob(job, issues); }
+    return runOutcome(records, [], issues, job.progress.diagnostics);
 }
 
-module.exports = { unitsOf, createJob, prepareJob, reportingJob, runJob };
+module.exports = { unitsOf, createJob, runJob };

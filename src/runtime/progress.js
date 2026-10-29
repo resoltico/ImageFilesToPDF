@@ -1,4 +1,5 @@
 "use strict";
+const { hostError } = require("./cancellation.js");
 
 const { isUserCancelled, UserCancelled } = require("../core/errors.js");
 
@@ -24,15 +25,21 @@ const { isUserCancelled, UserCancelled } = require("../core/errors.js");
  * stop" is, and it used to be discarded along with it.
  */
 function broadcast(sinks, state) {
-    return (use) => {
+    const failed = new Set();
+    return (use, teardown = false) => {
         for (const sink of sinks) {
-            try {
-                use(sink);
-            } catch (error) {
-                // Recorded rather than thrown on: letting it out would
-                // unwind the run from wherever the report was made, and one
-                // of those places is the middle of a publication.
-                state.stopped ||= isUserCancelled(error);
+            if (teardown || !failed.has(sink)) {
+                try {
+                    use(sink);
+                } catch (caught) {
+                    const error = hostError(caught);
+                    // Record the fault without unwinding from a publication.
+                    if (isUserCancelled(error)) { state.stopped = true; }
+                    else {
+                        failed.add(sink);
+                        state.diagnostics.push({ code: "observer-fault", message: String(error), stack: error?.stack ?? "" });
+                    }
+                }
             }
         }
     };
@@ -113,7 +120,7 @@ function lifecycle(state, each) {
             }
 
             state.closed = true;
-            each((sink) => sink.close());
+            each((sink) => sink.close(), true);
         }
     };
 }
@@ -125,13 +132,13 @@ function lifecycle(state, each) {
  */
 function createProgress(sinks) {
     const state =
-        { images: 0, done: 0, description: "", detail: "", stopped: false, closed: false };
+        { images: 0, done: 0, description: "", detail: "", stopped: false, closed: false, diagnostics: [] };
     const each = broadcast(sinks, state);
     const say = () => each(
         (sink) => sink.report(state.done, state.description, state.detail)
     );
 
-    return { ...reporting(state, say), ...lifecycle(state, each) };
+    return { ...reporting(state, say), ...lifecycle(state, each), diagnostics: state.diagnostics, requestStop() { state.stopped = true; } };
 }
 
 module.exports = { createProgress };

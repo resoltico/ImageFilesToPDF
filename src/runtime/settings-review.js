@@ -1,15 +1,15 @@
 "use strict";
 
 const { APP_NAME } = require("../core/version.js");
-const { plural } = require("../core/numbers.js");
+const { plural } = require("./formatting.js");
 const { UserCancelled } = require("../core/errors.js");
-const { CREATE_BUTTON, CANCEL_BUTTON } = require("../core/form.js");
-const { PAPER_SIZE, labelOfValue } = require("../core/choices.js");
+const { CREATE_BUTTON, CANCEL_BUTTON } = require("./form.js");
+const { PAPER_SIZE, labelOfValue } = require("./choices.js");
 const {
     outputSummary,
     destinationSummary,
     PAGE_LAYOUT_NOTE
-} = require("../core/output-description.js");
+} = require("./output-description.js");
 const { describeRejections } = require("./completion.js");
 
 /*
@@ -22,16 +22,11 @@ const { describeRejections } = require("./completion.js");
  */
 
 function confirmAction(app, message, button) {
-    const answer = app.displayDialog(message, {
-        withTitle: APP_NAME,
-        buttons: [CANCEL_BUTTON, button],
-        defaultButton: button,
-        cancelButton: CANCEL_BUTTON
-    });
-
-    if (answer.buttonReturned !== button) {
-        throw new UserCancelled();
-    }
+    const { showDetails } = require("./details-dialog.js");
+    const answer = showDetails(app, { title: APP_NAME,
+        summary: "Review the full details before continuing.", detail: message,
+        buttons: [button, CANCEL_BUTTON] });
+    if (answer !== 0) { throw new UserCancelled(); }
 }
 
 /*

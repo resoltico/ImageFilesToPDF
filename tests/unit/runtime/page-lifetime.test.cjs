@@ -24,7 +24,7 @@ test("a page that was made is handed back, not swept up with the rest", () => {
     const removals = app.commands.filter((command) => command.startsWith("'/bin/rm'"));
 
     assert.match(page, /-page\.jpg$/u);
-    assert.equal(removals.length, 2, "the two intermediates, and only those");
+    assert.equal(removals.length, 3, "the captured source and two intermediates");
     assert.ok(
         !removals.some((command) => command.includes("-page.jpg")),
         `the page it is handing back is not removed: ${removals.join(" ")}`

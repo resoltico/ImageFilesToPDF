@@ -6,7 +6,7 @@ const { imageOf } = require("./fake-job.cjs");
 const {
     readBandCount,
     readPageCount,
-    assertSinglePage
+    inspectSource
 } = require("../../../src/runtime/source-image.js");
 const { readImageSize } = require("../../../src/runtime/image-size.js");
 const { createFakeApp, failing } = require("./fake-app.cjs");
@@ -41,11 +41,11 @@ test("a multi-page image is refused rather than silently truncated", () => {
     // vips reads page one unless asked for more, so without this the other
     // pages would simply not appear in the PDF and nothing would say so.
     const host = createFakeHost({});
-    const job = { app: host, tools: { vipsheader: "/v/vipsheader" } };
+    const job = { app: host, tools: { vipsheader: "/v/vipsheader" }, sources: host.sources };
 
     host.pages = 3;
     assert.throws(
-        () => assertSinglePage(job, imageOf("/a/scan.tif")),
+        () => inspectSource(job, imageOf("/a/scan.tif")),
         (error) => {
             assert.match(error.message, /contains 3 pages/u);
             assert.match(error.message, /split the file/u);
@@ -57,10 +57,10 @@ test("a multi-page image is refused rather than silently truncated", () => {
 
 test("a single-page image passes the check", () => {
     const host = createFakeHost({});
-    const job = { app: host, tools: { vipsheader: "/v/vipsheader" } };
+    const job = { app: host, tools: { vipsheader: "/v/vipsheader" }, sources: host.sources };
 
     assert.doesNotThrow(
-        () => assertSinglePage(job, imageOf("/a/photo.jpg"))
+        () => inspectSource(job, imageOf("/a/photo.jpg"))
     );
 });
 

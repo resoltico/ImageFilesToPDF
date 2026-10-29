@@ -15,7 +15,7 @@ const test = require("node:test");
 const {
     collectInvocation
 } = require("../../../src/runtime/input.js");
-const { collectImageFiles } = require("../../../src/runtime/admission.js");
+const { collectImageFiles } = require("./fake-selection.cjs");
 const { createFakeApp } = require("./fake-app.cjs");
 
 globalThis.Application = () => ({ selection: () => [] });

@@ -2,7 +2,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { backgroundVector, normalizeSettings } = require("../../../src/core/settings.js");
+const { backgroundVector } = require("../../../src/runtime/backend-commands.js");
+const { normalizeSettings } = require("../../../src/core/settings.js");
 
 function settings(overrides) {
     return {
@@ -10,7 +11,7 @@ function settings(overrides) {
         orientation: "Portrait",
         dpi: 300,
         quality: 92,
-        mode: "Single PDF",
+        mode: "single",
         background: "#FFFFFF",
         ...overrides
     };
@@ -27,24 +28,25 @@ test("normalizeSettings canonicalizes the dialog values", () => {
     });
 });
 
-test("normalizeSettings accepts both spellings of each mode", () => {
-    assert.equal(normalizeSettings(settings({ mode: "Separate PDFs" })).mode, "separate");
+test("historical mode labels are rejected without conversion", () => {
+    for (const mode of ["Single PDF", "Separate PDFs"]) {
+        assert.throws(() => normalizeSettings(settings({ mode })), /Output mode/u);
+    }
     assert.equal(normalizeSettings(settings({ mode: "separate" })).mode, "separate");
-    assert.equal(normalizeSettings(settings({ mode: "single" })).mode, "single");
 });
 
 test("normalizeSettings rejects unsupported choices", () => {
     assert.throws(
         () => normalizeSettings(settings({ paperSize: "Legal" })),
-        /Unsupported paper size: Legal/u
+        /Paper size must be/u
     );
     assert.throws(
         () => normalizeSettings(settings({ orientation: "Sideways" })),
-        /Unsupported page orientation: Sideways/u
+        /Orientation must be/u
     );
     assert.throws(
         () => normalizeSettings(settings({ mode: "Many" })),
-        /Unsupported output mode: Many/u
+        /Output mode must be/u
     );
     assert.throws(
         () => normalizeSettings(settings({ background: "black" })),

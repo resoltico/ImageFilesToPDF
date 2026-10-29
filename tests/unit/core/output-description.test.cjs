@@ -1,11 +1,12 @@
 "use strict";
 
+const {selectionContext}=require("../../../src/core/selection-policy.js");
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
-    selectionContext, selectionSummary, outputSummary,
+    selectionSummary, outputSummary,
     outputAlternatives, destinationSummary
-} = require("../../../src/core/output-description.js");
+} = require("../../../src/runtime/output-description.js");
 
 test("selection context preserves provenance and deduplicates ordered destinations", () => {
     assert.deepEqual(selectionContext({ images: [] }), {

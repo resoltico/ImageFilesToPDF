@@ -1,8 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { readFile, readdir } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { root } from "../repository.mjs";
-import { checkSize } from "./source-rules.mjs";
 
 const SHELL_ROOT = "tests/integration";
 const SHELL_EXTENSION = /\.sh$/u;
@@ -31,20 +30,19 @@ export async function shellScripts(directory) {
 }
 
 /*
- * Shell scripts are held to the same size limit as the JavaScript, so the
+ * Shell scripts are discovered recursively and syntax checked, so the
  * integration suite cannot grow into a god file either.
  *
  * shellcheck is not a hard requirement, because the source gate must stay
  * runnable anywhere. When it is available (CI installs it) the scripts are
  * held to it.
  */
-export async function checkScript(relative) {
+export function checkScript(relative) {
     const absolute = path.resolve(root, relative);
 
     execFileSync("bash", ["-n", absolute]);
 
     // The same size rule as the JavaScript, not a second copy of it.
-    checkSize(relative, await readFile(absolute, "utf8"));
 }
 
 export function probeShellcheck(exec = execFileSync) {

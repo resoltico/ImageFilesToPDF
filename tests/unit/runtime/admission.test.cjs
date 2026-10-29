@@ -6,7 +6,7 @@ const {
     finderSelection,
     collectInvocation
 } = require("../../../src/runtime/input.js");
-const { collectImageFiles } = require("../../../src/runtime/admission.js");
+const { collectImageFiles } = require("./fake-selection.cjs");
 const { createFakeApp, failing } = require("./fake-app.cjs");
 
 /*
@@ -99,7 +99,7 @@ test("an interactive invocation defers its settings", () => {
     assert.equal(app.listPrompts.length, 0, "no dialog before the checks");
 });
 
-test("a long list of rejections is truncated, and says how many", () => {
+test("every rejection is retained for the bounded detail surface", () => {
     // A selection can be large, and a dialog listing forty reasons is not a
     // dialog anyone reads.
     const { describeRejections } = require("../../../src/runtime/completion.js");
@@ -110,6 +110,6 @@ test("a long list of rejections is truncated, and says how many", () => {
     const lines = describeRejections(many).split("\n");
 
     assert.equal(lines[0], "Not converted:");
-    assert.equal(lines.length, 14, "a heading, twelve entries, and a count");
-    assert.equal(lines.at(-1), "...and 3 more.");
+    assert.equal(lines.length, 16, "a heading and every entry");
+    assert.equal(lines.at(-1), "file14.gif: not a supported format");
 });

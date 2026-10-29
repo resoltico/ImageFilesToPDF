@@ -35,7 +35,7 @@ test("a host that refuses an object is no panel, and no policy left changed", ()
         }
     };
 
-    assert.equal(openPanel({ objc: {}, ns }), null);
+    assert.throws(() => openPanel({ objc: {}, ns }), /no window server/u);
     assert.deepEqual(state.policies, []);
 });
 

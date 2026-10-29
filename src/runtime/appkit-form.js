@@ -1,5 +1,6 @@
 "use strict";
 
+const { DETAIL_HEIGHT } = require("./details-dialog.js");
 const {
     COLOUR_WIDTH,
     NUMBER_WIDTH,
@@ -10,11 +11,10 @@ const {
 } = require("./appkit-geometry.js");
 
 /*
- * Turning the form description from src/core/form.js into a view.
+ * Turning the form description from src/runtime/form.js into a view.
  *
  * Split from appkit.js so that laying the rows out and presenting the result
- * stay separately readable, and so neither file exceeds the size the gate
- * allows. The widget primitives arrive as a parameter, which is what lets
+ * stay separately readable. The widget primitives arrive as a parameter, which is what lets
  * this be tested without AppKit.
  */
 
@@ -26,7 +26,7 @@ function addChoice(context, row, rect) {
         widgets.addPopupItem(popup, option);
     }
 
-    popup.selectItemWithTitle(row.value);
+    popup.selectItemAtIndex(row.options.findIndex((option) => option.value === row.value));
     view.addSubview(popup);
 
     if (row.invalid) {
@@ -86,10 +86,15 @@ const ADD_ROW = {
     number: addNumber
 };
 
+const DETAIL_GAP = 10;
+
 function buildForm(bridge, spec, widgets) {
     const rowCount = spec.rows.length;
     const { width, height } = formSize(rowCount);
-    const view = widgets.makeView(bridge.ns, width, height);
+    const view = widgets.makeView(bridge.ns, width, height + DETAIL_HEIGHT + DETAIL_GAP);
+    view.addSubview(widgets.makeDetails(bridge.ns, spec.fullDetail, {
+        left: 0, bottom: height + DETAIL_GAP, width, height: DETAIL_HEIGHT
+    }));
     const context = { ns: bridge.ns, widgets, view };
     const controls = {};
 

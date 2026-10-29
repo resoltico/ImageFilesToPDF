@@ -1,6 +1,6 @@
 "use strict";
 
-const { isSupportedImage, supportedFormatList } = require("../core/paths.js");
+const { selectionReason } = require("../core/selection-policy.js");
 const { isRegularFile, isDirectory } = require("./asking.js");
 const { pathCandidates } = require("./input.js");
 
@@ -18,18 +18,7 @@ const { pathCandidates } = require("./input.js");
  * rather than the absence of an entry in a list.
  */
 function rejectionReason(app, path) {
-    // Asked first, because a folder that happens to be called album.png would
-    // otherwise be turned away for having the wrong extension, and a folder
-    // called album for having no extension at all. Neither says what it is.
-    if (isDirectory(app, path)) {
-        return "a folder; select the images inside it";
-    }
-
-    if (!isSupportedImage(path)) {
-        return `not a supported format (${supportedFormatList()})`;
-    }
-
-    return isRegularFile(app, path) ? "" : "not a readable file";
+    return selectionReason(isDirectory(app, path) ? "directory" : "file", path, isRegularFile(app, path));
 }
 
 /*

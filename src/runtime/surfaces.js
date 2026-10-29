@@ -1,4 +1,5 @@
 "use strict";
+const { hostError } = require("./cancellation.js");
 
 const { createProgress } = require("./progress.js");
 const { openPanel } = require("./panel.js");
@@ -61,16 +62,22 @@ function jxaProgress(host = globalThis.Progress) {
  * a run that fails. This is called before the try that reports errors, so it
  * has to be the one thing here that cannot throw at all.
  */
-function openProgress(headless, build = [openPanel, jxaProgress]) {
-    if (headless) {
-        return createProgress([]);
+function progressSurfaces(build) {
+    const sinks = [];
+    const diagnostics = [];
+    for (const open of build) {
+        try { const sink = open(); if (sink) { sinks.push(sink); } }
+        catch (caught) { diagnostics.push({ code: "observer-fault", message: String(hostError(caught)), stack: caught?.stack ?? "" }); }
     }
+    return { sinks, diagnostics };
+}
 
-    try {
-        return createProgress(build.map((open) => open()).filter(Boolean));
-    } catch {
-        return createProgress([]);
-    }
+function openProgress(headless, build = [openPanel, jxaProgress]) {
+    if (headless) { return createProgress([]); }
+    const { sinks, diagnostics } = progressSurfaces(build);
+    const progress = createProgress(sinks);
+    progress.diagnostics.push(...diagnostics);
+    return progress;
 }
 
 module.exports = { jxaProgress, openProgress };

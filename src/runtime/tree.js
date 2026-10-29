@@ -1,4 +1,5 @@
 "use strict";
+const { attributesAt, identityOf, kindOf } = require("./native-file-attributes.js");
 
 /*
  * What the filesystem says about a path, for walking a selected folder.
@@ -16,8 +17,8 @@
  * question Foundation answers in microseconds.
  *
  * The bridge is taken by parameter so this can be driven from a fake, and
- * returns null when there is none: the action still converts the files it is
- * given, and a selected folder is refused with a reason rather than expanded.
+ * returns null when unavailable. The composition root requires this capability
+ * for every source, including directly selected files.
  */
 
 const DIRECTORY = "NSFileTypeDirectory";
@@ -33,12 +34,6 @@ const REGULAR = "NSFileTypeRegular";
  * nothing, and it is "" when there are no attributes to read -- which is the
  * same thing as there being no file.
  */
-function identityFrom(attributes) {
-    return attributes
-        ? `${attributes.NSFileSystemNumber}:${attributes.NSFileSystemFileNumber}`
-        : "";
-}
-
 function kindFrom(attributes, workspace, path, ns) {
     if (!attributes) {
         return "missing";
@@ -69,13 +64,11 @@ function createTree(objc, ns, ref) {
     return {
         // What the path is, and which file it is, from one question.
         inspect(path) {
-            const attributes = objc.deepUnwrap(
-                manager.attributesOfItemAtPathError(ns(path), ref())
-            );
-
+            const attributes = attributesAt(manager, ns, path);
+            const kind = kindOf(objc, ns, attributes);
             return {
-                kind: kindFrom(attributes, workspace, path, ns),
-                identity: identityFrom(attributes)
+                kind: kindFrom(kind ? { NSFileType: kind } : null, workspace, path, ns),
+                identity: identityOf(objc, ns, attributes)
             };
         },
 
@@ -94,4 +87,4 @@ function createTree(objc, ns, ref) {
     };
 }
 
-module.exports = { createTree, kindFrom, identityFrom };
+module.exports = { createTree, kindFrom };

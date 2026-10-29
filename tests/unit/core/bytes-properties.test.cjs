@@ -16,7 +16,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { Buffer } = require("node:buffer");
 const fc = require("fast-check");
-const { utf8Length, truncateToBytes } = require("../../../src/core/numbers.js");
+const { utf8Length, truncateToBytes } = require("../../../src/core/utf8.js");
 
 // Every code point there is, in every width the table has a row for.
 const TEXT = fc.string({ unit: "binary" });
