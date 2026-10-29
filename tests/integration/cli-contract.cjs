@@ -57,8 +57,8 @@ function settingsError(filename, contents, cause) {
     assert.ok(receipt.issues.some((issue)=>issue.message.includes(at(filename))&&cause.test(issue.message)),JSON.stringify(receipt.issues));
 }
 
-function workspaceOf(pid) {
-    for(const name of fs.readdirSync(os.tmpdir()).filter((item)=>/^ImageFilesToPDF\.[A-Za-z0-9]{10}$/u.test(item))) {
+function workspaceOf(pid, existing) {
+    for(const name of fs.readdirSync(os.tmpdir()).filter((item)=>/^ImageFilesToPDF\.[A-Za-z0-9]{10}$/u.test(item)&&!existing.has(item))) {
         const candidate=path.join(os.tmpdir(),name);
         try {if(JSON.parse(fs.readFileSync(path.join(candidate,"owner.json"),"utf8")).pid===pid) {return candidate;}}
         catch {
@@ -71,11 +71,11 @@ function workspaceOf(pid) {
 async function ownership() {
     const input=at("many");fs.mkdirSync(input);
     for(let index=0;index<200;index+=1) {fs.copyFileSync(at("photo.jpg"),path.join(input,`${index}.jpg`));}
-    const child=spawn("/usr/bin/osascript",["-l","JavaScript",script,"--headless",config,input],{stdio:"ignore"});
-    activeChild=child;
+    const existing=new Set(fs.readdirSync(os.tmpdir()));
+    activeChild=spawn("/usr/bin/osascript",["-l","JavaScript",script,"--headless",config,input],{stdio:"ignore"});
     let orphan=null;
     for(let attempt=0;attempt<200&&!orphan;attempt+=1) {
-        orphan=workspaceOf(child.pid);
+        orphan=workspaceOf(activeChild.pid,existing);
         if(!orphan) {
             // Poll this process's owner registration before delivering TERM.
             // eslint-disable-next-line no-await-in-loop
@@ -83,7 +83,7 @@ async function ownership() {
         }
     }
     assert.ok(orphan,"actual run registered its owner before TERM");owned.add(orphan);
-    const ended=once(child,"exit");child.kill("SIGTERM");await ended;
+    const ended=once(activeChild,"exit");activeChild.kill("SIGTERM");await ended;
     assert.ok(fs.existsSync(orphan),"TERM left an observable orphan");
     const retained=execFileSync("mktemp",["-d","-t","ImageFilesToPDF"],{encoding:"utf8"}).trim();owned.add(retained);
     fs.writeFileSync(path.join(retained,"owner.json"),JSON.stringify({pid:2147483647,started:"not a live process"}));
