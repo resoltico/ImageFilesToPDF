@@ -1,10 +1,6 @@
 "use strict";
-const { OperationError } = require("../core/errors.js");
 
 const { normalizeInvocationInput, decodeFileUrl } = require("./invocation-syntax.js");
-const { validateSettings } = require("../core/settings.js");
-const { readTimestamp } = require("../core/timestamps.js");
-const { readTextFile } = require("./shell.js");
 
 /*
  * Resolving whatever Shortcuts, Finder, or a headless caller supplies into
@@ -12,8 +8,6 @@ const { readTextFile } = require("./shell.js");
  * admission.js.
  */
 
-const HEADLESS_MINIMUM_ARGUMENTS = 3;
-const HEADLESS_FIRST_IMAGE_INDEX = 2;
 
 /*
  * A selected item may arrive as a POSIX path, as an object that stringifies
@@ -69,56 +63,8 @@ function finderSelection() {
     return Application("Finder").selection();
 }
 
-/*
- * What kind of run this is travels with it. Which settings a run uses turns
- * on the answer, and reading it back off the settings themselves -- "there
- * are none, so somebody must be here to ask" -- is a guess that a
- * configuration file of `false` or `0` gets wrong: a headless run went to the
- * dialogs and waited for an answer nobody was there to give.
- */
-function parsedConfiguration(app, path) {
-    try { return JSON.parse(readTextFile(app, path)); }
-    catch (error) { throw new OperationError("The headless configuration could not be read as JSON.", { cause: error }); }
-}
-
-function readConfiguration(app, path) {
-    const configuration = parsedConfiguration(app, path);
-    if (!configuration || typeof configuration !== "object" || Array.isArray(configuration)) {
-        throw new OperationError("The headless configuration must be a JSON object of settings.");
-    }
-    return configuration;
-}
-
-function requestTimestamp(configuration, issues) {
-    if (!Object.hasOwn(configuration, "timestamp")) { return ""; }
-    try { return readTimestamp(configuration.timestamp); }
-    catch (error) {
-        issues.push({ field: "timestamp", code: "timestamp", stage: "request", message: error.message });
-        return "";
-    }
-}
-
-function validatedConfiguration(configuration) {
-    const pageSettings = { ...configuration };
-    delete pageSettings.timestamp;
-    const validated = validateSettings(pageSettings);
-    const timestamp = requestTimestamp(configuration, validated.issues);
-    if (validated.issues.length > 0) {
-        const failure = new OperationError(validated.issues.map((issue) => issue.message).join("\n"));
-        failure.issues = validated.issues;
-        throw failure;
-    }
-    return { settings: validated.settings, timestamp };
-}
-
-function collectInvocation(app, input, headless) {
-    const items = normalizeInvocationInput(input);
-    if (!headless) { return { headless: false, settings: null, timestamp: "", inputItems: items }; }
-    if (items.length < HEADLESS_MINIMUM_ARGUMENTS) {
-        throw new OperationError("Headless usage: --headless /path/to/config.json /path/to/image ...");
-    }
-    return { headless: true, ...validatedConfiguration(readConfiguration(app, String(items[1]))),
-        inputItems: items.slice(HEADLESS_FIRST_IMAGE_INDEX) };
+function collectInvocation(app, input) {
+    return { headless: false, settings: null, timestamp: "", inputItems: normalizeInvocationInput(input) };
 }
 
 module.exports = {

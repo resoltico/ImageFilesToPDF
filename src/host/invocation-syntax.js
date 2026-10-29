@@ -12,7 +12,6 @@
  *     osascript -l JavaScript script.jxa    --headless config.json image
  */
 
-const HEADLESS_FLAG = "--headless";
 const ARGUMENT_SEPARATOR = "--";
 
 /*
@@ -45,10 +44,8 @@ function normalizeInvocationInput(input) {
     return items;
 }
 
-function isHeadlessInput(input) {
-    const items = normalizeInvocationInput(input);
-
-    return items.length > 0 && String(items[0]) === HEADLESS_FLAG;
+function isCliInput(input) {
+    return Array.isArray(input) && input.every((argument) => typeof argument === "string");
 }
 
 /*
@@ -96,4 +93,4 @@ function decodeFileUrl(value) {
     return decodePath(match.groups.path);
 }
 
-module.exports = { normalizeInvocationInput, isHeadlessInput, decodeFileUrl };
+module.exports = { normalizeInvocationInput, isCliInput, decodeFileUrl };

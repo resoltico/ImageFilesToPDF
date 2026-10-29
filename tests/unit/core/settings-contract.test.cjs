@@ -2,8 +2,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { DEFAULT_SETTINGS, validateSettings, normalizeSettings } = require("../../../src/core/settings.js");
-const { collectInvocation } = require("../../../src/host/input.js");
-const { createFakeApp } = require("../ports/fake-app.cjs");
+const { configurationValues } = require("../../../src/host/cli.js");
 const { PAPER_SIZE, defaultValueOf, defaultLabelOf } = require("../../../src/host/settings-model.js");
 
 for (const field of ["resolutionLimit","quality","paperSize","orientation","mode","background"]) {
@@ -28,11 +27,9 @@ test("quoted and hexadecimal numeric strings and unknown fields are errors",()=>
 
 test("supplied timestamp is optional only by absence",()=>{
     for(const timestamp of [null,false,0,"",[],{},"2026/10/29"]) {
-        const app=createFakeApp([["/bin/cat",JSON.stringify({...DEFAULT_SETTINGS,timestamp})]]);
-        assert.throws(()=>collectInvocation(app,["--headless","/config","/image"],true),(error)=>error.issues.some((issue)=>issue.field==="timestamp"));
+        assert.throws(()=>configurationValues({...DEFAULT_SETTINGS,timestamp}),(error)=>error.issues.some((issue)=>issue.field==="timestamp"));
     }
-    const app=createFakeApp([["/bin/cat",JSON.stringify({...DEFAULT_SETTINGS,timestamp:"99999999_999999"})]]);
-    assert.equal(collectInvocation(app,["--headless","/config","/image"],true).timestamp,"99999999_999999");
+    assert.equal(configurationValues({...DEFAULT_SETTINGS,timestamp:"99999999_999999"}).timestamp,"99999999_999999");
 });
 
 test("defaults are domain values independent of popup order",()=>{

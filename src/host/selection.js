@@ -28,7 +28,7 @@ function reportUnresolved(item, rejected) {
  * asking the tree is asking Foundation; two spellings are asked about
  * separately, which is how they turn out to be one file.
  */
-function remember(found, tree, path) {
+function remember(found, tree, path, rejected) {
     const standardized = tree.standardize(path);
 
     if (found.roots.has(standardized)) {
@@ -36,6 +36,10 @@ function remember(found, tree, path) {
     }
 
     const entry = inspect(tree, standardized);
+    if (path.endsWith("/") && !["directory", "package"].includes(entry.kind)) {
+        rejected.push({ path, name: path, reason: "not a folder (the path ends with a slash)" });
+        return;
+    }
 
     found.roots.set(standardized, {
         path: standardized,
@@ -51,7 +55,7 @@ function resolve(tree, items, rejected) {
         const path = inputItemToPosixPath(item);
 
         if (path) {
-            remember(found, tree, path);
+            remember(found, tree, path, rejected);
         } else {
             reportUnresolved(item, rejected);
         }

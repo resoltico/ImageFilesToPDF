@@ -1,7 +1,7 @@
 # Headless automation
 
-Run the standalone JXA with an absolute settings-file path and at least one
-local image or folder path. Local `file://` URLs are also accepted; remote URLs
+Run the standalone JXA with a settings-file path and at least one local image
+or folder path. Relative paths resolve against the process working directory. Local `file://` URLs are also accepted; remote URLs
 are refused.
 
 ```sh
@@ -14,7 +14,8 @@ and recovery use the same application rules as the Quick Action.
 
 ## Request
 
-The JSON root must be an object. All six page settings are required:
+The settings file is read natively as UTF-8 without a byte-order mark. Its JSON
+root must be an object. All six page settings are required:
 
 ```json
 {"paperSize":"A4","orientation":"Portrait","mode":"combined","resolutionLimit":300,"quality":92,"background":"#FFFFFF"}
@@ -34,7 +35,7 @@ Background is normalized to uppercase `#RRGGBB`, representing opaque sRGB.
 Numeric strings, booleans, arrays and object coercion are not accepted. JSON
 number `3e2` is 300; string `"3e2"` is invalid. Unknown fields and display labels
 in place of canonical choice IDs are errors. All detected field issues are
-returned together.
+returned together. Duplicate JSON keys follow `JSON.parse`: the last value wins.
 
 Omitting `timestamp` generates one in the host's local time. When supplied, it
 must have exactly the stated shape; calendar validity is not checked. `null`,
@@ -43,9 +44,22 @@ setting.
 
 ## Receipt and exit status
 
-Every orderly handled run emits one JSON object on stdout. Complete requests
-exit zero; incomplete requests and handled cancellation exit nonzero. Diagnostic
-text goes to stderr. Read both the receipt and the exit status. Abrupt process
+Every orderly handled conversion request emits one JSON object on stdout and a
+plain run summary on stderr. Diagnostics remain in the receipt. Read both the
+receipt and the exit status:
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | Complete |
+| `1` | Incomplete or handled cancellation |
+| `2` | Usage or invalid request |
+| `3` | Required-tool/setup failure |
+
+`--help` prints usage and the settings schema; `--version` prints
+`Image Files to PDF <version>`. Both exit zero without conversion. Unknown flags,
+no arguments and missing operands print usage and exit `2`, with no dialog.
+String argv always selects the CLI; only a Shortcuts envelope or applet input
+selects the interactive path. Abrupt process
 death, an external host stop or a failed stdout transport cannot guarantee a
 receipt.
 
@@ -55,7 +69,7 @@ receipt.
 
 | Run field | Meaning |
 | --- | --- |
-| `state` | `complete`, `incomplete` or `cancelled` |
+| `state` | `complete`, `incomplete`, `cancelled` or `invalid` |
 | `documents` | Ordered document outcomes and their source mappings |
 | `rejected` | Selection refusals, with original path/name and reason |
 | `issues` | Failures affecting the request as a whole |
@@ -63,7 +77,8 @@ receipt.
 | `elapsed` | Human-readable elapsed time, when conversion reaches presentation |
 
 `complete` requires every document saved, no refusals and no recorded document
-or run issues. Handled failures or partial success are `incomplete`. An
+or run issues. Requests rejected before work are `invalid`. Handled failures
+or partial success are `incomplete`. An
 acknowledged stop that leaves work undone is `cancelled`. A late stop does not
 invent omissions or erase confirmed saved outputs. Optional observer diagnostics
 alone need not make an otherwise complete conversion incomplete.

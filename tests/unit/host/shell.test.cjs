@@ -4,7 +4,6 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     runArgv,
-    readTextFile,
     removeFile
 } = require("../../../src/host/shell.js");
 const { createFakeApp, failing } = require("../ports/fake-app.cjs");
@@ -60,23 +59,6 @@ test("runArgv omits the context when given no label", () => {
     );
 });
 
-test("readTextFile reads through the shell", () => {
-    const app = createFakeApp([["/bin/cat", '{"resolutionLimit":72}']]);
-
-    assert.equal(readTextFile(app, "/tmp/config.json"), '{"resolutionLimit":72}');
-    assert.match(app.commands[0], /'\/bin\/cat' '\/tmp\/config\.json'/u);
-});
-
-test("a configuration that cannot be read says that is what failed", () => {
-    // Every other read in the run is an image; without the label this failure
-    // is indistinguishable from one.
-    const app = createFakeApp([["/bin/cat", failing("Permission denied")]]);
-
-    assert.throws(
-        () => readTextFile(app, "/tmp/config.json"),
-        /reading headless configuration/u
-    );
-});
 
 test("removeFile ignores an absent path and a failing removal", () => {
     const quiet = createFakeApp();

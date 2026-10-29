@@ -1,7 +1,7 @@
 "use strict";
 const { hostError } = require("./cancellation.js");
 
-const { CAT, RM } = require("./backend-executables.js");
+const { RM } = require("./backend-executables.js");
 const { COMMAND_BUDGET_BYTES, commandLengthOf } = require("../backend/batching.js");
 const { utf8Length } = require("../core/utf8.js");
 const { shellJoin } = require("../backend/shell.js");
@@ -58,10 +58,6 @@ function runHeaderArgv(app, argumentsList, label) {
  * an answer for it.
  */
 
-function readTextFile(app, path) {
-    return runArgv(app, [CAT, path], "reading headless configuration");
-}
-
 function cleanupArgv(app, argumentsList) {
     try { runArgv(app, argumentsList, "removing owned temporary work"); return { state: "removed" }; }
     catch (error) {
@@ -74,4 +70,4 @@ function removeFile(app, path) {
     return path ? cleanupArgv(app, [RM, "-f", path]) : { state: "removed" };
 }
 
-module.exports = { HEADER_ARGV_BUDGET, runHeaderArgv, runArgv, readTextFile, removeFile, cleanupArgv };
+module.exports = { HEADER_ARGV_BUDGET, runHeaderArgv, runArgv, removeFile, cleanupArgv };

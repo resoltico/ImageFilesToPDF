@@ -132,6 +132,7 @@ function createFakeHost(settings = {}) {
     const failures = settings.failures ?? [];
     const host = {
         files: fs.files,
+        fileTexts: new Map(Object.entries(settings.fileTexts ?? {})),
         sizes: fs.sizes,
         commands: [],
         dialogs: [],

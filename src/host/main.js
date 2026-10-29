@@ -4,7 +4,7 @@ const { formatDuration } = require("./formatting.js");
 const { OperationError, isUserCancelled } = require("../core/errors.js");
 const { failedRun } = require("../core/outcomes.js");
 const { executeRun } = require("../application/run.js");
-const { isHeadlessInput } = require("./invocation-syntax.js");
+const { isCliInput } = require("./invocation-syntax.js");
 const { checkTools } = require("./preflight.js");
 const { reportNoImages, reportResult, reportHeadless } = require("./reporting.js");
 const { collectInvocation } = require("./input.js");
@@ -18,6 +18,7 @@ const { makeTimestamp } = require("../core/timestamps.js");
 const { chooseSettings } = require("./settings-form.js");
 const { reviewSelection } = require("./settings-review.js");
 const { createJob, unitsOf, runJob } = require("./job.js");
+const { cliCommand, showCliCommand } = require("./cli.js");
 const { showCompletion } = require("./completion.js");
 
 function hostCapabilities() {
@@ -29,7 +30,7 @@ function hostCapabilities() {
 function prepare(app, input, options) {
     options.report.phase("Checking required tools");
     const tools = checkTools(app);
-    const invocation = collectInvocation(app, input, options.headless);
+    const invocation = options.headless ? input : collectInvocation(app, input);
     const capabilities = options.capabilities ?? hostCapabilities();
     const { tree, sources, publication } = capabilities;
     if (!tree || !sources || !publication || ["facts", "readable", "capture", "pngCount"].some((method) => typeof sources[method] !== "function")) { throw new OperationError("Required filesystem/source capabilities are unavailable."); }
@@ -88,13 +89,35 @@ function handled(app, input, headless) {
     }
 }
 
-// The sole production export, adapted by src/entry.js for Shortcuts and osascript.
+function application() {
+    const app = Application.currentApplication();
+    app.includeStandardAdditions = true;
+    return app;
+}
+
+function cliRequest(input) {
+    try { return cliCommand(input); }
+    catch (error) {
+        const outcome = failedRun(error);
+        if (error.issues?.some((issue) => ["settings", "request"].includes(issue.stage))) { outcome.state = "invalid"; }
+        return { kind: "failed", outcome };
+    }
+}
+
+function cliOutcome(invocation) {
+    try { return handled(application(), invocation, true); }
+    catch (error) { return failedRun(hostError(error)); }
+}
+
+function runCli(input) {
+    const command = cliRequest(input);
+    if (command.kind === "failed") { return reportHeadless(command.outcome); }
+    return command.kind === "run" ? reportHeadless(cliOutcome(command.invocation)) : showCliCommand(command.kind);
+}
+
+// The production bridge keeps CLI argv separate from Shortcuts/Applet input.
 // eslint-disable-next-line no-unused-vars
 function run(input, parameters) {
-    const app = Application.currentApplication();
-    const headless = isHeadlessInput(input);
-    app.includeStandardAdditions = true;
-    const result = handled(app, input, headless);
-    return headless ? reportHeadless(result) : undefined;
+    return isCliInput(input) ? runCli(input) : handled(application(), input, false);
 }
 module.exports = { run, execute };

@@ -7,17 +7,17 @@ const { reportHeadless } = require("../../../src/host/reporting.js");
 const { isCompleteSuccess } = require("../../../src/host/receipt.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 const { treeOf } = require("../ports/fake-tree.cjs");
-const config = JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:85,background:"#FFFFFF"});
+const settings = {paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:85,background:"#FFFFFF"};
 
 function fixture(options = {}) {
-    const app = createFakeHost({ files:["/source.png"], failures:[["'/bin/cat'", config]],...options });
+    const app = createFakeHost({ files:["/source.png"], ...options });
     const caps = {tree:treeOf({}),sources:app.sources,publication:app.publication};
     return {app,caps};
 }
 
 test("controller converts through real adapters and derives a complete receipt", () => {
     const {app,caps}=fixture();
-    const result=execute(app,["--headless","/config","/source.png"],{headless:true,report:createProgress([]),capabilities:caps});
+    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/source.png"]},{headless:true,report:createProgress([]),capabilities:caps});
     assert.equal(result.state,"complete");
     assert.equal(result.documents[0].state,"saved");
     assert.equal(result.documents[0].pages,1);
@@ -27,8 +27,8 @@ test("controller converts through real adapters and derives a complete receipt",
 });
 
 test("refused selection and conversion failures remain incomplete", () => {
-    const {app,caps}=fixture({failures:[["'/bin/cat'",config],["'thumbnail'",new Error("damage")]]});
-    const result=execute(app,["--headless","/config","/source.png","/notes.txt"],{headless:true,report:createProgress([]),capabilities:caps});
+    const {app,caps}=fixture({failures:[["'thumbnail'",new Error("damage")]]});
+    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/source.png","/notes.txt"]},{headless:true,report:createProgress([]),capabilities:caps});
     assert.equal(result.state,"incomplete");
     assert.equal(result.documents[0].state,"failed");
     assert.equal(result.rejected.length,1);
@@ -40,13 +40,13 @@ test("refused selection and conversion failures remain incomplete", () => {
 
 test("missing mandatory source capabilities refuse direct files at setup", () => {
     const {app,caps}=fixture();
-    assert.throws(()=>execute(app,["--headless","/config","/source.png"],{headless:true,report:createProgress([]),capabilities:{...caps,sources:null}}),/Required filesystem/u);
+    assert.throws(()=>execute(app,{headless:true,settings,timestamp:"",inputItems:["/source.png"]},{headless:true,report:createProgress([]),capabilities:{...caps,sources:null}}),/Required filesystem/u);
     assert.ok(!app.commands.some((command)=>command.includes("'thumbnail'") && !command.includes("nonexistent-image")));
 });
 
 test("no-image outcomes retain rejection facts", () => {
     const {app,caps}=fixture();
-    const result=execute(app,["--headless","/config","/notes.txt"],{headless:true,report:createProgress([]),capabilities:caps});
+    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/notes.txt"]},{headless:true,report:createProgress([]),capabilities:caps});
     assert.equal(result.state,"incomplete");
     assert.equal(result.documents.length,0);
     assert.equal(result.rejected.length,1);
@@ -76,7 +76,7 @@ test("an unidentifiable selected source is refused before conversion",()=>{
 
 test("a combined pair exercises the backend command budget before import",()=>{
     const {app,caps}=fixture({files:["/source.png","/other.png"]});
-    const result=execute(app,["--headless","/config","/source.png","/other.png"],{headless:true,report:createProgress([]),capabilities:caps});
+    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/source.png","/other.png"]},{headless:true,report:createProgress([]),capabilities:caps});
     assert.equal(result.documents[0].pages,2);
     assert.equal(result.state,"complete");
 });
@@ -85,7 +85,7 @@ test("unknown staged page size fails before import and retains source",()=>{
     const {app,caps}=fixture();
     const {facts} = app.publication;
     app.publication.facts=(path)=>path.endsWith("-page.png")?{identity:"",size:-1}:facts(path);
-    const result=execute(app,["--headless","/config","/source.png"],{headless:true,report:createProgress([]),capabilities:caps});
+    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/source.png"]},{headless:true,report:createProgress([]),capabilities:caps});
     assert.equal(result.documents[0].state,"failed");
     assert.match(result.documents[0].issues[0].message,/Page size is unknown/u);
     assert.ok(app.files.has("/source.png"));
@@ -94,7 +94,7 @@ test("unknown staged page size fails before import and retains source",()=>{
 test("setup phases and the no-images branch close progress before a result can block",()=>{
     const {app,caps}=fixture();const events=[];
     const report={phase:(text)=>events.push(text),close:()=>events.push("closed")};
-    const result=execute(app,["--headless","/config","/notes.txt"],{headless:true,report,capabilities:caps});
+    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/notes.txt"]},{headless:true,report,capabilities:caps});
     assert.equal(result.state,"incomplete");
     assert.deepEqual(events,["Checking required tools","Finding images","closed"]);
 });

@@ -1,89 +1,46 @@
 "use strict";
-
-/*
- * What a headless caller says a run is, and what of it is believed.
- *
- * A configuration file is the whole of what such a run is told, so every
- * value in it is read where it arrives rather than trusted all the way to the
- * filesystem. The timestamp in particular goes straight into an output
- * filename, and a filename is one path component.
- */
-
-const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    collectInvocation
-} = require("../../../src/host/input.js");
-const { createFakeApp } = require("../ports/fake-app.cjs");
+const assert = require("node:assert/strict");
+const { cliCommand, jsonConfiguration, configurationValues, usage } = require("../../../src/host/cli.js");
+const settings = { paperSize: "A4", orientation: "Portrait", mode: "combined", resolutionLimit: 72, quality: 92, background: "#FFFFFF" };
+function io(configuration = settings) { return { absolute: (path) => path.startsWith("/") ? path : `/cwd/${path}`, read: () => configuration }; }
 
-globalThis.Application = () => ({ selection: () => [] });
-
-test("a headless invocation reads its settings from the config file", () => {
-    const config = JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:92,background:"#FFFFFF",timestamp:"20260904_010203"});
-    const app = createFakeApp([["/bin/cat", config]]);
-    const invocation = collectInvocation(
-        app,
-        ["--", "--headless", "/tmp/c.json", "/a/1.png", "/a/2.png"],
-        true
-    );
-
-    assert.equal(invocation.settings.resolutionLimit, 72);
-    assert.equal(invocation.timestamp, "20260904_010203");
-    assert.deepEqual(invocation.inputItems, ["/a/1.png", "/a/2.png"]);
-});
-
-test("a headless config without a timestamp yields an empty one", () => {
-    const app = createFakeApp([["/bin/cat", JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:92,background:"#FFFFFF"})]]);
-    const invocation = collectInvocation(
-        app,
-        ["--headless", "/tmp/c.json", "/a/1.png"],
-        true
-    );
-
-    assert.equal(invocation.timestamp, "");
-});
-
-test("a headless timestamp is read rather than taken", () => {
-    // It goes straight into an output filename, and a filename is one path
-    // component: "2026/09/12" is a perfectly good string and put the PDF in a
-    // folder nobody asked for. Refused before an image is touched, so the
-    // caller is told which value was wrong rather than finding the output
-    // somewhere else.
-    const refused = ["/../../elsewhere/result", "2026/09/12", "nonsense", 20260904];
-
-    for (const timestamp of refused) {
-        const app = createFakeApp([
-            ["/bin/cat", JSON.stringify({ resolutionLimit: 72, timestamp })]
-        ]);
-
-        assert.throws(
-            () => collectInvocation(
-                app,
-                ["--headless", "/tmp/c.json", "/a/1.png"],
-                true
-            ),
-            /must be YYYYMMDD_HHMMSS/u,
-            String(timestamp)
-        );
+test("CLI grammar rejects incomplete/unknown commands without any I/O", () => {
+    for (const args of [[], ["--"], ["--headles"], ["--help", "extra"], ["--headless"], ["--headless", "config"], ["--headless", "", "image"]]) {
+        assert.throws(() => cliCommand(args, { read() { throw new Error("must not read"); } }), /Usage:/u);
     }
+    assert.deepEqual(cliCommand(["--help"]), { kind: "help" });
+    assert.deepEqual(cliCommand(["--version"]), { kind: "version" });
 });
 
-test("a headless invocation without a config and an image is rejected", () => {
-    const app = createFakeApp();
-
-    assert.throws(
-        () => collectInvocation(app, ["--headless", "/tmp/c.json"], true),
-        /Headless usage/u
-    );
+test("CLI request uses one settings read and resolves every operand through its path port", () => {
+    const reads = [];
+    const port = io({ ...settings, timestamp: "20260904_010203" });
+    port.read = (path) => { reads.push(path); return { ...settings, timestamp: "20260904_010203" }; };
+    const command = cliCommand(["--", "--headless", "config.json", "image.png", "/a/2.png"], port);
+    assert.deepEqual(reads, ["/cwd/config.json"]);
+    assert.equal(command.kind, "run");
+    assert.equal(command.invocation.headless, true);
+    assert.deepEqual(command.invocation.settings, settings);
+    assert.equal(command.invocation.timestamp, "20260904_010203");
+    assert.deepEqual(command.invocation.inputItems, ["/cwd/image.png", "/a/2.png"]);
+    assert.equal(cliCommand(["--headless", "config", "image"], io()).invocation.timestamp, "");
 });
 
-test("malformed JSON and timestamp issues retain their specific request explanations",()=>{
-    const malformed=createFakeApp([["/bin/cat","{"]]);
-    assert.throws(()=>collectInvocation(malformed,["--headless","/config","/image.png"],true),/The headless configuration could not be read as JSON/u);
-    const data={paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:92,background:"#FFFFFF",timestamp:false};
-    const app=createFakeApp([["/bin/cat",JSON.stringify(data)]]);
-    assert.throws(()=>collectInvocation(app,["--headless","/config","/image.png"],true),(error)=>{
-        assert.equal(error.issues[0].field,"timestamp");assert.equal(error.issues[0].code,"timestamp");assert.equal(error.issues[0].stage,"request");
-        assert.match(error.issues[0].message,/YYYYMMDD_HHMMSS/u);return true;
-    });
+test("configuration validation retains all field issues and timestamp presence", () => {
+    for (const timestamp of [null, false, "", "2026/09/12", "../../elsewhere"]) {
+        assert.throws(() => configurationValues({ ...settings, timestamp }), (error) => error.issues.some((issue) => issue.field === "timestamp" && issue.stage === "request"));
+    }
+    assert.throws(() => configurationValues({ resolutionLimit: 1, timestamp: false }), (error) => error.issues.length === 7);
+});
+
+test("JSON diagnostics name the settings path and distinguish root type from syntax", () => {
+    for (const text of ["null", "false", "0", '"text"', "[]"]) { assert.throws(() => jsonConfiguration(text, "/config.json"), /not an object: \/config\.json/u); }
+    assert.throws(() => jsonConfiguration("{", "/config.json"), /not valid JSON.*\/config\.json/u);
+    assert.deepEqual(jsonConfiguration('{"value":1,"value":2}', "/config.json"), { value: 2 });
+});
+
+test("help renders canonical names, choice captions, defaults and bounds", () => {
+    const text = usage();
+    for (const expected of ["PDF files", "combined", "One PDF — one image per page", "Paper size", "US Letter", "Maximum resolution", "72–1017", "Page background", "JPEG quality", "default 92", "White"]) { assert.ok(text.includes(expected), expected); }
 });

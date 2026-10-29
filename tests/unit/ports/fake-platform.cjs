@@ -1,4 +1,6 @@
 "use strict";
+const { Buffer } = require("node:buffer");
+const { TextDecoder } = require("node:util");
 const { createFakeObjC } = require("./fake-objc.cjs");
 
 function attributesFor(app, path) {
@@ -14,7 +16,9 @@ function attributesFor(app, path) {
 
 function managerFor(app, unbox) {
     return {
-        isReadableFileAtPath: (path) => app.files.has(unbox(path)),
+        isReadableFileAtPath: (path) => app.files.has(unbox(path)) || app.fileTexts.has(unbox(path)),
+        currentDirectoryPath: "/cwd",
+        fileExistsAtPathIsDirectory(path, directory) { const name = unbox(path); directory[0] = false; return app.files.has(name) || app.fileTexts.has(name); },
         attributesOfItemAtPathError: (path) => attributesFor(app, unbox(path)),
         copyItemAtPathToPathError(from, to) { app.sources.capture(unbox(from), unbox(to)); return true; },
         linkItemAtPathToPathError(from, to, error) {
@@ -25,6 +29,17 @@ function managerFor(app, unbox) {
     };
 }
 
+function fileData(bytes) {
+    return { bytes, length: bytes.length, isNil: () => false,
+        subdataWithRange: (range) => fileData(bytes.subarray(range.location, range.location + range.length)),
+        base64EncodedStringWithOptions: () => ({ boxed: bytes.toString("base64") }) };
+}
+
+function decodedText(data) {
+    try { return { boxed: new TextDecoder("utf-8", { fatal: true }).decode(data.bytes), isNil: () => false }; }
+    catch { return null; }
+}
+
 function installPlatform(app, options = {}) {
     const bridge = createFakeObjC(options);
     const output = [];
@@ -32,6 +47,9 @@ function installPlatform(app, options = {}) {
     const unbox = (value) => value?.boxed ?? value;
     const ns = (value) => ({ boxed: value, stringByStandardizingPath: value, dataUsingEncoding: () => value });
     Object.assign(ns, bridge.ns, {
+        NSMakeRange: (location, length) => ({ location, length }),
+        NSData: { dataWithContentsOfFile: (path) => app.fileTexts.has(unbox(path)) ? fileData(Buffer.from(app.fileTexts.get(unbox(path)))) : null },
+        NSString: { alloc: { initWithDataEncoding: decodedText } },
         NSFileManager: { defaultManager: managerFor(app, unbox) },
         NSWorkspace: { sharedWorkspace: { isFilePackageAtPath: () => false } },
         NSFileType: "kind", NSFileSystemNumber: "device", NSFileSystemFileNumber: "number", NSFileSize: "size", NSFileModificationDate: "modified", NSFileCreationDate: "created",
