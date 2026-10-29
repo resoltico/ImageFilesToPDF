@@ -41,6 +41,8 @@ function makeJob(app) {
 function imageOf(path) {
     return {
         path,
+        admission: { identity: path, version: "1", image: { loader: "pngload", format: "PNG", width: 600, height: 400,
+            bands: 3, orientation: 1, pages: 1, icc: false, interpretation: "srgb" } },
         originalName: path.slice(path.lastIndexOf("/") + 1),
         folder: path.slice(0, path.lastIndexOf("/") + 1)
     };

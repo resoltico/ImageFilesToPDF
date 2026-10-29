@@ -20,7 +20,9 @@ for(const path of ["input-0","-page.png.v"]){
     test(`failed owned cleanup ${path} stops before more capture or publication`,()=>{
         const {app,job}=fixture([["'/bin/rm' '-f'",(command)=>command.includes(path)?new Error("denied"):undefined]]);
         if (path.endsWith(".v")) { app.bands = 4; }
-        const result=runJob(job,[imageOf("/a/1.png"),imageOf("/a/2.png")]);
+        const images=[imageOf("/a/1.png"),imageOf("/a/2.png")];
+        if (app.bands === 4) { images.forEach((image) => { image.admission.image.bands = 4; }); }
+        const result=runJob(job,images);
         assert.equal(result.state,"incomplete");assert.deepEqual(result.documents.map((record)=>record.state),["failed","not-started"]);
         assert.equal(result.documents[0].fatal,true);assert.equal(result.documents[0].issues[0].code,"cleanup");
         assert.ok(!app.commands.some((command)=>command.includes("'import'")));

@@ -2,6 +2,8 @@
 const { hostError } = require("./cancellation.js");
 
 const { CAT, RM } = require("./backend-executables.js");
+const { COMMAND_BUDGET_BYTES, commandLengthOf } = require("../backend/batching.js");
+const { utf8Length } = require("../core/utf8.js");
 const { shellJoin } = require("../backend/shell.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { OperationError, errorMessage } = require("../core/errors.js");
@@ -9,17 +11,18 @@ const { OperationError, errorMessage } = require("../core/errors.js");
 /*
  * Running a command and taking what it printed.
  *
- * Every command is built as an argument vector and quoted here, so no caller
- * ever assembles a command string by concatenation.
+ * Every argument is quoted here. Header inspection additionally fixes only
+ * the C locale so optional-field errors have a stable language.
  *
  * Asking the filesystem a question is a different thing and lives in
  * asking.js: a question that comes back "no" has answered, and must not be
  * dressed up as a command that failed.
  */
 
-function runArgv(app, argumentsList, label) {
-    const command = shellJoin(argumentsList);
+const HEADER_LOCALE_PREFIX = "LC_ALL=C ";
+const HEADER_ARGV_BUDGET = COMMAND_BUDGET_BYTES - utf8Length(HEADER_LOCALE_PREFIX);
 
+function runCommand(app, command, label) {
     try {
         return app.doShellScript(command);
     } catch (caught) {
@@ -37,6 +40,13 @@ function runArgv(app, argumentsList, label) {
 
         throw failure;
     }
+}
+
+function runArgv(app, argumentsList, label) { return runCommand(app, shellJoin(argumentsList), label); }
+
+function runHeaderArgv(app, argumentsList, label) {
+    if (commandLengthOf(argumentsList) > HEADER_ARGV_BUDGET) { throw new OperationError("The image header command exceeds the argument budget."); }
+    return runCommand(app, `${HEADER_LOCALE_PREFIX}${shellJoin(argumentsList)}`, label);
 }
 
 /*
@@ -64,4 +74,4 @@ function removeFile(app, path) {
     return path ? cleanupArgv(app, [RM, "-f", path]) : { state: "removed" };
 }
 
-module.exports = { runArgv, readTextFile, removeFile, cleanupArgv };
+module.exports = { HEADER_ARGV_BUDGET, runHeaderArgv, runArgv, readTextFile, removeFile, cleanupArgv };

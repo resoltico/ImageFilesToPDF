@@ -33,6 +33,14 @@ Cleanup removes owned resources; it does not adopt paths based on spelling or
 infer ownership from an unknown existence result. Recovery and unresolved-work
 locations may intentionally remain in the system temporary directory.
 
+## Embedded image metadata
+
+Eligible untagged, upright three-band JPEGs within the resolution ceiling are
+embedded unchanged, including EXIF and other metadata already inside those bytes.
+A PDF made from such an image is not a metadata-sanitized copy. Other image
+normalization removes saved-image metadata after colour conversion. Review source
+metadata before sharing a PDF when location or camera details are sensitive.
+
 ## Commands and trust
 
 External commands use argument vectors quoted by

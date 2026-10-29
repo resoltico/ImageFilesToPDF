@@ -81,7 +81,8 @@ source. A combined document uses the first ordered image's destination folder.
 The background presets are white, black, purple `#8E79E0` and dark blue
 `#204486`. You can type a custom colour; spaces and letter case are normalized.
 The opaque background fills margins and transparent pixels without recolouring
-opaque image content. Every PDF page uses JPEG compression.
+opaque image content. PNG and TIFF use lossless image encoding. Eligible JPEGs are embedded unchanged;
+other JPEG, HEIC/HEIF, AVIF and WebP images use JPEG encoding, including lossless WebP.
 
 Selection refusals are shown before conversion. The settings form shows the
 candidate count and destinations, preserves draft answers during correction,
@@ -115,17 +116,25 @@ capture. Observed changes or unreadable required facts cause refusal. Coarse
 filesystem timestamps cannot guarantee an atomic snapshot of a concurrently
 modified original.
 
-The pipeline applies orientation and embedded ICC profiles, converts to sRGB,
-flattens transparency, and places the image on a page-sized JPEG canvas.
-Placement is independent of DPI: one source pixel has a natural size of one
-point, scaled down to fit and never enlarged. Paper dimensions are exactly
-A4 (595.28 × 841.89 pt) or Letter (612 × 792 pt).
+Images are embedded at image size on a vector page background. Natural size is
+one source pixel per point, scaled down to fit without enlargement. Maximum
+resolution is a downsampling ceiling, not a page raster size. Paper dimensions
+are A4 (595.2756 × 841.8898 pt) or US Letter (612 × 792 pt).
+
+An untagged three-band sRGB JPEG with upright orientation and density within
+the ceiling is embedded byte for byte after a full decode check. Its embedded
+metadata is retained. Other images are oriented, converted from embedded profiles
+to sRGB and flattened onto the page background as needed. Untagged one-band grey
+stays grey. PNG/TIFF use lossless PNG; JPEG/HEIF/WebP use the JPEG quality setting
+when re-encoded. Lossless WebP is also re-encoded as JPEG. Images are never
+upsampled.
 
 Pages are imported in batches bounded by 32 queued pages, 64 MiB of encoded
 page data and command length. One newly prepared page may temporarily coexist
 with the queue; an oversized page is imported alone before another source is
-prepared. Exact page count and strict PDF validation are required before saving.
-pdfcpu runs with `--conf disable`, without personal configuration, fonts or
+prepared. Consecutive pages sharing a placement are imported together; bounded
+merge levels assemble the document with bookmarks disabled. Exact page count
+and strict PDF validation are required before saving. pdfcpu runs with `--conf disable`, without personal configuration, fonts or
 certificates.
 
 Publication uses exact-path native hard links or exclusive rename of an owned

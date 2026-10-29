@@ -30,10 +30,10 @@ test("recovery and prepared pages cannot be mistaken for publication",()=>{
 });
 
 test("source policy fails closed for unknown formats and counts",()=>{
-    assert.equal(sourceIssues({format:"SVG",pages:1})[0].code,"source-format");
-    for(const pages of [undefined,0,-1,1.5]) { assert.equal(sourceIssues({format:"PNG",pages})[0].code,"source-count"); }
-    assert.equal(sourceIssues({format:"PNG",pages:2})[0].code,"source-multiple");
-    assert.deepEqual(sourceIssues({format:"PNG",pages:1}),[]);
+    assert.equal(sourceIssues({format:"SVG",pages:1})[0].code,"not-an-image");
+    for(const pages of [undefined,0,-1,1.5]) { assert.equal(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages})[0].code,"damaged"); }
+    assert.equal(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages:2})[0].code,"multiple-images");
+    assert.deepEqual(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages:1}),[]);
     assert.equal(issuesOf(new ReferenceError("fault"),"test")[0].code,"fault");
     assert.equal(issuesOf({message:"ordinary"},"test")[0].diagnostic.stack,"");
 });

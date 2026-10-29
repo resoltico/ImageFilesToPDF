@@ -59,7 +59,10 @@ corrupt, unknown or disguised unsupported content is refused.
 
 Review selection problems, choose the six page settings, then click Create.
 Stepwise dialogs end with confirmation. Each image gets its own centred,
-JPEG-compressed PDF page without cropping or enlargement. Originals stay intact.
+PDF page without cropping or enlargement. Originals stay intact. PNG/TIFF
+use lossless encoding. Eligible JPEGs retain their bytes and embedded metadata;
+other JPEG/HEIF/WebP inputs use JPEG encoding when normalized. Maximum
+resolution limits downsampling, and JPEG quality affects JPEG re-encoding only.
 
 "One PDF - one image per page" combines the pages into one document.
 "Separate PDFs - one page per image" creates a single-page document per image.

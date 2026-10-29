@@ -55,7 +55,11 @@ function dispatch(fs, argv, command, host) {
     }
 
     if (command.includes("vipsheader")) {
-        return headerField(host, command);
+        const text = headerField(host, command);
+        const paths = argv.slice(argv[1] === "-f" ? 3 : 2);
+        if (argv[1] === "-f") { return paths.map(() => text).join("\n"); }
+        return paths.length > 1 ? paths.map((path) =>
+            `${path}: ${host.width ?? 600}x${host.height ?? 400} uchar, 3 bands, srgb, ${host.loader ?? "pngload"}\n${text.split("\n").filter(Boolean).map((line) => `${path}: ${line}`).join("\n")}`).join("\n") : text;
     }
 
     return fs.produce(argv, command);

@@ -8,6 +8,7 @@ const { isHeadlessInput } = require("./invocation-syntax.js");
 const { checkTools } = require("./preflight.js");
 const { reportNoImages, reportResult, reportHeadless } = require("./reporting.js");
 const { collectInvocation } = require("./input.js");
+const { inspectCandidates } = require("./source-inspection.js");
 const { collectImageFiles } = require("./admission.js");
 const { createTree } = require("./tree.js");
 const { sourceAccess } = require("./source-capture.js");
@@ -31,9 +32,11 @@ function prepare(app, input, options) {
     const invocation = collectInvocation(app, input, options.headless);
     const capabilities = options.capabilities ?? hostCapabilities();
     const { tree, sources, publication } = capabilities;
-    if (!tree || !sources || !publication) { throw new OperationError("Required filesystem/source capabilities are unavailable."); }
+    if (!tree || !sources || !publication || ["facts", "readable", "capture", "pngCount"].some((method) => typeof sources[method] !== "function")) { throw new OperationError("Required filesystem/source capabilities are unavailable."); }
     options.report.phase("Finding images");
-    return { tools, invocation, ...capabilities, selection: collectImageFiles(app, invocation.inputItems, tree) };
+    const selected = collectImageFiles(app, invocation.inputItems, tree);
+    const selection = inspectCandidates(app, selected, { tools, sources, progress: options.report });
+    return { tools, invocation, ...capabilities, selection };
 }
 
 function jobFor(app, request, settings, report) {

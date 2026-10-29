@@ -142,7 +142,7 @@ function createFakeApp(responses = []) {
         }
     };
 
-    app.sources = { capture: (ignored, path) => ({ path, identity: "1:2", version: "1" }), pngCount: () => app.pages ?? 1 };
+    app.sources = { facts: () => ({ identity: "1:2", version: "1", size: "100" }), readable: () => true, capture: (ignored, path) => ({ path, identity: "1:2", version: "1" }), pngCount: () => app.pages ?? 1 };
     const surface = dialogSurface(app);
 
     surface.displayDialog = boundedDialog(surface.displayDialog);

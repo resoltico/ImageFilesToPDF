@@ -15,11 +15,11 @@ test("core owns file-selection policy and stable refusal tags",()=>{
 });
 
 for(const format of ["JPEG","PNG","TIFF","HEIF","WebP"]) {
-    test(`recognized raster family ${format} is accepted as one still`,()=>assert.deepEqual(sourceIssues({format,pages:1}),[]));
+    test(`recognized raster family ${format} is accepted as one still`,()=>assert.deepEqual(sourceIssues({format,loader:"known",width:400,height:200,bands:3,orientation:1,pages:1}),[]));
 }
 
 test("source inspection issues retain their domain code, stage and explanation",()=>{
-    assert.deepEqual(sourceIssues({format:"SVG",pages:1}),[{code:"source-format",stage:"inspection",message:"Only supported still raster images can be converted."}]);
-    assert.deepEqual(sourceIssues({format:"PNG",pages:0}),[{code:"source-count",stage:"inspection",message:"The source image count is unknown."}]);
-    assert.deepEqual(sourceIssues({format:"PNG",pages:2}),[{code:"source-multiple",stage:"inspection",message:"contains 2 pages. Only single-page images are supported; split the file and run the action on the pages."}]);
+    assert.deepEqual(sourceIssues({format:"SVG",pages:1}),[{code:"not-an-image",stage:"inspection",message:"This file is not a supported still raster image."}]);
+    assert.deepEqual(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages:0}),[{code:"damaged",stage:"inspection",message:"This image is damaged or incomplete."}]);
+    assert.deepEqual(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages:2}),[{code:"multiple-images",stage:"inspection",message:"This file contains 2 images; only single images are supported."}]);
 });

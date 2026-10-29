@@ -97,3 +97,18 @@ per-document observer diagnostics may be present.
 `IMAGE_FILES_TO_PDF_PDFCPU` select explicit executable paths. An invalid explicit
 override fails setup with that path; it does not select another executable.
 The executables must be trusted and support the required pipeline operations.
+
+## Source inspection
+
+After identity deduplication, admission checks file access, empty files, the
+actual loader, image count and dimensions before conversion. Refusals in
+`rejected` use `unreadable`, `empty`, `not-an-image`, `unsupported-content`,
+`multiple-images` or `damaged`, with the original path and a plain `reason`.
+Backend text and commands belong to `diagnostic` only.
+
+The captured copy is independently inspected and must match the admitted
+identity, version and image facts. A source that changes after selection fails
+its document. Damage that requires a full decode is a document failure with
+code `damaged`; it can still fail a combined document after admission. No subset
+of a failed combined document is published. Separate mode can save the other
+valid documents.

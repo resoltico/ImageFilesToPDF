@@ -114,7 +114,7 @@ and synthetic local inputs. Preserve the user's production Shortcut and restore
 only preference changes caused by the test.
 
 Verify selection consent, all six controls, keyboard navigation, full-detail
-selection/copy/scrolling, Create and Cancel. Enter DPI `1018`, quality `101` and
+selection/copy/scrolling, Create and Cancel. Enter Maximum resolution `1018`, JPEG quality `101` and
 background `purple`: all three errors must appear while other draft choices
 remain. Correct the fields and complete conversion; verify the actual saved
 PDF, output count and truthful completion. Check canonical recall on another

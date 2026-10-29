@@ -63,6 +63,11 @@ function reporting(state, say) {
     };
 
     return {
+        checking(done, images, description = "Checking images") {
+            state.done = done;
+            state.detail = `${done} of ${images}`;
+            headline(description);
+        },
         beginning(index, originalName) {
             // A name is a line of the description, so it is kept to one.
             const name = String(originalName).replace(/\s+/gu, " ");
@@ -99,6 +104,7 @@ function lifecycle(state, each) {
          */
         expect({ units, images }) {
             state.images = images;
+            state.done = 0;
             each((sink) => sink.start(units));
         },
 

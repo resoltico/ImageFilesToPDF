@@ -106,6 +106,8 @@ function nativePorts(fs, host) {
         rename(from, to) { return { state: fs.exclusiveRename(from, to) ? "created" : "exists" }; }
     };
     const sources = {
+        facts: (path) => ({ identity: path, version: "1", size: String(fs.facts(path).size) }),
+        readable: (path) => fs.files.has(path),
         capture(from, path) { fs.copy([from, path]); return { path, identity: from, version: "1" }; },
         pngCount: () => host.pages ?? 1
     };

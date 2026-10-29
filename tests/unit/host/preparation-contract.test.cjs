@@ -23,3 +23,26 @@ test("programming faults during normalization retain fault meaning", () => {
     const app = createFakeHost({ files: ["/source.png"], failures: [["'thumbnail'", new TypeError("adapter bug")]] });
     assert.throws(() => preparePage(makeJob(app), imageOf("/source.png"), 0), (error) => issuesOf(error, "preparation")[0].code === "fault");
 });
+
+test("captured facts that differ from admission refuse before rendering", () => {
+    for (const patch of [{ width: 601 }, { orientation: 6 }, { loader: "jpegload" }]) {
+        const app = createFakeHost({ files: ["/source.png"] });
+        Object.assign(app, patch);
+        assert.throws(() => preparePage(makeJob(app), imageOf("/source.png"), 0), (error) => {
+            assert.equal(error.issues[0].source, "/source.png");
+            assert.match(error.issues[0].message, /changed after selection/u);
+            return true;
+        });
+        assert.ok(!app.commands.some((command) => command.includes("'thumbnail'") || command.includes("'avg'")));
+        assert.ok(!app.files.has("/tmp/ImageFilesToPDF.X/input-0"));
+    }
+});
+
+test("missing admission is a contract fault and changed native identity is refused", () => {
+    const app = createFakeHost({ files: ["/source.png"] });
+    const source = imageOf("/source.png");
+    assert.throws(() => preparePage(makeJob(app), { ...source, admission: undefined }, 0), /admission facts are required/u);
+    const { capture } = app.sources;
+    app.sources.capture = (from, to) => ({ ...capture(from, to), identity: "different" });
+    assert.throws(() => preparePage(makeJob(app), source, 0), (error) => error.issues[0].code === "operation");
+});

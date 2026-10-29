@@ -14,6 +14,7 @@ function attributesFor(app, path) {
 
 function managerFor(app, unbox) {
     return {
+        isReadableFileAtPath: (path) => app.files.has(unbox(path)),
         attributesOfItemAtPathError: (path) => attributesFor(app, unbox(path)),
         copyItemAtPathToPathError(from, to) { app.sources.capture(unbox(from), unbox(to)); return true; },
         linkItemAtPathToPathError(from, to, error) {

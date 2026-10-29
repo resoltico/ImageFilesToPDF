@@ -124,3 +124,15 @@ test("a stage reached before any file names no file", () => {
 
     assert.deepEqual(sink.said, ["Checking required tools 0 | "]);
 });
+
+test("inspection counts reset before conversion work begins", () => {
+    const events = [];
+    const progress = createProgress([{ start: (count) => events.push(["total", count]), report: (done, text, detail) => events.push([done, text, detail]), pause: () => undefined, close: () => undefined }]);
+    progress.expect({ units: 2, images: 2 });
+    progress.checking(2, 2);
+    progress.pause();
+    progress.expect({ units: 3, images: 2 });
+    progress.beginning(1, "a.png");
+    assert.ok(events.some((entry) => entry[0] === 2 && entry[1] === "Checking images" && entry[2] === "2 of 2"));
+    assert.deepEqual(events.at(-1), [0, "Preparing", "1 of 2 — a.png"]);
+});

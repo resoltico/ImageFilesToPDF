@@ -103,3 +103,12 @@ test("technical diagnostics retain a full long argv outside the main explanation
         assert.equal(error.command,`'/bin/tool' '${input}'`);assert.ok(!error.message.includes(input));return true;
     });
 });
+
+test("header commands fix diagnostic language and retain argv quoting and budgeting", () => {
+    const { runHeaderArgv, HEADER_ARGV_BUDGET } = require("../../../src/host/shell.js");
+    const app = createFakeApp();
+    runHeaderArgv(app, ["/v/vipsheader", "-a", "/a quote' and space.png"], "checking images");
+    assert.equal(app.commands[0], "LC_ALL=C '/v/vipsheader' '-a' '/a quote'\\'' and space.png'");
+    assert.equal(HEADER_ARGV_BUDGET, 131063);
+    assert.throws(() => runHeaderArgv(app, ["vipsheader", "x".repeat(131072)], "checking"), /exceeds the argument budget/u);
+});

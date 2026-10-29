@@ -126,12 +126,19 @@ run_headless "$WORK/heic.json" "$WORK/from iphone.heic"
 assert_valid_pdf "$WORK/output_20260904_070809.pdf"
 
 if osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/heic.json" \
-    "$WORK/two page scan.tif" >/dev/null 2>"$WORK/multipage.err"
+    "$WORK/two page scan.tif" >"$WORK/multipage.receipt" 2>"$WORK/multipage.err"
 then
     fail "a two-page TIFF was accepted; page two would have been lost silently"
 fi
-grep -q "contains 2 pages" "$WORK/multipage.err" ||
-    fail "the refusal did not say how many pages: $(cat "$WORK/multipage.err")"
+grep -q "contains 2 images" "$WORK/multipage.err" ||
+    fail "the refusal did not say how many images: $(cat "$WORK/multipage.err")"
+node - "$WORK/multipage.receipt" <<'NODE'
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const receipt = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+assert.deepEqual(receipt.documents, []);
+assert.equal(receipt.rejected[0].code, "multiple-images");
+NODE
 
 # ---------------------------------------------------------------------------
 # The runtime must accept the invocation without osascript's "--" as well

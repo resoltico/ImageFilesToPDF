@@ -26,6 +26,7 @@ function fixture(overrides = {}) {
         NSFileSize: "size", NSFileModificationDate: "mtime", NSFileCreationDate: "ctime",
         NSFileManager: { defaultManager: {
             attributesOfItemAtPathError: (path) => attributes(path.value),
+            isReadableFileAtPath: () => overrides.readable ?? true,
             copyItemAtPathToPathError: () => overrides.copy ?? true
         } },
         NSURL: { fileURLWithPath: (path) => path },
@@ -67,13 +68,26 @@ test("PNG count owns and releases its CF source even on invalid metadata", () =>
     assert.ok(!nil.events.includes("release"));
 });
 
-test("capture refuses observed version changes, mismatched copies and nonregular snapshots with specific diagnostics",()=>{
-    for(const options of [{modified:2},{capturedSize:19},{snapshotSize:19}]) {
-        assert.throws(()=>fixture(options).access.capture("/source","/owned"),(error)=>error.name==="OperationError"&&error.message==="Source changed during capture; try again when it is stable.");
+test("capture failures name the original source and keep native details separate", () => {
+    for (const options of [{ modified: 2 }, { capturedSize: 19 }, { snapshotSize: 19 }]) {
+        assert.throws(() => fixture(options).access.capture("/source", "/owned"), (error) =>
+            error.message === "/source: The source changed after selection; try again when it is stable." && error.issues[0].source === "/source");
     }
-    assert.throws(()=>fixture({snapshotKind:"other"}).access.capture("/source","/owned"),/regular non-link/u);
-    assert.throws(()=>fixture({attributes:null}).access.capture("/source","/owned"),(error)=>error.name==="OperationError"&&error.message==="Source attributes are unavailable.");
-    assert.throws(()=>fixture({copy:false}).access.capture("/source","/owned"),/Source capture failed: copy denied/u);
+    for (const [options, reason] of [[{ snapshotKind: "other" }, /regular non-link/u], [{ attributes: null }, /attributes are unavailable/u], [{ copy: false }, /copy denied/u]]) {
+        assert.throws(() => fixture(options).access.capture("/source", "/owned"), (error) => {
+            assert.equal(error.message, "/source: This file could not be copied for conversion.");
+            assert.match(error.issues[0].diagnostic.message, reason);
+            assert.equal(error.issues[0].source, "/source");
+            return true;
+        });
+    }
+});
+
+test("admission can read native file facts and access without copying", () => {
+    const sample = fixture();
+    assert.deepEqual(sample.access.facts("/source"), { identity: "1:2", size: "20", version: "1:1:20" });
+    assert.equal(sample.access.readable("/source"), true);
+    assert.equal(fixture({ readable: false }).access.readable("/source"), false);
 });
 
 test("native ImageIO ownership binding is explicit and imported once",()=>{
@@ -82,5 +96,5 @@ test("native ImageIO ownership binding is explicit and imported once",()=>{
 });
 
 test("unreadable native version facts are not relabelled as a stable snapshot",()=>{
-    assert.throws(()=>fixture({modified:NaN}).access.capture("/source","/owned"),(error)=>error.message==="Source must be an identifiable regular non-link file with readable version facts.");
+    assert.throws(()=>fixture({modified:NaN}).access.capture("/source","/owned"),(error)=>error.issues[0].diagnostic.message==="Source must be an identifiable regular non-link file with readable version facts.");
 });
