@@ -12,7 +12,7 @@ const {
     labelsOf,
     defaultLabelOf,
     valueOfLabel
-} = require("../../../src/runtime/choices.js");
+} = require("../../../src/host/settings-model.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 const LISTS = [PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND];

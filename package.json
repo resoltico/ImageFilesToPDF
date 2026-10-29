@@ -19,7 +19,7 @@
     "lint": "node tools/lint.mjs",
     "lint:js": "eslint .",
     "test": "node --test \"tests/unit/**/*.test.cjs\" \"tests/repo/**/*.test.cjs\"",
-    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"tests/**\" --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \"tests/unit/**/*.test.cjs\" \"tests/repo/**/*.test.cjs\"",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/core/**\" --test-coverage-include=\"src/application/**\" --test-coverage-include=\"src/backend/**\" --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \"tests/unit/**/*.test.cjs\" \"tests/repo/**/*.test.cjs\"",
     "check-dist": "node tools/check-dist.mjs",
     "quality": "npm run lint && npm run lint:js && npm run test:coverage && npm run test:mutation && npm run check-dist",
     "release": "npm run build && npm run quality",

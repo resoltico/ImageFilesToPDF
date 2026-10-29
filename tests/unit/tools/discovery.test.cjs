@@ -47,7 +47,7 @@ test("discovery reaches nested directories and root configuration", async () => 
     assert.ok(files.includes("eslint.config.mjs"), "root config");
     assert.ok(files.some((file) => file.startsWith("tools/lint/")), "nested tools");
     assert.ok(files.some((file) => file.startsWith("tests/unit/core/")), "nested tests");
-    assert.ok(files.some((file) => file.startsWith("tests/unit/runtime/")), "nested tests");
+    assert.ok(files.some((file) => file.startsWith("tests/unit/host/")), "nested tests");
     assert.ok(files.some((file) => file.startsWith("src/")), "source modules");
     // Each directory is walked once and the modules are listed once. Walking
     // the root instead would find src/ a second time, and every file under it

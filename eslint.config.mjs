@@ -44,7 +44,7 @@ export default [
 
     {
         // Portable planning core: CommonJS for Node, isolated by esbuild for JXA.
-        files: ["src/core/**/*.js", "src/application/**/*.js", "src/entry.js"],
+        files: ["src/core/**/*.js", "src/application/**/*.js", "src/backend/**/*.js", "src/entry.js"],
         languageOptions: {
             ecmaVersion: JXA_ECMA_VERSION,
             sourceType: "commonjs",
@@ -54,7 +54,7 @@ export default [
 
     {
         // macOS host layer: the same, plus the JavaScriptCore globals.
-        files: ["src/runtime/**/*.js"],
+        files: ["src/host/**/*.js"],
         languageOptions: {
             ecmaVersion: JXA_ECMA_VERSION,
             sourceType: "commonjs",

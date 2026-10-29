@@ -91,7 +91,6 @@ function resolveValidationFailure(context) {
     }
 }
 
-
 function documentFailure(context, error) {
     const { artifact, record, stage } = context;
     record.issues.push(...issuesOf(error, stage).map((issue) => stage === "preparation"

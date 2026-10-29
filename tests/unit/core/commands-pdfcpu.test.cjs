@@ -7,7 +7,7 @@ const {
     readPageCountFrom,
     buildPdfcpuImportArgv,
     buildPdfcpuValidateArgv
-} = require("../../../src/runtime/backend-pdfcpu.js");
+} = require("../../../src/backend/pdfcpu.js");
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
 
 const geometry = calculatePageGeometry({

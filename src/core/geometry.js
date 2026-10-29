@@ -28,19 +28,6 @@ function calculatePageGeometry(settings) {
     };
 }
 
-/*
- * Where the image sits on the page, and how many pixels that is.
- *
- * One source pixel is treated as one point, so an image has a natural size on
- * paper that does not depend on the resolution chosen for the raster. It is
- * scaled down to fit the page and never enlarged beyond that natural size.
- *
- * Deciding this from the pixel canvas instead — fitting the image into the
- * page measured in output pixels — makes the resolution setting move the
- * picture: the same photograph covered 102 mm at 300 DPI and 51 mm at 600,
- * because a higher resolution made the page a larger number of pixels while
- * the image stayed the same number.
- */
 function calculatePlacement(geometry, source) {
     const scale = Math.min(
         1,

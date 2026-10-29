@@ -14,7 +14,7 @@ const MAXIMUM_SUFFIX = 10000;
  *
  * The stem has always gone through sanitizing and the timestamp never did, so
  * a headless caller's "2026/09/12" put a separator inside a filename and the
- * PDF went somewhere else. Read where it arrives as well -- src/runtime/
+ * PDF went somewhere else. Read where it arrives as well -- src/host/
  * input.js -- which is where the caller gets told why; this is the invariant
  * that holds whatever reaches it, the same way stagedPdfPath sanitizes a
  * token it generated itself.
@@ -87,16 +87,6 @@ function collisionPath(initialPath, attempt) {
     return attempt === 1 ? initialPath : `${stemOf(initialPath)}_${attempt}${initialPath.slice(-EXTENSION.length)}`;
 }
 
-/*
- * Where the PDF is built before it is published.
- *
- * Inside the workspace rather than beside the images, which was measured
- * rather than chosen for tidiness: a Shortcuts helper could neither rename
- * nor even read a file pdfcpu had created in the user's Downloads folder,
- * while a file the shell itself created there could be renamed freely and
- * copying into that folder from the workspace was allowed throughout.
- * Nothing is written into the output folder now except the finished PDF.
- */
 function stagedPdfPath(workspace, token) {
     return `${workspace}/staged-${sanitizeFilename(String(token))}.pdf`;
 }

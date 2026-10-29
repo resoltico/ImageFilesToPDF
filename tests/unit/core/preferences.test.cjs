@@ -16,8 +16,8 @@ const {
     KEY,
     encode,
     rememberedAnswers
-} = require("../../../src/runtime/settings-preferences.js");
-const { readAnswers } = require("../../../src/runtime/answers.js");
+} = require("../../../src/host/preferences.js");
+const { readAnswers } = require("../../../src/host/settings-model.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 const PAPERS = ["A4", "Letter"];

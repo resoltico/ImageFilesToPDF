@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     invitation, formSpec, defaultAnswers, BACKGROUND_NOTE
-} = require("../../../src/runtime/form.js");
+} = require("../../../src/host/settings-model.js");
 
 test("one selected image is acknowledged in a complete sentence", () => {
     assert.equal(formSpec(defaultAnswers(), [], { count: 1 }).fullDetail, [

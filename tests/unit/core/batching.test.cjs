@@ -2,8 +2,8 @@
 const assert=require("node:assert/strict");
 const test=require("node:test");
 const {Buffer}=require("node:buffer");
-const {commandLengthOf,COMMAND_BUDGET_BYTES}=require("../../../src/runtime/backend-batching.js");
-const {shellJoin}=require("../../../src/runtime/backend-shell.js");
+const {commandLengthOf,COMMAND_BUDGET_BYTES}=require("../../../src/backend/batching.js");
+const {shellJoin}=require("../../../src/backend/shell.js");
 
 test("argv budget measures quoted UTF-8 bytes independently of JS code units",()=>{
     for(const argv of [[],["pdfcpu","import"],["/file'one.jpg","/été/海.png"],["emoji😀.png"]]){

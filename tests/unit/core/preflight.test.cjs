@@ -8,7 +8,7 @@ const {
     isVipsUsable,
     isPdfcpuUsable,
     describeSetupProblems
-} = require("../../../src/runtime/backend-preflight.js");
+} = require("../../../src/backend/preflight.js");
 
 test("the vips probe uses the flags the pipeline depends on", () => {
     const argv = buildVipsProbeArgv("/opt/homebrew/bin/vips");

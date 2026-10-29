@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { utf8Length, truncateToBytes } = require("../../../src/core/utf8.js");
 const { fixed2, zeroPad } = require("../../../src/core/numbers.js");
-const { plural, formatDuration } = require("../../../src/runtime/formatting.js");
+const { plural, formatDuration } = require("../../../src/host/formatting.js");
 
 test("fixed2 trims insignificant trailing zeros only", () => {
     assert.equal(fixed2(595.2756), "595.28");

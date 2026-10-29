@@ -9,7 +9,7 @@ const {
     BACKGROUND,
     RESOLUTION,
     QUALITY
-} = require("../../../src/runtime/choices.js");
+} = require("../../../src/host/settings-model.js");
 
 /*
  * What each control is called, in each of the two places it appears.

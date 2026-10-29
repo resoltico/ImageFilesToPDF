@@ -7,8 +7,8 @@ const {
     CANCEL_BUTTON,
     defaultAnswers,
     formSpec
-} = require("../../../src/runtime/form.js");
-const { BACKGROUND, PAPER_SIZE } = require("../../../src/runtime/choices.js");
+} = require("../../../src/host/settings-model.js");
+const { BACKGROUND, PAPER_SIZE } = require("../../../src/host/settings-model.js");
 const { APP_NAME } = require("../../../src/core/version.js");
 
 function rowFor(key, spec = formSpec()) {

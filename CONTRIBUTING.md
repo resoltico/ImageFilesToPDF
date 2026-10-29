@@ -37,7 +37,8 @@ Commit generated JXA and checksums alongside source changes that affect them.
   geometry, artifact-retention policy and outcome vocabulary.
 - `src/application/` owns controller decisions and document/resource sequencing
   through explicit ports. Core and application import no native/UI adapters.
-- `src/runtime/` owns composition, native/platform/backend operations, transport
+- `src/backend/` owns pure backend argv builders, parsers and command budgeting.
+- `src/host/` owns composition, native/platform operations, transport
   parsing and presentation. Host globals and Apple Event cancellation translation
   belong here.
 - `src/entry.js` exports the production `run` capability.
@@ -48,7 +49,7 @@ Optional UI, progress and preferences can be unavailable; programming faults mus
 remain diagnosable rather than silently triggering fallback.
 
 `src/core/settings.js` owns canonical settings, defaults and legal choice IDs.
-`src/runtime/choices.js` derives offered IDs and bounds, adding presentation
+`src/host/settings-model.js` derives offered IDs and bounds, adding presentation
 captions. Text fields are parsed at adapter boundaries and use the common
 all-issues validator. Numeric RGB components belong to colour policy; vips
 comma-separated vectors belong to the backend adapter.
@@ -69,11 +70,13 @@ separate from interface wording and technical diagnostics.
 Tests that inject ports/fixtures belong in `tests/unit/`; tests that inspect the
 real checkout belong in `tests/repo/`. Mutation testing runs unit files. All
 production sources and applicable build rules must remain discoverable by their
-gates. Keep behavioral expectations independent of implementation calculations.
+gates. Coverage is 100% for core, application and backend; mutation is at least
+96 for those same layers. Host adapters require the native suites. Keep behavioral expectations independent of implementation calculations.
 
 ESLint uses `js.configs.all`; exceptions and tuned rules are justified in
 `tools/eslint/rules.mjs`. Group modules by responsibility and lifetime, respecting
-the active ESLint rules rather than splitting by incidental implementation order.
+the active ESLint limits: 25 statements, 80 lines per function, 400 lines per
+module and four parameters. Split by responsibility, not implementation order.
 
 `tools/scoped-bundle.mjs` uses the exact esbuild development pin from
 `package.json`: neutral IIFE bundling, Safari 15.4 target, compact whitespace,

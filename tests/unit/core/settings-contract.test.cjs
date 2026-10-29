@@ -2,9 +2,9 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { DEFAULT_SETTINGS, validateSettings, normalizeSettings } = require("../../../src/core/settings.js");
-const { collectInvocation } = require("../../../src/runtime/input.js");
-const { createFakeApp } = require("../runtime/fake-app.cjs");
-const { PAPER_SIZE, defaultValueOf, defaultLabelOf } = require("../../../src/runtime/choices.js");
+const { collectInvocation } = require("../../../src/host/input.js");
+const { createFakeApp } = require("../ports/fake-app.cjs");
+const { PAPER_SIZE, defaultValueOf, defaultLabelOf } = require("../../../src/host/settings-model.js");
 
 for (const field of ["dpi","quality","paperSize","orientation","mode","background"]) {
     for (const value of [null,true,false,[],{},[300]]) {

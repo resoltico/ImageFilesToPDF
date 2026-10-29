@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { backgroundVector } = require("../../../src/runtime/backend-commands.js");
+const { backgroundVector } = require("../../../src/backend/commands.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 function settings(overrides) {

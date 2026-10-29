@@ -52,7 +52,6 @@ const MAXIMUM_DPI = Math.floor(
 const MINIMUM_QUALITY = 1;
 const MAXIMUM_QUALITY = 100;
 
-
 module.exports = {
     PAGE_DEFINITIONS,
     POINTS_PER_INCH,

@@ -6,7 +6,7 @@ const test = require("node:test");
 const {
     selectionSummary, outputSummary,
     outputAlternatives, destinationSummary
-} = require("../../../src/runtime/output-description.js");
+} = require("../../../src/host/output-description.js");
 
 test("selection context preserves provenance and deduplicates ordered destinations", () => {
     assert.deepEqual(selectionContext({ images: [] }), {

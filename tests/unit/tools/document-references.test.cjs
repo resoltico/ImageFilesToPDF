@@ -20,8 +20,8 @@ test("a backticked path with a separator is a reference", async () => {
     const { referencesIn } = await load();
 
     assert.deepEqual(
-        referencesIn("See `src/runtime/backend-shell.js` and `tools/lint/` for this."),
-        ["src/runtime/backend-shell.js", "tools/lint/"]
+        referencesIn("See `src/backend/shell.js` and `tools/lint/` for this."),
+        ["src/backend/shell.js", "tools/lint/"]
     );
 });
 
@@ -31,7 +31,7 @@ test("prose that is not a path is not a reference", async () => {
     const { referencesIn } = await load();
 
     assert.deepEqual(referencesIn("`README.md` `mv -n` `--mode=strict`"), []);
-    assert.deepEqual(referencesIn("plain src/runtime/backend-shell.js unquoted"), []);
+    assert.deepEqual(referencesIn("plain src/backend/shell.js unquoted"), []);
     // A fraction has a separator and no name: prose is full of them.
     assert.deepEqual(referencesIn("`1/2` of `210/25.4` points"), []);
 });
@@ -47,7 +47,7 @@ test("an ellipsis means a shape rather than a file", async () => {
 test("a reference that does not resolve is reported with the document", async () => {
     const { missingReferences } = await load();
     const documents = documentsOf({
-        "README.md": "See `tools/gone.mjs` and `src/runtime/backend-shell.js`.\n",
+        "README.md": "See `tools/gone.mjs` and `src/backend/shell.js`.\n",
         "QA.md": "Also `tools/gone.mjs`.\n"
     });
     const resolve = (reference) => Promise.resolve(reference !== "tools/gone.mjs");
@@ -126,9 +126,9 @@ test("a reference is resolved against the repository, not the cwd", async () => 
     const { exists } = await load();
     const asked = [];
 
-    assert.equal(await exists("src/runtime/backend-shell.js", (at) => asked.push(at)), true);
-    assert.match(asked[0], /\/src\/runtime\/backend-shell\.js$/u);
-    assert.notEqual(asked[0], "src/runtime/backend-shell.js", "joined to the root");
+    assert.equal(await exists("src/backend/shell.js", (at) => asked.push(at)), true);
+    assert.match(asked[0], /\/src\/backend\/shell\.js$/u);
+    assert.notEqual(asked[0], "src/backend/shell.js", "joined to the root");
 
     assert.equal(
         await exists("tools/gone.mjs", () => {

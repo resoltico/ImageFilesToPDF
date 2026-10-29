@@ -36,8 +36,8 @@ locations may intentionally remain in the system temporary directory.
 ## Commands and trust
 
 External commands use argument vectors quoted by
-`src/runtime/backend-shell.js`; NUL bytes are rejected. Executable names are
-centralized in `src/runtime/backend-executables.js`, with source rules restricting
+`src/backend/shell.js`; NUL bytes are rejected. Executable names are
+centralized in `src/host/backend-executables.js`, with source rules restricting
 absolute executable paths elsewhere. Native publication uses numeric error
 classification and immediate native identity checks.
 

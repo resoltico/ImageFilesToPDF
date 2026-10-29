@@ -1,0 +1,82 @@
+"use strict";
+
+/*
+ * Every item the action was handed is accounted for: converted, or refused
+ * with a reason. An input that resolved to nothing used to be dropped between
+ * the resolution and the admission, so a mixed selection quietly became a
+ * smaller job than the one that was asked for.
+ */
+
+const assert = require("node:assert/strict");
+const test = require("node:test");
+const { collectImageFiles } = require("../ports/fake-selection.cjs");
+const { createFakeApp } = require("../ports/fake-app.cjs");
+
+test("an input that named itself and did not resolve is reported", () => {
+    // It used to fall between the resolution and the admission: no image
+    // record, no rejection, and a smaller job than the one that was asked for.
+    const app = createFakeApp();
+    const { images, rejected } = collectImageFiles(app, [
+        "/a/good.png",
+        "./second.jpg",
+        "~/Pictures/third.png"
+    ]);
+
+    assert.deepEqual(images.map((image) => image.originalName), ["good.png"]);
+    assert.deepEqual(rejected, [
+        {
+            path: "",
+            name: "./second.jpg",
+            reason: "not an absolute path to a file", code: "selection-refused", stage: "selection"
+        },
+        {
+            path: "",
+            name: "~/Pictures/third.png",
+            reason: "not an absolute path to a file", code: "selection-refused", stage: "selection"
+        }
+    ]);
+});
+
+test("the parameters object Shortcuts appends is not a rejection", () => {
+    // It is on the input of every Quick Action, has no identity of its own,
+    // and the user never asked for it. Reporting it would put a rejection on
+    // every single interactive run.
+    const app = createFakeApp();
+    const { images, rejected } = collectImageFiles(app, ["/a/good.png", {}]);
+
+    assert.equal(images.length, 1);
+    assert.deepEqual(rejected, []);
+});
+
+test("a Finder item that cannot say where it is is still reported", () => {
+    // An object is not automatically host metadata: this one named a place,
+    // it just was not one that could be used.
+    const app = createFakeApp();
+    const { rejected } = collectImageFiles(app, [
+        { url: () => "https://example.com/photo.png" }
+    ]);
+
+    assert.deepEqual(rejected.map((entry) => entry.name), [
+        "https://example.com/photo.png"
+    ]);
+});
+
+test("a folder is reported as a folder, whatever it is called", () => {
+    // It used to be turned away for having the wrong extension -- and one
+    // called album.png for not being readable. Neither says what it is.
+    const app = createFakeApp();
+
+    app.directories = ["/a/album", "/a/album.png"];
+
+    const { images, rejected } = collectImageFiles(app, [
+        "/a/album",
+        "/a/album.png",
+        "/a/photo.png"
+    ]);
+
+    assert.deepEqual(images.map((image) => image.originalName), ["photo.png"]);
+    assert.deepEqual(rejected.map((entry) => `${entry.name}: ${entry.reason}`), [
+        "album: a folder; select the images inside it",
+        "album.png: a folder; select the images inside it"
+    ]);
+});

@@ -7,7 +7,7 @@ const {
     buildFlattenArgv,
     buildGravityArgv,
     hasAlphaBand
-} = require("../../../src/runtime/backend-commands.js");
+} = require("../../../src/backend/commands.js");
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
 
 const geometry = calculatePageGeometry({

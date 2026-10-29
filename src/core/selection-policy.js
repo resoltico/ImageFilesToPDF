@@ -21,5 +21,4 @@ function selectionContext(selection) {
     };
 }
 
-
 module.exports = { selectionReason, selectionRefusal, selectionContext };

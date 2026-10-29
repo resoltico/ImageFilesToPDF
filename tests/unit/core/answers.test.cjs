@@ -1,10 +1,10 @@
 "use strict";
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { readAnswers, answersFromSettings, readNumber } = require("../../../src/runtime/answers.js");
-const { defaultAnswers, formSpec } = require("../../../src/runtime/form.js");
+const { readAnswers, answersFromSettings, readNumber } = require("../../../src/host/settings-model.js");
+const { defaultAnswers, formSpec } = require("../../../src/host/settings-model.js");
 const { DEFAULT_SETTINGS, validateSettings } = require("../../../src/core/settings.js");
-const { RESOLUTION, QUALITY } = require("../../../src/runtime/choices.js");
+const { RESOLUTION, QUALITY } = require("../../../src/host/settings-model.js");
 
 test("GUI and canonical JSON share values and issue codes", () => {
     assert.deepEqual(readAnswers(defaultAnswers()).settings, DEFAULT_SETTINGS);
