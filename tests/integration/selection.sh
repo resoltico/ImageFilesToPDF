@@ -51,7 +51,7 @@ pages() {
 chmod 000 "$WORK/album/locked"
 RECEIPT=$(run 20260907_010101 "$WORK/album")
 
-WALKED="$WORK/album/output_20260907_010101.pdf"
+WALKED="$WORK/album/Images 2026-09-07 at 01.01.01.pdf"
 assert_valid_pdf "$WALKED"
 test "$(pages "$WALKED")" = 2 ||
     fail "the walk took $(pages "$WALKED") pages: hidden, notes or locked leaked in"
@@ -68,12 +68,12 @@ chmod 755 "$WORK/album/locked"
 # ---------------------------------------------------------------------------
 
 BOTH=$(run 20260907_020202 "$WORK/album" "$WORK/album/a.png")
-test "$(pages "$WORK/album/output_20260907_020202.pdf")" = 3 ||
+test "$(pages "$WORK/album/Images 2026-09-07 at 02.02.02.pdf")" = 3 ||
     fail "folder then file did not convert each photograph once: $BOTH"
 grep -q '"rejected":\[\]' <<<"$BOTH" || fail "nothing should be refused: $BOTH"
 
 REVERSED=$(run 20260907_030303 "$WORK/album/a.png" "$WORK/album")
-test "$(pages "$WORK/album/output_20260907_030303.pdf")" = 3 ||
+test "$(pages "$WORK/album/Images 2026-09-07 at 03.03.03.pdf")" = 3 ||
     fail "file then folder did not convert each photograph once: $REVERSED"
 grep -q '"rejected":\[\]' <<<"$REVERSED" ||
     fail "the answer must not depend on the order: $REVERSED"
@@ -88,7 +88,7 @@ grep -q '"rejected":\[\]' <<<"$REVERSED" ||
 # ---------------------------------------------------------------------------
 
 HIDDEN=$(run 20260907_035353 "$WORK/album" "$WORK/album/.hidden.png")
-test "$(pages "$WORK/album/output_20260907_035353.pdf")" = 4 ||
+test "$(pages "$WORK/album/Images 2026-09-07 at 03.53.53.pdf")" = 4 ||
     fail "the hidden photograph that was asked for is missing: $HIDDEN"
 grep -q '"rejected":\[\]' <<<"$HIDDEN" || fail "nothing should be refused: $HIDDEN"
 
@@ -101,8 +101,8 @@ grep -q '"rejected":\[\]' <<<"$HIDDEN" || fail "nothing should be refused: $HIDD
 
 SPELLINGS=$(run 20260907_060606 "$WORK/case" "$WORK/case/a.png")
 
-test "$(pages "$WORK/case/output_20260907_060606.pdf")" = 1 ||
-    fail "one photograph became $(pages "$WORK/case/output_20260907_060606.pdf") pages: $SPELLINGS"
+test "$(pages "$WORK/case/Images 2026-09-07 at 06.06.06.pdf")" = 1 ||
+    fail "one photograph became $(pages "$WORK/case/Images 2026-09-07 at 06.06.06.pdf") pages: $SPELLINGS"
 grep -q '"rejected":\[\]' <<<"$SPELLINGS" || fail "nothing should be refused: $SPELLINGS"
 
 # ---------------------------------------------------------------------------
@@ -118,7 +118,7 @@ grep -q '"rejected":\[\]' <<<"$SPELLINGS" || fail "nothing should be refused: $S
 NAMES=$(run 20260907_070707 "$WORK/names/image.backup" "$WORK/names/image.png" \
     "$WORK/names/alias.png" "$WORK/names/extra.png")
 
-test "$(pages "$WORK/names/output_20260907_070707.pdf")" = 2 ||
+test "$(pages "$WORK/names/Images 2026-09-07 at 07.07.07.pdf")" = 2 ||
     fail "each photograph once: $NAMES"
 grep -q "not a supported format" <<<"$NAMES" ||
     fail "the unsupported name must be answered, not swallowed: $NAMES"

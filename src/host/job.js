@@ -3,7 +3,7 @@
 const { OperationError } = require("../core/errors.js");
 const { calculatePageGeometry } = require("../core/geometry.js");
 const { isSeparateMode } = require("../core/settings.js");
-const { createWorkspace, removeWorkspace } = require("./workspace.js");
+const { createWorkspace, removeWorkspace, retainCandidate, clearRetention } = require("./workspace.js");
 const { createProgress } = require("./progress.js");
 const { executeDocuments } = require("../application/documents.js");
 const { documentPlan } = require("../core/document-plan.js");
@@ -36,14 +36,16 @@ function unitsOf(settings, images) {
 /*
  * The invariants of a run, gathered once and passed as a unit.
  */
-function createJob(app, settings, timestamp, tools) {
+function createJob(app, settings, timestamp, environment) {
+    const { tools, storage } = environment;
     return {
         app,
         settings,
         timestamp,
         tools,
         geometry: calculatePageGeometry(settings),
-        workspace: createWorkspace(app),
+        workspace: createWorkspace(app, storage),
+        storage,
         // Authoritative artifact lifecycles, registered before PDF bytes exist.
         artifacts: new Map(),
         parts: new Map(),
@@ -79,6 +81,7 @@ function documentPorts(job) {
             importBatch(job, staged, pages, placement);
         },
         assemble: (staged) => assemblePdf(job, staged),
+        beforeValidation: () => retainCandidate(job),
         validate(staged, expected) {
             requireReleasedResources(job);
             validatePdf(job, staged, expected);
@@ -94,6 +97,7 @@ function cleanupJob(job, issues) {
     job.progress.diagnostics.push(...job.cleanupIssues);
     try {
         if (!hasRetainedArtifacts(job.artifacts)) {
+            clearRetention(job);
             const removed = removeWorkspace(job.app, job.workspace);
             if (removed.state === "failed") { job.progress.diagnostics.push(removed.issue); }
         }

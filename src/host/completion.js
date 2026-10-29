@@ -30,8 +30,17 @@ function completionMessage(result) {
     return [summaryText(summarizeRun(result)), result.elapsed ? `Elapsed: ${result.elapsed}` : "", `${APP_NAME} ${VERSION}`].filter(Boolean).join("\n\n");
 }
 
+function revealRecoveries(recoveries) {
+    ObjC.import("AppKit");
+    $.NSWorkspace.sharedWorkspace.activateFileViewerSelectingURLs($(recoveries.map((entry) => $.NSURL.fileURLWithPath(entry.location))));
+}
+
 function showCompletion(app, result) {
     const { showDetails } = require("./details-dialog.js");
-    showDetails(app, { title: APP_NAME, summary: headline(summarizeRun(result)), detail: completionMessage(result), buttons: ["OK"] });
+    const summary = summarizeRun(result);
+    const buttons = summary.recoveries.length > 0 ? ["OK", "Show in Finder"] : ["OK"];
+    const response = showDetails(app, { title: APP_NAME, summary: headline(summary), detail: completionMessage(result), buttons });
+    if (response === 1) { revealRecoveries(summary.recoveries); }
 }
+
 module.exports = { describeRejections, headline, summaryText, completionMessage, showCompletion };

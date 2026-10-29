@@ -12,7 +12,7 @@ const stamp="20261029_070000";
 
 function jobFixture(mode="combined",failures=[]) {
     const app=createFakeHost({files:["/a/1.png","/a/2.png"],failures});
-    const job=createJob(app,{...settings,mode},stamp,tools);
+    const job=createJob(app,{...settings,mode},stamp,{tools,storage:app.storage});
     const events=[];
     job.sources=app.sources;job.publication=app.publication;
     job.progress=createProgress([{start:(units)=>events.push(["expect",units]),report:(done,text,detail)=>events.push([done,text,detail])}]);
@@ -41,7 +41,7 @@ for(const mode of ["combined","separate"]) {
         assert.deepEqual(events.filter((event)=>event[0]==="source").map((event)=>event.slice(1)),[[1,"1.png"],[2,"2.png"]]);
         assert.equal(events.at(-1)[0],mode==="combined"?3:2);
         assert.equal(events.at(-1)[1],"Saved");
-        assert.deepEqual(result.documents.map((document)=>document.output),mode==="combined"?["/a/output_20261029_070000.pdf"]:["/a/1_20261029_070000.pdf","/a/2_20261029_070000.pdf"]);
+        assert.deepEqual(result.documents.map((document)=>document.output),mode==="combined"?["/a/Images 2026-10-29 at 07.00.00.pdf"]:["/a/1.pdf","/a/2.pdf"]);
         assert.ok(app.commands.some((command)=>command.includes("'/bin/rm' '-rf'")));
     });
 }
@@ -63,14 +63,15 @@ test("unconfirmed validated work keeps the workspace even after unexpected publi
 });
 
 test("a default job has an inert progress capability, not a malformed sink",()=>{
-    const job=createJob(createFakeHost(),settings,stamp,tools);
+    const app=createFakeHost();
+    const job=createJob(app,settings,stamp,{tools,storage:app.storage});
     job.progress.phase("Checking");assert.deepEqual(job.progress.diagnostics,[]);
 });
 
 function longPathFixture() {
     const sources=Array.from({length:35},(unused,index)=>`/a/${index}.png`);
     const app=createFakeHost({files:sources});
-    const job=createJob(app,settings,stamp,tools);
+    const job=createJob(app,settings,stamp,{tools,storage:app.storage});
     Object.assign(job,{sources:app.sources,publication:app.publication,tools:{...tools,pdfcpu:"/opt/homebrew/Cellar/pdfcpu/0.16.4/bin/pdfcpu"}});
     job.workspace=`/${[246,246,246,245].map((width)=>"'".repeat(width)).join("/")}/ImageFilesToPDF.x`;
     const counts=[];const original=app.doShellScript;

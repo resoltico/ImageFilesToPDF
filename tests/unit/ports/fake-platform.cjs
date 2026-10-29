@@ -16,6 +16,12 @@ function attributesFor(app, path) {
 
 function managerFor(app, unbox) {
     return {
+        contentsOfDirectoryAtPathError(path) {
+            const prefix=`${unbox(path)}/`;
+            const names=[...new Set([...app.files].filter((name)=>name.startsWith(prefix)).map((name)=>name.slice(prefix.length).split("/")[0]))];
+            names.isNil=()=>false;return names;
+        },
+        removeItemAtPathError(path) {app.files.delete(unbox(path));app.fileTexts.delete(unbox(path));return true;},
         isReadableFileAtPath: (path) => app.files.has(unbox(path)) || app.fileTexts.has(unbox(path)),
         currentDirectoryPath: "/cwd",
         fileExistsAtPathIsDirectory(path, directory) { const name = unbox(path); directory[0] = false; return app.files.has(name) || app.fileTexts.has(name); },
@@ -45,11 +51,15 @@ function installPlatform(app, options = {}) {
     const output = [];
     const stderr = [];
     const unbox = (value) => value?.boxed ?? value;
-    const ns = (value) => ({ boxed: value, stringByStandardizingPath: value, dataUsingEncoding: () => value });
+    const ns = (value) => ({ boxed: value, stringByStandardizingPath: value, dataUsingEncoding: () => value,
+        writeToFileAtomicallyEncodingError(path) {app.fileTexts.set(unbox(path),value);app.files.add(unbox(path));return true;} });
     Object.assign(ns, bridge.ns, {
         NSMakeRange: (location, length) => ({ location, length }),
         NSData: { dataWithContentsOfFile: (path) => app.fileTexts.has(unbox(path)) ? fileData(Buffer.from(app.fileTexts.get(unbox(path)))) : null },
-        NSString: { alloc: { initWithDataEncoding: decodedText } },
+        NSString: { alloc: { initWithDataEncoding: decodedText },
+            stringWithContentsOfFileEncodingError: (path) => app.fileTexts.has(unbox(path)) ? {boxed:app.fileTexts.get(unbox(path)),isNil:()=>false} : null },
+        NSTemporaryDirectory: () => "/var/folders/xx/T/", NSHomeDirectory: () => "/",
+        NSProcessInfo: {processInfo:{processIdentifier:123}},
         NSFileManager: { defaultManager: managerFor(app, unbox) },
         NSWorkspace: { sharedWorkspace: { isFilePackageAtPath: () => false } },
         NSFileType: "kind", NSFileSystemNumber: "device", NSFileSystemFileNumber: "number", NSFileSize: "size", NSFileModificationDate: "modified", NSFileCreationDate: "created",

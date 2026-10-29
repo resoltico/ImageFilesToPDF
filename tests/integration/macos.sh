@@ -58,9 +58,9 @@ if IMAGE_FILES_TO_PDF_PDFCPU="$WORK/pdfcpu-old" \
 fi
 grep -q "Version 0.16.4 or later is required" "$WORK/old.err" ||
     fail "the release refusal did not explain the requirement"
-test ! -e "$WORK/output_20260904_010203_2.pdf"
+test ! -e "$WORK/Images 2026-09-04 at 01.02.03 2.pdf"
 
-COMBINED="$WORK/output_20260904_010203.pdf"
+COMBINED="$WORK/Images 2026-09-04 at 01.02.03.pdf"
 assert_valid_pdf "$COMBINED"
 test "$(pdfinfo "$COMBINED" | awk '/^Pages:/ {print $2}')" = 2
 assert_page_size "$COMBINED" "595.276 x 841.89 pts (A4)" "combined PDF is not exactly A4"
@@ -77,7 +77,7 @@ assert_pixel "$WORK/first.png" 30 42 223 41 53 28 \
 write_config "$WORK/separate.json" Letter Landscape "separate" "c7dae8" 20260904_020304
 run_headless "$WORK/separate.json" "$WORK/alpha image.png"
 
-SEPARATE="$WORK/alpha image_20260904_020304.pdf"
+SEPARATE="$WORK/alpha image.pdf"
 assert_valid_pdf "$SEPARATE"
 assert_page_size "$SEPARATE" "792 x 612 pts" "separate PDF is not Letter landscape"
 
@@ -87,7 +87,7 @@ assert_pixel "$WORK/custom.png" 0 0 199 218 232 6 \
 
 # No-clobber: a second run must not overwrite the first.
 run_headless "$WORK/separate.json" "$WORK/alpha image.png"
-test -s "$WORK/alpha image_20260904_020304_2.pdf"
+test -s "$WORK/alpha image 2.pdf"
 
 # ---------------------------------------------------------------------------
 # Colour management: a Display P3 source must be ICC-converted, not passed
@@ -98,7 +98,7 @@ test -s "$WORK/alpha image_20260904_020304_2.pdf"
 write_config "$WORK/colour.json" A4 Portrait "combined" "#FFFFFF" 20260904_030405
 run_headless "$WORK/colour.json" "$WORK/wide gamut.png"
 
-COLOUR="$WORK/output_20260904_030405.pdf"
+COLOUR="$WORK/Images 2026-09-04 at 03.04.05.pdf"
 test -s "$COLOUR"
 pdftoppm -f 1 -singlefile -r 72 -png "$COLOUR" "$WORK/colour" >/dev/null 2>&1
 assert_pixel "$WORK/colour.png" 297 421 224 16 16 18 \
@@ -111,7 +111,7 @@ assert_pixel "$WORK/colour.png" 297 421 224 16 16 18 \
 write_config "$WORK/tiny.json" A4 Portrait "combined" "#FFFFFF" 20260904_040506
 run_headless "$WORK/tiny.json" "$WORK/tiny.png"
 
-TINY="$WORK/output_20260904_040506.pdf"
+TINY="$WORK/Images 2026-09-04 at 04.05.06.pdf"
 test -s "$TINY"
 pdftoppm -f 1 -singlefile -r 72 -png "$TINY" "$WORK/tiny-page" >/dev/null 2>&1
 assert_pixel "$WORK/tiny-page.png" 397 421 255 255 255 10 \
@@ -123,7 +123,7 @@ assert_pixel "$WORK/tiny-page.png" 397 421 255 255 255 10 \
 
 write_config "$WORK/heic.json" A4 Portrait "combined" "#FFFFFF" 20260904_070809
 run_headless "$WORK/heic.json" "$WORK/from iphone.heic"
-assert_valid_pdf "$WORK/output_20260904_070809.pdf"
+assert_valid_pdf "$WORK/Images 2026-09-04 at 07.08.09.pdf"
 
 if osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/heic.json" \
     "$WORK/two page scan.tif" >"$WORK/multipage.receipt" 2>"$WORK/multipage.err"
@@ -147,7 +147,7 @@ NODE
 write_config "$WORK/plain.json" A4 Portrait "combined" "#FFFFFF" 20260904_050607
 osascript -l JavaScript "$SCRIPT" \
     --headless "$WORK/plain.json" "$WORK/page 2.png" >/dev/null
-test -s "$WORK/output_20260904_050607.pdf"
+test -s "$WORK/Images 2026-09-04 at 05.06.07.pdf"
 
 # The source images must be untouched.
 test "$(vipsheader -f width "$WORK/tiny.png")" = 64

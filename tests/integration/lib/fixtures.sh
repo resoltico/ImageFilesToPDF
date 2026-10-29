@@ -119,3 +119,8 @@ create_selection_fixtures() {
     ln "$work/names/image.png" "$work/names/image.backup"
     ln -s "$work/names/extra.png" "$work/names/alias.png"
 }
+
+# Expected output names use the platform date formatter, independently of JXA.
+combined_name() {
+    /bin/date -j -f '%Y%m%d_%H%M%S' "$1" '+Images %Y-%m-%d at %H.%M.%S.pdf'
+}

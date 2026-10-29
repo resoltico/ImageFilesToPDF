@@ -38,7 +38,8 @@ in place of canonical choice IDs are errors. All detected field issues are
 returned together. Duplicate JSON keys follow `JSON.parse`: the last value wins.
 
 Omitting `timestamp` generates one in the host's local time. When supplied, it
-must have exactly the stated shape; calendar validity is not checked. `null`,
+must be a real local date-time in exactly the stated shape, validated by a date
+round trip. `null`,
 `false`, numbers and empty strings are invalid. It is a run option, not a page
 setting.
 

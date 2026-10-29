@@ -26,4 +26,8 @@ function releaseArtifact(artifacts, path) {
     requireValidatedArtifact(artifacts, path).state = "released";
 }
 
-module.exports = { registerArtifact, retainsArtifact, hasRetainedArtifacts, requireValidatedArtifact, releaseArtifact };
+function isPublished(published, outcome) {
+    return Boolean(published.identity) && published.identity === outcome.claimedIdentity && published.size === outcome.claimedSize;
+}
+
+module.exports = { isPublished, registerArtifact, retainsArtifact, hasRetainedArtifacts, requireValidatedArtifact, releaseArtifact };

@@ -11,7 +11,7 @@ const settings = {paperSize:"A4",orientation:"Portrait",mode:"combined",resoluti
 
 function fixture(options = {}) {
     const app = createFakeHost({ files:["/source.png"], ...options });
-    const caps = {tree:treeOf({}),sources:app.sources,publication:app.publication};
+    const caps = {storage:app.storage,tree:treeOf({}),sources:app.sources,publication:app.publication};
     return {app,caps};
 }
 
@@ -93,7 +93,7 @@ test("unknown staged page size fails before import and retains source",()=>{
 
 test("setup phases and the no-images branch close progress before a result can block",()=>{
     const {app,caps}=fixture();const events=[];
-    const report={phase:(text)=>events.push(text),close:()=>events.push("closed")};
+    const report={phase:(text)=>events.push(text),close:()=>events.push("closed"),diagnostics:[]};
     const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/notes.txt"]},{headless:true,report,capabilities:caps});
     assert.equal(result.state,"incomplete");
     assert.deepEqual(events,["Checking required tools","Finding images","closed"]);

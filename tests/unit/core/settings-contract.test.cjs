@@ -29,7 +29,7 @@ test("supplied timestamp is optional only by absence",()=>{
     for(const timestamp of [null,false,0,"",[],{},"2026/10/29"]) {
         assert.throws(()=>configurationValues({...DEFAULT_SETTINGS,timestamp}),(error)=>error.issues.some((issue)=>issue.field==="timestamp"));
     }
-    assert.equal(configurationValues({...DEFAULT_SETTINGS,timestamp:"99999999_999999"}).timestamp,"99999999_999999");
+    assert.equal(configurationValues({...DEFAULT_SETTINGS,timestamp:"20240229_010203"}).timestamp,"20240229_010203");
 });
 
 test("defaults are domain values independent of popup order",()=>{

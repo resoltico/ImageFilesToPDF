@@ -27,6 +27,7 @@ function makeJob(app) {
         artifacts: new Map(),
         parts: new Map(),
         cleanupIssues: [],
+        storage: app.storage,
         progress: createProgress([]),
         publication: app.publication,
         sources: app.sources,

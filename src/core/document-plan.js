@@ -3,8 +3,11 @@ const { outputNameForCombined, outputNameForSeparate } = require("./naming.js");
 
 function documentPlan(settings, sources, timestamp) {
     if (sources.length === 0) { return []; }
-    const groups = settings.mode === "separate" ? sources.map((source) => [source]) : [sources];
-    return groups.map((group) => ({ sources: group, destination: group[0].folder +
-        (settings.mode === "separate" ? outputNameForSeparate(group[0], timestamp) : outputNameForCombined(timestamp)) }));
+    if (settings.mode !== "separate") { return [{ sources, destination: sources[0].folder + outputNameForCombined(timestamp) }]; }
+    const names = sources.map((source) => source.folder + outputNameForSeparate(source));
+    const counts = new Map();
+    for (const name of names) { counts.set(name, (counts.get(name) ?? 0) + 1); }
+    return sources.map((source, index) => ({ sources: [source],
+        destination: source.folder + outputNameForSeparate(source, counts.get(names[index]) > 1) }));
 }
 module.exports = { documentPlan };

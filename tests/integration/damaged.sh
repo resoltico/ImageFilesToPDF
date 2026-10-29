@@ -53,7 +53,7 @@ if run_headless "$WORK/combined.json" "$WORK/whole.jpg" "$WORK/cut.jpg"; then
     fail "a combined run published a PDF from a truncated image"
 fi
 
-test ! -e "$WORK/output_20260912_010101.pdf" ||
+test ! -e "$WORK/Images 2026-09-12 at 01.01.01.pdf" ||
     fail "a PDF was published from a run that failed"
 
 grep -q "image is damaged" "$WORK/stderr" ||
@@ -69,8 +69,8 @@ if run_headless "$WORK/separate.json" "$WORK/whole.jpg" "$WORK/cut.jpg"; then
     fail "a run that could not convert everything reported success"
 fi
 
-assert_valid_pdf "$WORK/whole_20260912_020202.pdf"
-test ! -e "$WORK/cut_20260912_020202.pdf" ||
+assert_valid_pdf "$WORK/whole.pdf"
+test ! -e "$WORK/cut.pdf" ||
     fail "a PDF was published for the truncated image"
 
 node - "$WORK/receipt" "$WORK/cut.jpg" <<'NODE'

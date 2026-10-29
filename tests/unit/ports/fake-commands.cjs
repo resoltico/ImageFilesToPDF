@@ -36,6 +36,7 @@ function dispatch(fs, argv, command, host) {
     const handlers = {
         // mktemp terminates its answer with a newline, as the real one does:
         // a caller that does not trim ends up with a path containing one.
+        "/bin/ps": () => argv.includes("-axo") ? "123 Thu Oct 29 10:00:00 2026\n" : "Thu Oct 29 10:00:00 2026\n",
         "/usr/bin/mktemp": () => temporaryDirectory(rest),
         "/usr/bin/printenv": () => {
             throw Object.assign(new Error("unset"), { errorNumber: 1 });

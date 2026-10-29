@@ -1,6 +1,7 @@
 "use strict";
 
-const { releaseArtifact } = require("../core/artifacts.js");
+const { isPublished } = require("../core/artifacts.js");
+const { releaseOwnedArtifact } = require("./workspace.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { keep, clearAway } = require("./recovery.js");
 const { removeOwned } = require("./owned-cleanup.js");
@@ -28,11 +29,6 @@ const { removeOwned } = require("./owned-cleanup.js");
  * to give back. An identity that could not be read is not a match, which is
  * what makes a refused inspection safe.
  */
-function isPublished(published, outcome) {
-    return Boolean(published.identity) &&
-        published.identity === outcome.claimedIdentity &&
-        published.size === outcome.claimedSize;
-}
 
 /*
  * Letting go of both copies, in this order: the drop decides whether runJob
@@ -41,7 +37,7 @@ function isPublished(published, outcome) {
  * out to have published needs exactly the same.
  */
 function settled(job, paths, outcome) {
-    releaseArtifact(job.artifacts, paths.staged);
+    releaseOwnedArtifact(job, paths.staged);
     job.cleanupIssues.push(...clearAway(job.app, outcome));
     removeOwned(job, paths.staged);
     if (job.cleanupIssues.some((issue) => issue.code === ISSUE.cancelled)) { job.progress.requestStop(); }
@@ -64,4 +60,4 @@ function confirm(job, paths, outcome) {
     catch (error) { job.cleanupIssues.push(...issuesOf(error, "cleanup")); }
 }
 
-module.exports = { isPublished, confirm };
+module.exports = { confirm };

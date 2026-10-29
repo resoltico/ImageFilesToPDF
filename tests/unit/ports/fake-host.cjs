@@ -1,4 +1,5 @@
 "use strict";
+const { workspacePort } = require("./fake-workspace.cjs");
 
 const { boundedDialog } = require("./fake-dialogs.cjs");
 
@@ -163,6 +164,7 @@ function createFakeHost(settings = {}) {
         }
     };
 
+    host.storage = workspacePort(host);
     const surface = dialogSurface(host);
 
     surface.displayDialog = boundedDialog(surface.displayDialog);

@@ -1,7 +1,7 @@
 "use strict";
 const { MKTEMP, CP, RMDIR } = require("./backend-executables.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
-const { basename } = require("../core/paths.js");
+const { dirname } = require("../core/paths.js");
 const { runArgv, cleanupArgv, removeFile } = require("./shell.js");
 const RECOVERY_PREFIX = "ImageFilesToPDF-recovered";
 
@@ -28,8 +28,8 @@ function copyRecovery(app, staged, recovered, readFacts) {
     return releaseRecoveredOriginal(app, staged);
 }
 
-function recoveryAttempt(app, staged, folder, readFacts) {
-    const recovered = `${folder}/${basename(staged)}`;
+function recoveryAttempt(app, staged, recovered, readFacts) {
+    const folder = dirname(recovered).replace(/\/$/u, "");
     let outcome = { state: "retained", issues: [] };
     try { outcome = copyRecovery(app, staged, recovered, readFacts); }
     catch (error) { outcome.issues.push(recoveryIssue(error)); }
@@ -39,10 +39,10 @@ function recoveryAttempt(app, staged, folder, readFacts) {
         issues: [...outcome.issues, ...cleanup.filter((result) => result.state === "failed").map((result) => result.issue)] };
 }
 
-function setAside(app, stagedPath, readFacts) {
+function setAside(app, stagedPath, readFacts, intendedName) {
     try {
         const folder = String(runArgv(app, [MKTEMP, "-d", "-t", RECOVERY_PREFIX])).trim();
-        return recoveryAttempt(app, stagedPath, folder, readFacts);
+        return recoveryAttempt(app, stagedPath, `${folder}/${intendedName}`, readFacts);
     } catch (error) {
         return { state: "retained", path: stagedPath, issues: [recoveryIssue(error)] };
     }

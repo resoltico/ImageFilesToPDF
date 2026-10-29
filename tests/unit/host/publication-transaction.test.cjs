@@ -27,7 +27,7 @@ for (const options of [{ files: [staged, target] }, { directories: [target] }, {
     test(`occupied destination ${JSON.stringify(options)} is preserved`, () => {
         const { app, job } = fixture(options);
         const result = publishPdf(job, staged, target);
-        assert.equal(result.path, "/out/result_2.pdf");
+        assert.equal(result.path, "/out/result 2.pdf");
         assert.ok(![...app.files].some((path) => path.startsWith(`${target}/`)));
         assert.ok(!app.commands.some((command) => command.includes("'/bin/ln'")));
     });
@@ -37,9 +37,9 @@ for (const state of ["denied", "unknown"]) {
     test(`${state} is a publication failure, not a collision retry`, () => {
         const { job } = fixture();
         let calls = 0;
-        job.publication.link = () => { calls += 1; return { state, diagnostic: { code: 13 } }; };
+        job.publication.link = (from, to) => { if (to.startsWith("/out/")) { calls += 1; } return { state, diagnostic: { code: 13 } }; };
         assert.throws(() => publishPdf(job, staged, target), (error) => {
-            assert.ok(error.recovery.endsWith("ready.pdf"));
+            assert.ok(error.recovery.endsWith("result.pdf"));
             assert.equal(error.issues[0].code, "publication");
             return true;
         });
@@ -116,7 +116,7 @@ test("exhausted collision search is bounded and preserves validated work",()=>{
     let calls=0;
     job.publication.link=()=>{calls+=1;return {state:"exists"};};
     assert.throws(()=>publishPdf(job,staged,target),/unique output filename/u);
-    assert.equal(calls,9999);
+    assert.equal(calls,19998);
 });
 
 test("stop during destination copy retains recovery and clears only the owned area",()=>{

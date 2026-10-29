@@ -55,15 +55,14 @@ test("a value that is not a timestamp is refused, not repaired", () => {
 
     for (const value of refused) {
         assert.equal(isTimestamp(value), false, JSON.stringify(value));
-        assert.throws(() => readTimestamp(value), /must be YYYYMMDD_HHMMSS/u);
+        assert.throws(() => readTimestamp(value), /YYYYMMDD_HHMMSS/u);
     }
 });
 
 test("the refusal says what was wrong and what is wanted", () => {
     assert.throws(() => readTimestamp("2026/09/12"), (error) => {
         assert.match(error.message, /YYYYMMDD_HHMMSS/u);
-        assert.match(error.message, /cannot contain a path/u);
-        assert.match(error.message, /Received: 2026\/09\/12/u);
+        assert.match(error.message, /real local date-time/u);
 
         return true;
     });
@@ -79,4 +78,16 @@ test("anything that is not a string is refused rather than coerced", () => {
     for (const value of [20260904070509, null, undefined, {}, []]) {
         assert.equal(isTimestamp(value), false, String(value));
     }
+});
+
+test("calendar-invalid, overflowing and trailing-data timestamps are refused", () => {
+    for (const value of ["20261399_999999", "20230229_010203", "20260431_010203", "20260101_240000", "20260101_000060", "20260101_010203\n"]) { assert.equal(isTimestamp(value), false, value); }
+    assert.equal(readTimestamp("20240229_010203"), "20240229_010203");
+    const date = new Date(0); date.setFullYear(1, 0, 1); date.setHours(1, 2, 3, 0);
+    assert.equal(makeTimestamp(date), "00010101_010203");
+    assert.equal(isTimestamp("00010101_010203"), true);
+});
+
+test("non-string timestamps are refused without invoking conversion hooks", () => {
+    for (const value of [Symbol("timestamp"), Object.create(null), { toString: null }]) { assert.equal(isTimestamp(value), false); }
 });

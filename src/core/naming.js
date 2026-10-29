@@ -1,100 +1,46 @@
 "use strict";
-
 const { utf8Length, truncateToBytes } = require("./utf8.js");
 const { fileStem, sanitizeFilename } = require("./paths.js");
-
-/*
- * Output filename construction and collision avoidance.
- */
-
+const { readTimestamp } = require("./timestamps.js");
 const MAXIMUM_SUFFIX = 10000;
-
-/*
- * A name is one path component, whoever supplied the parts of it.
- *
- * The stem has always gone through sanitizing and the timestamp never did, so
- * a headless caller's "2026/09/12" put a separator inside a filename and the
- * PDF went somewhere else. Read where it arrives as well -- src/host/
- * input.js -- which is where the caller gets told why; this is the invariant
- * that holds whatever reaches it, the same way stagedPdfPath sanitizes a
- * token it generated itself.
- */
-function outputNameForCombined(timestamp) {
-    return `output_${sanitizeFilename(timestamp)}.pdf`;
-}
-
-/*
- * What one filename may be, in bytes.
- *
- * A path component is 255 bytes on the filesystems macOS puts a Mac's files
- * on -- HFS Plus documents 255 characters, APFS 255 UTF-8 characters, and
- * bytes is the bound that satisfies both. Nothing truncates a name that is
- * over it: the write fails with a complaint about the length, which is a poor
- * answer to "convert this photograph", and a valid source name can produce
- * one because the output name is longer than the name it came from.
- *
- * The suffix is measured rather than assumed, because a headless caller
- * supplies its own timestamp. Room is left for the collision suffix as well:
- * a name that fits only until it needs _2 is a name that fits until the
- * second run.
- */
 const FILENAME_BUDGET_BYTES = 255;
 const COLLISION_RESERVE_BYTES = 5;
+const EXTENSION = ".pdf";
+
+function outputNameForCombined(timestamp) {
+    const text = readTimestamp(timestamp);
+    const yearEnd = 4;
+    const monthEnd = 6;
+    const dayEnd = 8;
+    const hourStart = 9;
+    const hourEnd = 11;
+    const minuteEnd = 13;
+    return `Images ${text.slice(0, yearEnd)}-${text.slice(yearEnd, monthEnd)}-${text.slice(monthEnd, dayEnd)} at ` +
+        `${text.slice(hourStart, hourEnd)}.${text.slice(hourEnd, minuteEnd)}.${text.slice(minuteEnd)}.pdf`;
+}
 
 function boundedStem(stem, suffix) {
-    const budget =
-        FILENAME_BUDGET_BYTES - utf8Length(suffix) - COLLISION_RESERVE_BYTES;
+    const budget = FILENAME_BUDGET_BYTES - utf8Length(suffix) - COLLISION_RESERVE_BYTES;
     const kept = truncateToBytes(stem, Math.max(budget, 0));
-
-    // Cutting can leave the trailing underscore or dot that sanitizing exists
-    // to remove, so what is left goes through it again.
     return kept === stem ? stem : sanitizeFilename(kept);
 }
 
-function outputNameForSeparate(record, timestamp) {
-    const suffix = `_${sanitizeFilename(timestamp)}.pdf`;
-    const stem = sanitizeFilename(fileStem(record.originalName));
-
-    return `${boundedStem(stem, suffix)}${suffix}`;
+function outputNameForSeparate(record, distinguish = false) {
+    const dot = record.originalName.lastIndexOf(".");
+    const extension = record.originalName.slice(dot + 1).toLowerCase();
+    const suffix = `${distinguish ? `-${extension}` : ""}${EXTENSION}`;
+    return `${boundedStem(sanitizeFilename(fileStem(record.originalName)), suffix)}${suffix}`;
 }
 
-const EXTENSION = ".pdf";
-
-/*
- * The name without its extension.
- *
- * Read off the end rather than matched. A pattern over the whole path made
- * the directories part of the question: a folder with a newline in its name
- * -- which is a legal folder, and which this action handles everywhere else
- * -- stopped the pattern reaching the extension at all, and a second file of
- * the same name could not be given its suffix.
- */
 function stemOf(path) {
-    const tail = path.slice(-EXTENSION.length);
-
-    if (tail.toLowerCase() !== EXTENSION) {
-        throw new Error(`Cannot generate a unique PDF path for: ${path}`);
-    }
-
+    if (path.slice(-EXTENSION.length).toLowerCase() !== EXTENSION) { throw new Error(`Cannot generate a unique PDF path for: ${path}`); }
     return path.slice(0, -EXTENSION.length);
 }
 
-/*
- * Never overwrite: append _2, _3 and so on until the path is free. The caller
- * supplies the existence predicate so this stays pure.
- */
+/** Existing entries are never replaced; exclusive publication applies every suffix. */
 function collisionPath(initialPath, attempt) {
-    return attempt === 1 ? initialPath : `${stemOf(initialPath)}_${attempt}${initialPath.slice(-EXTENSION.length)}`;
+    return attempt === 1 ? initialPath : `${stemOf(initialPath)} ${attempt}${initialPath.slice(-EXTENSION.length)}`;
 }
 
-function stagedPdfPath(workspace, token) {
-    return `${workspace}/staged-${sanitizeFilename(String(token))}.pdf`;
-}
-
-module.exports = {
-    collisionPath,
-    MAXIMUM_SUFFIX,
-    outputNameForCombined,
-    outputNameForSeparate,
-    stagedPdfPath
-};
+function stagedPdfPath(workspace, token) { return `${workspace}/staged-${sanitizeFilename(String(token))}.pdf`; }
+module.exports = { collisionPath, MAXIMUM_SUFFIX, outputNameForCombined, outputNameForSeparate, stagedPdfPath };

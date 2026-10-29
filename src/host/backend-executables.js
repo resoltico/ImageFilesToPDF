@@ -14,6 +14,7 @@
  * built artifact was trying to approximate by pattern-matching strings.
  */
 
+const PS = "/bin/ps";
 const CP = "/bin/cp";
 const MKDIR = "/bin/mkdir";
 const RM = "/bin/rm";
@@ -23,10 +24,11 @@ const MKTEMP = "/usr/bin/mktemp";
 const PRINTENV = "/usr/bin/printenv";
 
 const EXECUTABLES = [
-    CP, MKDIR, RM, RMDIR, TEST, MKTEMP, PRINTENV
+    PS, CP, MKDIR, RM, RMDIR, TEST, MKTEMP, PRINTENV
 ];
 
 module.exports = {
+    PS,
     CP,
     MKDIR,
     RM,

@@ -68,3 +68,23 @@ assert_valid_pdf() {
         exit 1
     fi
 }
+
+receipt_recovery() {
+    node - "$1" <<'NODE'
+const fs = require("node:fs");
+const receipt = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const recovered = receipt.documents.find((document) => document.recovery);
+if (!recovered) { process.exit(1); }
+process.stdout.write(recovered.recovery);
+NODE
+}
+
+# Only a confirmed file from this run is ours; Downloads itself is never cleanup.
+remove_test_recovery() {
+    local recovered=$1 parent
+    parent=$(dirname "$recovered")
+    rm -f -- "$recovered"
+    case "$parent" in
+        */ImageFilesToPDF-recovered.*) rmdir "$parent" ;;
+    esac
+}

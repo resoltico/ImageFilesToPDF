@@ -60,6 +60,7 @@ function prepareDocument(ports, plan, context, queue) {
 
 function validateDocument(ports, plan, context) {
     context.stage = "validation";
+    ports.beforeValidation(context.artifact.path);
     context.artifact.state = "validating";
     ports.validate(context.artifact.path, plan.sources.length);
     context.record.state = "validated";

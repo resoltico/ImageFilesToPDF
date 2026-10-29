@@ -138,6 +138,7 @@ function createFakeApp(responses = []) {
                 throw new Error("test failed");
             }
 
+            if (command.includes("'/bin/ps'")) { return command.includes("-axo") ? "123 Thu Oct 29 10:00:00 2026" : "Thu Oct 29 10:00:00 2026"; }
             return cannedAnswer(app, command) ?? "";
         }
     };

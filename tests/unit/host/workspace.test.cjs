@@ -9,12 +9,14 @@ const {
 } = require("../../../src/host/workspace.js");
 const { createFakeApp, failing } = require("../ports/fake-app.cjs");
 
+const { workspacePort } = require("../ports/fake-workspace.cjs");
+const storage=workspacePort({files:new Set()});
 const GOOD = "/var/folders/xx/T/ImageFilesToPDF.AbC123";
 
 test("createWorkspace accepts a well-formed mktemp path", () => {
     const app = createFakeApp([["mktemp", `${GOOD}\n`]]);
 
-    assert.equal(createWorkspace(app), GOOD);
+    assert.equal(createWorkspace(app, storage), GOOD);
     assert.match(app.commands[0], /'-d' '-t' 'ImageFilesToPDF'/u);
 });
 
@@ -25,7 +27,7 @@ test("createWorkspace refuses a surprising mktemp result", () => {
         const app = createFakeApp([["mktemp", bad]]);
 
         assert.throws(
-            () => createWorkspace(app),
+            () => createWorkspace(app, storage),
             /unexpected workspace path/u,
             `expected ${bad} to be rejected`
         );
@@ -81,7 +83,7 @@ test("the workspace guard anchors at the end of the path", () => {
 test("createWorkspace applies the same anchoring", () => {
     const app = createFakeApp([["mktemp", `${GOOD}/deeper`]]);
 
-    assert.throws(() => createWorkspace(app), /unexpected workspace path/u);
+    assert.throws(() => createWorkspace(app, storage), /unexpected workspace path/u);
 });
 
 test("a workspace that cannot be made says what was being attempted", () => {
@@ -90,7 +92,7 @@ test("a workspace that cannot be made says what was being attempted", () => {
     const app = createFakeApp([["mktemp", failing("no space left on device")]]);
 
     assert.throws(
-        () => createWorkspace(app),
+        () => createWorkspace(app, storage),
         /creating temporary workspace/u
     );
 });

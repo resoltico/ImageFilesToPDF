@@ -32,8 +32,8 @@ render() {
     write_config "$WORK/config.json" A4 Portrait "combined" "$2" "$1"
     osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$3" \
         >/dev/null 2>&1
-    assert_valid_pdf "$WORK/output_$1.pdf"
-    pdftoppm -f 1 -singlefile -r 10 -png "$WORK/output_$1.pdf" "$WORK/$4" \
+    assert_valid_pdf "$WORK/$(combined_name "$1")"
+    pdftoppm -f 1 -singlefile -r 10 -png "$WORK/$(combined_name "$1")" "$WORK/$4" \
         >/dev/null 2>&1
 }
 

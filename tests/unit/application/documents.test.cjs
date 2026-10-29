@@ -13,7 +13,7 @@ test("plan groups ordered sources and chooses per-source destinations", () => {
     assert.equal(combined.plans.length, 1);
     assert.deepEqual(combined.plans[0].sources.map((source) => source.path), ["/source/0.png", "/source/1.png"]);
     const separate = fixture(2, { mode: "separate" });
-    assert.deepEqual(separate.plans.map((plan) => plan.destination), ["/out/0_20261029_123456.pdf", "/out/1_20261029_123456.pdf"]);
+    assert.deepEqual(separate.plans.map((plan) => plan.destination), ["/out/0.pdf", "/out/1.pdf"]);
     assert.deepEqual(documentPlan({ mode: "combined" }, [], "stamp"), []);
 });
 
@@ -26,7 +26,7 @@ for (const [count, size, argv, expected] of [
         const sample = fixture(count, { size, argv });
         const result = executeDocuments(sample.ports, sample.plans);
         assert.equal(result[0].state, "saved");
-        assert.equal(result[0].output, "/out/output_20261029_123456.pdf.actual");
+        assert.equal(result[0].output, "/out/Images 2026-10-29 at 12.34.56.pdf.actual");
         assert.equal(result[0].pages, count);
         assert.deepEqual(sample.events.filter(([kind]) => kind === "import").map(([, pages]) => pages.length), expected);
         assert.equal(sample.owned.size, 0);
@@ -111,7 +111,7 @@ test("a failed flush also releases the just-prepared page outside the queued bat
 
 test("source mappings, ordered page arguments and semantic failure stages are retained",()=>{
     const sample=fixture(3);const records=executeDocuments(sample.ports,sample.plans);
-    assert.deepEqual(records,[{state:"saved",sources:["/source/0.png","/source/1.png","/source/2.png"],pages:3,issues:[],output:"/out/output_20261029_123456.pdf.actual"}]);
+    assert.deepEqual(records,[{state:"saved",sources:["/source/0.png","/source/1.png","/source/2.png"],pages:3,issues:[],output:"/out/Images 2026-10-29 at 12.34.56.pdf.actual"}]);
     assert.deepEqual(sample.events.find(([kind])=>kind==="import")[1],["/work/0.jpg","/work/1.jpg","/work/2.jpg"]);
     for(const stage of ["validate","publish"]) {
         const failed=fixture(1,{ports:{[stage]:()=>{throw new OperationError("refused");}}});
@@ -148,10 +148,10 @@ test("a combined source failure names the responsible original input",()=>{
 
 test("malformed issue arrays cannot discard earlier confirmed outputs",()=>{
     const sample=fixture(3,{mode:"separate"});const {publish} = sample.ports;
-    sample.ports.publish=(staged,path)=>{if(path.includes("/1_")){const error=new Error("bug");error.issues=[null];throw error;}return publish(staged,path);};
+    sample.ports.publish=(staged,path)=>{if(path.endsWith("/1.pdf")){const error=new Error("bug");error.issues=[null];throw error;}return publish(staged,path);};
     const result=executeDocuments(sample.ports,sample.plans);
     assert.deepEqual(result.map((record)=>record.state),["saved","recovered","not-started"]);
-    assert.equal(result[1].issues[0].code,"fault");assert.equal(result[0].output,"/out/0_20261029_123456.pdf.actual");
+    assert.equal(result[1].issues[0].code,"fault");assert.equal(result[0].output,"/out/0.pdf.actual");
 });
 
 
@@ -176,4 +176,16 @@ test("assembly failure leaves the candidate disposable and prevents validation",
     assert.equal(record.issues[0].stage, "assembly");
     assert.equal(sample.artifacts.get("/work/0.pdf").state, "building");
     assert.ok(!sample.events.some(([kind]) => kind === "validate"));
+});
+
+test("retain is established before validation and a retention failure prevents validation", () => {
+    const sample = fixture(1);
+    executeDocuments(sample.ports, sample.plans);
+    const kinds = sample.events.map(([kind]) => kind);
+    assert.ok(kinds.indexOf("retain") < kinds.indexOf("validate"));
+    const failed = fixture(1, { ports: { beforeValidation() { throw new OperationError("retain write failed"); } } });
+    const [record] = executeDocuments(failed.ports, failed.plans);
+    assert.equal(record.state, "failed");
+    assert.equal(failed.artifacts.get("/work/0.pdf").state, "building");
+    assert.ok(!failed.events.some(([kind]) => kind === "validate"));
 });

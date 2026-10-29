@@ -11,6 +11,8 @@ const { collectInvocation } = require("./input.js");
 const { inspectCandidates } = require("./source-inspection.js");
 const { collectImageFiles } = require("./admission.js");
 const { createTree } = require("./tree.js");
+const { workspaceAccess } = require("./workspace-access.js");
+const { reclaimWorkspaces } = require("./workspace.js");
 const { sourceAccess } = require("./source-capture.js");
 const { nativePublication } = require("./native-publication.js");
 const { openProgress } = require("./surfaces.js");
@@ -23,7 +25,7 @@ const { showCompletion } = require("./completion.js");
 
 function hostCapabilities() {
     const tree = createTree(globalThis.ObjC, globalThis.$, globalThis.Ref);
-    return { tree, sources: sourceAccess(globalThis.ObjC, globalThis.$),
+    return { tree, storage: workspaceAccess(globalThis.ObjC, globalThis.$), sources: sourceAccess(globalThis.ObjC, globalThis.$),
         publication: nativePublication(globalThis.ObjC, globalThis.$) };
 }
 
@@ -32,8 +34,9 @@ function prepare(app, input, options) {
     const tools = checkTools(app);
     const invocation = options.headless ? input : collectInvocation(app, input);
     const capabilities = options.capabilities ?? hostCapabilities();
-    const { tree, sources, publication } = capabilities;
-    if (!tree || !sources || !publication || ["facts", "readable", "capture", "pngCount"].some((method) => typeof sources[method] !== "function")) { throw new OperationError("Required filesystem/source capabilities are unavailable."); }
+    const { tree, sources, publication, storage } = capabilities;
+    if (!tree || !sources || !publication || !storage || ["facts", "readable", "capture", "pngCount"].some((method) => typeof sources[method] !== "function")) { throw new OperationError("Required filesystem/source capabilities are unavailable."); }
+    options.report.diagnostics.push(...reclaimWorkspaces(app, storage));
     options.report.phase("Finding images");
     const selected = collectImageFiles(app, invocation.inputItems, tree);
     const selection = inspectCandidates(app, selected, { tools, sources, progress: options.report });
@@ -41,7 +44,7 @@ function prepare(app, input, options) {
 }
 
 function jobFor(app, request, settings, report) {
-    const job = createJob(app, settings, request.invocation.timestamp || makeTimestamp(new Date()), request.tools);
+    const job = createJob(app, settings, request.invocation.timestamp || makeTimestamp(new Date()), request);
     Object.assign(job, { sources: request.sources, publication: request.publication, progress: report });
     const images = request.selection.images.length;
     report.expect({ units: unitsOf(settings, images), images });
