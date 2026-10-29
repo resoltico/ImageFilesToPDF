@@ -16,9 +16,10 @@ function fixture(failures=[]){
     return {app,job};
 }
 
-for(const path of ["input-0","-prepared.v"]){
+for(const path of ["input-0","-page.png.v"]){
     test(`failed owned cleanup ${path} stops before more capture or publication`,()=>{
         const {app,job}=fixture([["'/bin/rm' '-f'",(command)=>command.includes(path)?new Error("denied"):undefined]]);
+        if (path.endsWith(".v")) { app.bands = 4; }
         const result=runJob(job,[imageOf("/a/1.png"),imageOf("/a/2.png")]);
         assert.equal(result.state,"incomplete");assert.deepEqual(result.documents.map((record)=>record.state),["failed","not-started"]);
         assert.equal(result.documents[0].fatal,true);assert.equal(result.documents[0].issues[0].code,"cleanup");
@@ -28,7 +29,7 @@ for(const path of ["input-0","-prepared.v"]){
 }
 
 test("cleanup after import fails closed before validation and preserves a bounded queue",()=>{
-    const {app,job}=fixture([["'/bin/rm' '-f'",(command)=>command.includes("-page.jpg")?new Error("denied"):undefined]]);
+    const {app,job}=fixture([["'/bin/rm' '-f'",(command)=>command.includes("-page.png")?new Error("denied"):undefined]]);
     const result=runJob(job,[imageOf("/a/1.png"),imageOf("/a/2.png")]);
     assert.equal(result.documents[0].issues[0].stage,"cleanup");
     assert.ok(!app.commands.some((command)=>command.includes("'validate'")));

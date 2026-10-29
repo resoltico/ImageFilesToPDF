@@ -1,4 +1,5 @@
 "use strict";
+const { registerArtifact } = require("../core/artifacts.js");
 const { OperationError } = require("../core/errors.js");
 
 const {
@@ -15,12 +16,16 @@ const { verifyFileWritten } = require("./asking.js");
  * code that the PDF is what it asked for before anybody publishes it.
  */
 
-function importBatch(job, stagedPath, pages) {
-    runArgv(
-        job.app,
-        buildPdfcpuImportArgv(job.tools.pdfcpu, stagedPath, pages, job.geometry),
-        "creating PDF"
-    );
+function partPdfPath(staged, index) { return `${staged}.part-${index}.pdf`; }
+
+function importBatch(job, stagedPath, pages, placement) {
+    const parts = job.parts.get(stagedPath);
+    const path = partPdfPath(stagedPath, parts.length);
+    registerArtifact(job.artifacts, path);
+    runArgv(job.app, buildPdfcpuImportArgv(job.tools.pdfcpu, path, pages,
+        { geometry: job.geometry, placement, background: job.settings.background }), "creating PDF pages");
+    verifyFileWritten(job.app, path, "PDF pages");
+    parts.push(path);
 }
 
 /*
@@ -53,4 +58,4 @@ function validatePdf(job, stagedPath, expected) {
     runArgv(job.app, buildPdfcpuValidateArgv(job.tools.pdfcpu, stagedPath), "validating PDF");
 }
 
-module.exports = { importBatch, validatePdf };
+module.exports = { partPdfPath, importBatch, validatePdf };

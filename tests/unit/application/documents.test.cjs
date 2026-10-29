@@ -154,3 +154,26 @@ test("malformed issue arrays cannot discard earlier confirmed outputs",()=>{
     assert.equal(result[1].issues[0].code,"fault");assert.equal(result[0].output,"/out/0_20261029_123456.pdf.actual");
 });
 
+
+test("consecutive placement groups flush separately before assembly and validation", () => {
+    const sample = fixture(4);
+    const { prepare } = sample.ports;
+    sample.ports.prepare = (source, index) => ({ ...prepare(source, index), group: index < 2 ? "large" : "small", placement: { relativeScale: index < 2 ? 1 : 0.5 } });
+    const groups = [];
+    const imported = sample.ports.import;
+    sample.ports.import = (staged, pages, placement) => { groups.push(placement.relativeScale); imported(staged, pages); };
+    assert.equal(executeDocuments(sample.ports, sample.plans)[0].state, "saved");
+    assert.deepEqual(groups, [1, 0.5]);
+    const kinds = sample.events.map(([kind]) => kind);
+    assert.ok(kinds.indexOf("assemble") < kinds.indexOf("validate"));
+    assert.ok(kinds.indexOf("validate") < kinds.indexOf("publish"));
+});
+
+test("assembly failure leaves the candidate disposable and prevents validation", () => {
+    const sample = fixture(1, { ports: { assemble() { throw new OperationError("merge failed"); } } });
+    const [record] = executeDocuments(sample.ports, sample.plans);
+    assert.equal(record.state, "failed");
+    assert.equal(record.issues[0].stage, "assembly");
+    assert.equal(sample.artifacts.get("/work/0.pdf").state, "building");
+    assert.ok(!sample.events.some(([kind]) => kind === "validate"));
+});

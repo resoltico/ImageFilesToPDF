@@ -56,8 +56,9 @@ fi
 test ! -e "$WORK/output_20260912_010101.pdf" ||
     fail "a PDF was published from a run that failed"
 
-grep -q "premature end" "$WORK/stderr" ||
+grep -q "image is damaged" "$WORK/stderr" ||
     fail "the failure does not say what was wrong with the file"
+grep -q "premature end" "$WORK/receipt" || fail "the decoding diagnostic was lost"
 
 # ---------------------------------------------------------------------------
 # Separate: the damaged image is reported, and its valid sibling still converts
@@ -76,7 +77,7 @@ node - "$WORK/receipt" "$WORK/cut.jpg" <<'NODE'
 const fs = require("node:fs");
 const receipt = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const failed = receipt.documents.find((document) => document.sources.includes(process.argv[3]));
-if (!failed || failed.state !== "failed" || failed.issues.length === 0) {
+if (!failed || failed.state !== "failed" || failed.issues[0]?.code !== "damaged") {
     throw new Error("the receipt does not map the damaged source to its failure");
 }
 NODE

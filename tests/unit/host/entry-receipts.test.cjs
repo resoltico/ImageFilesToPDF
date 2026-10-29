@@ -56,7 +56,7 @@ test("separate mode and unmeasurable prepared pages produce truthful entry outco
     const complete=fixture({failures:[["'/bin/cat'",separate]]});
     assert.equal(run(["--headless","/config","/source.png"]),0);
     assert.equal(JSON.parse(complete.output[0]).state,"complete");
-    const broken=fixture({failures:[["'/bin/cat'",config],["-page.jpg'",new Error("stat denied")]]});
+    const broken=fixture({failures:[["'/bin/cat'",config],["-page.png'",new Error("stat denied")]]});
     run(["--headless","/config","/source.png"]);
     assert.equal(JSON.parse(broken.output[0]).documents[0].state,"failed");
 });

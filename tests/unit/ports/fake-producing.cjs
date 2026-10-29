@@ -38,8 +38,15 @@ function produceRaster(state, argv) {
 }
 
 function produceOutput(state, argv, command) {
-    if (!command.includes("pdfcpu")) { return produceRaster(state, argv); }
+    if (!command.includes("pdfcpu")) { return argv[1] === "avg" ? "0" : produceRaster(state, argv); }
 
+    if (argv[1] === "merge") {
+        const target = argv[argv.indexOf("--") + 1];
+        const parts = argv.slice(argv.indexOf("--") + 2);
+        state.files.add(target);
+        state.pages.set(target, parts.reduce((count, part) => count + (state.pages.get(part) ?? 0), 0));
+        return "";
+    }
     if (argv[1] === "import") {
         importPages(state, argv);
 

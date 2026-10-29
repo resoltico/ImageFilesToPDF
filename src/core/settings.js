@@ -1,6 +1,6 @@
 "use strict";
 const { normalizeColour, COLOUR_ERROR } = require("./colour.js");
-const { PAGE_DEFINITIONS, MINIMUM_DPI, MAXIMUM_DPI, MINIMUM_QUALITY, MAXIMUM_QUALITY } = require("./limits.js");
+const { PAGE_DEFINITIONS, MINIMUM_RESOLUTION_LIMIT, MAXIMUM_RESOLUTION_LIMIT, MINIMUM_QUALITY, MAXIMUM_QUALITY } = require("./limits.js");
 
 const SETTINGS_SCHEMA = Object.freeze({
     paperSize: { name: "Paper size", default: "A4", choices: Object.keys(PAGE_DEFINITIONS).map((value) => ({ value, label: value === "Letter" ? "US Letter" : value })) },
@@ -8,7 +8,7 @@ const SETTINGS_SCHEMA = Object.freeze({
     mode: { name: "PDF files", default: "combined", choices: [
         { value: "combined", label: "One PDF — one image per page" }, { value: "separate", label: "Separate PDFs — one page per image" }
     ] },
-    resolutionLimit: { name: "Maximum resolution", default: 300, minimum: MINIMUM_DPI, maximum: MAXIMUM_DPI, hint: `${MINIMUM_DPI}–${MAXIMUM_DPI} ppi` },
+    resolutionLimit: { name: "Maximum resolution", default: 300, minimum: MINIMUM_RESOLUTION_LIMIT, maximum: MAXIMUM_RESOLUTION_LIMIT, hint: `${MINIMUM_RESOLUTION_LIMIT}–${MAXIMUM_RESOLUTION_LIMIT} ppi` },
     quality: { name: "JPEG quality", default: 92, minimum: MINIMUM_QUALITY, maximum: MAXIMUM_QUALITY, hint: `${MINIMUM_QUALITY}–${MAXIMUM_QUALITY}, JPEG re-encoding only` },
     background: { name: "Page background", default: "#FFFFFF", hint: "or type #RRGGBB", choices: [
         { name: "White", value: "#FFFFFF" }, { name: "Black", value: "#000000" },

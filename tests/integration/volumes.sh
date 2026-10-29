@@ -60,7 +60,7 @@ assert_nothing_left_behind() {
 
 if attach_test_volume APFS "$VOLUME_NAME" "$VOLUME"; then
     cp "$WORK/photo.png" "$VOLUME/"
-    run 20260907_020202 single "$VOLUME/photo.png"
+    run 20260907_020202 combined "$VOLUME/photo.png"
 
     CROSS="$VOLUME/output_20260907_020202.pdf"
     assert_valid_pdf "$CROSS"
@@ -78,7 +78,7 @@ fi
 VOLUME="$WORK/mount-HFS"
 if attach_test_volume "HFS+" "$VOLUME_NAME" "$VOLUME"; then
     cp "$WORK/photo.png" "$VOLUME/"
-    run 20260907_020203 single "$VOLUME/photo.png"
+    run 20260907_020203 combined "$VOLUME/photo.png"
     assert_valid_pdf "$VOLUME/output_20260907_020203.pdf"
     assert_nothing_left_behind "$VOLUME"
     run 20260907_020204 separate "$VOLUME/photo.png"

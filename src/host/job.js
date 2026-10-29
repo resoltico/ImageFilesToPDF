@@ -12,7 +12,8 @@ const { registerArtifact, hasRetainedArtifacts } = require("../core/artifacts.js
 const { stagedPdfPath } = require("../core/naming.js");
 const { preparePage } = require("./pages.js");
 const { removeOwned, requireReleasedResources } = require("./owned-cleanup.js");
-const { importBatch, validatePdf } = require("./staging.js");
+const { partPdfPath, importBatch, validatePdf } = require("./staging.js");
+const { assemblePdf } = require("./assembly.js");
 const { publishPdf } = require("./publish.js");
 const { buildPdfcpuImportArgv } = require("../backend/pdfcpu.js");
 const { commandLengthOf, COMMAND_BUDGET_BYTES } = require("../backend/batching.js");
@@ -45,6 +46,7 @@ function createJob(app, settings, timestamp, tools) {
         workspace: createWorkspace(app),
         // Authoritative artifact lifecycles, registered before PDF bytes exist.
         artifacts: new Map(),
+        parts: new Map(),
         cleanupIssues: [],
         // Reports nowhere until the composition root supplies run progress.
         progress: createProgress([]),
@@ -56,21 +58,27 @@ function createJob(app, settings, timestamp, tools) {
 
 function documentPorts(job) {
     return {
-        allocate: (index) => registerArtifact(job.artifacts, stagedPdfPath(job.workspace, index)),
+        allocate(index) {
+            const artifact = registerArtifact(job.artifacts, stagedPdfPath(job.workspace, index));
+            job.parts.set(artifact.path, []);
+            return artifact;
+        },
         beginning: (source, index, documentIndex) => job.progress.beginning(documentIndex + index + 1, source.originalName),
         prepare(source, index) {
             requireReleasedResources(job);
-            const path = preparePage(job, source, index);
+            const page = preparePage(job, source, index);
+            const { path } = page;
             requireReleasedResources(job);
             const {size} = job.publication.facts(path);
             if (size < 0) { removeOwned(job, path); throw new OperationError("Page size is unknown."); }
-            return { path, size };
+            return { ...page, size, group: page.placement.relativeScale };
         },
-        fits: (staged, pages) => commandLengthOf(buildPdfcpuImportArgv(job.tools.pdfcpu, staged, pages, job.geometry)) <= COMMAND_BUDGET_BYTES,
-        import(staged, pages) {
+        fits: (staged, pages, placement) => commandLengthOf(buildPdfcpuImportArgv(job.tools.pdfcpu, partPdfPath(staged, job.parts.get(staged).length), pages, { geometry: job.geometry, placement, background: job.settings.background })) <= COMMAND_BUDGET_BYTES,
+        import(staged, pages, placement) {
             job.progress.phase("Creating PDF");
-            importBatch(job, staged, pages);
+            importBatch(job, staged, pages, placement);
         },
+        assemble: (staged) => assemblePdf(job, staged),
         validate(staged, expected) {
             requireReleasedResources(job);
             validatePdf(job, staged, expected);

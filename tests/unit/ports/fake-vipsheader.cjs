@@ -6,7 +6,7 @@
  * on the tool name alone would answer them all with the same number.
  */
 function headerField(host, command) {
-    if (command.includes("'-a'")) { return `vips-loader: ${host.loader ?? "pngload"}\n`; }
+    if (command.includes("'-a'")) { return `vips-loader: ${host.loader ?? "pngload"}\nwidth: ${host.width ?? 600}\nheight: ${host.height ?? 400}\nbands: ${host.bands}\norientation: ${host.orientation ?? 1}\nn-pages: ${host.pages ?? 1}\ninterpretation: srgb\n`; }
     if (command.includes("'orientation'")) {
         return String(host.orientation ?? 1);
     }

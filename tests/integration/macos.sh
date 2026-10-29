@@ -63,7 +63,7 @@ test ! -e "$WORK/output_20260904_010203_2.pdf"
 COMBINED="$WORK/output_20260904_010203.pdf"
 assert_valid_pdf "$COMBINED"
 test "$(pdfinfo "$COMBINED" | awk '/^Pages:/ {print $2}')" = 2
-assert_page_size "$COMBINED" "595.28 x 841.89 pts (A4)" "combined PDF is not exactly A4"
+assert_page_size "$COMBINED" "595.276 x 841.89 pts (A4)" "combined PDF is not exactly A4"
 
 pdftoppm -f 1 -singlefile -r 10 -png "$COMBINED" "$WORK/first" >/dev/null 2>&1
 assert_pixel "$WORK/first.png" 30 42 223 41 53 28 \

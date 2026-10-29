@@ -31,14 +31,14 @@ function pageQueue(ports, context) {
     const flush = () => {
         if (pages.length > 0) {
             context.stage = "import";
-            ports.import(context.artifact.path, pages.map((page) => page.path));
+            ports.import(context.artifact.path, pages.map((page) => page.path), pages[0].placement);
             clear();
         }
     };
     return { clear, flush, add(page) {
         try {
-            if (pages.length > 0 && (bytes + page.size > MAX_QUEUED_BYTES ||
-                !ports.fits(context.artifact.path, [...pages, page].map((entry) => entry.path)))) { flush(); }
+            if (pages.length > 0 && (pages[0].group !== page.group || bytes + page.size > MAX_QUEUED_BYTES ||
+                !ports.fits(context.artifact.path, [...pages, page].map((entry) => entry.path), page.placement))) { flush(); }
             pages.push(page);
             bytes += page.size;
         } catch (error) { failedHandoff(ports, context, page, error); }
@@ -72,6 +72,8 @@ function markFatal(record) {
 
 function finishDocument(ports, plan, context, queue) {
     queue.flush();
+    context.stage = "assembly";
+    ports.assemble(context.artifact.path);
     validateDocument(ports, plan, context);
     context.stage = "publication";
     const saved = ports.publish(context.artifact.path, plan.destination);

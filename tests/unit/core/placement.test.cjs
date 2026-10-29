@@ -69,14 +69,14 @@ test("placement never depends on the resolution", () => {
     assert.equal(new Set(points).size, 1, points.join(" "));
 });
 
-test("the pixel canvas for the placement does follow the resolution", () => {
+test("raising the resolution ceiling does not upsample a source", () => {
     // Physical size is fixed; sampling density is what ppi selects.
     const source = { width: 300, height: 200 };
     const at72 = calculatePlacement(calculatePageGeometry(settings({ resolutionLimit: 72 })), source);
     const at144 = calculatePlacement(calculatePageGeometry(settings({ resolutionLimit: 144 })), source);
 
     assert.equal(at72.widthPixels, 300);
-    assert.equal(at144.widthPixels, 600, "twice the resolution, twice the pixels");
+    assert.equal(at144.widthPixels, 300, "source pixels cap the embedded dimensions");
     assert.equal(at72.widthPoints, at144.widthPoints);
 });
 

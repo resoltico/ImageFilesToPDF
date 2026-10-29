@@ -45,7 +45,7 @@ run() {
     shift 2
     write_config "$WORK/config.json" A4 Portrait "$mode" "#FFFFFF" "$stamp"
     osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$@" \
-        2>"$WORK/error.txt" || true
+        >"$WORK/receipt.json" 2>"$WORK/error.txt" || true
 }
 
 # The place a publication makes for itself is hidden and named for the attempt
@@ -66,7 +66,7 @@ assert_nothing_left_behind() {
 
 if attach_test_volume "MS-DOS FAT32" "$FAT_NAME" "$FAT_VOLUME"; then
     cp "$WORK/photo.png" "$FAT_VOLUME/"
-    run 20260907_050505 single "$FAT_VOLUME/photo.png"
+    run 20260907_050505 combined "$FAT_VOLUME/photo.png"
 
     FLAT="$FAT_VOLUME/output_20260907_050505.pdf"
     assert_valid_pdf "$FLAT"
@@ -76,7 +76,7 @@ if attach_test_volume "MS-DOS FAT32" "$FAT_NAME" "$FAT_VOLUME"; then
     # and neither is one held by a link with nothing at the end of it, which
     # is the shape that reads as free to everything except the taking.
     printf 'someone elses document' > "$FAT_VOLUME/output_20260907_060606.pdf"
-    run 20260907_060606 single "$FAT_VOLUME/photo.png"
+    run 20260907_060606 combined "$FAT_VOLUME/photo.png"
 
     test "$(cat "$FAT_VOLUME/output_20260907_060606.pdf")" = "someone elses document" ||
         fail "a file that was already there was overwritten"
@@ -106,7 +106,7 @@ fi
 
 if attach_test_volume "ExFAT" "$EXFAT_NAME" "$EXFAT_VOLUME"; then
     cp "$WORK/photo.png" "$EXFAT_VOLUME/"
-    run 20260907_070707 single "$EXFAT_VOLUME/photo.png"
+    run 20260907_070707 combined "$EXFAT_VOLUME/photo.png"
 
     test ! -e "$EXFAT_VOLUME/output_20260907_070707.pdf" ||
         fail "a name was created on a volume that cannot take one whole"
@@ -114,13 +114,13 @@ if attach_test_volume "ExFAT" "$EXFAT_NAME" "$EXFAT_VOLUME"; then
         fail "something of the run reached the card: $(ls -a "$EXFAT_VOLUME")"
     assert_nothing_left_behind "$EXFAT_VOLUME"
 
-    grep -q '"state":"unsupported"'  "$WORK/error.txt" ||
+    grep -q '"state":"unsupported"' "$WORK/receipt.json" ||
         fail "the message does not say what failed: $(cat "$WORK/error.txt")"
     # What the system said about the operation it actually refused. Measured
     # on exFAT: ln reports "Operation not supported" from beside the
     # destination, which is the capability statement, made by the kernel
     # rather than guessed at here.
-    grep -q 'Operation not supported' "$WORK/error.txt" ||
+    grep -q 'Operation not supported' "$WORK/receipt.json" ||
         fail "the system's own words are missing: $(cat "$WORK/error.txt")"
 
     # The whole point of stopping is that the work survives it.
@@ -134,7 +134,7 @@ if attach_test_volume "ExFAT" "$EXFAT_NAME" "$EXFAT_VOLUME"; then
     test -z "$(find "$EXFAT_VOLUME" -maxdepth 1 -name '*.pdf')" ||
         fail "separate publication left a PDF on exFAT"
     assert_nothing_left_behind "$EXFAT_VOLUME"
-    grep -q '"state":"unsupported"' "$WORK/error.txt" || fail "separate exFAT was not classified"
+    grep -q '"state":"unsupported"' "$WORK/receipt.json" || fail "separate exFAT was not classified"
     KEPT=$(sed -n 's/^\(\/var\/folders\/.*ImageFilesToPDF-recovered[^ ]*\.pdf\).*/\1/p' \
         "$WORK/error.txt" | head -1)
     test -n "$KEPT" || fail "separate exFAT recovery was not named"

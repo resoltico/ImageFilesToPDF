@@ -19,6 +19,7 @@ function fixture(count = 1, options = {}) {
         },
         fits: (ignored, pages) => pages.length <= (options.argv ?? 100),
         import: (staged, pages) => { events.push(["import", pages.slice()]); owned.add(staged); },
+        assemble: (staged) => { events.push(["assemble", staged]); },
         validate: (staged, expected) => { events.push(["validate", staged, expected]); },
         publish: (staged, path) => { events.push(["publish", staged, path]); owned.delete(staged); artifacts.get(staged).state="released"; return { path: `${path}.actual`, issues: [] }; },
         remove: (path) => { events.push(["remove", path]); owned.delete(path); },

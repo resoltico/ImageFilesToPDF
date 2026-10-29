@@ -36,7 +36,7 @@ run() {
     shift
     write_config "$WORK/config.json" A4 Portrait "combined" "#FFFFFF" "$stamp"
     osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$@" \
-        2>"$WORK/error.txt" || true
+        >"$WORK/receipt.json" 2>"$WORK/error.txt" || true
 }
 
 # assert_nothing_left_behind <folder>
@@ -83,7 +83,7 @@ assert_valid_pdf "$WORK/link/output_20260907_040404_2.pdf"
 assert_nothing_left_behind "$WORK/link"
 
 # Existing entry kinds must be left untouched by the actual product, in both modes.
-for mode in single separate; do
+for mode in combined separate; do
     for kind in file directory fifo dangling symlink-directory; do
         CASE="$WORK/occupied-$mode-$kind"
         mkdir "$CASE"
@@ -158,7 +158,7 @@ cp "$WORK/photo.png" "$WORK/denied/"
 chmod +a "$(id -un) deny add_file" "$WORK/denied"
 run 20260907_090909 "$WORK/denied/photo.png"
 
-grep -q '"state":"denied"'  "$WORK/error.txt" ||
+grep -q '"state":"denied"' "$WORK/receipt.json" ||
     fail "the system's own words are missing: $(cat "$WORK/error.txt")"
 grep -qiE 'drive|volume' "$WORK/error.txt" &&
     fail "a cause was named that was not established: $(cat "$WORK/error.txt")"

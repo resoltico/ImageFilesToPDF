@@ -25,6 +25,7 @@ function makeJob(app) {
         timestamp: "20260904_010203",
         workspace: "/tmp/ImageFilesToPDF.X",
         artifacts: new Map(),
+        parts: new Map(),
         cleanupIssues: [],
         progress: createProgress([]),
         publication: app.publication,

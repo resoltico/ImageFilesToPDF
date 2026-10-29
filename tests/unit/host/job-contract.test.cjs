@@ -26,7 +26,7 @@ test("job carries validated settings, exact geometry, ownership and explicit pro
     const {job}=jobFixture();
     assert.equal(job.timestamp,stamp);assert.equal(job.tools,tools);
     assert.deepEqual(job.settings,settings);
-    assert.deepEqual(job.geometry,{widthPixels:595,heightPixels:842,widthPoints:595.2756,heightPoints:841.8898,resolutionLimit:72});
+    assert.deepEqual(job.geometry,{widthPoints:595.2756,heightPoints:841.8898,resolutionLimit:72});
     assert.ok([...job.artifacts.values()].every(artifact=>artifact.state==="released"));
     assert.equal(unitsOf(settings,2),3);assert.equal(unitsOf({...settings,mode:"separate"},2),2);
     job.progress.phase("Checking");assert.deepEqual(job.progress.diagnostics,[]);

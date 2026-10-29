@@ -84,7 +84,7 @@ test("a combined pair exercises the backend command budget before import",()=>{
 test("unknown staged page size fails before import and retains source",()=>{
     const {app,caps}=fixture();
     const {facts} = app.publication;
-    app.publication.facts=(path)=>path.endsWith("-page.jpg")?{identity:"",size:-1}:facts(path);
+    app.publication.facts=(path)=>path.endsWith("-page.png")?{identity:"",size:-1}:facts(path);
     const result=execute(app,["--headless","/config","/source.png"],{headless:true,report:createProgress([]),capabilities:caps});
     assert.equal(result.documents[0].state,"failed");
     assert.match(result.documents[0].issues[0].message,/Page size is unknown/u);
