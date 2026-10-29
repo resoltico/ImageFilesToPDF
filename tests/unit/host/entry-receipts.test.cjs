@@ -82,10 +82,10 @@ test("setup failure closes every progress surface before presenting its structur
     assert.equal(run([["/source.png"],{}]),undefined);
     const [alert]=state.alerts;
     assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","Finished with errors.\nNo PDF was created."]);
-    assert.deepEqual(alert.buttons,["OK"]);
+    assert.deepEqual(alert.buttons,["OK", "Details"]);
     assert.match(alert.accessoryView.documentView.string,/brew install vips pdfcpu/u);
     assert.doesNotMatch(alert.accessoryView.documentView.string,/diagnostic|stack/u);
-    assert.deepEqual(closed,[0]);delete globalThis.Progress;
+    assert.deepEqual(closed,[]);delete globalThis.Progress;
 });
 
 test("the production controller reviews refusals before asking settings",()=>{

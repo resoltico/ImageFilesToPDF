@@ -35,12 +35,26 @@ function revealRecoveries(recoveries) {
     $.NSWorkspace.sharedWorkspace.activateFileViewerSelectingURLs($(recoveries.map((entry) => $.NSURL.fileURLWithPath(entry.location))));
 }
 
+function diagnosticLines(value, label = "") {
+    if (value === null || value === undefined) { return []; }
+    if (typeof value !== "object") { return [`${label}${String(value).replace(/\r\n?/gu, "\n")}`]; }
+    return Object.entries(value).filter(([key]) => key !== "stack").flatMap(([key, entry]) => diagnosticLines(entry, `${label}${key}: `));
+}
+
+function technicalDetails(result) {
+    const issues = [...result.issues, ...result.rejected, ...result.documents.flatMap((document) => [...document.issues, ...(document.diagnostics ?? [])])];
+    return [...result.diagnostics, ...issues.flatMap((issue) => issue.diagnostic ? [{ code: issue.code, stage: issue.stage, ...issue.diagnostic }] : [])]
+        .flatMap((entry) => diagnosticLines(entry)).join("\n");
+}
+
 function showCompletion(app, result) {
     const { showDetails } = require("./details-dialog.js");
     const summary = summarizeRun(result);
-    const buttons = summary.recoveries.length > 0 ? ["OK", "Show in Finder"] : ["OK"];
+    const diagnostics = technicalDetails(result);
+    const buttons = ["OK", ...summary.recoveries.length > 0 ? ["Show in Finder"] : [], ...diagnostics ? ["Details"] : []];
     const response = showDetails(app, { title: APP_NAME, summary: headline(summary), detail: completionMessage(result), buttons });
-    if (response === 1) { revealRecoveries(summary.recoveries); }
+    if (buttons[response] === "Show in Finder") { revealRecoveries(summary.recoveries); }
+    if (buttons[response] === "Details") { showDetails(app, { title: APP_NAME, summary: "Technical details (selectable and copyable)", detail: diagnostics, buttons: ["OK"] }); }
 }
 
 module.exports = { describeRejections, headline, summaryText, completionMessage, showCompletion };

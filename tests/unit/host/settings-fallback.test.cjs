@@ -50,7 +50,7 @@ test("fallback keeps submitted corrections and selection context after a native 
             paperSize: "Letter", orientation: "Landscape", mode: "separate",
             background: "#000000", resolutionLimit: 92, quality: 92
         });
-        assert.match(offered[1].fullDetail, /You have selected 2 images/u);
+        assert.match(offered[1].fullDetail, /2 images →/u);
         assert.match(app.listPrompts[0].options.withPrompt, /You have selected 2 images/u);
         assert.match(app.dialogs.at(-1).message, /Save to: \/Photos\//u);
         assert.equal(app.dialogs[0].options.defaultAnswer, "bad");

@@ -17,13 +17,16 @@ const EDGES = 2;
 const BAR_RADIUS = BAR_HEIGHT / EDGES;
 
 const CONTENT_WIDTH = PANEL_WIDTH - PADDING_X * EDGES;
+const STOP_WIDTH = 72;
+const FOOTER_HEIGHT = 24;
+const BAR_WIDTH = CONTENT_WIDTH - STOP_WIDTH - BAR_GAP;
 
 const PANEL_HEIGHT = PADDING_Y * EDGES +
-    HEADLINE_HEIGHT + HEADLINE_GAP + DETAIL_HEIGHT + BAR_GAP + BAR_HEIGHT;
+    HEADLINE_HEIGHT + HEADLINE_GAP + DETAIL_HEIGHT + BAR_GAP + FOOTER_HEIGHT;
 
 const HEADLINE_BOTTOM = PANEL_HEIGHT - PADDING_Y - HEADLINE_HEIGHT;
 const DETAIL_BOTTOM = HEADLINE_BOTTOM - HEADLINE_GAP - DETAIL_HEIGHT;
-const BAR_BOTTOM = DETAIL_BOTTOM - BAR_GAP - BAR_HEIGHT;
+const BAR_BOTTOM = PADDING_Y + (FOOTER_HEIGHT - BAR_HEIGHT) / EDGES;
 
 function row(bottom, height, width = CONTENT_WIDTH) {
     return { left: PADDING_X, bottom, width, height };
@@ -38,12 +41,12 @@ const PANEL_RECT = Object.freeze({
 
 const HEADLINE_RECT = Object.freeze(row(HEADLINE_BOTTOM, HEADLINE_HEIGHT));
 const DETAIL_RECT = Object.freeze(row(DETAIL_BOTTOM, DETAIL_HEIGHT));
-const TRACK_RECT = Object.freeze(row(BAR_BOTTOM, BAR_HEIGHT));
+const TRACK_RECT = Object.freeze(row(BAR_BOTTOM, BAR_HEIGHT, BAR_WIDTH));
 
 function fillRect(done, total) {
     const fraction = total > 0 ? Math.min(done / total, 1) : 0;
 
-    return row(BAR_BOTTOM, BAR_HEIGHT, CONTENT_WIDTH * fraction);
+    return row(BAR_BOTTOM, BAR_HEIGHT, BAR_WIDTH * fraction);
 }
 
 // NSBackingStoreBuffered.
@@ -92,7 +95,7 @@ function makePanel(ns, rect, title) {
     // with every call reporting success.
     panel.hidesOnDeactivate = false;
     panel.becomesKeyOnlyIfNeeded = true;
-    panel.ignoresMouseEvents = true;
+    panel.ignoresMouseEvents = false;
     // JXA holds the reference. An over-release is a crash with no dialog.
     panel.releasedWhenClosed = false;
     perform(panel, "center");
@@ -178,6 +181,9 @@ function allowWindows(ns) {
 }
 
 function paint(ns, panel) {
+    const app = sharedApplication(ns);
+    const event = app.nextEventMatchingMaskUntilDateInModeDequeue(ns.NSEventMaskAny, ns.NSDate.distantPast, ns.NSDefaultRunLoopMode, true);
+    if (event && !event.isNil()) { app.sendEvent(event); }
     perform(panel, "display");
     ns.NSRunLoop.currentRunLoop.runModeBeforeDate(
         ns.NSModalPanelRunLoopMode,
@@ -205,15 +211,26 @@ function setHidden(view, hidden) {
     view.hidden = hidden;
 }
 
+const { UserCancelled } = require("../core/errors.js");
 const { APP_NAME } = require("../core/version.js");
 const { appkitBridge } = require("./objc-bridge.js");
 
 const APPEARANCE_DELAY = 500;
 
+function makeStop(ns) {
+    const button = ns.NSButton.alloc.initWithFrame(rectOf(ns, { left: PANEL_WIDTH - PADDING_X - STOP_WIDTH, bottom: PADDING_Y, width: STOP_WIDTH, height: FOOTER_HEIGHT }));
+    button.title = "Stop";
+    button.bezelStyle = 1;
+    // Push-on/push-off retains a request until the next safe checkpoint.
+    button.setButtonType(1);
+    return button;
+}
+
 function build(ns) {
     const content = makeContent(ns, PANEL_RECT);
     const view = {
         panel: makePanel(ns, PANEL_RECT, APP_NAME),
+        stop: makeStop(ns),
         headline: makeHeadline(ns, HEADLINE_RECT),
         detail: makeDetail(ns, DETAIL_RECT),
         track: makeBar(ns, TRACK_RECT, ns.NSColor.separatorColor),
@@ -221,7 +238,7 @@ function build(ns) {
         fill: makeBar(ns, fillRect(0, 0), ns.NSColor.controlAccentColor)
     };
 
-    for (const part of [view.headline, view.detail, view.track, view.fill]) {
+    for (const part of [view.headline, view.detail, view.track, view.fill, view.stop]) {
         content.addSubview(part);
     }
 
@@ -256,6 +273,7 @@ function panelSink(view, ns, now, restore) {
 
             show(view.panel);
             paint(ns, view.panel);
+            if (Number(view.stop.state) !== 0) { throw new UserCancelled(); }
         },
 
         // Out of the way of a question, and armed again: whatever happens

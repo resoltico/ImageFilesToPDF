@@ -41,3 +41,10 @@ test("an aborted run with unattempted documents is summarized as stopped", () =>
     assert.equal(summary.kind, "stopped");
     assert.equal(summary.notStarted, 1);
 });
+
+test("run-level failures remain errors even without documents or after every save", () => {
+    const fault = {code: "setup", message: "Required tools are unavailable."};
+    assert.equal(summarizeRun(runOutcome([], [], [fault])).kind, "none-saved");
+    assert.equal(summarizeRun(runOutcome([saved()], [], [fault])).kind, "some-saved");
+    assert.equal(summarizeRun({ ...runOutcome(), state: "cancelled" }).kind, "stopped");
+});

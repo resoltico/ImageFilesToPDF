@@ -38,7 +38,7 @@ test("the form's answers become the settings", () => {
     assert.equal(present.seen.length, 1, "one good answer needs one form");
     assert.match(
         present.seen[0].fullDetail,
-        /Each image gets its own page/u,
+        /Choose the PDF settings/u,
         "the first form has nothing to complain about yet"
     );
 

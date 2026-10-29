@@ -46,8 +46,8 @@ test("the panel is padded equally above and below", () => {
     // it, because a window that grows one moves under the eye reading it.
     assert.equal(
         PANEL_RECT.height - top(HEADLINE_RECT),
-        TRACK_RECT.bottom,
-        "the space above the headline is the space below the bar"
+        TRACK_RECT.bottom - 9,
+        "the bar is centered in the Stop footer"
     );
 });
 

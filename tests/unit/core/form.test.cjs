@@ -36,7 +36,7 @@ test("the form offers the same choices as the stepwise dialogs", () => {
     // but they are the same four.
     assert.deepEqual(
         rowFor("background").options.map((option) => option.label),
-        BACKGROUND.choices.map((choice) => choice.value)
+        BACKGROUND.choices.map((choice) => choice.label)
     );
     assert.deepEqual(
         rowFor("paperSize").options.map((option) => option.label),
@@ -54,7 +54,7 @@ test("everything in the background control is a colour", () => {
     assert.equal(row.kind, "colour");
     assert.deepEqual(
         row.options.map((option) => option.label),
-        ["#FFFFFF", "#000000", "#8E79E0", "#204486"]
+        ["White (#FFFFFF)", "Black (#000000)", "Purple (#8E79E0)", "Dark blue (#204486)"]
     );
     assert.equal(row.value, "#FFFFFF");
     assert.equal(
@@ -118,7 +118,7 @@ test("with nothing wrong the form explains itself instead", () => {
     const spec = formSpec();
 
     assert.equal(spec.title, APP_NAME);
-    assert.match(spec.fullDetail, /Each image gets its own page/u);
+    assert.match(spec.fullDetail, /Choose the PDF settings/u);
     assert.deepEqual(spec.buttons, [CREATE_BUTTON, CANCEL_BUTTON]);
     assert.equal(spec.buttons[0], "Create", "the first button is the action");
 });

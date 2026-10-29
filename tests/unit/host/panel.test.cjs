@@ -39,11 +39,11 @@ test("the panel holds a headline, a detail line and a bar, in one view", () => {
 
     assert.deepEqual(
         view.panel.contentView.subviews.map((part) => part.kind),
-        ["field", "field", "box", "box"],
+        ["field", "field", "box", "box", "view"],
         "two lines of text, then the track and the fill over it"
     );
     assert.equal(
-        view.panel.contentView.subviews.at(-1),
+        view.panel.contentView.subviews.at(-2),
         view.fill,
         "the fill is added last, so it draws over the track"
     );

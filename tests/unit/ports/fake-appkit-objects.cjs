@@ -84,6 +84,7 @@ function makePopup(rect, pullsDown) {
         popup.selected = title;
     };
 
+    Object.defineProperty(popup, "selectedItem", { get: () => items.find((item) => item.title === popup.selected) });
     Object.defineProperty(popup, "lastItem", { get: () => items.at(-1) });
     Object.defineProperty(popup, "titleOfSelectedItem", {
         get: () => popup.selected

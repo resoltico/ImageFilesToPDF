@@ -5,10 +5,8 @@ const LABEL_WIDTH = 140;
 const CONTROL_WIDTH = 320;
 const NUMBER_WIDTH = 70;
 
-// Room for a colour and the button that opens the list beside it. Wider than
-// a number and far narrower than a menu of names, which is what the list held
-// before its items became the colours themselves.
-const COLOUR_WIDTH = 100;
+// Preset captions and editable custom hex share one control.
+const COLOUR_WIDTH = 190;
 const CONTROL_HEIGHT = 24;
 const HINT_HEIGHT = 16;
 const GAP = 10;
@@ -124,6 +122,7 @@ function makePopup(ns, rect) {
 function addPopupItem(popup, option) {
     popup.addItemWithTitle(option.label);
 
+    popup.lastItem.representedObject = option.value;
     return popup.lastItem;
 }
 
@@ -238,13 +237,37 @@ const ADD_ROW = {
 
 const DETAIL_GAP = 10;
 
+const FORM_ACTIONS_CLASS = "ImageFilesToPDFSettingsActions";
+
+function modeController(bridge, built, spec) {
+    const { ns, objc } = bridge;
+    let controllerClass = ns.NSClassFromString(FORM_ACTIONS_CLASS);
+    if (!controllerClass || controllerClass.isNil()) {
+        objc.registerSubclass({ name: FORM_ACTIONS_CLASS, superclass: "NSViewController", methods: {
+            "modeChanged:": { types: ["void", ["id"]], implementation(sender) {
+                const state = this.representedObject;
+                const mode = sender.selectedItem.representedObject;
+                state.objectForKey("details").string = state.objectForKey("texts").objectForKey(mode);
+            } }
+        } });
+        controllerClass = ns.NSClassFromString(FORM_ACTIONS_CLASS);
+    }
+    const controller = controllerClass.alloc.init;
+    controller.representedObject = ns({ details: built.details.documentView, texts: spec.summaryDetails });
+    built.controls.mode.target = controller;
+    built.controls.mode.action = ns.NSSelectorFromString("modeChanged:");
+    return controller;
+}
+
+
 function buildForm(bridge, spec, widgets) {
     const rowCount = spec.rows.length;
     const { width, height } = formSize(rowCount);
     const view = widgets.makeView(bridge.ns, width, height + DETAIL_HEIGHT + DETAIL_GAP);
-    view.addSubview(widgets.makeDetails(bridge.ns, spec.fullDetail, {
+    const details = widgets.makeDetails(bridge.ns, spec.fullDetail, {
         left: 0, bottom: height + DETAIL_GAP, width, height: DETAIL_HEIGHT
-    }));
+    });
+    view.addSubview(details);
     const context = { ns: bridge.ns, widgets, view };
     const controls = {};
 
@@ -269,7 +292,9 @@ function buildForm(bridge, spec, widgets) {
         controls[row.key] = control;
     });
 
-    return { view, controls };
+    const built = { view, controls, details };
+    built.controller = modeController(bridge, built, spec);
+    return built;
 }
 
 const { MODAL_UNAVAILABLE } = require("./objc-bridge.js");
@@ -304,16 +329,19 @@ function readControls(bridge, spec, controls) {
             control.validateEditing;
         }
 
-        answers[row.key] = row.kind === "choice"
-            ? row.options[Number(control.indexOfSelectedItem)].value
-            : String(bridge.objc.unwrap(control.stringValue));
+        answers[row.key] = row.kind === "choice" ? row.options[Number(control.indexOfSelectedItem)].value : String(bridge.objc.unwrap(control.stringValue));
+        if (row.kind === "colour") {
+            const option = row.options[Number(control.indexOfSelectedItem)];
+            if (option && answers[row.key] === option.label) { answers[row.key] = option.value; }
+        }
     }
 
     return answers;
 }
 
 function presentForm(bridge, spec, widgets = WIDGETS) {
-    const { view, controls } = buildForm(bridge, spec, widgets);
+    const built = buildForm(bridge, spec, widgets);
+    const { view, controls } = built;
     const alert = widgets.makeAlert(bridge.ns, spec);
 
     alert.accessoryView = view;

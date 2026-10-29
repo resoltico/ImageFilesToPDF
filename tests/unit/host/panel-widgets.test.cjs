@@ -36,7 +36,7 @@ test("the style mask is titled, utility and non-activating, and nothing else", (
     assert.equal(PANEL_STYLE, STYLE_TITLED + STYLE_UTILITY + STYLE_NONACTIVATING);
 });
 
-test("the panel cannot take focus, cannot be clicked, and stays visible", () => {
+test("the panel cannot take focus, accepts Stop clicks, and stays visible", () => {
     const { ns } = createFakeObjC();
     const panel = makePanel(ns, PANEL_RECT, "Image Files to PDF");
 
@@ -49,7 +49,7 @@ test("the panel cannot take focus, cannot be clicked, and stays visible", () => 
         "a utility panel hides itself when its app is not active, and this one's never is"
     );
     assert.equal(panel.becomesKeyOnlyIfNeeded, true);
-    assert.equal(panel.ignoresMouseEvents, true, "it is a display, not a control");
+    assert.equal(panel.ignoresMouseEvents, false, "Stop accepts mouse events");
     assert.equal(
         panel.releasedWhenClosed,
         false,

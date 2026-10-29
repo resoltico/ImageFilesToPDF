@@ -32,7 +32,7 @@ function claimAvailable(context, destination, created, checkpoint) {
         context.paths.final = collisionPath(destination, attempt);
         const outcome = claim(context);
         if (outcome.state === "created") { return created(context); }
-        if (outcome.state !== "exists") { throw new OperationError(`Publication ${outcome.state}: ${JSON.stringify(context.diagnostic)}`); }
+        if (outcome.state !== "exists") { throw new OperationError(`The PDF destination could not be claimed (${outcome.state}).`); }
     }
     throw new OperationError("Could not create a unique output filename.");
 }

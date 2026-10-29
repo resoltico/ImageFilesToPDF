@@ -72,7 +72,7 @@ test("the background is a control that is a list and a field at once", () => {
     assert.equal(background.kind, "combo");
     assert.deepEqual(
         background.items,
-        ["#FFFFFF", "#000000", "#8E79E0", "#204486"],
+        ["White (#FFFFFF)", "Black (#000000)", "Purple (#8E79E0)", "Dark blue (#204486)"],
         "the presets as the colours they are"
     );
     assert.equal(

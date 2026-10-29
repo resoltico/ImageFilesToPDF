@@ -11,40 +11,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { jxaProgress, openProgress } = require("../../../src/host/surfaces.js");
-
-test("the host's own object is written to, in its own words", () => {
-    const host = {};
-    const sink = jxaProgress(host);
-
-    sink.start(4);
-    sink.report(2, "Preparing", "3 of 4 — x.png");
-
-    assert.deepEqual(host, {
-        totalUnitCount: 4,
-        completedUnitCount: 2,
-        description: "Preparing",
-        additionalDescription: "3 of 4 — x.png"
-    });
-});
-
-test("a finished run stops claiming there is work outstanding", () => {
-    // A bar left part-filled after the run is over goes on saying so. Zero is
-    // what hides it.
-    const host = { totalUnitCount: 4, completedUnitCount: 2 };
-    const sink = jxaProgress(host);
-
-    sink.pause();
-    assert.equal(host.totalUnitCount, 0, "a pause hides progress during a modal");
-
-    sink.close();
-    assert.equal(host.totalUnitCount, 0);
-});
-
-test("no Progress on the host is no surface", () => {
-    assert.equal(jxaProgress(null), null);
-    assert.equal(jxaProgress(undefined), null);
-});
+const { openProgress } = require("../../../src/host/surfaces.js");
 
 function reportsNowhere(progress) {
     // A reporter with no surfaces: every verb is accepted and nothing can
@@ -126,7 +93,7 @@ test("the default surfaces are the panel and the host's own object", () => {
 
     try {
         openProgress(false).phase("Preparing");
-        assert.equal(reported.description, "Preparing", "the host's object is found");
+        assert.deepEqual(reported, {}, "host Progress is never written");
     } finally {
         delete globalThis.Progress;
     }

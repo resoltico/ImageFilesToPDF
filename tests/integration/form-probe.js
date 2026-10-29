@@ -41,6 +41,13 @@ function nativeForm(scenario) {
     const alert = WIDGETS.makeAlert($, spec);
     alert.accessoryView = built.view;
     measuredControls(built, spec);
+    for (const mode of ["separate", "combined"]) {
+        built.controls.mode.selectItemAtIndex(mode === "combined" ? 0 : 1);
+        requireNative($.NSApplication.sharedApplication.sendActionToFrom(built.controls.mode.action, built.controls.mode.target, built.controls.mode), "Mode action was not handled");
+        requireNative(ObjC.unwrap(built.details.documentView.string) === spec.summaryDetails[mode], "Mode summary is stale");
+    }
+    built.controls.mode.selectItemAtIndex(scenario.answers.mode === "combined" ? 0 : 1);
+    $.NSApplication.sharedApplication.sendActionToFrom(built.controls.mode.action, built.controls.mode.target, built.controls.mode);
     return alert;
 }
 

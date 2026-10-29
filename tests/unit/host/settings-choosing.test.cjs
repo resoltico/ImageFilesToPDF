@@ -93,5 +93,5 @@ test("the image count reaches the form that asks the questions", () => {
 
     collectSettings(createFakeHost({}), { context: { count: 231 } }, BRIDGE, present);
 
-    assert.match(present.seen[0].fullDetail, /^You have selected 231 images\./u);
+    assert.match(present.seen[0].fullDetail, /^231 images →/u);
 });

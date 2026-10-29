@@ -1,5 +1,6 @@
 "use strict";
 
+const { basename } = require("../core/paths.js");
 const { plural } = require("./formatting.js");
 
 /*
@@ -36,12 +37,7 @@ function outputSummary(mode, count) {
         : plural(count, "single-page PDF");
 }
 
-/*
- * Both outcomes at once, because the form cannot follow its own popup: a line
- * computed from the mode that was showing would be false after the change.
- * With one image the two agree on the result and differ only in the name, and
- * the choice is kept because the name is a real difference.
- */
+// The stepwise mode prompt presents both possible outcomes before a choice.
 function outputAlternatives(count = 0) {
     if (count === 0) {
         return "Save one PDF with a page for each image, or a single-page PDF per image.";
@@ -82,7 +78,16 @@ function destinationSummary({ folders = [] } = {}, mode = "both") {
         : `One PDF saves to: ${folders[0]}\n${separate}`;
 }
 
+function formSummary({ count = 0, folders = [] } = {}, mode = "combined") {
+    if (count === 0) { return "Choose the PDF settings."; }
+    let destination = "the source folder";
+    if (folders.length > 1 && mode === "separate") { destination = plural(folders.length, "folder"); }
+    else if (folders.length > 0) { const name = basename(folders[0]); destination = name ? `${name}/` : "/"; }
+    return `${plural(count, "image")} → ${outputSummary(mode, count)}, saved in ${destination}`;
+}
+
 module.exports = {
+    formSummary,
     selectionSummary,
     outputSummary,
     outputAlternatives,

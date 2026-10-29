@@ -2,7 +2,7 @@
 const { SETTINGS_SCHEMA, validateSettings, settingIssue } = require("../core/settings.js");
 const { normalizeColour } = require("../core/colour.js");
 const { APP_NAME } = require("../core/version.js");
-const { selectionSummary, outputAlternatives, destinationSummary, PAGE_LAYOUT_NOTE, ORDER_NOTE } = require("./output-description.js");
+const { formSummary } = require("./output-description.js");
 
 function controlFor(field) {
     const rule = SETTINGS_SCHEMA[field];
@@ -102,7 +102,7 @@ function formRows(answers, invalid) {
         invalid: invalid.has(COLOUR_ROW.key),
         // What each item reads as, which for this row is the colour itself.
         options: COLOUR_ROW.control.choices.map((choice) => ({
-            label: choice.value
+            label: choice.label, value: choice.value
         }))
     };
 
@@ -160,28 +160,20 @@ function answersFromSettings(settings) {
 const CREATE_BUTTON = "Create";
 const CANCEL_BUTTON = "Cancel";
 
-const BACKGROUND_NOTE = `Page background presets: ${
-    BACKGROUND.choices.map((choice) => choice.label).join(", ")  }.`;
-
-function invitation(context = {}) {
-    return [
-        selectionSummary(context),
-        PAGE_LAYOUT_NOTE,
-        outputAlternatives(context.count),
-        ORDER_NOTE,
-        destinationSummary(context),
-        BACKGROUND_NOTE
-    ].filter(Boolean).join("\n");
+function invitation(context = {}, mode = "combined") {
+    const folders = mode === "combined" ? (context.folders ?? []).slice(0, 1) : context.folders ?? [];
+    return [formSummary(context, mode), folders.length > 0 ? `Save locations:\n${folders.join("\n")}` : ""].filter(Boolean).join("\n\n");
 }
 
 function formSpec(answers = defaultAnswers(), problems = [], context = {}) {
     return {
         title: APP_NAME,
         detail: problems.length > 0 ? problems.map((problem) => problem.message).join("\n") : "Choose the page settings, then Create.",
-        fullDetail: invitation(context),
+        fullDetail: invitation(context, answers.mode),
+        summaryDetails: { combined: invitation(context, "combined"), separate: invitation(context, "separate") },
         rows: formRows(answers, new Set(problems.map((problem) => problem.key))),
         buttons: [CREATE_BUTTON, CANCEL_BUTTON]
     };
 }
 
-module.exports = { PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND, RESOLUTION, QUALITY, labelsOf, defaultLabelOf, defaultValueOf, valueOfLabel, labelOfValue, CHOICE_ROWS, COLOUR_ROW, NUMBER_ROWS, defaultAnswers, formRows, readAnswers, answersFromSettings, readNumber, readColour, invitation, BACKGROUND_NOTE, CREATE_BUTTON, CANCEL_BUTTON, formSpec };
+module.exports = { PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND, RESOLUTION, QUALITY, labelsOf, defaultLabelOf, defaultValueOf, valueOfLabel, labelOfValue, CHOICE_ROWS, COLOUR_ROW, NUMBER_ROWS, defaultAnswers, formRows, readAnswers, answersFromSettings, readNumber, readColour, invitation, CREATE_BUTTON, CANCEL_BUTTON, formSpec };

@@ -1,57 +1,18 @@
 "use strict";
-
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    invitation, formSpec, defaultAnswers, BACKGROUND_NOTE
-} = require("../../../src/host/settings-model.js");
-
-test("one selected image is acknowledged in a complete sentence", () => {
-    assert.equal(formSpec(defaultAnswers(), [], { count: 1 }).fullDetail, [
-        "You have selected 1 image.",
-        "Each image gets its own page, centred without cropping. " +
-            "The original files are not changed.",
-        "Either option creates 1 PDF with 1 page; only the filename differs.",
-        "Pages follow the full path, with 2 before 10, not the order you clicked.",
-        BACKGROUND_NOTE
-    ].join("\n"));
+const { invitation, formSpec, defaultAnswers } = require("../../../src/host/settings-model.js");
+test("summary follows grouping and retains complete save locations", () => {
+    const context = { count: 2, folders: ["/Pictures/One/", "/Pictures/Two/"] };
+    const first = formSpec(defaultAnswers(), [], context);
+    assert.equal(first.fullDetail, "2 images → 1 PDF with 2 pages, saved in One/\n\nSave locations:\n/Pictures/One/");
+    const second = formSpec({ ...defaultAnswers(), mode: "separate" }, [], context);
+    assert.equal(second.fullDetail, "2 images → 2 single-page PDFs, saved in 2 folders\n\nSave locations:\n/Pictures/One/\n/Pictures/Two/");
+    assert.equal(first.summaryDetails.separate, second.fullDetail);
 });
-
-test("folder discoveries and destination are explained before creation", () => {
-    const context = { count: 231, selectedFolders: 1, folders: ["/Selected/"] };
-    const { fullDetail: detail } = formSpec(defaultAnswers(), [], context);
-
-    assert.match(detail, /^Found 231 images in your selection, including subfolders\./u);
-    assert.match(detail, /1 PDF with 231 pages, or 231 single-page PDFs/u);
-    assert.match(detail, /Save to: \/Selected\//u);
-    assert.ok(detail.endsWith(BACKGROUND_NOTE));
-});
-
-test("validation precedes but never replaces the selection and output contract", () => {
-    const context = { count: 2 };
-    const problems = [{ key: "resolutionLimit", message: "ppi: not a number" }];
-
-    assert.equal(formSpec(defaultAnswers(), problems, context).fullDetail,
-        invitation(context));
-});
-
-test("changing grouping cannot leave a stale count preview", () => {
-    const answers = defaultAnswers();
-    const first = formSpec(answers, [], { count: 3 });
-    const second = formSpec({
-        ...answers, mode: "separate"
-    }, [], { count: 3 });
-
-    assert.equal(first.fullDetail, second.fullDetail);
-    assert.notEqual(first.rows[0].value, second.rows[0].value);
-    assert.match(first.fullDetail, /1 PDF with 3 pages, or 3 single-page PDFs/u);
-});
-
-test("an unknown count is not invented, but the page layout remains explicit", () => {
-    const detail = invitation();
-
-    assert.match(detail, /^Choose how to save your images as PDF files\./u);
-    assert.match(detail, /Each image gets its own page/u);
-    assert.match(detail, /single-page PDF per image/u);
-    assert.ok(!detail.includes("0 images"));
+test("an unknown selection count is not invented", () => { assert.equal(invitation(), "Choose the PDF settings."); });
+test("validation does not replace the output preview", () => {
+    const spec = formSpec(defaultAnswers(), [{key:"quality",message:"JPEG quality is invalid"}], {count:1});
+    assert.equal(spec.detail, "JPEG quality is invalid");
+    assert.match(spec.fullDetail, /^1 image → 1 PDF with 1 page/u);
 });

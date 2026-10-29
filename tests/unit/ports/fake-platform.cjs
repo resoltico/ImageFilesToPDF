@@ -51,7 +51,7 @@ function installPlatform(app, options = {}) {
     const output = [];
     const stderr = [];
     const unbox = (value) => value?.boxed ?? value;
-    const ns = (value) => ({ boxed: value, stringByStandardizingPath: value, dataUsingEncoding: () => value,
+    const ns = (value) => ({ boxed: value, objectForKey: (key) => value[unbox(key)], stringByStandardizingPath: value, dataUsingEncoding: () => value,
         writeToFileAtomicallyEncodingError(path) {app.fileTexts.set(unbox(path),value);app.files.add(unbox(path));return true;} });
     Object.assign(ns, bridge.ns, {
         NSMakeRange: (location, length) => ({ location, length }),

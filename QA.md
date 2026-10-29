@@ -9,11 +9,24 @@ Compatibility on macOS 12.3 and macOS 15 is accepted as a target assumption.
 Automated native CI uses macOS 15; target-floor checks do not establish full
 interactive behavior on every supported host.
 
-Full live Shortcuts interaction and intended-host live fallback remain
-unverified: computer-control access to `com.apple.WorkflowKit.MacHelper` times
-out. Offscreen layout, native applet tests and headless conversion cannot
-substitute for the live-host checks below. This is a current verification limit,
-not a narrower supported platform range.
+The current artifact has been driven through the real Shortcuts helper using
+Term At Target's installed integration harness. The helper exposes the native
+settings form, completion and custom progress panel, but does not draw JXA
+`Progress` or provide its Stop control. The action therefore uses only its own
+panel, with a native Stop button. Live stopping preserved saved PDFs and
+reported cancelled and not-started work separately. The panel hides for modals
+and closes before completion.
+
+Downloads recovery has also been exercised inside
+`com.apple.WorkflowKit.MacHelper`: a validated PDF with an unwritable requested
+destination was published and confirmed in the user's Downloads folder under
+its intended filename. An inaccessible Downloads folder still requires the
+confirmed-copy temporary-folder fallback; a test of one host's permissions does
+not guarantee permission on every installation.
+
+Live stepwise fallback in a host genuinely lacking form capability remains
+unverified. Native applet tests, port tests and offscreen layout do not establish
+that host-specific condition.
 
 ## Automated gates
 

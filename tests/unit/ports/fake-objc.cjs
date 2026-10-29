@@ -49,6 +49,7 @@ function installClasses(ns, state, application) {
         NSMakeSize: (width, height) => ({ width, height }),
         NSSelectorFromString: (name) => `sel:${name}`,
         NSModalPanelRunLoopMode: "NSModalPanelRunLoopMode",
+        NSButton: { alloc: { initWithFrame: (rect) => ({...makeView(rect), state: 0, setButtonType(type) {this.buttonType=type;}}) } },
         NSView: { alloc: { initWithFrame: makeView } },
         NSScrollView: { alloc: { initWithFrame: (rect) => ({ ...makeView(rect), contentSize: { width: rect.width - 15, height: rect.height } }) } },
         NSTextView: { alloc: { initWithFrame: (rect) => ({ ...makeField(rect), textContainer: {} }) } },
@@ -102,6 +103,8 @@ function createFakeObjC(settings = {}) {
     };
 
     const application = {
+        nextEventMatchingMaskUntilDateInModeDequeue: () => null,
+        sendEvent: () => undefined,
         performSelectorWithObjectAfterDelayInModes(selector, argument, delay, modes) {
             state.watchdogs.push({ selector, argument, delay, modes });
         },
@@ -115,11 +118,22 @@ function createFakeObjC(settings = {}) {
         get: () => state.policy
     });
 
-    const ns = (value) => ({ boxed: value });
+    function boxed(value) {
+        return { boxed: value, objectForKey: (key) => {
+            const found = value[key?.boxed ?? key];
+            return found && typeof found === "object" && !found.kind ? boxed(found) : found;
+        } };
+    }
+    const classes = new Map();
+    const ns = boxed;
+    ns.NSClassFromString = (name) => classes.get(name) ?? {isNil:()=>true};
+    const registerSubclass = (definition) => {
+        classes.set(definition.name, {isNil:()=>false,alloc:{get init(){return {modeChanged:definition.methods["modeChanged:"].implementation};}}});
+    };
 
     installClasses(ns, state, application);
 
-    return { ns, objc: { unwrap: (value) => value, import: () => true }, state };
+    return { ns, objc: { unwrap: (value) => value, import: () => true, registerSubclass }, state };
 }
 
 module.exports = { createFakeObjC };
