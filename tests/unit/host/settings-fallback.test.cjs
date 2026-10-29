@@ -14,7 +14,7 @@ function retryingPresenter(offered, throws) {
         if (offered.length === 1) {
             return { answers: {
                 ...defaultAnswers(), paperSize: "Letter", orientation: "Landscape",
-                mode: "separate", dpi: "bad", background: "#000000"
+                mode: "separate", resolutionLimit: "bad", background: "#000000"
             } };
         }
         if (throws) {
@@ -48,7 +48,7 @@ test("fallback keeps submitted corrections and selection context after a native 
 
         assert.deepEqual(settings, {
             paperSize: "Letter", orientation: "Landscape", mode: "separate",
-            background: "#000000", dpi: 92, quality: 92
+            background: "#000000", resolutionLimit: 92, quality: 92
         });
         assert.match(offered[1].fullDetail, /You have selected 2 images/u);
         assert.match(app.listPrompts[0].options.withPrompt, /You have selected 2 images/u);

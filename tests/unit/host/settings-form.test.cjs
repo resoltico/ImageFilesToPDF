@@ -30,9 +30,9 @@ test("the form's answers become the settings", () => {
     assert.deepEqual(collectViaForm(BRIDGE, present).settings, {
         paperSize: "A4",
         orientation: "Portrait",
-        mode: "single",
+        mode: "combined",
         background: "#FFFFFF",
-        dpi: 300,
+        resolutionLimit: 300,
         quality: 92
     });
     assert.equal(present.seen.length, 1, "one good answer needs one form");
@@ -52,21 +52,21 @@ test("the form's answers become the settings", () => {
 });
 
 test("a bad answer redisplays the form with the problem and the rest intact", () => {
-    const typed = { ...defaultAnswers(), paperSize: "Letter", dpi: "nope" };
+    const typed = { ...defaultAnswers(), paperSize: "Letter", resolutionLimit: "nope" };
     const present = scripted([
         { answers: typed },
-        { answers: { ...typed, dpi: "600" } }
+        { answers: { ...typed, resolutionLimit: "600" } }
     ]);
     const { settings } = collectViaForm(BRIDGE, present);
 
-    assert.equal(settings.dpi, 600);
+    assert.equal(settings.resolutionLimit, 600);
     assert.equal(settings.paperSize, "Letter", "the good answers must survive");
     assert.equal(present.seen.length, 2);
 
     const [, redisplayed] = present.seen;
     const paperRow = redisplayed.rows.find((row) => row.key === "paperSize");
 
-    assert.match(redisplayed.detail, /DPI must be a whole number from 72 to 1017/u);
+    assert.match(redisplayed.detail, /Maximum resolution must be a whole number from 72 to 1017/u);
     assert.equal(paperRow.value, "Letter");
 });
 
@@ -89,7 +89,7 @@ test("a remembered run is what the form opens on", () => {
     const answers = {
         ...defaultAnswers(),
         background: "#C7DAE8",
-        dpi: "600"
+        resolutionLimit: "600"
     };
 
     collectViaForm(BRIDGE, present, { context: { count: 3 }, answers });
@@ -97,7 +97,7 @@ test("a remembered run is what the form opens on", () => {
     const [{ rows }] = present.seen;
 
     assert.equal(rows.find((row) => row.key === "background").value, "#C7DAE8");
-    assert.equal(rows.find((row) => row.key === "dpi").value, "600");
+    assert.equal(rows.find((row) => row.key === "resolutionLimit").value, "600");
 });
 
 test("optional preference diagnostics reach the run without changing valid settings",()=>{
@@ -107,6 +107,6 @@ test("optional preference diagnostics reach the run without changing valid setti
         const context={diagnostics:[]};
         const memory={recall:()=>"",remember:()=>undefined,...(diagnostics?{diagnostics}:{})};
         const result=chooseSettings(createFakeApp(),context,{openMemory:()=>memory,bridge:BRIDGE,present:()=>({answers:defaultAnswers()})});
-        assert.equal(result.mode,"single");assert.deepEqual(context.diagnostics,diagnostics??[]);
+        assert.equal(result.mode,"combined");assert.deepEqual(context.diagnostics,diagnostics??[]);
     }
 });

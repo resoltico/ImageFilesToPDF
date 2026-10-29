@@ -29,7 +29,7 @@ test("every control has a form label as well as a dialog prompt", () => {
         [ORIENTATION, "Orientation:"],
         [OUTPUT_MODE, "PDF files:"],
         [BACKGROUND, "Page background:"],
-        [RESOLUTION, "Resolution:"],
+        [RESOLUTION, "Maximum resolution:"],
         [QUALITY, "JPEG quality:"]
     ];
 
@@ -40,8 +40,8 @@ test("every control has a form label as well as a dialog prompt", () => {
 });
 
 test("the numeric controls state their bounds beside the field, not in the name", () => {
-    assert.equal(RESOLUTION.hint, "72–1017 DPI");
-    assert.equal(QUALITY.hint, "1–100, 90–95 is typical");
+    assert.equal(RESOLUTION.hint, "72–1017 ppi");
+    assert.equal(QUALITY.hint, "1–100, JPEG re-encoding only");
 
     for (const control of [RESOLUTION, QUALITY]) {
         assert.ok(

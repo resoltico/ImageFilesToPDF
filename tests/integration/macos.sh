@@ -41,7 +41,7 @@ run_headless() {
 # Combined PDF, A4 portrait, white background, natural page order
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/combined.json" A4 Portrait "single" "#FFFFFF" 20260904_010203
+write_config "$WORK/combined.json" A4 Portrait "combined" "#FFFFFF" 20260904_010203
 run_headless "$WORK/combined.json" \
     "$WORK/page 10 'quoted'.jpg" "$WORK/page 2.png"
 
@@ -95,7 +95,7 @@ test -s "$WORK/alpha image_20260904_020304_2.pdf"
 # renders it around (206,48,36), so green and blue are the discriminators.
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/colour.json" A4 Portrait "single" "#FFFFFF" 20260904_030405
+write_config "$WORK/colour.json" A4 Portrait "combined" "#FFFFFF" 20260904_030405
 run_headless "$WORK/colour.json" "$WORK/wide gamut.png"
 
 COLOUR="$WORK/output_20260904_030405.pdf"
@@ -108,7 +108,7 @@ assert_pixel "$WORK/colour.png" 297 421 224 16 16 18 \
 # A 64px source must cover only the middle of the page.
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/tiny.json" A4 Portrait "single" "#FFFFFF" 20260904_040506
+write_config "$WORK/tiny.json" A4 Portrait "combined" "#FFFFFF" 20260904_040506
 run_headless "$WORK/tiny.json" "$WORK/tiny.png"
 
 TINY="$WORK/output_20260904_040506.pdf"
@@ -121,7 +121,7 @@ assert_pixel "$WORK/tiny-page.png" 397 421 255 255 255 10 \
 # Accept iPhone HEIC; refuse multi-page TIFF instead of losing pages.
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/heic.json" A4 Portrait "single" "#FFFFFF" 20260904_070809
+write_config "$WORK/heic.json" A4 Portrait "combined" "#FFFFFF" 20260904_070809
 run_headless "$WORK/heic.json" "$WORK/from iphone.heic"
 assert_valid_pdf "$WORK/output_20260904_070809.pdf"
 
@@ -137,7 +137,7 @@ grep -q "contains 2 pages" "$WORK/multipage.err" ||
 # The runtime must accept the invocation without osascript's "--" as well
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/plain.json" A4 Portrait "single" "#FFFFFF" 20260904_050607
+write_config "$WORK/plain.json" A4 Portrait "combined" "#FFFFFF" 20260904_050607
 osascript -l JavaScript "$SCRIPT" \
     --headless "$WORK/plain.json" "$WORK/page 2.png" >/dev/null
 test -s "$WORK/output_20260904_050607.pdf"

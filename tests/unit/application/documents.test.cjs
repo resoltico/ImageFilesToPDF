@@ -14,7 +14,7 @@ test("plan groups ordered sources and chooses per-source destinations", () => {
     assert.deepEqual(combined.plans[0].sources.map((source) => source.path), ["/source/0.png", "/source/1.png"]);
     const separate = fixture(2, { mode: "separate" });
     assert.deepEqual(separate.plans.map((plan) => plan.destination), ["/out/0_20261029_123456.pdf", "/out/1_20261029_123456.pdf"]);
-    assert.deepEqual(documentPlan({ mode: "single" }, [], "stamp"), []);
+    assert.deepEqual(documentPlan({ mode: "combined" }, [], "stamp"), []);
 });
 
 for (const [count, size, argv, expected] of [

@@ -109,7 +109,7 @@ test("every rejection is retained for the bounded detail surface", () => {
     }));
     const lines = describeRejections(many).split("\n");
 
-    assert.equal(lines[0], "Not converted:");
+    assert.equal(lines[0], "Not included from your selection:");
     assert.equal(lines.length, 16, "a heading and every entry");
     assert.equal(lines.at(-1), "file14.gif: not a supported format");
 });

@@ -12,16 +12,16 @@ const {
  *
  * Physical placement and sampling density are separate decisions. Deciding
  * placement from the pixel canvas made the resolution setting move the
- * picture: the same photograph covered 102 mm at 300 DPI and 51 mm at 600.
+ * picture: the same photograph covered 102 mm at 300 ppi and 51 mm at 600.
  */
 
 function settings(overrides) {
     return {
         paperSize: "A4",
         orientation: "Portrait",
-        dpi: 300,
+        resolutionLimit: 300,
         quality: 92,
-        mode: "single",
+        mode: "combined",
         background: "#FFFFFF",
         ...overrides
     };
@@ -31,7 +31,7 @@ test("placement is the image's own size on paper, capped to the page", () => {
     // One source pixel is one point. An image smaller than the page keeps its
     // natural size; a larger one is scaled down to fit and never enlarged
     // beyond that.
-    const a4 = calculatePageGeometry(settings({ dpi: 300 }));
+    const a4 = calculatePageGeometry(settings({ resolutionLimit: 300 }));
 
     // 300x200 fits comfortably: it stays 300x200 points.
     const small = calculatePlacement(a4, { width: 300, height: 200 });
@@ -53,13 +53,13 @@ test("placement is the image's own size on paper, capped to the page", () => {
 });
 
 test("placement never depends on the resolution", () => {
-    // The defect this replaced: the same photograph covered 102 mm at 300 DPI
+    // The defect this replaced: the same photograph covered 102 mm at 300 ppi
     // and 51 mm at 600, because the page was a larger number of pixels while
     // the image stayed the same number.
     const source = { width: 1200, height: 800 };
-    const points = [72, 150, 300, 600, 1017].map((dpi) => {
+    const points = [72, 150, 300, 600, 1017].map((resolutionLimit) => {
         const placement = calculatePlacement(
-            calculatePageGeometry(settings({ dpi })),
+            calculatePageGeometry(settings({ resolutionLimit })),
             source
         );
 
@@ -70,10 +70,10 @@ test("placement never depends on the resolution", () => {
 });
 
 test("the pixel canvas for the placement does follow the resolution", () => {
-    // Physical size is fixed; sampling density is what DPI selects.
+    // Physical size is fixed; sampling density is what ppi selects.
     const source = { width: 300, height: 200 };
-    const at72 = calculatePlacement(calculatePageGeometry(settings({ dpi: 72 })), source);
-    const at144 = calculatePlacement(calculatePageGeometry(settings({ dpi: 144 })), source);
+    const at72 = calculatePlacement(calculatePageGeometry(settings({ resolutionLimit: 72 })), source);
+    const at144 = calculatePlacement(calculatePageGeometry(settings({ resolutionLimit: 144 })), source);
 
     assert.equal(at72.widthPixels, 300);
     assert.equal(at144.widthPixels, 600, "twice the resolution, twice the pixels");
@@ -84,7 +84,7 @@ test("a placement is never smaller than a pixel", () => {
     // A very small image at a very low resolution rounds towards nothing, and
     // vips cannot make an image of zero width.
     const placement = calculatePlacement(
-        calculatePageGeometry(settings({ dpi: 72 })),
+        calculatePageGeometry(settings({ resolutionLimit: 72 })),
         { width: 1, height: 1 }
     );
 
@@ -95,11 +95,11 @@ test("a placement is never smaller than a pixel", () => {
 test("orientation changes which edge constrains the placement", () => {
     const source = { width: 1200, height: 800 };
     const portrait = calculatePlacement(
-        calculatePageGeometry(settings({ orientation: "Portrait", dpi: 300 })),
+        calculatePageGeometry(settings({ orientation: "Portrait", resolutionLimit: 300 })),
         source
     );
     const landscape = calculatePlacement(
-        calculatePageGeometry(settings({ orientation: "Landscape", dpi: 300 })),
+        calculatePageGeometry(settings({ orientation: "Landscape", resolutionLimit: 300 })),
         source
     );
 

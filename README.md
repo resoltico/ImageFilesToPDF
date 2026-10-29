@@ -69,14 +69,14 @@ source. A combined document uses the first ordered image's destination folder.
 
 ## Settings and output
 
-| Setting | Accepted values | Interactive default |
-| --- | --- | --- |
-| PDF files | One PDF with one image per page; separate PDFs with one page per image | One PDF |
-| Paper | A4 or US Letter | A4 |
-| Orientation | Portrait or Landscape | Portrait |
-| Resolution | Integer 72–1017 DPI | 300 DPI |
-| JPEG quality | Integer 1–100 | 92 |
-| Background | Six hexadecimal sRGB digits, optional `#` | `#FFFFFF` |
+| Field | Setting | Values | Default |
+| --- | --- | --- | --- |
+| `mode` | PDF files | `combined`: one PDF, one image per page; `separate`: one PDF per image | `combined` |
+| `paperSize` | Paper size | A4 or US Letter | A4 |
+| `orientation` | Orientation | Portrait or Landscape | Portrait |
+| `resolutionLimit` | Maximum resolution | Integer 72–1017 ppi | 300 ppi |
+| `quality` | JPEG quality | Integer 1–100 | 92 |
+| `background` | Page background | Six hexadecimal sRGB digits, optional `#` | `#FFFFFF` |
 
 The background presets are white, black, purple `#8E79E0` and dark blue
 `#204486`. You can type a custom colour; spaces and letter case are normalized.

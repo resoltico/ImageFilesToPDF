@@ -5,16 +5,16 @@ const { runOutcome, issuesOf }=require("../../../src/core/outcomes.js");
 const { sourceIssues }=require("../../../src/core/source-policy.js");
 const { completionMessage }=require("../../../src/host/completion.js");
 const { showDetails,detailPages }=require("../../../src/host/details-dialog.js");
-const { writeReceipt,foundation,describeIncomplete }=require("../../../src/host/receipt.js");
+const { writeReceipt,foundation }=require("../../../src/host/receipt.js");
 const { createFakeObjC }=require("../ports/fake-objc.cjs");
 const { createFakeApp }=require("../ports/fake-app.cjs");
 
 function assertOutcomeText(message) {
     assert.match(message,/1 PDF saved; 1 PDF recovered/u);
     assert.match(message,/\/recovery\/b\.pdf/u);
-    assert.match(message,/not-started/u);
-    assert.match(message,/backend command/u);
-    assert.match(message,/observer-fault/u);
+    assert.match(message,/Not started: 1/u);
+    assert.doesNotMatch(message,/backend command/u);
+    assert.doesNotMatch(message,/observer-fault/u);
 }
 
 test("recovery and prepared pages cannot be mistaken for publication",()=>{
@@ -26,7 +26,7 @@ test("recovery and prepared pages cannot be mistaken for publication",()=>{
     result.diagnostics.push({code:"observer-fault",message:"optional progress"});
     const message=completionMessage(result);
     assertOutcomeText(message);
-    assert.match(describeIncomplete(result),/1 saved, 1 recovered, 1 refused/u);
+    assert.match(message,/Not included from your selection:/u);
 });
 
 test("source policy fails closed for unknown formats and counts",()=>{
@@ -74,7 +74,7 @@ test("stdout transport reports presence truthfully",()=>{
 function assertDetailBehavior(view) {
     assert.equal(view.string,"abc");
     assert.deepEqual([view.editable,view.selectable,view.richText,view.drawsBackground,view.verticallyResizable,view.horizontallyResizable],[false,true,false,false,true,false]);
-    assert.deepEqual(view.textContainer,{containerSize:{width:470,height:1000000},widthTracksTextView:true});
+    assert.deepEqual(view.textContainer,{containerSize:{width:455,height:1000000},widthTracksTextView:true});
 }
 
 test("native detail fields preserve selection, wrapping and scroll behavior",()=>{

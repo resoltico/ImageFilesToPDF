@@ -4,8 +4,7 @@ const HEX_COLOUR =
     /^#?(?<red>[\da-f]{2})(?<green>[\da-f]{2})(?<blue>[\da-f]{2})$/iu;
 const HEX_RADIX = 16;
 
-const COLOUR_ERROR = "Page background must be six hexadecimal digits, for " +
-    "example #C7DAE8. The # is optional, and transparency is not supported.";
+const COLOUR_ERROR = "must be six hexadecimal digits, for example #C7DAE8. The # is optional, and transparency is not supported.";
 
 function groupsOf(value) {
     if (typeof value !== "string") {

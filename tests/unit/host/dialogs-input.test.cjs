@@ -11,7 +11,7 @@ test("promptInteger accepts a value inside the range", () => {
 
     app.nextAnswer = " 300 ";
     assert.equal(promptInteger(app, RESOLUTION, "300"), 300);
-    assert.match(app.dialogs[0].message, /Resolution in DPI \(72–1017\)/u);
+    assert.match(app.dialogs[0].message, /Maximum resolution \(72–1017\)/u);
 });
 
 test("promptInteger re-asks until the answer is valid", () => {

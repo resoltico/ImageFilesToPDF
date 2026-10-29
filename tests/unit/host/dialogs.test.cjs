@@ -35,11 +35,11 @@ test("chooseRequired treats a dismissed list as cancellation", () => {
 test("collectDialogSettings asks for every setting", () => {
     const app = createFakeApp();
 
-    // Valid for both prompts: DPI accepts 72–1017, quality accepts 1–100.
+    // Valid for both prompts: ppi accepts 72–1017, quality accepts 1–100.
     app.nextAnswer = "92";
     const settings = collectDialogSettings(app);
 
-    assert.deepEqual(Object.keys(settings).sort(), ["background", "dpi", "mode", "orientation", "paperSize", "quality"]);
+    assert.deepEqual(Object.keys(settings).sort(), ["background", "mode", "orientation", "paperSize", "quality", "resolutionLimit"]);
     assert.equal(app.listPrompts.length, 4);
 });
 
@@ -76,9 +76,9 @@ test("the prompts name what they are asking about", () => {
     for (const subject of [
         /paper size/iu,
         /orientation/iu,
-        /DPI/u,
+        /Maximum resolution/u,
         /quality/iu,
-        /PDF files be grouped/u,
+        /PDF files:/u,
         /background/iu
     ]) {
         assert.match(asked, subject);

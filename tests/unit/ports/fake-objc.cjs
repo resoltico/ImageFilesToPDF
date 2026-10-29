@@ -50,7 +50,7 @@ function installClasses(ns, state, application) {
         NSSelectorFromString: (name) => `sel:${name}`,
         NSModalPanelRunLoopMode: "NSModalPanelRunLoopMode",
         NSView: { alloc: { initWithFrame: makeView } },
-        NSScrollView: { alloc: { initWithFrame: makeView } },
+        NSScrollView: { alloc: { initWithFrame: (rect) => ({ ...makeView(rect), contentSize: { width: rect.width - 15, height: rect.height } }) } },
         NSTextView: { alloc: { initWithFrame: (rect) => ({ ...makeField(rect), textContainer: {} }) } },
         NSTextField: { alloc: { initWithFrame: makeField } },
         NSPopUpButton: { alloc: { initWithFramePullsDown: makePopup } },

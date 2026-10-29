@@ -7,7 +7,7 @@ const { reportHeadless } = require("../../../src/host/reporting.js");
 const { isCompleteSuccess } = require("../../../src/host/receipt.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 const { treeOf } = require("../ports/fake-tree.cjs");
-const config = JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"single",dpi:72,quality:85,background:"#FFFFFF"});
+const config = JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:85,background:"#FFFFFF"});
 
 function fixture(options = {}) {
     const app = createFakeHost({ files:["/source.png"], failures:[["'/bin/cat'", config]],...options });
@@ -22,7 +22,8 @@ test("controller converts through real adapters and derives a complete receipt",
     assert.equal(result.documents[0].state,"saved");
     assert.equal(result.documents[0].pages,1);
     assert.equal(isCompleteSuccess(result),true);
-    assert.equal(JSON.parse(reportHeadless(result)).documents.length,1);
+    const lines=[]; assert.equal(reportHeadless(result,(text)=>lines.push(text),(code)=>code),0);
+    assert.equal(JSON.parse(lines[0]).documents.length,1);
 });
 
 test("refused selection and conversion failures remain incomplete", () => {
@@ -32,8 +33,8 @@ test("refused selection and conversion failures remain incomplete", () => {
     assert.equal(result.documents[0].state,"failed");
     assert.equal(result.rejected.length,1);
     const lines=[];
-    assert.throws(()=>reportHeadless(result,(text)=>lines.push(text)),/incomplete/u);
-    assert.equal(lines.length,1);
+    assert.equal(reportHeadless(result,(text)=>lines.push(text),(code)=>code),1);
+    assert.equal(lines.length,2);
     assert.equal(JSON.parse(lines[0]).documents[0].issues[0].stage,"preparation");
 });
 

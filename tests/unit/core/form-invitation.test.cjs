@@ -29,7 +29,7 @@ test("folder discoveries and destination are explained before creation", () => {
 
 test("validation precedes but never replaces the selection and output contract", () => {
     const context = { count: 2 };
-    const problems = [{ key: "dpi", message: "DPI: not a number" }];
+    const problems = [{ key: "resolutionLimit", message: "ppi: not a number" }];
 
     assert.equal(formSpec(defaultAnswers(), problems, context).fullDetail,
         invitation(context));

@@ -1,70 +1,21 @@
 "use strict";
+const { SETTINGS_SCHEMA, validateSettings, settingIssue } = require("../core/settings.js");
+const { normalizeColour } = require("../core/colour.js");
+const { APP_NAME } = require("../core/version.js");
+const { selectionSummary, outputAlternatives, destinationSummary, PAGE_LAYOUT_NOTE, ORDER_NOTE } = require("./output-description.js");
 
-const { DEFAULT_SETTINGS, SETTING_CHOICES } = require("../core/settings.js");
-const {
-    MINIMUM_DPI,
-    MAXIMUM_DPI,
-    MINIMUM_QUALITY,
-    MAXIMUM_QUALITY
-} = require("../core/limits.js");
-
-function offeredChoices(field, captions = {}) {
-    return SETTING_CHOICES[field].map((value) => ({ label: captions[value] ?? value, value }));
+function controlFor(field) {
+    const rule = SETTINGS_SCHEMA[field];
+    return { field, label: `${rule.name}:`, prompt: rule.minimum ? `${rule.name} (${rule.minimum}–${rule.maximum}):` : `${rule.name}:`, defaultValue: rule.default,
+        defaultAnswer: String(rule.default), minimum: rule.minimum, maximum: rule.maximum, hint: rule.hint,
+        choices: (rule.choices ?? []).map((choice) => ({ value: choice.value, label: choice.label ?? `${choice.name} (${choice.value})` })) };
 }
-
-const PAPER_SIZE = {
-    defaultValue: DEFAULT_SETTINGS.paperSize,
-    prompt: "Paper size:",
-    label: "Paper size:",
-    choices: offeredChoices("paperSize", { Letter: "US Letter" })
-};
-
-const ORIENTATION = {
-    defaultValue: DEFAULT_SETTINGS.orientation,
-    prompt: "Orientation:",
-    label: "Orientation:",
-    choices: offeredChoices("orientation")
-};
-
-const OUTPUT_MODE = {
-    defaultValue: DEFAULT_SETTINGS.mode,
-    prompt: "How should the PDF files be grouped?",
-    label: "PDF files:",
-    choices: offeredChoices("mode", { single: "One PDF — one image per page", separate: "Separate PDFs — one page per image" })
-};
-
-const BACKGROUND_PRESETS = [
-    { name: "White", value: "#FFFFFF" }, { name: "Black", value: "#000000" },
-    { name: "Purple", value: "#8E79E0" }, { name: "Dark blue", value: "#204486" }
-];
-
-const BACKGROUND = {
-    defaultValue: DEFAULT_SETTINGS.background,
-    prompt: "Page background:", label: "Page background:",
-    choices: BACKGROUND_PRESETS.map(({ name, value }) => ({ label: `${name} (${value})`, value }))
-};
-
-const RESOLUTION = {
-    field: "dpi",
-    prompt: `Resolution in DPI (${MINIMUM_DPI}–${MAXIMUM_DPI}):`,
-    label: "Resolution:",
-    hint: `${MINIMUM_DPI}–${MAXIMUM_DPI} DPI`,
-    defaultAnswer: String(DEFAULT_SETTINGS.dpi),
-    minimum: MINIMUM_DPI,
-    maximum: MAXIMUM_DPI
-};
-
-const QUALITY = {
-    field: "quality",
-    prompt:
-        `JPEG quality (${MINIMUM_QUALITY}–${MAXIMUM_QUALITY}, ` +
-        "90–95 is typical):",
-    label: "JPEG quality:",
-    hint: `${MINIMUM_QUALITY}–${MAXIMUM_QUALITY}, 90–95 is typical`,
-    defaultAnswer: String(DEFAULT_SETTINGS.quality),
-    minimum: MINIMUM_QUALITY,
-    maximum: MAXIMUM_QUALITY
-};
+const PAPER_SIZE = controlFor("paperSize");
+const ORIENTATION = controlFor("orientation");
+const OUTPUT_MODE = controlFor("mode");
+const BACKGROUND = controlFor("background");
+const RESOLUTION = controlFor("resolutionLimit");
+const QUALITY = controlFor("quality");
 
 function labelsOf(control) {
     return control.choices.map((choice) => choice.label);
@@ -109,10 +60,10 @@ const COLOUR_ROW = { key: "background", control: BACKGROUND };
 // Beside the control, where the numbers state their range. It says the shape
 // and that there is somewhere to type it, which is what a list of four codes
 // cannot say for itself.
-const COLOUR_HINT = "or type #RRGGBB";
+const COLOUR_HINT = SETTINGS_SCHEMA.background.hint;
 
 const NUMBER_ROWS = [
-    { key: "dpi", control: RESOLUTION },
+    { key: "resolutionLimit", control: RESOLUTION },
     { key: "quality", control: QUALITY }
 ];
 
@@ -169,8 +120,7 @@ function formRows(answers, invalid) {
     return [...choices, colour, ...numbers];
 }
 
-const { validateSettings, settingIssue } = require("../core/settings.js");
-const { normalizeColour } = require("../core/colour.js");
+
 
 function numberValue(answer) {
     const text = String(answer).trim();
@@ -184,7 +134,7 @@ function readNumber(answer, control) {
     return value;
 }
 
-function readColour(answer) { return normalizeColour(answer); }
+function readColour(answer) { const issue = settingIssue("background", answer); if (issue) { throw new Error(issue.message); } return normalizeColour(answer); }
 
 function readAnswers(answers) {
     const values = { ...answers };
@@ -203,15 +153,9 @@ function answersFromSettings(settings) {
     return answers;
 }
 
-const { APP_NAME } = require("../core/version.js");
 
-const {
-    selectionSummary,
-    outputAlternatives,
-    destinationSummary,
-    PAGE_LAYOUT_NOTE,
-    ORDER_NOTE
-} = require("./output-description.js");
+
+
 
 const CREATE_BUTTON = "Create";
 const CANCEL_BUTTON = "Cancel";

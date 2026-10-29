@@ -31,7 +31,7 @@ function selectionSummary({ count = 0, selectedFolders = 0 } = {}) {
 }
 
 function outputSummary(mode, count) {
-    return mode === "single"
+    return mode === "combined"
         ? `1 PDF with ${plural(count, "page")}`
         : plural(count, "single-page PDF");
 }
@@ -51,7 +51,7 @@ function outputAlternatives(count = 0) {
         return "Either option creates 1 PDF with 1 page; only the filename differs.";
     }
 
-    return `For this selection: ${outputSummary("single", count)}, or ` +
+    return `For this selection: ${outputSummary("combined", count)}, or ` +
         `${outputSummary("separate", count)}.`;
 }
 
@@ -70,7 +70,7 @@ function destinationSummary({ folders = [] } = {}, mode = "both") {
         return "";
     }
 
-    if (folders.length === 1 || mode === "single") {
+    if (folders.length === 1 || mode === "combined") {
         return `Save to: ${folders[0]}`;
     }
 

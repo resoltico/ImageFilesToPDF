@@ -90,8 +90,8 @@ test("the reason is on the screen that asks again, not on one before it", () => 
     assert.equal(app.dialogs.length, 2, "one dialog per attempt, not two");
     assert.equal(
         app.dialogs[1].message,
-        "Page background must be six hexadecimal digits, for example #C7DAE8. " +
-            "The # is optional, and transparency is not supported.\n\n" +
+        "Page background must be six hexadecimal digits, for example #C7DAE8. The # is optional, and transparency is not supported." +
+            "\n\n" +
             "Page background as six hexadecimal digits:"
     );
 });

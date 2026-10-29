@@ -83,7 +83,7 @@ function collectDialogSettings(app, answers = defaultAnswers(), context = {}) {
         }, answers.mode),
         paperSize: chooseRequired(app, PAPER_SIZE, answers.paperSize),
         orientation: chooseRequired(app, ORIENTATION, answers.orientation),
-        dpi: promptInteger(app, RESOLUTION, answers.dpi),
+        resolutionLimit: promptInteger(app, RESOLUTION, answers.resolutionLimit),
         quality: promptInteger(app, QUALITY, answers.quality),
         background: chooseColour(app, answers.background)
     };

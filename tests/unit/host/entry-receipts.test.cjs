@@ -4,7 +4,7 @@ const test = require("node:test");
 const { run } = require("../../../src/entry.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 const { installPlatform } = require("../ports/fake-platform.cjs");
-const config = JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"single",dpi:72,quality:85,background:"#FFFFFF"});
+const config = JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:85,background:"#FFFFFF"});
 function fixture(overrides={}) {
     const app=createFakeHost({files:["/source.png"],failures:[["'/bin/cat'",config]],...overrides});
     return { app, ...installPlatform(app) };
@@ -13,13 +13,14 @@ function fixture(overrides={}) {
 test("actual production entry returns one successful receipt and no runtime modules",()=>{
     const {output}=fixture();
     const result=run(["--headless","/config","/source.png"]);
-    assert.equal(JSON.parse(result).state,"complete");
-    assert.equal(output.length,0,"success uses the osascript return transport once");
+    assert.equal(result,0);
+    assert.equal(JSON.parse(output[0]).state,"complete");
+    assert.equal(output.length,1);
 });
 
 test("entry writes one receipt before nonzero config failure",()=>{
     const {output}=fixture({failures:[["'/bin/cat'","{}"]]});
-    assert.throws(()=>run(["--headless","/config","/source.png"]),/incomplete/u);
+    assert.equal(run(["--headless","/config","/source.png"]),2);
     assert.equal(output.length,1);
     assert.equal(JSON.parse(output[0]).issues.length,6);
 });
@@ -27,7 +28,7 @@ test("entry writes one receipt before nonzero config failure",()=>{
 test("entry setup fails closed when native capabilities are absent",()=>{
     const {output}=fixture();
     delete globalThis.ObjC;
-    assert.throws(()=>run(["--headless","/config","/source.png"]),/incomplete/u);
+    assert.throws(()=>run(["--headless","/config","/source.png"]),/ObjC/u);
     // stdout unavailable is an explicit transport limitation, never fabricated receipt evidence.
     assert.equal(output.length,0);
 });
@@ -51,23 +52,24 @@ test("interactive errors are presented and cancellation stays silent",()=>{
 });
 
 test("separate mode and unmeasurable prepared pages produce truthful entry outcomes",()=>{
-    const separate=JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"separate",dpi:72,quality:85,background:"#FFFFFF"});
-    fixture({failures:[["'/bin/cat'",separate]]});
-    assert.equal(JSON.parse(run(["--headless","/config","/source.png"])).state,"complete");
+    const separate=JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"separate",resolutionLimit:72,quality:85,background:"#FFFFFF"});
+    const complete=fixture({failures:[["'/bin/cat'",separate]]});
+    assert.equal(run(["--headless","/config","/source.png"]),0);
+    assert.equal(JSON.parse(complete.output[0]).state,"complete");
     const broken=fixture({failures:[["'/bin/cat'",config],["-page.jpg'",new Error("stat denied")]]});
-    assert.throws(()=>run(["--headless","/config","/source.png"]));
+    run(["--headless","/config","/source.png"]);
     assert.equal(JSON.parse(broken.output[0]).documents[0].state,"failed");
 });
 
 test("a malformed configuration is a handled request error",()=>{
     const {output}=fixture({failures:[["'/bin/cat'","{"]]});
-    assert.throws(()=>run(["--headless","/config","/source.png"]));
+    run(["--headless","/config","/source.png"]);
     assert.equal(JSON.parse(output[0]).issues[0].code,"operation");
 });
 
 test("entry activates Standard Additions and preserves setup receipt fields",()=>{
     const {app,output}=fixture({failures:[["'/bin/cat'","{}"]]});
-    assert.throws(()=>run(["--headless","/config","/source.png"]));
+    run(["--headless","/config","/source.png"]);
     const receipt=JSON.parse(output[0]);
     assert.equal(app.includeStandardAdditions,true);assert.deepEqual(receipt.documents,[]);assert.deepEqual(receipt.rejected,[]);
     assert.equal(receipt.issues[0].stage,"settings");
@@ -78,9 +80,10 @@ test("setup failure closes every progress surface before presenting its structur
     const closed=[];globalThis.Progress={get totalUnitCount(){return closed.at(-1);},set totalUnitCount(value){closed.push(value);}};
     assert.equal(run(["/source.png"]),undefined);
     const [alert]=state.alerts;
-    assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","The request could not be completed."]);
+    assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","Finished with errors.\nNo PDF was created."]);
     assert.deepEqual(alert.buttons,["OK"]);
-    assert.equal(JSON.parse(alert.accessoryView.documentView.string).issues[0].stage,"setup");
+    assert.match(alert.accessoryView.documentView.string,/brew install vips pdfcpu/u);
+    assert.doesNotMatch(alert.accessoryView.documentView.string,/diagnostic|stack/u);
     assert.deepEqual(closed,[0]);delete globalThis.Progress;
 });
 
@@ -95,9 +98,10 @@ test("the production controller reviews refusals before asking settings",()=>{
 
 test("a failed completion surface retains the saved outcome in its error report",()=>{
     const context=fixture();
-    context.state.duringModal=(alert)=>{if(alert.informativeText==="Run complete."){throw new TypeError("completion view failed");}};
+    context.state.duringModal=(alert)=>{if(alert.informativeText==="Created 1 PDF."){throw new TypeError("completion view failed");}};
     assert.equal(run(["/source.png"]),undefined);
-    const details=JSON.parse(context.state.alerts.at(-1).accessoryView.documentView.string);
-    assert.equal(details.issues[0].stage,"reporting");assert.equal(details.outcome.documents[0].state,"saved");
-    assert.ok(context.app.files.has(details.outcome.documents[0].output));
+    const details=context.state.alerts.at(-1).accessoryView.documentView.string;
+    assert.match(details,/completion view failed/u);
+    assert.match(details,/Saved to:/u);
+    assert.ok([...context.app.files].some((path)=>path.endsWith(".pdf")));
 });

@@ -28,7 +28,7 @@ function jxaProgress(host = globalThis.Progress) {
         },
 
         pause() {
-            return undefined;
+            host.totalUnitCount = 0;
         },
 
         // A bar left part-filled after the run is over goes on saying there is

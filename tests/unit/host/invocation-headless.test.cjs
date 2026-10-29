@@ -19,7 +19,7 @@ const { createFakeApp } = require("../ports/fake-app.cjs");
 globalThis.Application = () => ({ selection: () => [] });
 
 test("a headless invocation reads its settings from the config file", () => {
-    const config = JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"single",dpi:72,quality:92,background:"#FFFFFF",timestamp:"20260904_010203"});
+    const config = JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:92,background:"#FFFFFF",timestamp:"20260904_010203"});
     const app = createFakeApp([["/bin/cat", config]]);
     const invocation = collectInvocation(
         app,
@@ -27,13 +27,13 @@ test("a headless invocation reads its settings from the config file", () => {
         true
     );
 
-    assert.equal(invocation.settings.dpi, 72);
+    assert.equal(invocation.settings.resolutionLimit, 72);
     assert.equal(invocation.timestamp, "20260904_010203");
     assert.deepEqual(invocation.inputItems, ["/a/1.png", "/a/2.png"]);
 });
 
 test("a headless config without a timestamp yields an empty one", () => {
-    const app = createFakeApp([["/bin/cat", JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"single",dpi:72,quality:92,background:"#FFFFFF"})]]);
+    const app = createFakeApp([["/bin/cat", JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:92,background:"#FFFFFF"})]]);
     const invocation = collectInvocation(
         app,
         ["--headless", "/tmp/c.json", "/a/1.png"],
@@ -53,7 +53,7 @@ test("a headless timestamp is read rather than taken", () => {
 
     for (const timestamp of refused) {
         const app = createFakeApp([
-            ["/bin/cat", JSON.stringify({ dpi: 72, timestamp })]
+            ["/bin/cat", JSON.stringify({ resolutionLimit: 72, timestamp })]
         ]);
 
         assert.throws(
@@ -80,7 +80,7 @@ test("a headless invocation without a config and an image is rejected", () => {
 test("malformed JSON and timestamp issues retain their specific request explanations",()=>{
     const malformed=createFakeApp([["/bin/cat","{"]]);
     assert.throws(()=>collectInvocation(malformed,["--headless","/config","/image.png"],true),/The headless configuration could not be read as JSON/u);
-    const data={paperSize:"A4",orientation:"Portrait",mode:"single",dpi:72,quality:92,background:"#FFFFFF",timestamp:false};
+    const data={paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:92,background:"#FFFFFF",timestamp:false};
     const app=createFakeApp([["/bin/cat",JSON.stringify(data)]]);
     assert.throws(()=>collectInvocation(app,["--headless","/config","/image.png"],true),(error)=>{
         assert.equal(error.issues[0].field,"timestamp");assert.equal(error.issues[0].code,"timestamp");assert.equal(error.issues[0].stage,"request");

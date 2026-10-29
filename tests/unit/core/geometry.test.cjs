@@ -12,9 +12,9 @@ function settings(overrides) {
     return {
         paperSize: "A4",
         orientation: "Portrait",
-        dpi: 300,
+        resolutionLimit: 300,
         quality: 92,
-        mode: "single",
+        mode: "combined",
         background: "#FFFFFF",
         ...overrides
     };
@@ -28,37 +28,37 @@ test("A4 is exactly 595.2756 x 841.8898 pt", () => {
         heightPixels: 3508,
         widthPoints: 595.2756,
         heightPoints: 841.8898,
-        dpi: 300
+        resolutionLimit: 300
     });
 });
 
 test("Letter landscape swaps the points and the pixels", () => {
     assert.deepEqual(
         calculatePageGeometry(
-            settings({ paperSize: "Letter", orientation: "Landscape", dpi: 72 })
+            settings({ paperSize: "Letter", orientation: "Landscape", resolutionLimit: 72 })
         ),
         {
             widthPixels: 792,
             heightPixels: 612,
             widthPoints: 792,
             heightPoints: 612,
-            dpi: 72
+            resolutionLimit: 72
         }
     );
 });
 
-test("the page size never drifts with DPI", () => {
-    for (const dpi of [72, 150, 300, 600, MAXIMUM_DPI]) {
-        const geometry = calculatePageGeometry(settings({ dpi }));
+test("the page size never drifts with ppi", () => {
+    for (const resolutionLimit of [72, 150, 300, 600, MAXIMUM_DPI]) {
+        const geometry = calculatePageGeometry(settings({ resolutionLimit }));
 
-        assert.equal(geometry.widthPoints, 595.2756, `dpi ${dpi}`);
-        assert.equal(geometry.heightPoints, 841.8898, `dpi ${dpi}`);
+        assert.equal(geometry.widthPoints, 595.2756, `resolutionLimit ${resolutionLimit}`);
+        assert.equal(geometry.heightPoints, 841.8898, `resolutionLimit ${resolutionLimit}`);
     }
 });
 
-test("the pixel canvas scales with DPI", () => {
-    assert.equal(calculatePageGeometry(settings({ dpi: 72 })).widthPixels, 595);
-    assert.equal(calculatePageGeometry(settings({ dpi: 1017 })).widthPixels, 8408);
+test("the pixel canvas scales with ppi", () => {
+    assert.equal(calculatePageGeometry(settings({ resolutionLimit: 72 })).widthPixels, 595);
+    assert.equal(calculatePageGeometry(settings({ resolutionLimit: 1017 })).widthPixels, 8408);
 });
 
 test("what pdfcpu receives is the size readers call A4", () => {
@@ -70,5 +70,5 @@ test("what pdfcpu receives is the size readers call A4", () => {
 
 test("settings are validated at entry before calculating geometry", () => {
     const { normalizeSettings } = require("../../../src/core/settings.js");
-    assert.throws(() => calculatePageGeometry(normalizeSettings({ paperSize: "A4", orientation: "Portrait", mode: "single", dpi: 0, quality: 92, background: "#FFFFFF" })), /DPI/u);
+    assert.throws(() => calculatePageGeometry(normalizeSettings({ paperSize: "A4", orientation: "Portrait", mode: "combined", resolutionLimit: 0, quality: 92, background: "#FFFFFF" })), /Maximum resolution/u);
 });

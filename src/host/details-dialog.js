@@ -5,17 +5,19 @@ const DETAIL_HEIGHT = 140;
 const DETAIL_WIDTH = 470;
 const FIRST_BUTTON = 1000;
 const TEXT_HEIGHT = 1000000;
+const WIDTH_SIZABLE = 2;
 
 /** Full, selectable content in a fixed region; no arbitrary path goes in fixed alert text. */
 function makeDetails(ns, text, rect) {
     const scroll = ns.NSScrollView.alloc.initWithFrame(ns.NSMakeRect(rect.left, rect.bottom, rect.width, rect.height));
     scroll.hasVerticalScroller = true;
     scroll.autohidesScrollers = false;
-    const content = ns.NSTextView.alloc.initWithFrame(ns.NSMakeRect(0, 0, rect.width, rect.height));
+    const size = scroll.contentSize;
+    const content = ns.NSTextView.alloc.initWithFrame(ns.NSMakeRect(0, 0, size.width, size.height));
     Object.assign(content, { editable: false, selectable: true, richText: false, drawsBackground: false,
         font: ns.NSFont.systemFontOfSize(ns.NSFont.systemFontSize), textColor: ns.NSColor.labelColor,
-        verticallyResizable: true, horizontallyResizable: false, maxSize: ns.NSMakeSize(rect.width, TEXT_HEIGHT) });
-    Object.assign(content.textContainer, { containerSize: ns.NSMakeSize(rect.width, TEXT_HEIGHT), widthTracksTextView: true });
+        verticallyResizable: true, horizontallyResizable: false, autoresizingMask: WIDTH_SIZABLE, maxSize: ns.NSMakeSize(size.width, TEXT_HEIGHT) });
+    Object.assign(content.textContainer, { containerSize: ns.NSMakeSize(size.width, TEXT_HEIGHT), widthTracksTextView: true });
     content.string = text;
     content.setAccessibilityLabel("Full details (selectable and scrollable)");
     scroll.documentView = content;

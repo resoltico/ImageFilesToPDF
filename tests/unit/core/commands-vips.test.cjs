@@ -13,9 +13,9 @@ const { calculatePageGeometry } = require("../../../src/core/geometry.js");
 const geometry = calculatePageGeometry({
     paperSize: "A4",
     orientation: "Portrait",
-    dpi: 300,
+    resolutionLimit: 300,
     quality: 92,
-    mode: "single",
+    mode: "combined",
     background: "#FFFFFF"
 });
 

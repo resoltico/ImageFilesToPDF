@@ -1,38 +1,37 @@
 "use strict";
-
 const { APP_NAME, VERSION } = require("../core/version.js");
+const { summarizeRun } = require("../core/run-summary.js");
 const { plural } = require("./formatting.js");
 
-/*
- * What the run says it did once it is over.
- *
- * Every completion says the same things in the same order: what was produced,
- * where it went, what was not converted, and how long it took. Producing files
- * without saying where they are is the one thing this exists to prevent.
- */
-
-function describeRejections(rejected, heading = "Not converted:") {
+function describeRejections(rejected, heading = "Not included from your selection:") {
     return `${heading}\n${rejected.map((entry) => `${entry.path || entry.name}: ${entry.reason}`).join("\n")}`;
 }
 
-function completionMessage(result) {
-    const saved = result.documents.filter((document) => document.state === "saved");
-    const recovered = result.documents.filter((document) => document.state === "recovered");
-    const details = result.documents.map((document) => [document.state, ...document.sources,
-        document.output ?? document.recovery ?? "", ...document.issues.map((issue) => [issue.source ? `Source: ${issue.source}` : "", issue.message, issue.diagnostic ? JSON.stringify(issue.diagnostic) : ""].filter(Boolean).join("\n"))].filter(Boolean).join("\n"));
-    return [
-        `${plural(saved.length, "PDF")} saved; ${plural(recovered.length, "PDF")} recovered.`,
-        `Run ${result.state}.`, ...details,
-        result.rejected.length > 0 ? describeRejections(result.rejected) : "",
-        ...result.issues.map((issue) => issue.message),
-        ...result.diagnostics.map((entry) => JSON.stringify(entry)),
-        `Elapsed: ${result.elapsed}`, `${APP_NAME} ${VERSION}`
+function headline(summary) {
+    const created = summary.counts.saved > 0 ? `Created ${plural(summary.counts.saved, "PDF")}.` : "No PDF was created.";
+    if (summary.kind === "invalid") { return "The request is invalid."; }
+    if (summary.kind === "nothing-to-convert") { return "Nothing to convert."; }
+    if (summary.kind === "stopped") { return `${created}\nStopped. ${plural(summary.notStarted + summary.counts.cancelled, "PDF")} not created.`; }
+    return summary.kind === "all-saved" ? created : `Finished with errors.\n${created}`;
+}
+
+function summaryText(summary) {
+    const saved = summary.saved.map((group) => `${group.folder}\n${group.outputs.map((output) => output.name).join("\n")}`);
+    const recovered = summary.recoveries.map((entry) => entry.location);
+    return [headline(summary), `${plural(summary.counts.saved, "PDF")} saved; ${plural(summary.counts.recovered, "PDF")} recovered; ${plural(summary.counts.failed, "PDF")} failed.`, saved.length > 0 ? `Saved to:\n${saved.join("\n\n")}` : "",
+        summary.failures.length > 0 ? `Could not convert:\n${summary.failures.map((entry) => `${entry.source ? `${entry.source}: ` : ""}${entry.message}`).join("\n")}` : "",
+        recovered.length > 0 ? `Recovered PDFs:\n${recovered.join("\n")}` : "",
+        summary.notStarted > 0 ? `Not started: ${summary.notStarted}` : "",
+        summary.refusals.length > 0 ? describeRejections(summary.refusals) : ""
     ].filter(Boolean).join("\n\n");
+}
+
+function completionMessage(result) {
+    return [summaryText(summarizeRun(result)), result.elapsed ? `Elapsed: ${result.elapsed}` : "", `${APP_NAME} ${VERSION}`].filter(Boolean).join("\n\n");
 }
 
 function showCompletion(app, result) {
     const { showDetails } = require("./details-dialog.js");
-    showDetails(app, { title: APP_NAME, summary: `Run ${result.state}.`, detail: completionMessage(result), buttons: ["OK"] });
+    showDetails(app, { title: APP_NAME, summary: headline(summarizeRun(result)), detail: completionMessage(result), buttons: ["OK"] });
 }
-
-module.exports = { describeRejections, completionMessage, showCompletion };
+module.exports = { describeRejections, headline, summaryText, completionMessage, showCompletion };

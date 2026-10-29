@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * The job the page and PDF tests run against: A4 portrait at 72 DPI, with
+ * The job the page and PDF tests run against: A4 portrait at 72 ppi, with
  * the tools in fixed places so a command can be compared literally.
  */
 
@@ -11,9 +11,9 @@ const { createProgress } = require("../../../src/host/progress.js");
 const geometry = calculatePageGeometry({
     paperSize: "A4",
     orientation: "Portrait",
-    dpi: 72,
+    resolutionLimit: 72,
     quality: 85,
-    mode: "single",
+    mode: "combined",
     background: "#FFFFFF"
 });
 

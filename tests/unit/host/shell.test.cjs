@@ -61,9 +61,9 @@ test("runArgv omits the context when given no label", () => {
 });
 
 test("readTextFile reads through the shell", () => {
-    const app = createFakeApp([["/bin/cat", '{"dpi":72}']]);
+    const app = createFakeApp([["/bin/cat", '{"resolutionLimit":72}']]);
 
-    assert.equal(readTextFile(app, "/tmp/config.json"), '{"dpi":72}');
+    assert.equal(readTextFile(app, "/tmp/config.json"), '{"resolutionLimit":72}');
     assert.match(app.commands[0], /'\/bin\/cat' '\/tmp\/config\.json'/u);
 });
 

@@ -1,13 +1,14 @@
 "use strict";
 
+const { summarizeRun } = require("../core/run-summary.js");
+const { summaryText } = require("./completion.js");
 const { runOutcome } = require("../core/outcomes.js");
 const { APP_NAME } = require("../core/version.js");
 const { supportedFormatList } = require("../core/paths.js");
 const { describeRejections, showCompletion } = require("./completion.js");
 const {
     writeReceipt,
-    isCompleteSuccess,
-    describeIncomplete
+    exitCli
 } = require("./receipt.js");
 
 /*
@@ -45,16 +46,18 @@ function reportNoImages(app, headless, rejected) {
  * The writer is a parameter so the line that is actually written can be read
  * back in a test; the default is the real one.
  */
-function reportHeadless(result, write = writeReceipt) {
-    const receipt = JSON.stringify(result);
+const INVALID_EXIT = 2;
+const SETUP_EXIT = 3;
+function exitCode(result) {
+    if (result.state === "invalid") { return INVALID_EXIT; }
+    if (result.issues.some((issue) => issue.stage === "setup")) { return SETUP_EXIT; }
+    return result.state === "complete" ? 0 : 1;
+}
 
-    if (isCompleteSuccess(result)) {
-        return receipt;
-    }
-
-    write(`${receipt}\n`);
-
-    throw new Error(describeIncomplete(result));
+function reportHeadless(result, write = writeReceipt, exit = exitCli) {
+    write(`${JSON.stringify(result)}\n`);
+    write(`${summaryText(summarizeRun(result))}\n`, undefined, true);
+    return exit(exitCode(result));
 }
 
 function reportResult(app, result, options) {

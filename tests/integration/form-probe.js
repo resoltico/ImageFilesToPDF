@@ -44,11 +44,26 @@ function nativeForm(scenario) {
     return alert;
 }
 
+function checkDetailWidths(view) {
+    if (view.isKindOfClass($.NSScrollView)) {
+        // Fixed scrollers appear during applet modal layout and reduce the clip width.
+        view.scrollerStyle = 0;
+        // eslint-disable-next-line no-unused-expressions
+        view.tile;
+        const document = view.documentView;
+        requireNative(Math.abs(document.frame.size.width - view.contentSize.width) < 1, "Details do not track the clip width; leading characters can be clipped.");
+        requireNative(Number(document.visibleRect.origin.x) === 0, "Details are horizontally scrolled.");
+    }
+    const children = view.subviews;
+    for (let index = 0; index < Number(children.count); index += 1) { checkDetailWidths(children.objectAtIndex(index)); }
+}
+
 function writePreview(alert, path) {
     const content = alert.window.contentView;
     // Native zero-argument methods are getter accesses in JXA.
     // eslint-disable-next-line no-unused-expressions
     content.layoutSubtreeIfNeeded;
+    checkDetailWidths(content);
     const bitmap = content.bitmapImageRepForCachingDisplayInRect(content.bounds);
     content.cacheDisplayInRectToBitmapImageRep(content.bounds, bitmap);
     const png = bitmap.representationUsingTypeProperties(PNG_TYPE, $.NSDictionary.dictionary);
@@ -73,7 +88,7 @@ function snapshot(folder, scenario, appearance) {
 
 function scenariosFor(longPath) {
     const answers = defaultAnswers();
-    const invalid = { ...answers, dpi: "1018", quality: "101", background: "purple" };
+    const invalid = { ...answers, resolutionLimit: "1018", quality: "101", background: "purple" };
     const {problems} = readAnswers(invalid);
     const common = { answers, problems: [], context: { count: 12, folders: ["/Pictures/"] } };
     return [

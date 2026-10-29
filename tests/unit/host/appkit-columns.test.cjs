@@ -79,16 +79,16 @@ test("no control runs off the edge of the form", () => {
 test("a row named in the problems is marked, and the others are not", () => {
     // Reading which field is wrong and seeing it should not be different jobs.
     const spec = formSpec(
-        { ...require("../../../src/host/settings-model.js").defaultAnswers(), dpi: "nope" },
-        [{ key: "dpi", message: "Resolution: enter a whole number from 72 to 1017." }]
+        { ...require("../../../src/host/settings-model.js").defaultAnswers(), resolutionLimit: "nope" },
+        [{ key: "resolutionLimit", message: "Resolution: enter a whole number from 72 to 1017." }]
     );
     const bridge = createFakeObjC();
     const { controls } = buildForm(bridge, spec, WIDGETS);
 
-    assert.equal(controls.dpi.drawsBackground, true);
-    assert.equal(controls.dpi.backgroundColor.name, "systemRed");
+    assert.equal(controls.resolutionLimit.drawsBackground, true);
+    assert.equal(controls.resolutionLimit.backgroundColor.name, "systemRed");
     assert.ok(
-        controls.dpi.backgroundColor.alpha < 0.5,
+        controls.resolutionLimit.backgroundColor.alpha < 0.5,
         "a tint, not a fill: the value must stay readable"
     );
 
@@ -110,8 +110,8 @@ test("the rule a value breaks is marked along with the value", () => {
     const { view } = buildForm(bridge, spec, WIDGETS);
     const hints = view.subviews.filter((child) => child.editable === false
         && String(child.stringValue).includes("–"));
-    const qualityHint = hints.find((hint) => hint.stringValue.includes("90–95"));
-    const dpiHint = hints.find((hint) => hint.stringValue.includes("DPI"));
+    const qualityHint = hints.find((hint) => hint.stringValue.includes("JPEG re-encoding"));
+    const dpiHint = hints.find((hint) => hint.stringValue.includes("ppi"));
 
     assert.equal(qualityHint.textColor.name, "systemRed");
     assert.equal(dpiHint.textColor.name, "secondaryLabel", "the valid rule stays quiet");
@@ -136,9 +136,9 @@ test("a hint is centred against the field it describes", () => {
     // below the value it qualifies.
     const { view, controls } = buildForm(createFakeObjC(), formSpec(), WIDGETS);
     const hints = view.subviews.filter((child) => child.editable === false
-        && String(child.stringValue).includes("DPI"));
+        && String(child.stringValue).includes("ppi"));
     const [hint] = hints;
-    const field = controls.dpi;
+    const field = controls.resolutionLimit;
 
     const centreOf = (rect) => rect.bottom + (rect.height / 2);
 

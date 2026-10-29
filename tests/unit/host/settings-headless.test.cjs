@@ -6,7 +6,7 @@ const {collectInvocation}=require("../../../src/host/input.js");
 const {createFakeApp}=require("../ports/fake-app.cjs");
 
 test("headless control consumes the validated request without asking settings or touching memory",()=>{
-    const config={paperSize:"A4",orientation:"Portrait",mode:"single",dpi:72,quality:92,background:"#FFFFFF"};
+    const config={paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:92,background:"#FFFFFF"};
     const invocation=collectInvocation(createFakeApp([["/bin/cat",JSON.stringify(config)]]),["--headless","/config","/source.png"],true);
     const asked=[];const settings=[];
     executeRun({progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>({invocation,selection:{images:[{path:"/source.png"}],rejected:[]}}),

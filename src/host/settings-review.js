@@ -1,5 +1,6 @@
 "use strict";
 
+const { summarizeRun } = require("../core/run-summary.js");
 const { APP_NAME } = require("../core/version.js");
 const { plural } = require("./formatting.js");
 const { UserCancelled } = require("../core/errors.js");
@@ -21,10 +22,10 @@ const { describeRejections } = require("./completion.js");
  * never reaches either -- its configuration is the whole of what it is told.
  */
 
-function confirmAction(app, message, button) {
+function confirmAction(app, message, button, summary = "Review the settings before creating PDFs.") {
     const { showDetails } = require("./details-dialog.js");
     const answer = showDetails(app, { title: APP_NAME,
-        summary: "Review the full details before continuing.", detail: message,
+        summary, detail: message,
         buttons: [button, CANCEL_BUTTON] });
     if (answer !== 0) { throw new UserCancelled(); }
 }
@@ -35,14 +36,14 @@ function confirmAction(app, message, button) {
  * instead of something discovered afterwards.
  */
 function reviewSelection(app, context) {
-    const rejected = context.rejected ?? [];
+    const { refusals: rejected } = summarizeRun({ state: "incomplete", documents: [], rejected: context.rejected ?? [], issues: [] });
 
     if (rejected.length > 0) {
         confirmAction(app, [
             describeRejections(rejected, `${plural(rejected.length, "item")} ` +
                 "in your selection cannot be included:"),
             `Continue with ${plural(context.count, "image")}?`
-        ].join("\n\n"), "Continue");
+        ].join("\n\n"), "Continue", `${plural(rejected.length, "item")} in your selection cannot be included.`);
     }
 }
 
@@ -60,7 +61,7 @@ function confirmSettings(app, settings, context) {
         output,
         PAGE_LAYOUT_NOTE,
         `${labelOfValue(PAPER_SIZE, settings.paperSize)}, ${settings.orientation}; ` +
-            `${settings.dpi} DPI; JPEG quality ${settings.quality}.`,
+            `${settings.resolutionLimit} ppi; JPEG quality ${settings.quality}.`,
         `Page background: ${settings.background}.`,
         destinationSummary(context, settings.mode)
     ].filter(Boolean).join("\n"), CREATE_BUTTON);

@@ -34,9 +34,9 @@ test("a hint is secondary: smaller, dimmer, and not editable", () => {
     // It sits beside a field and must not compete with it for attention, nor
     // look like somewhere to type.
     const { ns } = bridge();
-    const hint = makeHint(ns, "72–1200 DPI", RECT);
+    const hint = makeHint(ns, "72–1200 ppi", RECT);
 
-    assert.equal(hint.stringValue, "72–1200 DPI");
+    assert.equal(hint.stringValue, "72–1200 ppi");
     assert.equal(hint.editable, false);
     assert.equal(hint.drawsBackground, false);
     assert.ok(hint.font.size < 13, "smaller than the labels beside it");
@@ -85,7 +85,7 @@ test("an option is a title, in the order it was added", () => {
 test("a hint has no chrome of any kind", () => {
     // Built from the same NSTextField as an input. A bezel or a background
     // would make a read-only note look like somewhere to type.
-    const hint = makeHint(bridge().ns, "72–1017 DPI", RECT);
+    const hint = makeHint(bridge().ns, "72–1017 ppi", RECT);
 
     assert.equal(hint.bezeled, false);
     assert.equal(hint.selectable, false);

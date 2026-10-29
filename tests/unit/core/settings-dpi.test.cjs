@@ -1,9 +1,9 @@
 "use strict";
 
 /*
- * The DPI ceiling, which is arithmetic rather than taste.
+ * The ppi ceiling, which is arithmetic rather than taste.
  *
- * A page rendered at N DPI is an image, and pdfcpu refuses images above 100
+ * A page rendered at N ppi is an image, and pdfcpu refuses images above 100
  * megapixels in its stateless configuration.
  */
 
@@ -16,24 +16,24 @@ const {
     MAXIMUM_DPI
 } = require("../../../src/core/limits.js");
 
-test("the DPI ceiling is the one pdfcpu will actually accept", () => {
-    // A page rendered at N DPI is an image, and pdfcpu refuses images over
+test("the ppi ceiling is the one pdfcpu will actually accept", () => {
+    // A page rendered at N ppi is an image, and pdfcpu refuses images over
     // 100,000,000 pixels in stateless mode.
     const POINTS_PER_INCH = 72;
-    const pixelsAt = (dpi, page) =>
-        Math.round((page.widthPoints / POINTS_PER_INCH) * dpi)
-        * Math.round((page.heightPoints / POINTS_PER_INCH) * dpi);
+    const pixelsAt = (resolutionLimit, page) =>
+        Math.round((page.widthPoints / POINTS_PER_INCH) * resolutionLimit)
+        * Math.round((page.heightPoints / POINTS_PER_INCH) * resolutionLimit);
 
     for (const [name, page] of Object.entries(PAGE_DEFINITIONS)) {
         assert.ok(
             pixelsAt(MAXIMUM_DPI, page) <= PDFCPU_PIXEL_LIMIT,
-            `${name} at ${MAXIMUM_DPI} DPI is ${pixelsAt(MAXIMUM_DPI, page)} pixels`
+            `${name} at ${MAXIMUM_DPI} ppi is ${pixelsAt(MAXIMUM_DPI, page)} pixels`
         );
     }
 
     // And it is the true maximum, not a cautious number: one more breaks the
     // largest page. Measured against the real tool at 1017 and 1018.
-    // By area in points: comparing pixel counts at 1 DPI rounds both pages to
+    // By area in points: comparing pixel counts at 1 ppi rounds both pages to
     // single digits and picks the wrong one.
     const area = (page) => page.widthPoints * page.heightPoints;
     const largest = Object.values(PAGE_DEFINITIONS)

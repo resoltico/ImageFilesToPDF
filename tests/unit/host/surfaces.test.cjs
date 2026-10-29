@@ -35,7 +35,7 @@ test("a finished run stops claiming there is work outstanding", () => {
     const sink = jxaProgress(host);
 
     sink.pause();
-    assert.equal(host.totalUnitCount, 4, "a pause is not an ending");
+    assert.equal(host.totalUnitCount, 0, "a pause hides progress during a modal");
 
     sink.close();
     assert.equal(host.totalUnitCount, 0);

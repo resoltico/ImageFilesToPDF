@@ -99,11 +99,11 @@ test("a menu item is a title and nothing else", () => {
 
 test("a number row becomes a narrow editable field holding its value", () => {
     // Only as wide as four digits need; the rest of the column is the hint.
-    const { controls } = build(formSpec({ ...defaultAnswers(), dpi: "150" }));
+    const { controls } = build(formSpec({ ...defaultAnswers(), resolutionLimit: "150" }));
 
-    assert.equal(controls.dpi.kind, "field");
-    assert.equal(controls.dpi.stringValue, "150");
-    assert.equal(controls.dpi.rect.width, NUMBER_WIDTH);
+    assert.equal(controls.resolutionLimit.kind, "field");
+    assert.equal(controls.resolutionLimit.stringValue, "150");
+    assert.equal(controls.resolutionLimit.rect.width, NUMBER_WIDTH);
     assert.ok(NUMBER_WIDTH < FORM_WIDTH / 2, "a number needs no half the form");
 });
 
@@ -113,8 +113,8 @@ test("each numeric field is told the bounds it accepts", () => {
         .filter((child) => child.editable === false)
         .map((child) => child.stringValue);
 
-    assert.ok(hints.includes("72–1017 DPI"), hints.join(" | "));
-    assert.ok(hints.includes("1–100, 90–95 is typical"), hints.join(" | "));
+    assert.ok(hints.includes("72–1017 ppi"), hints.join(" | "));
+    assert.ok(hints.includes("1–100, JPEG re-encoding only"), hints.join(" | "));
 });
 
 test("the form is as tall as it has rows, plus its margins", () => {

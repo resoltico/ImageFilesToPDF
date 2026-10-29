@@ -27,7 +27,7 @@ test("expected errors, stops, unknown faults and provided issues retain their di
     assert.equal(issuesOf(new OperationError("denied"),"capture")[0].code,"operation");
     assert.equal(issuesOf(new Error("bug"),"publication")[0].code,"fault");
     assert.deepEqual(issuesOf({message:"bad"},"prepare"),[{code:"fault",stage:"prepare",message:"bad",diagnostic:{command:"",stack:""}}]);
-    const issues=[{field:"dpi",code:"integer"}];
+    const issues=[{field:"resolutionLimit",code:"integer"}];
     assert.equal(issuesOf({issues},"setup"),issues);
 });
 

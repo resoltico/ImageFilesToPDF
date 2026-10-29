@@ -86,7 +86,7 @@ write_config() {
 {
   "paperSize": "$2",
   "orientation": "$3",
-  "dpi": 72,
+  "resolutionLimit": 72,
   "quality": 90,
   "mode": "$4",
   "background": "$5",

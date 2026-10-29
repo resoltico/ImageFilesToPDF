@@ -34,7 +34,7 @@ vips copy "$WORK/blue.svg" "$WORK/photo.png"
 run() {
     local stamp=$1
     shift
-    write_config "$WORK/config.json" A4 Portrait "single" "#FFFFFF" "$stamp"
+    write_config "$WORK/config.json" A4 Portrait "combined" "#FFFFFF" "$stamp"
     osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$@" \
         2>"$WORK/error.txt" || true
 }

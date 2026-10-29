@@ -26,7 +26,7 @@ function fixture(count = 1, options = {}) {
         completed: () => { events.push(["saved"]); },
         ...options.ports
     };
-    return { ports, events, owned, artifacts, plans: documentPlan({mode: options.mode ?? "single"}, sources, "20261029_123456") };
+    return { ports, events, owned, artifacts, plans: documentPlan({mode: options.mode ?? "combined"}, sources, "20261029_123456") };
 }
 
 module.exports={fixture};

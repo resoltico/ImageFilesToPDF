@@ -33,7 +33,7 @@ test("a rejected answer is explained where it is corrected", () => {
 
     assert.equal(
         again.message,
-        `DPI must be a whole number from 72 to 1017.\n\n${RESOLUTION.prompt}`,
+        `Maximum resolution must be a whole number from 72 to 1017.\n\n${RESOLUTION.prompt}`,
         "the reason, and then the question again"
     );
     assert.equal(again.options.defaultAnswer, "3O0", "holding what was typed");
@@ -62,10 +62,10 @@ test("the sentence a person reads is the same in either front end", () => {
     app.nextAnswer = ["1500", "600"];
     promptInteger(app, RESOLUTION, "300");
 
-    const { problems } = readAnswers({ ...defaultAnswers(), dpi: "1500" });
+    const { problems } = readAnswers({ ...defaultAnswers(), resolutionLimit: "1500" });
 
     assert.equal(
         app.dialogs[1].message.split("\n")[0],
-        problems.find((problem) => problem.key === "dpi").message
+        problems.find((problem) => problem.key === "resolutionLimit").message
     );
 });

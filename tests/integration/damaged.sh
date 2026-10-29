@@ -48,7 +48,7 @@ test "$(vipsheader -f width "$WORK/cut.jpg")" = 900
 # Combined: one damaged image fails the run, and no PDF is published
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/combined.json" A4 Portrait "single" "#FFFFFF" 20260912_010101
+write_config "$WORK/combined.json" A4 Portrait "combined" "#FFFFFF" 20260912_010101
 if run_headless "$WORK/combined.json" "$WORK/whole.jpg" "$WORK/cut.jpg"; then
     fail "a combined run published a PDF from a truncated image"
 fi
@@ -95,7 +95,7 @@ fi
 mkdir "$WORK/stamped"
 cp "$WORK/whole.jpg" "$WORK/stamped/only.jpg"
 
-write_config "$WORK/escaping.json" A4 Portrait "single" "#FFFFFF" "../../elsewhere"
+write_config "$WORK/escaping.json" A4 Portrait "combined" "#FFFFFF" "../../elsewhere"
 if run_headless "$WORK/escaping.json" "$WORK/stamped/only.jpg"; then
     fail "a timestamp that is a path was accepted"
 fi

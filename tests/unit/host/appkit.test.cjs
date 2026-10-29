@@ -91,7 +91,7 @@ test("nothing is scheduled against the form, and nothing ends it early", () => {
 
 test("the alert carries the form's own title, detail and buttons", () => {
     const spec = formSpec(defaultAnswers(), [
-        { key: "dpi", message: "something was wrong" }
+        { key: "resolutionLimit", message: "something was wrong" }
     ]);
     const { bridge } = present([CREATE], spec);
     const [alert] = bridge.state.alerts;
@@ -106,9 +106,9 @@ test("the alert carries the form's own title, detail and buttons", () => {
 test("the current answers are preselected rather than left at the top", () => {
     // A redisplayed form that resets every popup would lose the answers it
     // exists to preserve.
-    const answers = { ...defaultAnswers(), paperSize: "Letter", dpi: "600" };
+    const answers = { ...defaultAnswers(), paperSize: "Letter", resolutionLimit: "600" };
     const { bridge } = present([CREATE], formSpec(answers, [
-        { key: "dpi", message: "fix the DPI" }
+        { key: "resolutionLimit", message: "fix the ppi" }
     ]));
     const view = bridge.state.alerts[0].accessoryView;
     const popups = view.subviews.filter((child) => child.kind === "popup");

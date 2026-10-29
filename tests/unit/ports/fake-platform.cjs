@@ -27,6 +27,7 @@ function managerFor(app, unbox) {
 function installPlatform(app, options = {}) {
     const bridge = createFakeObjC(options);
     const output = [];
+    const stderr = [];
     const unbox = (value) => value?.boxed ?? value;
     const ns = (value) => ({ boxed: value, stringByStandardizingPath: value, dataUsingEncoding: () => value });
     Object.assign(ns, bridge.ns, {
@@ -36,12 +37,13 @@ function installPlatform(app, options = {}) {
         NSURL: { fileURLWithPath: (path) => path },
         CGImageSourceCreateWithURL: () => ({}), CGImageSourceGetCount: () => app.pages ?? 1,
         CFRelease: () => undefined,
-        NSFileHandle: { fileHandleWithStandardOutput: { writeData: (text) => output.push(text) } }
+        exit: (code) => code,
+        NSFileHandle: { fileHandleWithStandardOutput: { writeData: (text) => output.push(text) }, fileHandleWithStandardError: { writeData: (text) => stderr.push(text) } }
     });
     Object.assign(bridge.objc, { deepUnwrap: (value) => value?.plain ?? value, unwrap: unbox,
         bindFunction: () => undefined, castRefToObject: () => ({ isNil: () => false }) });
     Object.assign(globalThis, { ObjC: bridge.objc, $: ns, Ref: () => ({}),
         Application: Object.assign(() => ({selection:()=>["/source.png"]}),{currentApplication:()=>app}) });
-    return { ...bridge, ns, output };
+    return { ...bridge, ns, output, stderr };
 }
 module.exports = { installPlatform };

@@ -20,11 +20,11 @@ function calculatePageGeometry(settings) {
         : definition.widthPoints;
 
     return {
-        widthPixels: Math.round(widthPoints / POINTS_PER_INCH * settings.dpi),
-        heightPixels: Math.round(heightPoints / POINTS_PER_INCH * settings.dpi),
+        widthPixels: Math.round(widthPoints / POINTS_PER_INCH * settings.resolutionLimit),
+        heightPixels: Math.round(heightPoints / POINTS_PER_INCH * settings.resolutionLimit),
         widthPoints,
         heightPoints,
-        dpi: settings.dpi
+        resolutionLimit: settings.resolutionLimit
     };
 }
 
@@ -38,7 +38,7 @@ function calculatePlacement(geometry, source) {
     const heightPoints = source.height * scale;
     const toPixels = (points) => Math.max(
         1,
-        Math.round(points / POINTS_PER_INCH * geometry.dpi)
+        Math.round(points / POINTS_PER_INCH * geometry.resolutionLimit)
     );
 
     return {

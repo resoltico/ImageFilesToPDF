@@ -17,18 +17,18 @@ and recovery use the same application rules as the Quick Action.
 The JSON root must be an object. All six page settings are required:
 
 ```json
-{"paperSize":"A4","orientation":"Portrait","mode":"single","dpi":300,"quality":92,"background":"#FFFFFF"}
+{"paperSize":"A4","orientation":"Portrait","mode":"combined","resolutionLimit":300,"quality":92,"background":"#FFFFFF"}
 ```
 
-| Field | JSON type and allowed values |
-| --- | --- |
-| `paperSize` | String: `A4` or `Letter` |
-| `orientation` | String: `Portrait` or `Landscape` |
-| `mode` | String: `single` or `separate` |
-| `dpi` | Number: integer 72–1017 |
-| `quality` | Number: integer 1–100 |
-| `background` | String: six hexadecimal digits, optional leading `#`, surrounding whitespace allowed |
-| `timestamp` | Optional string shaped `YYYYMMDD_HHMMSS` |
+| Field | Setting | JSON type and allowed values |
+| --- | --- | --- |
+| `paperSize` | Paper size | String: `A4` or `Letter` |
+| `orientation` | Orientation | String: `Portrait` or `Landscape` |
+| `mode` | PDF files | String: `combined` or `separate` |
+| `resolutionLimit` | Maximum resolution | Number: integer 72–1017 ppi |
+| `quality` | JPEG quality | Number: integer 1–100 |
+| `background` | Page background | String: six hexadecimal digits, optional leading `#`, surrounding whitespace allowed |
+| `timestamp` | Run timestamp | Optional string shaped `YYYYMMDD_HHMMSS` |
 
 Background is normalized to uppercase `#RRGGBB`, representing opaque sRGB.
 Numeric strings, booleans, arrays and object coercion are not accepted. JSON

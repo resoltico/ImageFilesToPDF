@@ -24,7 +24,7 @@ const LAST_RUN = normalizeSettings({
     orientation: "Landscape",
     mode: "separate",
     background: "#C7DAE8",
-    dpi: 600,
+    resolutionLimit: 600,
     quality: 80
 });
 

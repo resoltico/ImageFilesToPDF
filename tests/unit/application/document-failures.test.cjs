@@ -140,10 +140,10 @@ function failValidatedTransition(sample, target) {
     };
 }
 
-for(const mode of ["single","separate"]) {
+for(const mode of ["combined","separate"]) {
     test(`${mode} post-validation transition fault retains registered bytes and prior commits`,()=>{
-        const sample=fixture(3,{mode});failValidatedTransition(sample,mode==="single"?0:1);
-        const records=executeDocuments(sample.ports,sample.plans);const current=records[mode==="single"?0:1];
+        const sample=fixture(3,{mode});failValidatedTransition(sample,mode==="combined"?0:1);
+        const records=executeDocuments(sample.ports,sample.plans);const current=records[mode==="combined"?0:1];
         assert.equal(current.state,"recovered");assert.equal(current.issues[0].message,"validation transition fault");
         assert.ok(sample.owned.has(current.recovery));assert.equal(sample.artifacts.get(current.recovery).state,"validating");
         if(mode==="separate"){assert.deepEqual(records.map(record=>record.state),["saved","recovered","not-started"]);}

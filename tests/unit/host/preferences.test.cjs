@@ -97,9 +97,9 @@ test("the record goes in a suite of this action's own", () => {
 });
 
 test("what was remembered comes back", () => {
-    const { objc, ns } = bridge({ stored: '{"dpi":300}' });
+    const { objc, ns } = bridge({ stored: '{"resolutionLimit":300}' });
 
-    assert.equal(createMemory(objc, ns).recall(), '{"dpi":300}');
+    assert.equal(createMemory(objc, ns).recall(), '{"resolutionLimit":300}');
 });
 
 test("a first run finds a wrapped nil, which is nothing at all", () => {

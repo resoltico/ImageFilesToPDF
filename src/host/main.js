@@ -1,9 +1,8 @@
 "use strict";
 const { hostError } = require("./cancellation.js");
-const { APP_NAME } = require("../core/version.js");
 const { formatDuration } = require("./formatting.js");
 const { OperationError, isUserCancelled } = require("../core/errors.js");
-const { failedRun, issuesOf } = require("../core/outcomes.js");
+const { failedRun } = require("../core/outcomes.js");
 const { executeRun } = require("../application/run.js");
 const { isHeadlessInput } = require("./invocation-syntax.js");
 const { checkTools } = require("./preflight.js");
@@ -18,7 +17,7 @@ const { makeTimestamp } = require("../core/timestamps.js");
 const { chooseSettings } = require("./settings-form.js");
 const { reviewSelection } = require("./settings-review.js");
 const { createJob, unitsOf, runJob } = require("./job.js");
-const { showDetails } = require("./details-dialog.js");
+const { showCompletion } = require("./completion.js");
 
 function hostCapabilities() {
     const tree = createTree(globalThis.ObjC, globalThis.$, globalThis.Ref);
@@ -47,7 +46,7 @@ function jobFor(app, request, settings, report) {
 
 function execute(app, input, options) {
     const { headless, report = openProgress(headless) } = options;
-    const started = new Date();
+    let started = null;
     return executeRun({
         progress: report,
         prepare: () => prepare(app, input, { ...options, report }),
@@ -55,7 +54,7 @@ function execute(app, input, options) {
         review: (context) => reviewSelection(app, context),
         settings: (context) => chooseSettings(app, context),
         createJob: (request, settings) => jobFor(app, request, settings, report),
-        convert: runJob,
+        convert(job, images) { started = new Date(); return runJob(job, images); },
         present(result) {
             result.elapsed = formatDuration(new Date() - started);
             return reportResult(app, result, { headless });
@@ -74,10 +73,13 @@ function handled(app, input, headless) {
     catch (caught) {
         const outcome = caught?.outcome;
         const error = hostError(caught);
-        if (headless) { return failedRun(error, outcome); }
+        if (headless) {
+            const failed = failedRun(error, outcome);
+            if (!outcome && error.issues?.some((issue) => ["settings", "request"].includes(issue.stage))) { failed.state = "invalid"; }
+            return failed;
+        }
         if (!isUserCancelled(error)) {
-            showDetails(app, { title: APP_NAME, summary: "The request could not be completed.",
-                detail: JSON.stringify({ outcome, issues: issuesOf(error, outcome ? "reporting" : "setup") }), buttons: ["OK"] });
+            showCompletion(app, failedRun(error, outcome));
         }
         return undefined;
     }

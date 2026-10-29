@@ -20,10 +20,10 @@ test("every input has a meaningful accessible name and its applicable choices or
 });
 
 test("invalid inputs expose their state without dropping their correction guidance", () => {
-    const spec = formSpec(defaultAnswers(), [{ key: "dpi", message: "Bad DPI" }]);
+    const spec = formSpec(defaultAnswers(), [{ key: "resolutionLimit", message: "Bad ppi" }]);
     const { controls } = buildForm(createFakeObjC(), spec, WIDGETS);
 
-    assert.equal(controls.dpi.accessibilityHelp,
-        "Invalid value. Correct this setting. 72–1017 DPI");
+    assert.equal(controls.resolutionLimit.accessibilityHelp,
+        "Invalid value. Correct this setting. 72–1017 ppi");
     assert.ok(!controls.quality.accessibilityHelp.includes("Invalid"));
 });
