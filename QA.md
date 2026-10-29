@@ -5,8 +5,9 @@
 The supported target is macOS 12.3 or later. The source language policy is
 ES2022, with a Safari 15.4 build target and a separate built-in availability
 check. These checks are not polyfills or proof of every native host behavior.
-Compatibility on macOS 12.3 and macOS 15 is accepted as an assumption rather
-than verified on those target runtimes.
+Compatibility on macOS 12.3 and macOS 15 is accepted as a target assumption.
+Automated native CI uses macOS 15; target-floor checks do not establish full
+interactive behavior on every supported host.
 
 Full live Shortcuts interaction and intended-host live fallback remain
 unverified: computer-control access to `com.apple.WorkflowKit.MacHelper` times
