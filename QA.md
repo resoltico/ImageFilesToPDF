@@ -71,6 +71,7 @@ not current product documentation.
 | `volumes.sh` | Cross-volume APFS and HFS+ publication in both modes |
 | `cards.sh` | FAT32 exclusive publication/collisions and exFAT recovery in both modes |
 | `damaged.sh` | Damaged-source refusal and combined/separate behavior |
+| `cli.sh` | Production CLI grammar/statuses, native reader, refusal corpus, names, JPEG streams, placement and TERM/reclaim/retention |
 | `form.sh` | Explicit production-renderer probe, native geometry/accessibility and PNG previews |
 
 Install the complete native tool set from the contributor guide. Volume tests

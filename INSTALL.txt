@@ -68,13 +68,18 @@ resolution limits downsampling, and JPEG quality affects JPEG re-encoding only.
 "Separate PDFs - one page per image" creates a single-page document per image.
 Images found through a selected folder save there; explicit files save beside
 their source. A combined PDF uses the first ordered image's destination.
-Existing entries are never overwritten; filename collisions receive suffixes.
+Combined names are Images YYYY-MM-DD at HH.MM.SS.pdf (local time). Separate
+names use the sanitized source stem; same-run stem conflicts add the lower-case
+extension. Existing entries are never overwritten; collisions use " 2", " 3", etc.
 
 Combined mode publishes no subset after a candidate failure. Separate mode
 continues ordinary failures, while cancellation, cleanup or software faults can
 stop remaining work. Completion identifies saved/recovered work, failures and
 work not started. Follow any reported recovery or unconfirmed-candidate path;
-those files may intentionally remain in the system temporary directory.
+validated recovery first uses Downloads under the intended filename, then a
+confirmed temporary copy if Downloads is unavailable. Show in Finder opens the
+reported recovery. Retained or unreadable workspaces remain for inspection;
+the next valid conversion reclaims unretained work owned by dead processes.
 
 Remove it
 =========

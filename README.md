@@ -99,9 +99,11 @@ these preferences. To reset them:
 defaults delete com.resoltico.ImageFilesToPDF
 ```
 
-A combined PDF is named `output_YYYYMMDD_HHMMSS.pdf`. Separate PDFs use each
-image's sanitized stem followed by the timestamp. Collisions receive numeric
-suffixes; existing files, directories, pipes and links are never overwritten.
+A combined PDF is named `Images YYYY-MM-DD at HH.MM.SS.pdf` in local time.
+Separate PDFs use `<sanitized stem>.pdf`. Sources sharing a stem and destination
+in the same run include their lower-case extension, for example `photo-jpg.pdf`
+and `photo-png.pdf`. Existing-entry collisions use `photo 2.pdf`, `photo 3.pdf`,
+and so on. Existing files, directories, pipes and links are never overwritten.
 
 Combined mode publishes no subset if a candidate fails. Separate mode continues
 ordinary document failures; cancellation, cleanup failures and software faults
@@ -110,7 +112,12 @@ cancelled and not-started documents and includes full relevant paths.
 
 ## Processing and recovery
 
-Each source is copied into a private workspace before inspection. The same
+Candidates are inspected before settings: unreadable, empty, unsupported and
+multi-image files are refused with their original paths. Batched header reads
+keep selection checking bounded. Damage requiring a full decode can still fail
+during conversion.
+
+Each admitted source is copied into a private workspace. The same
 owned bytes are inspected and decoded, with identity/version checks around
 capture. Observed changes or unreadable required facts cause refusal. Coarse
 filesystem timestamps cannot guarantee an atomic snapshot of a concurrently
@@ -143,17 +150,20 @@ ownership is released. APFS and HFS+ support the link route; FAT32 supports the
 exclusive-rename route. exFAT cannot provide the required publication primitive,
 so saving there fails with recovery instead of exposing a partial final file.
 
-A validated PDF that cannot be saved is copied to a recovery location and
-checked before the workspace original is released. If recovery cannot be
-confirmed, the original workspace is retained. An unexpected validation fault
+A validated PDF that cannot be saved is published to `~/Downloads` under its
+intended filename, using the same collision and native confirmation rules. If
+Downloads cannot be written and confirmed, a checked copy in the system temporary
+directory is used. The actual location appears in completion, with Show in Finder.
+If neither recovery can be confirmed, the original workspace is retained. An unexpected validation fault
 can retain an explicitly unconfirmed candidate; it is not counted as a validated
 recovery. Follow the reported path and status when recovering work.
 
 Stop requests are checked at safe boundaries. Confirmed outputs remain saved,
-including when a stop arrives during publication. A broken progress surface is
-quarantined while healthy surfaces continue; optional observer faults retain
-diagnostics. Temporary resources are cleaned as their lifetimes end, except
-work intentionally retained for recovery or uncertainty.
+including when a stop arrives during publication. The interactive action has one progress panel with Stop; it hides for questions
+and closes before completion. Observer faults are diagnostic rather than a loss
+of saved work. Workspaces record PID and process start time before user data.
+The next valid conversion reclaims dead-owner workspaces without a retention
+marker; retained or unreadable workspaces are reported and left untouched.
 
 ## Headless request and receipt
 

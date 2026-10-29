@@ -65,7 +65,7 @@ death, an external host stop or a failed stdout transport cannot guarantee a
 receipt.
 
 ```json
-{"state":"complete","documents":[{"state":"saved","sources":["/absolute/image.png"],"pages":1,"issues":[],"output":"/absolute/output_20261029_120000.pdf"}],"rejected":[],"issues":[],"diagnostics":[],"elapsed":"1 second"}
+{"state":"complete","documents":[{"state":"saved","sources":["/absolute/image.png"],"pages":1,"issues":[],"output":"/absolute/Images 2026-10-29 at 12.00.00.pdf"}],"rejected":[],"issues":[],"diagnostics":[],"elapsed":"1 second"}
 ```
 
 | Run field | Meaning |
@@ -128,3 +128,16 @@ its document. Damage that requires a full decode is a document failure with
 code `damaged`; it can still fail a combined document after admission. No subset
 of a failed combined document is published. Separate mode can save the other
 valid documents.
+
+## Names and retained work
+
+Combined names use local time: `Images YYYY-MM-DD at HH.MM.SS.pdf`. Separate
+names use sanitized stems; same-run stem conflicts in one destination add the
+lower-case source extension. Existing-entry collisions use ` 2`, ` 3`, etc.
+
+A failed destination first recovers a validated PDF to `~/Downloads` under its
+intended name. If that cannot be written and confirmed, a confirmed temporary
+copy is used. Always consume the receipt's actual `output` or `recovery` path.
+A valid conversion startup reclaims dead-owner workspaces without retention
+markers; help, version and invalid requests do not perform housekeeping.
+Retained and unreadable workspaces are left in place and appear in diagnostics.

@@ -48,9 +48,9 @@ Required source/filesystem/publication capabilities fail setup when absent.
 Optional UI, progress and preferences can be unavailable; programming faults must
 remain diagnosable rather than silently triggering fallback.
 
-`src/core/settings.js` owns canonical settings, defaults and legal choice IDs.
-`src/host/settings-model.js` derives offered IDs and bounds, adding presentation
-captions. Text fields are parsed at adapter boundaries and use the common
+`src/core/settings.js` owns canonical settings, defaults, names, captions, hints
+and legal choice IDs. `src/host/settings-model.js` derives the offered form and
+stepwise records from that schema. Text fields are parsed at adapter boundaries and use the common
 all-issues validator. Numeric RGB components belong to colour policy; vips
 comma-separated vectors belong to the backend adapter.
 
@@ -87,7 +87,11 @@ rejects omitted source files and external runtime imports.
 Native probes use explicit entry files importing production modules through
 `tools/build-probe.mjs`. They must not append private global calls to the
 production bundle or expose private production APIs. Production end-to-end tests
-invoke the actual generated script.
+invoke the actual generated script. `tests/integration/cli.sh` is part of the
+native gate and CI; its Node driver orchestrates real osascript processes and
+independent PDF inspection. It does not substitute a fake host. Temporary
+workspace cleanup must identify this run's ownership; recovery cleanup removes
+only the confirmed test file, never its Downloads parent.
 
 Qualify build/toolchain changes with independent clean Linux/macOS restores and
 compare bytes. The Node pin is mirrored in `.node-version`, `mise.toml` and

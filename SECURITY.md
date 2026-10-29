@@ -14,7 +14,8 @@ Explicit selection is validated independently. Required file-kind, package,
 identity and source-capture capabilities must be available; processing does not
 fall back to weaker checks.
 
-Each admitted source is captured into an owned private workspace. Inspection and
+Candidates are inspected before consent and settings; captured-byte inspection
+remains authoritative. Each admitted source is captured into an owned private workspace. Inspection and
 decoding consume the same captured bytes. Required facts are checked around
 capture, and observed changes are refused. Coarse filesystem timestamps cannot
 establish an adversarial atomic snapshot of a changing original.
@@ -31,7 +32,16 @@ must succeed and pass native checks before the original is released. Uncertain
 validation candidates are identified separately from validated recoveries.
 Cleanup removes owned resources; it does not adopt paths based on spelling or
 infer ownership from an unknown existence result. Recovery and unresolved-work
-locations may intentionally remain in the system temporary directory.
+locations may intentionally remain in the system temporary directory. Validated
+recovery first uses Downloads with exclusive publication and native confirmation;
+only a confirmed recovery allows the workspace original to be released.
+
+Workspace creation writes and confirms `owner.json` (PID and process start)
+before user data. A `retain` marker protects artifacts entering validation.
+A valid conversion startup reclaims only exact workspace-pattern directories
+whose recorded PID/start is dead and whose retain marker is absent. Retained,
+unreadable and ownerless directories are diagnostic and remain untouched.
+Help/version and invalid CLI requests do not run this housekeeping.
 
 ## Embedded image metadata
 
