@@ -2,16 +2,16 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { backgroundVector } = require("../../../src/runtime/backend-commands.js");
+const { backgroundVector } = require("../../../src/backend/commands.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 function settings(overrides) {
     return {
         paperSize: "A4",
         orientation: "Portrait",
-        dpi: 300,
+        resolutionLimit: 300,
         quality: 92,
-        mode: "single",
+        mode: "combined",
         background: "#FFFFFF",
         ...overrides
     };
@@ -21,16 +21,16 @@ test("normalizeSettings canonicalizes the dialog values", () => {
     assert.deepEqual(normalizeSettings(settings()), {
         paperSize: "A4",
         orientation: "Portrait",
-        dpi: 300,
+        resolutionLimit: 300,
         quality: 92,
-        mode: "single",
+        mode: "combined",
         background: "#FFFFFF"
     });
 });
 
 test("historical mode labels are rejected without conversion", () => {
     for (const mode of ["Single PDF", "Separate PDFs"]) {
-        assert.throws(() => normalizeSettings(settings({ mode })), /Output mode/u);
+        assert.throws(() => normalizeSettings(settings({ mode })), /PDF files/u);
     }
     assert.equal(normalizeSettings(settings({ mode: "separate" })).mode, "separate");
 });
@@ -46,7 +46,7 @@ test("normalizeSettings rejects unsupported choices", () => {
     );
     assert.throws(
         () => normalizeSettings(settings({ mode: "Many" })),
-        /Output mode must be/u
+        /PDF files must be/u
     );
     assert.throws(
         () => normalizeSettings(settings({ background: "black" })),
@@ -55,12 +55,12 @@ test("normalizeSettings rejects unsupported choices", () => {
 });
 
 test("normalizeSettings enforces the numeric ranges", () => {
-    for (const dpi of [71, 1201, 72.5, "x"]) {
-        assert.throws(() => normalizeSettings(settings({ dpi })), /DPI must be/u);
+    for (const resolutionLimit of [71, 1201, 72.5, "x"]) {
+        assert.throws(() => normalizeSettings(settings({ resolutionLimit })), /Maximum resolution must be/u);
     }
 
     for (const quality of [0, 101, 1.5]) {
-        assert.throws(() => normalizeSettings(settings({ quality })), /Quality must be/u);
+        assert.throws(() => normalizeSettings(settings({ quality })), /JPEG quality must be/u);
     }
 });
 

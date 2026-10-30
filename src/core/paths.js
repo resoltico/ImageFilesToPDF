@@ -75,9 +75,9 @@ function fileStem(filename) {
 }
 
 /*
- * Reduces a name to something safe to create on disk while preserving
- * Unicode. Separators and control characters become underscores; the result
- * never starts or ends with whitespace, a dot, or an underscore.
+ * Preserves Unicode while replacing separators/control characters and
+ * collapsing underscores. Trims edge dots, then whitespace/underscores;
+ * an empty result uses "image".
  */
 function sanitizeFilename(filename) {
     const safe = String(filename)

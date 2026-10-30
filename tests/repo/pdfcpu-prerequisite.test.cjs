@@ -45,7 +45,7 @@ test("the CI prerequisite rejects an older installed release", async () => {
     assert.match(result.stderr, /Version 0\.16\.4 or later is required/u);
 });
 
-test("the CI prerequisite rejects backend pixel limits that no longer match the DPI calculation", async () => {
+test("the CI prerequisite rejects backend pixel limits that no longer match the ppi calculation", async () => {
     const result = await checkPrerequisite("0.16.4", 99999999);
 
     assert.equal(result.status, 1);

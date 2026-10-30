@@ -1,65 +1,28 @@
 "use strict";
+const { POINTS_PER_INCH, PAGE_DEFINITIONS } = require("./limits.js");
 
-const {
-    POINTS_PER_INCH,
-    PAGE_DEFINITIONS
-} = require("./limits.js");
-
-/*
- * The page keeps its exact point dimensions at every DPI; only the pixel
- * canvas scales. That way the published PDF is always precisely A4 or Letter.
- */
 function calculatePageGeometry(settings) {
     const definition = PAGE_DEFINITIONS[settings.paperSize];
     const portrait = settings.orientation !== "Landscape";
-    const widthPoints = portrait
-        ? definition.widthPoints
-        : definition.heightPoints;
-    const heightPoints = portrait
-        ? definition.heightPoints
-        : definition.widthPoints;
-
-    return {
-        widthPixels: Math.round(widthPoints / POINTS_PER_INCH * settings.dpi),
-        heightPixels: Math.round(heightPoints / POINTS_PER_INCH * settings.dpi),
-        widthPoints,
-        heightPoints,
-        dpi: settings.dpi
-    };
+    return { widthPoints: portrait ? definition.widthPoints : definition.heightPoints,
+        heightPoints: portrait ? definition.heightPoints : definition.widthPoints, resolutionLimit: settings.resolutionLimit };
 }
 
-/*
- * Where the image sits on the page, and how many pixels that is.
- *
- * One source pixel is treated as one point, so an image has a natural size on
- * paper that does not depend on the resolution chosen for the raster. It is
- * scaled down to fit the page and never enlarged beyond that natural size.
- *
- * Deciding this from the pixel canvas instead — fitting the image into the
- * page measured in output pixels — makes the resolution setting move the
- * picture: the same photograph covered 102 mm at 300 DPI and 51 mm at 600,
- * because a higher resolution made the page a larger number of pixels while
- * the image stayed the same number.
- */
+/** Natural size is one source pixel per point, fitted without enlargement. */
 function calculatePlacement(geometry, source) {
-    const scale = Math.min(
-        1,
-        geometry.widthPoints / source.width,
-        geometry.heightPoints / source.height
-    );
+    const fit = Math.min(geometry.widthPoints / source.width, geometry.heightPoints / source.height);
+    const scale = Math.min(1, fit);
     const widthPoints = source.width * scale;
     const heightPoints = source.height * scale;
-    const toPixels = (points) => Math.max(
-        1,
-        Math.round(points / POINTS_PER_INCH * geometry.dpi)
-    );
-
-    return {
-        widthPoints,
-        heightPoints,
-        widthPixels: toPixels(widthPoints),
-        heightPixels: toPixels(heightPoints)
-    };
+    return { widthPoints, heightPoints, relativeScale: Math.min(1, 1 / fit),
+        widthPixels: Math.max(1, Math.min(source.width, Math.floor(widthPoints / POINTS_PER_INCH * geometry.resolutionLimit))),
+        heightPixels: Math.max(1, Math.min(source.height, Math.floor(heightPoints / POINTS_PER_INCH * geometry.resolutionLimit))) };
 }
 
-module.exports = { calculatePlacement, calculatePageGeometry };
+const RGB_BANDS = 3;
+
+function canPassThrough(source, placement) {
+    return source.loader === "jpegload" && source.bands === RGB_BANDS && !source.icc && source.orientation === 1 &&
+        ["", "srgb"].includes(source.interpretation) && source.width <= placement.widthPixels && source.height <= placement.heightPixels;
+}
+module.exports = { calculatePlacement, calculatePageGeometry, canPassThrough };

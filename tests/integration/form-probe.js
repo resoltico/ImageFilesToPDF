@@ -1,9 +1,9 @@
 "use strict";
-const { formSpec, defaultAnswers } = require("../../src/runtime/form.js");
-const { readAnswers } = require("../../src/runtime/answers.js");
-const { buildForm } = require("../../src/runtime/appkit-form.js");
-const { WIDGETS } = require("../../src/runtime/appkit.js");
-const { detailsAlert } = require("../../src/runtime/details-dialog.js");
+const { formSpec, defaultAnswers } = require("../../src/host/settings-model.js");
+const { readAnswers } = require("../../src/host/settings-model.js");
+const { buildForm } = require("../../src/host/appkit.js");
+const { WIDGETS } = require("../../src/host/appkit.js");
+const { detailsAlert } = require("../../src/host/details-dialog.js");
 const SMALLEST_VISIBLE_HEIGHT = 744;
 const PNG_TYPE = 4;
 
@@ -41,7 +41,28 @@ function nativeForm(scenario) {
     const alert = WIDGETS.makeAlert($, spec);
     alert.accessoryView = built.view;
     measuredControls(built, spec);
+    for (const mode of ["separate", "combined"]) {
+        built.controls.mode.selectItemAtIndex(mode === "combined" ? 0 : 1);
+        requireNative($.NSApplication.sharedApplication.sendActionToFrom(built.controls.mode.action, built.controls.mode.target, built.controls.mode), "Mode action was not handled");
+        requireNative(ObjC.unwrap(built.details.documentView.string) === spec.summaryDetails[mode], "Mode summary is stale");
+    }
+    built.controls.mode.selectItemAtIndex(scenario.answers.mode === "combined" ? 0 : 1);
+    $.NSApplication.sharedApplication.sendActionToFrom(built.controls.mode.action, built.controls.mode.target, built.controls.mode);
     return alert;
+}
+
+function checkDetailWidths(view) {
+    if (view.isKindOfClass($.NSScrollView)) {
+        // Fixed scrollers appear during applet modal layout and reduce the clip width.
+        view.scrollerStyle = 0;
+        // eslint-disable-next-line no-unused-expressions
+        view.tile;
+        const document = view.documentView;
+        requireNative(Math.abs(document.frame.size.width - view.contentSize.width) < 1, "Details do not track the clip width; leading characters can be clipped.");
+        requireNative(Number(document.visibleRect.origin.x) === 0, "Details are horizontally scrolled.");
+    }
+    const children = view.subviews;
+    for (let index = 0; index < Number(children.count); index += 1) { checkDetailWidths(children.objectAtIndex(index)); }
 }
 
 function writePreview(alert, path) {
@@ -49,6 +70,7 @@ function writePreview(alert, path) {
     // Native zero-argument methods are getter accesses in JXA.
     // eslint-disable-next-line no-unused-expressions
     content.layoutSubtreeIfNeeded;
+    checkDetailWidths(content);
     const bitmap = content.bitmapImageRepForCachingDisplayInRect(content.bounds);
     content.cacheDisplayInRectToBitmapImageRep(content.bounds, bitmap);
     const png = bitmap.representationUsingTypeProperties(PNG_TYPE, $.NSDictionary.dictionary);
@@ -73,7 +95,7 @@ function snapshot(folder, scenario, appearance) {
 
 function scenariosFor(longPath) {
     const answers = defaultAnswers();
-    const invalid = { ...answers, dpi: "1018", quality: "101", background: "purple" };
+    const invalid = { ...answers, resolutionLimit: "1018", quality: "101", background: "purple" };
     const {problems} = readAnswers(invalid);
     const common = { answers, problems: [], context: { count: 12, folders: ["/Pictures/"] } };
     return [

@@ -6,7 +6,7 @@ const test = require("node:test");
 const {
     selectionSummary, outputSummary,
     outputAlternatives, destinationSummary
-} = require("../../../src/runtime/output-description.js");
+} = require("../../../src/host/output-description.js");
 
 test("selection context preserves provenance and deduplicates ordered destinations", () => {
     assert.deepEqual(selectionContext({ images: [] }), {
@@ -33,8 +33,8 @@ test("selection wording distinguishes direct choices, folder discoveries and unk
 });
 
 test("page and file cardinalities are separate, including one image", () => {
-    assert.equal(outputSummary("single", 1), "1 PDF with 1 page");
-    assert.equal(outputSummary("single", 12), "1 PDF with 12 pages");
+    assert.equal(outputSummary("combined", 1), "1 PDF with 1 page");
+    assert.equal(outputSummary("combined", 12), "1 PDF with 12 pages");
     assert.equal(outputSummary("separate", 1), "1 single-page PDF");
     assert.equal(outputSummary("separate", 12), "12 single-page PDFs");
     assert.equal(outputSummary("separate", 0), "0 single-page PDFs");
@@ -49,14 +49,14 @@ test("page and file cardinalities are separate, including one image", () => {
 test("save guidance follows the actual destination rules for each mode", () => {
     assert.equal(destinationSummary(), "");
     assert.equal(destinationSummary({}), "");
-    for (const mode of ["single", "separate", "both"]) {
+    for (const mode of ["combined", "separate", "both"]) {
         assert.equal(destinationSummary({ folders: ["/a/"] }, mode), "Save to: /a/");
     }
     const context = { folders: ["/a/", "/b/"] };
     const separate = "Separate PDFs save in each folder you selected, or " +
         "beside each image you selected: 2 folders.";
 
-    assert.equal(destinationSummary(context, "single"), "Save to: /a/");
+    assert.equal(destinationSummary(context, "combined"), "Save to: /a/");
     assert.equal(destinationSummary(context, "separate"), separate);
     assert.equal(destinationSummary(context), `One PDF saves to: /a/\n${separate}`);
 });

@@ -1,63 +1,29 @@
 "use strict";
-
 const { zeroPad } = require("./numbers.js");
-
-/*
- * The stamp that tells one run's output from another's, and what one may be.
- *
- * A run generates its own. A headless caller may supply one instead, and that
- * value goes straight into an output filename -- so it is a value with a
- * shape rather than a string, and it is read where it arrives rather than
- * trusted all the way to the filesystem. "/../../elsewhere/result" is a
- * perfectly good string and is not a timestamp; interpolated into
- * output_${timestamp}.pdf it is a PDF in another folder.
- *
- * The rules live beside the thing that produces them so the two cannot drift:
- * whatever makeTimestamp returns, readTimestamp accepts.
- */
-
 const TIMESTAMP_FIELD_WIDTH = 2;
-
-// Eight digits, an underscore, six digits. Exactly what makeTimestamp emits,
-// anchored at both ends so nothing may be carried along beside it.
+const YEAR_WIDTH = 4;
 const TIMESTAMP_FORM = "YYYYMMDD_HHMMSS";
-const TIMESTAMP_PATTERN = /^\d{8}_\d{6}$/u;
+const TIMESTAMP_PATTERN = /^(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})_(?<hour>\d{2})(?<minute>\d{2})(?<second>\d{2})$/u;
 
 function makeTimestamp(date) {
     const pad = (value) => zeroPad(value, TIMESTAMP_FIELD_WIDTH);
-
-    return [
-        date.getFullYear(),
-        pad(date.getMonth() + 1),
-        pad(date.getDate()),
-        "_",
-        pad(date.getHours()),
-        pad(date.getMinutes()),
-        pad(date.getSeconds())
-    ].join("");
+    return [zeroPad(date.getFullYear(), YEAR_WIDTH), pad(date.getMonth() + 1), pad(date.getDate()), "_",
+        pad(date.getHours()), pad(date.getMinutes()), pad(date.getSeconds())].join("");
 }
 
 function isTimestamp(value) {
-    return typeof value === "string" && TIMESTAMP_PATTERN.test(value);
+    if (typeof value !== "string") { return false; }
+    const match = TIMESTAMP_PATTERN.exec(value);
+    if (!match) { return false; }
+    const { year, month, day, hour, minute, second } = match.groups;
+    const date = new Date(0);
+    date.setFullYear(Number(year), Number(month) - 1, Number(day));
+    date.setHours(Number(hour), Number(minute), Number(second), 0);
+    return makeTimestamp(date) === value;
 }
 
-/*
- * Refused rather than repaired. Sanitizing an unusable value into a usable one
- * would name the output something the caller did not ask for and say nothing
- * about it, which is worse than a run that will not start.
- */
 function readTimestamp(value) {
-    const text = String(value);
-
-    if (!isTimestamp(value)) {
-        throw new Error(
-            `The timestamp must be ${TIMESTAMP_FORM}, for example ` +
-            `${makeTimestamp(new Date())}. It names one file and cannot ` +
-            `contain a path. Received: ${text}`
-        );
-    }
-
-    return text;
+    if (!isTimestamp(value)) { throw new Error(`The timestamp must be a real local date-time in ${TIMESTAMP_FORM} form.`); }
+    return value;
 }
-
 module.exports = { TIMESTAMP_FORM, makeTimestamp, isTimestamp, readTimestamp };

@@ -1,0 +1,127 @@
+"use strict";
+const { hostError } = require("./cancellation.js");
+const { formatDuration } = require("./formatting.js");
+const { OperationError, isUserCancelled } = require("../core/errors.js");
+const { failedRun } = require("../core/outcomes.js");
+const { executeRun } = require("../application/run.js");
+const { isCliInput } = require("./invocation-syntax.js");
+const { checkTools } = require("./preflight.js");
+const { reportNoImages, reportResult, reportHeadless } = require("./reporting.js");
+const { collectInvocation } = require("./input.js");
+const { inspectCandidates } = require("./source-inspection.js");
+const { collectImageFiles } = require("./admission.js");
+const { createTree } = require("./tree.js");
+const { workspaceAccess } = require("./workspace-access.js");
+const { reclaimWorkspaces } = require("./workspace.js");
+const { sourceAccess } = require("./source-capture.js");
+const { nativeDestinationNames } = require("./destination-names.js");
+const { nativePublication } = require("./native-publication.js");
+const { openProgress } = require("./surfaces.js");
+const { makeTimestamp } = require("../core/timestamps.js");
+const { chooseSettings } = require("./settings-form.js");
+const { reviewSelection } = require("./settings-review.js");
+const { createJob, unitsOf, runJob } = require("./job.js");
+const { cliCommand, showCliCommand } = require("./cli.js");
+const { showCompletion } = require("./completion.js");
+
+function hostCapabilities() {
+    const tree = createTree(globalThis.ObjC, globalThis.$, globalThis.Ref);
+    return { tree, destinationNames: nativeDestinationNames(globalThis.ObjC, globalThis.$), storage: workspaceAccess(globalThis.ObjC, globalThis.$), sources: sourceAccess(globalThis.ObjC, globalThis.$),
+        publication: nativePublication(globalThis.ObjC, globalThis.$) };
+}
+
+function prepare(app, input, options) {
+    options.report.phase("Checking required tools");
+    const tools = checkTools(app);
+    const invocation = options.headless ? input : collectInvocation(app, input);
+    const capabilities = options.capabilities ?? hostCapabilities();
+    const { tree, sources, publication, storage, destinationNames } = capabilities;
+    if (!tree || !sources || !publication || !storage || !destinationNames || typeof destinationNames.groups !== "function" || ["facts", "readable", "capture", "pngCount"].some((method) => typeof sources[method] !== "function")) { throw new OperationError("Required filesystem/source capabilities are unavailable."); }
+    options.report.diagnostics.push(...reclaimWorkspaces(app, storage));
+    options.report.phase("Finding images");
+    const selected = collectImageFiles(app, invocation.inputItems, tree);
+    const selection = inspectCandidates(app, selected, { tools, sources, progress: options.report });
+    return { tools, invocation, ...capabilities, selection };
+}
+
+function jobFor(app, request, settings, report) {
+    const job = createJob(app, settings, request.invocation.timestamp || makeTimestamp(new Date()), request);
+    Object.assign(job, { sources: request.sources, publication: request.publication, progress: report });
+    const images = request.selection.images.length;
+    report.expect({ units: unitsOf(settings, images), images });
+    return job;
+}
+
+function execute(app, input, options) {
+    const { headless, report = openProgress(headless) } = options;
+    let started = null;
+    return executeRun({
+        progress: report,
+        prepare: () => prepare(app, input, { ...options, report }),
+        noImages: (rejected) => { report.close(); return reportNoImages(app, headless, rejected); },
+        review: (context) => reviewSelection(app, context),
+        settings: (context) => chooseSettings(app, context),
+        createJob: (request, settings) => jobFor(app, request, settings, report),
+        convert(job, images) { started = new Date(); return runJob(job, images); },
+        present(result) {
+            result.elapsed = formatDuration(new Date() - started);
+            return reportResult(app, result, { headless });
+        }
+    });
+}
+
+function runReported(app, input, headless) {
+    const report = openProgress(headless);
+    try { return execute(app, input, { headless, report }); }
+    finally { report.close(); }
+}
+
+function handled(app, input, headless) {
+    try { return runReported(app, input, headless); }
+    catch (caught) {
+        const outcome = caught?.outcome;
+        const error = hostError(caught);
+        if (headless) {
+            const failed = failedRun(error, outcome);
+            if (!outcome && error.issues?.some((issue) => ["settings", "request"].includes(issue.stage))) { failed.state = "invalid"; }
+            return failed;
+        }
+        if (!isUserCancelled(error)) {
+            showCompletion(app, failedRun(error, outcome));
+        }
+        return undefined;
+    }
+}
+
+function application() {
+    const app = Application.currentApplication();
+    app.includeStandardAdditions = true;
+    return app;
+}
+
+function cliRequest(input) {
+    try { return cliCommand(input); }
+    catch (error) {
+        const outcome = failedRun(error);
+        if (error.issues?.some((issue) => ["settings", "request"].includes(issue.stage))) { outcome.state = "invalid"; }
+        return { kind: "failed", outcome };
+    }
+}
+
+function cliOutcome(invocation) {
+    try { return handled(application(), invocation, true); }
+    catch (error) { return failedRun(hostError(error)); }
+}
+
+function runCli(input) {
+    const command = cliRequest(input);
+    if (command.kind === "failed") { return reportHeadless(command.outcome); }
+    return command.kind === "run" ? reportHeadless(cliOutcome(command.invocation)) : showCliCommand(command.kind);
+}
+
+// The production bridge keeps CLI argv separate from Shortcuts/Applet input.
+// eslint-disable-next-line no-unused-vars
+function run(input, parameters) {
+    return isCliInput(input) ? runCli(input) : handled(application(), input, false);
+}
+module.exports = { run, execute };

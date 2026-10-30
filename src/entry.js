@@ -1,3 +1,3 @@
 "use strict";
-const { run } = require("./runtime/main.js");
+const { run } = require("./host/main.js");
 module.exports = { run };

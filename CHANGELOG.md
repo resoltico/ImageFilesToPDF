@@ -2,23 +2,21 @@
 
 ## [Unreleased]
 
-- Headless JSON now requires six correctly typed settings, rejects unknown fields and historical mode labels, and validates timestamp whenever supplied; update existing configurations.
-- Headless receipts now use structured document states, source mappings, actual output/recovery paths and issues; update consumers to the [active contract](README.md#headless-request-and-receipt).
-- Requires stable pdfcpu 0.16.4 or later; run `brew update` and `brew upgrade pdfcpu` before using the updated action.
-- Development now requires Node 26.13.0 and npm 12.2.1 or later; local setup and CI install the declared npm pin.
-- Stop if owned intermediates cannot be released; retain cleanup diagnostics and confirmed PDFs, and verify recovery copies before releasing originals.
-- Register PDF ownership before creation; retain validated bytes across ownership faults and identify unconfirmed candidates after unexpected validation failures.
-- Retain confirmed outputs across allocation, failure-reporting and teardown faults; report document issues as incomplete and count prepared pages before batch handoffs.
-- Quarantine broken progress surfaces; derive legal UI choices from core definitions and show full rejection paths without false empty-folder claims.
-- Preserve exact native file identity values and confirm publication without cancellable Apple Event round trips.
-- Inspect and render one owned source copy at a time; refuse observed capture changes, APNG and unsupported disguised containers instead of silently losing content.
-- Import bounded page batches through one document executor; combined failures publish no subset, separate documents continue, and confirmed outputs survive cancellation.
-- Publication uses classified exact-path native claims, retries collisions with suffixes, confirms identity and retains validated PDFs for recovery when saving fails.
-- Invalid explicit backend overrides fail setup instead of silently selecting another executable.
-- Native forms and detail dialogs bound variable content while preserving full details and canonical settings; renderer faults remain diagnosable.
-- Build with pinned esbuild 0.28.2 and isolated module scopes; retain standalone JXA delivery, discover source dependencies and organize modules without a physical line cap.
-- Update ESLint, Stryker, Acorn, the qs override, transitive development dependencies and CI actions to current stable releases.
-- Generic path examples in the shared AGENTS.md baseline no longer fail repository-reference checks; document hygiene and supplement references remain checked.
+- Require stable pdfcpu 0.16.4 or later; run `brew update` and `brew upgrade pdfcpu`. Invalid explicit backend overrides fail setup.
+- Replace headless `dpi` with required `resolutionLimit` (ppi, default 300); use the six typed settings and current mode values in [HEADLESS.md](HEADLESS.md).
+- CLI string-array input is always noninteractive; use `--help`, `--version` or `--headless`. Exit codes are 0 complete, 1 incomplete/stopped, 2 invalid and 3 setup.
+- Combined PDFs use `Images YYYY-MM-DD at HH.MM.SS.pdf`; separate PDFs use source stems. Existing-name collisions use Finder-style ` 2` suffixes.
+- Separate files add source extensions when names coincide in their actual destination namespace, including case-insensitive and normalized-name conflicts.
+- Receipts expose document states, source mappings, actual saved/recovery paths and structured issues; update consumers to the [active contract](HEADLESS.md).
+- Embed image-sized rasters on vector backgrounds without enlargement; PNG/TIFF stay lossless. Eligible JPEGs keep exact bytes, including embedded metadata.
+- Normalize orientation, profiles, alpha and excess resolution; JPEG quality defaults to 82 and affects only JPEG encoding. Lossless WebP is re-encoded as JPEG.
+- Inspect candidates before settings, refuse unreadable, empty, disguised and multi-image sources, and report decode damage against the original path.
+- Recovery first publishes and confirms the intended filename in Downloads, then tries a confirmed temporary copy. Completion names the actual location and offers Show in Finder.
+- Record workspace owners and retain validation candidates; the next conversion reclaims unretained dead-owner work while leaving retained or unreadable work for inspection.
+- Use one progress panel with Stop and a live settings summary; dialogs show one headline, grouped saved paths, failures, not-started counts and optional copyable diagnostics.
+- Paged fallback completion offers Show in Finder alongside Details when both actions are available.
+- Read UTF-8 settings natively and resolve relative CLI paths from the working directory; invalid requests report their cause without an osascript error wrapper.
+- Keep confirmed outputs across cancellation and reporting faults; validate exact page counts, assemble bounded batches and never publish a combined subset after failure.
 
 ## [1.5.4] - 2026-10-05
 

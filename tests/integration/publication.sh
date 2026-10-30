@@ -34,9 +34,9 @@ vips copy "$WORK/blue.svg" "$WORK/photo.png"
 run() {
     local stamp=$1
     shift
-    write_config "$WORK/config.json" A4 Portrait "single" "#FFFFFF" "$stamp"
+    write_config "$WORK/config.json" A4 Portrait "combined" "#FFFFFF" "$stamp"
     osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$@" \
-        2>"$WORK/error.txt" || true
+        >"$WORK/receipt.json" 2>"$WORK/error.txt" || true
 }
 
 # assert_nothing_left_behind <folder>
@@ -58,7 +58,7 @@ mkdir -p "$WORK/same-volume"
 cp "$WORK/photo.png" "$WORK/same-volume/"
 run 20260907_010101 "$WORK/same-volume/photo.png"
 
-SAME="$WORK/same-volume/output_20260907_010101.pdf"
+SAME="$WORK/same-volume/Images 2026-09-07 at 01.01.01.pdf"
 assert_valid_pdf "$SAME"
 assert_nothing_left_behind "$WORK/same-volume"
 test "$(stat -f%l "$SAME")" = 1 ||
@@ -74,22 +74,22 @@ test "$(stat -f%l "$SAME")" = 1 ||
 
 mkdir -p "$WORK/link"
 cp "$WORK/photo.png" "$WORK/link/"
-ln -s /nowhere/gone.pdf "$WORK/link/output_20260907_040404.pdf"
+ln -s /nowhere/gone.pdf "$WORK/link/Images 2026-09-07 at 04.04.04.pdf"
 run 20260907_040404 "$WORK/link/photo.png"
 
-test -L "$WORK/link/output_20260907_040404.pdf" ||
+test -L "$WORK/link/Images 2026-09-07 at 04.04.04.pdf" ||
     fail "the link was replaced instead of stepped around"
-assert_valid_pdf "$WORK/link/output_20260907_040404_2.pdf"
+assert_valid_pdf "$WORK/link/Images 2026-09-07 at 04.04.04 2.pdf"
 assert_nothing_left_behind "$WORK/link"
 
 # Existing entry kinds must be left untouched by the actual product, in both modes.
-for mode in single separate; do
+for mode in combined separate; do
     for kind in file directory fifo dangling symlink-directory; do
         CASE="$WORK/occupied-$mode-$kind"
         mkdir "$CASE"
         cp "$WORK/photo.png" "$CASE/photo.png"
-        BASE="$CASE/output_20260907_041414.pdf"
-        if [[ "$mode" == separate ]]; then BASE="$CASE/photo_20260907_041414.pdf"; fi
+        BASE="$CASE/Images 2026-09-07 at 04.14.14.pdf"
+        if [[ "$mode" == separate ]]; then BASE="$CASE/photo.pdf"; fi
         case "$kind" in
             file) printf 'untouched' > "$BASE" ;;
             directory) mkdir "$BASE"; printf 'untouched' > "$BASE/child" ;;
@@ -99,7 +99,7 @@ for mode in single separate; do
         esac
         BEFORE=$(stat -f '%d:%i:%z:%HT' "$BASE")
         write_config "$CASE/config.json" A4 Portrait "$mode" "#FFFFFF" 20260907_041414
-        node - "$SCRIPT" "$CASE/config.json" "$CASE/photo.png" "${BASE%.pdf}_2.pdf" > "$CASE/receipt.json" <<'NODE'
+        node - "$SCRIPT" "$CASE/config.json" "$CASE/photo.png" "${BASE%.pdf} 2.pdf" > "$CASE/receipt.json" <<'NODE'
 const assert = require("node:assert/strict");
 const {spawnSync} = require("node:child_process");
 const [script,config,source,expected] = process.argv.slice(2);
@@ -118,7 +118,7 @@ NODE
             dangling) test "$(readlink "$BASE")" = missing ;;
             symlink-directory) test "$(readlink "$BASE")" = target; test "$(ls -A "$CASE/target")" = child ;;
         esac
-        assert_valid_pdf "${BASE%.pdf}_2.pdf"
+        assert_valid_pdf "${BASE%.pdf} 2.pdf"
     done
 done
 
@@ -133,11 +133,10 @@ cp "$WORK/photo.png" "$WORK/readonly/"
 chmod 555 "$WORK/readonly"
 run 20260907_030303 "$WORK/readonly/photo.png"
 
-KEPT=$(sed -n 's/^\(\/var\/folders\/.*ImageFilesToPDF-recovered[^ ]*\.pdf\).*/\1/p' \
-    "$WORK/error.txt" | head -1)
+KEPT=$(receipt_recovery "$WORK/receipt.json")
 test -n "$KEPT" || fail "no recovery path was named: $(cat "$WORK/error.txt")"
 assert_valid_pdf "$KEPT"
-rm -rf "$(dirname "$KEPT")"
+remove_test_recovery "$KEPT"
 assert_nothing_left_behind "$WORK/readonly"
 test -z "$(find "$WORK/readonly" -name '*.pdf')" ||
     fail "something was left at the output path"
@@ -158,7 +157,7 @@ cp "$WORK/photo.png" "$WORK/denied/"
 chmod +a "$(id -un) deny add_file" "$WORK/denied"
 run 20260907_090909 "$WORK/denied/photo.png"
 
-grep -q '"state":"denied"'  "$WORK/error.txt" ||
+grep -q '"state":"denied"' "$WORK/receipt.json" ||
     fail "the system's own words are missing: $(cat "$WORK/error.txt")"
 grep -qiE 'drive|volume' "$WORK/error.txt" &&
     fail "a cause was named that was not established: $(cat "$WORK/error.txt")"
@@ -166,11 +165,10 @@ test -z "$(find "$WORK/denied" -name '*.pdf')" ||
     fail "something was left at the output path"
 assert_nothing_left_behind "$WORK/denied"
 
-DENIED_KEPT=$(sed -n 's/^\(\/var\/folders\/.*ImageFilesToPDF-recovered[^ ]*\.pdf\).*/\1/p' \
-    "$WORK/error.txt" | head -1)
+DENIED_KEPT=$(receipt_recovery "$WORK/receipt.json")
 test -n "$DENIED_KEPT" || fail "no recovery path was named: $(cat "$WORK/error.txt")"
 assert_valid_pdf "$DENIED_KEPT"
-rm -rf "$(dirname "$DENIED_KEPT")"
+remove_test_recovery "$DENIED_KEPT"
 chmod -a# 0 "$WORK/denied"
 
 printf 'macOS publication integration passed\n'

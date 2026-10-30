@@ -15,18 +15,18 @@ test("a production module may not name an executable directly", async () => {
     const { checkContent } = await loadRules();
 
     assert.throws(
-        () => checkContent("src/runtime/pages.js", 'runArgv(a, ["/bin/cp", x]);\n'),
+        () => checkContent("src/host/pages.js", 'runArgv(a, ["/bin/cp", x]);\n'),
         // Named in full: the whole point is to say where it does belong.
         new RegExp(
-            "src/runtime/pages\\.js: names /bin/cp directly; every executable " +
-            "belongs in src/runtime/backend-executables\\.js, which is the one place " +
+            "src/host/pages\\.js: names /bin/cp directly; every executable " +
+            "belongs in src/host/backend-executables\\.js, which is the one place " +
             "the action.s external surface is written down",
             "u"
         )
     );
     assert.throws(
         () => checkContent(
-            "src/runtime/backend-commands.js",
+            "src/backend/commands.js",
             'const tool = "/opt/homebrew/bin/ghostscript";\n'
         ),
         /ghostscript/u
@@ -37,7 +37,7 @@ test("the module that owns them may name them, and tests may too", async () => {
     const { checkContent } = await loadRules();
 
     assert.doesNotThrow(
-        () => checkContent("src/runtime/backend-executables.js", 'const MV = "/bin/mv";\n')
+        () => checkContent("src/host/backend-executables.js", 'const MV = "/bin/mv";\n')
     );
     // A fixture path in a test is an assertion, not an invocation.
     assert.doesNotThrow(
@@ -68,7 +68,7 @@ test("a production module with no executable in it passes", async () => {
     const { checkContent } = await loadRules();
 
     assert.doesNotThrow(
-        () => checkContent("src/runtime/pages.js", "const value = 1;\n")
+        () => checkContent("src/host/pages.js", "const value = 1;\n")
     );
     assert.doesNotThrow(
         () => checkContent("src/core/geometry.js", 'const label = "output";\n')
@@ -81,7 +81,7 @@ test("a file naming several is told about all of them, as a list", async () => {
     // Run together, "/bin/cp/bin/mv" is a path that does not exist and a
     // reader looks for the wrong thing.
     assert.throws(
-        () => checkContent("src/runtime/pages.js", '["/bin/cp", "/bin/mv"]\n'),
+        () => checkContent("src/host/pages.js", '["/bin/cp", "/bin/mv"]\n'),
         /names \/bin\/cp, \/bin\/mv directly/u
     );
 });

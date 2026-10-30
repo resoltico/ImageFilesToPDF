@@ -1,0 +1,53 @@
+"use strict";
+
+/*
+ * The job the page and PDF tests run against: A4 portrait at 72 ppi, with
+ * the tools in fixed places so a command can be compared literally.
+ */
+
+const { calculatePageGeometry } = require("../../../src/core/geometry.js");
+const { createProgress } = require("../../../src/host/progress.js");
+
+const geometry = calculatePageGeometry({
+    paperSize: "A4",
+    orientation: "Portrait",
+    resolutionLimit: 72,
+    quality: 85,
+    mode: "combined",
+    background: "#FFFFFF"
+});
+
+function makeJob(app) {
+    return {
+        app,
+        geometry,
+        settings: { quality: 85, background: "#FFFFFF" },
+        timestamp: "20260904_010203",
+        workspace: "/tmp/ImageFilesToPDF.X",
+        artifacts: new Map(),
+        parts: new Map(),
+        cleanupIssues: [],
+        storage: app.storage,
+        destinationNames: app.destinationNames,
+        progress: createProgress([]),
+        publication: app.publication,
+        sources: app.sources,
+        tools: { vips: "/v/vips", vipsheader: "/v/vipsheader", pdfcpu: "/v/pdfcpu" }
+    };
+}
+
+/*
+ * What admission hands over: the path, the name to use for the output, and
+ * the folder the PDF goes in -- which for a directly selected file is its own.
+ */
+function imageOf(path) {
+    return {
+        path,
+        admission: { identity: path, version: "1", image: { loader: "pngload", format: "PNG", width: 600, height: 400,
+            bands: 3, orientation: 1, pages: 1, icc: false, interpretation: "srgb" } },
+        originalName: path.slice(path.lastIndexOf("/") + 1),
+        folder: path.slice(0, path.lastIndexOf("/") + 1)
+    };
+}
+
+module.exports = { geometry, makeJob, imageOf };

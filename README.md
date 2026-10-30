@@ -69,19 +69,20 @@ source. A combined document uses the first ordered image's destination folder.
 
 ## Settings and output
 
-| Setting | Accepted values | Interactive default |
-| --- | --- | --- |
-| PDF files | One PDF with one image per page; separate PDFs with one page per image | One PDF |
-| Paper | A4 or US Letter | A4 |
-| Orientation | Portrait or Landscape | Portrait |
-| Resolution | Integer 72–1017 DPI | 300 DPI |
-| JPEG quality | Integer 1–100 | 92 |
-| Background | Six hexadecimal sRGB digits, optional `#` | `#FFFFFF` |
+| Field | Setting | Values | Default |
+| --- | --- | --- | --- |
+| `mode` | PDF files | `combined`: one PDF, one image per page; `separate`: one PDF per image | `combined` |
+| `paperSize` | Paper size | A4 or US Letter | A4 |
+| `orientation` | Orientation | Portrait or Landscape | Portrait |
+| `resolutionLimit` | Maximum resolution | Integer 72–1017 ppi | 300 ppi |
+| `quality` | JPEG quality | Integer 1–100 | 82 |
+| `background` | Page background | Six hexadecimal sRGB digits, optional `#` | `#FFFFFF` |
 
 The background presets are white, black, purple `#8E79E0` and dark blue
 `#204486`. You can type a custom colour; spaces and letter case are normalized.
 The opaque background fills margins and transparent pixels without recolouring
-opaque image content. Every PDF page uses JPEG compression.
+opaque image content. PNG and TIFF use lossless image encoding. Eligible JPEGs are embedded unchanged;
+other JPEG, HEIC/HEIF, AVIF and WebP images use JPEG encoding, including lossless WebP.
 
 Selection refusals are shown before conversion. The settings form shows the
 candidate count and destinations, preserves draft answers during correction,
@@ -91,41 +92,63 @@ use the same validation and end with a confirmation. Coding faults are diagnosed
 
 Confirmed interactive settings are remembered under
 `com.resoltico.ImageFilesToPDF`, shared by all installed copies of this action.
-Invalid stored records use the defaults. Headless runs neither read nor write
-these preferences. To reset them:
+Valid remembered values take precedence over the defaults, including JPEG
+quality. Invalid stored records use the defaults. Headless runs neither read nor
+write these preferences. To reset them:
 
 ```sh
 defaults delete com.resoltico.ImageFilesToPDF
 ```
 
-A combined PDF is named `output_YYYYMMDD_HHMMSS.pdf`. Separate PDFs use each
-image's sanitized stem followed by the timestamp. Collisions receive numeric
-suffixes; existing files, directories, pipes and links are never overwritten.
+A combined PDF is named `Images YYYY-MM-DD at HH.MM.SS.pdf` in local time.
+Separate PDFs use `<sanitized stem>.pdf`. Sources sharing a stem and destination
+in the same run include their lower-case extension, for example `photo-jpg.pdf`
+and `photo-png.pdf`. Existing-entry collisions use `photo 2.pdf`, `photo 3.pdf`,
+and so on. Existing files, directories, pipes and links are never overwritten. Names are
+compared in the actual destination namespace: differently cased stems can
+conflict on a case-insensitive volume while remaining distinct on a
+case-sensitive one. Alternate spellings of an existing destination are matched
+by native directory identity. Planning stops if reliable name-equivalence facts
+cannot be established.
 
 Combined mode publishes no subset if a candidate fails. Separate mode continues
 ordinary document failures; cancellation, cleanup failures and software faults
 can stop remaining work. Completion distinguishes saved, recovered, failed,
-cancelled and not-started documents and includes full relevant paths.
+cancelled and not-started documents and includes full relevant paths. The native
+dialog shows its headline once, above selectable details.
 
 ## Processing and recovery
 
-Each source is copied into a private workspace before inspection. The same
+Candidates are inspected before settings: unreadable, empty, unsupported and
+multi-image files are refused with their original paths. Batched header reads
+keep selection checking bounded. Damage requiring a full decode can still fail
+during conversion.
+
+Each admitted source is copied into a private workspace. The same
 owned bytes are inspected and decoded, with identity/version checks around
 capture. Observed changes or unreadable required facts cause refusal. Coarse
 filesystem timestamps cannot guarantee an atomic snapshot of a concurrently
 modified original.
 
-The pipeline applies orientation and embedded ICC profiles, converts to sRGB,
-flattens transparency, and places the image on a page-sized JPEG canvas.
-Placement is independent of DPI: one source pixel has a natural size of one
-point, scaled down to fit and never enlarged. Paper dimensions are exactly
-A4 (595.28 × 841.89 pt) or Letter (612 × 792 pt).
+Images are embedded at image size on a vector page background. Natural size is
+one source pixel per point, scaled down to fit without enlargement. Maximum
+resolution is a downsampling ceiling, not a page raster size. Paper dimensions
+are A4 (595.2756 × 841.8898 pt) or US Letter (612 × 792 pt).
+
+An untagged three-band sRGB JPEG with upright orientation and density within
+the ceiling is embedded byte for byte after a full decode check. Its embedded
+metadata is retained. Other images are oriented, converted from embedded profiles
+to sRGB and flattened onto the page background as needed. Untagged one-band grey
+stays grey. PNG/TIFF use lossless PNG; JPEG, HEIC/HEIF, AVIF and WebP use the JPEG
+quality setting when re-encoded. Lossless WebP is also re-encoded as JPEG. Images
+are never upsampled.
 
 Pages are imported in batches bounded by 32 queued pages, 64 MiB of encoded
 page data and command length. One newly prepared page may temporarily coexist
 with the queue; an oversized page is imported alone before another source is
-prepared. Exact page count and strict PDF validation are required before saving.
-pdfcpu runs with `--conf disable`, without personal configuration, fonts or
+prepared. Consecutive pages sharing a placement are imported together; bounded
+merge levels assemble the document with bookmarks disabled. Exact page count
+and strict PDF validation are required before saving. pdfcpu runs with `--conf disable`, without personal configuration, fonts or
 certificates.
 
 Publication uses exact-path native hard links or exclusive rename of an owned
@@ -134,17 +157,20 @@ ownership is released. APFS and HFS+ support the link route; FAT32 supports the
 exclusive-rename route. exFAT cannot provide the required publication primitive,
 so saving there fails with recovery instead of exposing a partial final file.
 
-A validated PDF that cannot be saved is copied to a recovery location and
-checked before the workspace original is released. If recovery cannot be
-confirmed, the original workspace is retained. An unexpected validation fault
+A validated PDF that cannot be saved is published to `~/Downloads` under its
+intended filename, using the same collision and native confirmation rules. If
+Downloads cannot be written and confirmed, a checked copy in the system temporary
+directory is used. The actual location appears in completion, with Show in Finder.
+If neither recovery can be confirmed, the original workspace is retained. An unexpected validation fault
 can retain an explicitly unconfirmed candidate; it is not counted as a validated
 recovery. Follow the reported path and status when recovering work.
 
 Stop requests are checked at safe boundaries. Confirmed outputs remain saved,
-including when a stop arrives during publication. A broken progress surface is
-quarantined while healthy surfaces continue; optional observer faults retain
-diagnostics. Temporary resources are cleaned as their lifetimes end, except
-work intentionally retained for recovery or uncertainty.
+including when a stop arrives during publication. The interactive action has one progress panel with Stop; it hides for questions
+and closes before completion. Observer faults are diagnostic rather than a loss
+of saved work. Workspaces record PID and process start time before user data.
+The next valid conversion reclaims dead-owner workspaces without a retention
+marker; retained or unreadable workspaces are reported and left untouched.
 
 ## Headless request and receipt
 

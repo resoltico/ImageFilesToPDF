@@ -12,7 +12,7 @@ const {
     labelsOf,
     defaultLabelOf,
     valueOfLabel
-} = require("../../../src/runtime/choices.js");
+} = require("../../../src/host/settings-model.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 const LISTS = [PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND];
@@ -20,7 +20,7 @@ const LISTS = [PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND];
 test("every prompt asks about its subject in plain words", () => {
     assert.equal(PAPER_SIZE.prompt, "Paper size:");
     assert.equal(ORIENTATION.prompt, "Orientation:");
-    assert.equal(OUTPUT_MODE.prompt, "How should the PDF files be grouped?");
+    assert.equal(OUTPUT_MODE.prompt, "PDF files:");
     assert.equal(BACKGROUND.prompt, "Page background:");
 });
 
@@ -43,7 +43,7 @@ test("the numeric prompts state the range they will accept", () => {
     // Otherwise a rejection is the first time anyone learns it.
     assert.match(RESOLUTION.prompt, /\(72–1017\)/u);
     assert.match(QUALITY.prompt, /\(1–100/u);
-    assert.match(QUALITY.prompt, /90–95 is typical/u);
+    assert.match(QUALITY.hint, /JPEG re-encoding only/u);
 });
 
 test("the stated range is the range that is actually enforced", () => {
@@ -106,9 +106,9 @@ test("an unknown label is refused rather than passed through", () => {
 const BASELINE = {
     paperSize: "A4",
     orientation: "Portrait",
-    dpi: Number(RESOLUTION.defaultAnswer),
+    resolutionLimit: Number(RESOLUTION.defaultAnswer),
     quality: Number(QUALITY.defaultAnswer),
-    mode: "single",
+    mode: "combined",
     background: "#FFFFFF"
 };
 

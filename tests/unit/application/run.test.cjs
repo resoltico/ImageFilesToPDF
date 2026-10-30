@@ -8,7 +8,7 @@ test("controller closes progress and presents the same authoritative document ou
     const selection={images:[{path:"a"}],rejected:[{path:"bad"}]};
     const documents=[{state:"saved",sources:["a"],pages:1,output:"out.pdf",issues:[]}];
     const progress={diagnostics:[{code:"observer"}],pause:()=>events.push("pause"),close:()=>events.push("close")};
-    const ports={progress,prepare:()=>({selection,invocation:{headless:true,settings:{mode:"single"}}}),createJob:()=>({kind:"job"}),convert:()=>({documents,issues:[]}),
+    const ports={progress,prepare:()=>({selection,invocation:{headless:true,settings:{mode:"combined"}}}),createJob:()=>({kind:"job"}),convert:()=>({documents,issues:[]}),
         present(result){events.push(result);return "presented";}};
     assert.equal(executeRun(ports),"presented");
     assert.deepEqual(events,["pause","close",{state:"incomplete",documents,rejected:selection.rejected,issues:[],diagnostics:progress.diagnostics}]);
@@ -38,7 +38,7 @@ test("interactive consent precedes settings and cancellation creates no job",()=
 });
 
 test("interactive settings and consent share the core selection facts",()=>{
-    const events=[];const settings={mode:"single"};
+    const events=[];const settings={mode:"combined"};
     const request={invocation:{headless:false},selection:{images:[{path:"a",folder:"/a/"}],rejected:[{name:"bad",reason:"refused"}]}};
     executeRun({progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>request,
         review:(context)=>events.push(["review",context.count,context.folders]),settings:(context)=>{events.push(["settings",context.count]);return settings;},
@@ -61,7 +61,7 @@ test("even a primitive presentation fault retains the completed outcome",()=>{
 test("interactive requests without refusals do not ask an unnecessary selection consent",()=>{
     const events=[];
     executeRun({progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>({invocation:{headless:false},selection:{images:[{path:"a",folder:"/a/"}],rejected:[]}}),
-        review:()=>events.push("review"),settings:()=>({mode:"single"}),createJob:()=>({}),convert:()=>({documents:[],issues:[]}),present:(value)=>value});
+        review:()=>events.push("review"),settings:()=>({mode:"combined"}),createJob:()=>({}),convert:()=>({documents:[],issues:[]}),present:(value)=>value});
     assert.deepEqual(events,[]);
 });
 

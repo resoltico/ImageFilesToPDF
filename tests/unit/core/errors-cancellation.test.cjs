@@ -10,7 +10,7 @@
  * always read the chain for exactly this reason.
  */
 
-const { hostError } = require("../../../src/runtime/cancellation.js");
+const { hostError } = require("../../../src/host/cancellation.js");
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {

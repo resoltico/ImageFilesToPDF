@@ -48,16 +48,17 @@ test "$(vipsheader -f width "$WORK/cut.jpg")" = 900
 # Combined: one damaged image fails the run, and no PDF is published
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/combined.json" A4 Portrait "single" "#FFFFFF" 20260912_010101
+write_config "$WORK/combined.json" A4 Portrait "combined" "#FFFFFF" 20260912_010101
 if run_headless "$WORK/combined.json" "$WORK/whole.jpg" "$WORK/cut.jpg"; then
     fail "a combined run published a PDF from a truncated image"
 fi
 
-test ! -e "$WORK/output_20260912_010101.pdf" ||
+test ! -e "$WORK/Images 2026-09-12 at 01.01.01.pdf" ||
     fail "a PDF was published from a run that failed"
 
-grep -q "premature end" "$WORK/stderr" ||
+grep -q "image is damaged" "$WORK/stderr" ||
     fail "the failure does not say what was wrong with the file"
+grep -q "premature end" "$WORK/receipt" || fail "the decoding diagnostic was lost"
 
 # ---------------------------------------------------------------------------
 # Separate: the damaged image is reported, and its valid sibling still converts
@@ -68,15 +69,15 @@ if run_headless "$WORK/separate.json" "$WORK/whole.jpg" "$WORK/cut.jpg"; then
     fail "a run that could not convert everything reported success"
 fi
 
-assert_valid_pdf "$WORK/whole_20260912_020202.pdf"
-test ! -e "$WORK/cut_20260912_020202.pdf" ||
+assert_valid_pdf "$WORK/whole.pdf"
+test ! -e "$WORK/cut.pdf" ||
     fail "a PDF was published for the truncated image"
 
 node - "$WORK/receipt" "$WORK/cut.jpg" <<'NODE'
 const fs = require("node:fs");
 const receipt = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const failed = receipt.documents.find((document) => document.sources.includes(process.argv[3]));
-if (!failed || failed.state !== "failed" || failed.issues.length === 0) {
+if (!failed || failed.state !== "failed" || failed.issues[0]?.code !== "damaged") {
     throw new Error("the receipt does not map the damaged source to its failure");
 }
 NODE
@@ -95,7 +96,7 @@ fi
 mkdir "$WORK/stamped"
 cp "$WORK/whole.jpg" "$WORK/stamped/only.jpg"
 
-write_config "$WORK/escaping.json" A4 Portrait "single" "#FFFFFF" "../../elsewhere"
+write_config "$WORK/escaping.json" A4 Portrait "combined" "#FFFFFF" "../../elsewhere"
 if run_headless "$WORK/escaping.json" "$WORK/stamped/only.jpg"; then
     fail "a timestamp that is a path was accepted"
 fi

@@ -12,7 +12,7 @@ for (const thrown of [null, undefined, new TypeError("publication fault")]) {
         sample.ports.publish = (path, destination) => { if (path === "/work/1.pdf") { throw thrown; } return publish(path, destination); };
         const records = executeDocuments(sample.ports, sample.plans);
         assert.deepEqual(records.map(record => record.state), ["saved", "recovered", "not-started"]);
-        assert.equal(records[0].output, "/out/0_20261029_123456.pdf.actual");
+        assert.equal(records[0].output, "/out/0.pdf.actual");
         assert.equal(records[1].recovery, "/work/1.pdf");
         assert.deepEqual([records[1].issues[0].stage,records[1].issues.length],["publication",1]);
         assert.ok(!sample.events.some(([kind, path]) => kind === "remove" && path === "/work/1.pdf"));
@@ -25,7 +25,7 @@ test("allocation faults after a commit preserve saved output and stop later work
     sample.ports.allocate = index => { if(index===1) {throw new TypeError("allocate");} return allocate(index); };
     const records = executeDocuments(sample.ports, sample.plans);
     assert.deepEqual(records.map(record=>record.state), ["saved","failed","not-started"]);
-    assert.equal(records[0].output,"/out/0_20261029_123456.pdf.actual");
+    assert.equal(records[0].output,"/out/0.pdf.actual");
     assert.equal(records[1].issues[0].stage,"allocation");
     assert.deepEqual(sample.events.filter(([kind])=>kind==="remove").map(([,path])=>path),["/work/0.jpg"]);
 });
@@ -80,7 +80,7 @@ test("cleanup faults after an earlier commit retain saved and failed document re
     const {remove} = sample.ports;let current="";sample.ports.beginning=source=>{current=source.path;};
     sample.ports.remove=path=>{if(current==="/source/1.png"){throw new TypeError("cleanup fault");}remove(path);};
     const records=executeDocuments(sample.ports,sample.plans);
-    assert.deepEqual([records.map(record=>record.state),records[0].output,records[1].issues.map(issue=>issue.stage)],[["saved","failed","not-started"],"/out/0_20261029_123456.pdf.actual",["import","cleanup","cleanup"]]);
+    assert.deepEqual([records.map(record=>record.state),records[0].output,records[1].issues.map(issue=>issue.stage)],[["saved","failed","not-started"],"/out/0.pdf.actual",["import","cleanup","cleanup"]]);
 });
 
 test("uneven encoded sizes flush the previous batch before retaining an over-budget queue",()=>{
@@ -140,10 +140,10 @@ function failValidatedTransition(sample, target) {
     };
 }
 
-for(const mode of ["single","separate"]) {
+for(const mode of ["combined","separate"]) {
     test(`${mode} post-validation transition fault retains registered bytes and prior commits`,()=>{
-        const sample=fixture(3,{mode});failValidatedTransition(sample,mode==="single"?0:1);
-        const records=executeDocuments(sample.ports,sample.plans);const current=records[mode==="single"?0:1];
+        const sample=fixture(3,{mode});failValidatedTransition(sample,mode==="combined"?0:1);
+        const records=executeDocuments(sample.ports,sample.plans);const current=records[mode==="combined"?0:1];
         assert.equal(current.state,"recovered");assert.equal(current.issues[0].message,"validation transition fault");
         assert.ok(sample.owned.has(current.recovery));assert.equal(sample.artifacts.get(current.recovery).state,"validating");
         if(mode==="separate"){assert.deepEqual(records.map(record=>record.state),["saved","recovered","not-started"]);}
@@ -175,5 +175,5 @@ test("a malformed post-commit issue result cannot reclassify a confirmed saved d
     };
     const records=executeDocuments(sample.ports,sample.plans);
     assert.deepEqual(records.map(record=>record.state),["saved","not-started"]);
-    assert.equal(records[0].output,"/out/0_20261029_123456.pdf.actual");assert.equal(records[0].issues[0].message,"issue getter fault");
+    assert.equal(records[0].output,"/out/0.pdf.actual");assert.equal(records[0].issues[0].message,"issue getter fault");
 });

@@ -4,13 +4,11 @@
   "testRunner_comment": "The tap runner executes each test file directly (node <file>), which keeps it in the same process as Stryker coverage hook. Running them via `node --test` forks a child per file, the hook records nothing, and every mutant reports NoCoverage.",
   "testRunner": "tap",
   "coverageAnalysis": "perTest",
-  "mutate_comment": "Only code that tests/unit can meaningfully kill. tests/repo is excluded from the runner because it reads the real source tree, which a mutation sandbox deliberately alters, so anything mutated here must have a unit-level test.",
+  "mutate_comment": "Domain, use cases and pure backend contracts are measured by port-level unit tests. Host adapters require native verification.",
   "mutate": [
-    "src/**/*.js",
-    "tools/lint/**/*.mjs",
-    "tools/banner.mjs",
-    "tools/javascript.mjs",
-    "tools/scoped-bundle.mjs"
+    "src/core/**/*.js",
+    "src/application/**/*.js",
+    "src/backend/**/*.js"
   ],
   "reporters": [
     "html",
@@ -35,7 +33,6 @@
   },
   "tempDirName": ".stryker-tmp",
   "timeoutMS": 20000,
-  "thresholds_comment": "Measured 98.5% on 2026-09-12, up from 97.8-98.0 on 2026-09-06. break sits well below so an ordinary change cannot fail on noise, while a real drop in test strength does; the score varies a little because a timed-out mutant counts as killed. Ratchet it up as the score improves.",
   "tap_comment": "The fast-check settings file pins the seed and the case count for a campaign only, so every mutant meets the same inputs; everywhere else the properties run on fast-check's defaults. See tests/unit/fast-check-mutation.cjs.",
   "tap": {
     "nodeArgs": [

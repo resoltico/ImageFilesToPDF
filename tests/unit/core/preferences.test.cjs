@@ -16,13 +16,13 @@ const {
     KEY,
     encode,
     rememberedAnswers
-} = require("../../../src/runtime/settings-preferences.js");
-const { readAnswers } = require("../../../src/runtime/answers.js");
+} = require("../../../src/host/preferences.js");
+const { readAnswers } = require("../../../src/host/settings-model.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 const PAPERS = ["A4", "Letter"];
 const ORIENTATIONS = ["Portrait", "Landscape"];
-const MODES = ["single", "separate"];
+const MODES = ["combined", "separate"];
 const COLOURS = ["#FFFFFF", "#000000", "#8E79E0", "#204486", "#C7DAE8", "#7F7F7F"];
 const NUMBERS = [[72, 1], [300, 92], [1017, 100], [600, 50]];
 
@@ -44,7 +44,7 @@ function everySettings() {
             orientation,
             mode,
             background,
-            dpi: numbers[0],
+            resolutionLimit: numbers[0],
             quality: numbers[1]
         }));
 }
@@ -76,7 +76,7 @@ test("what comes back is answers the form could have been given", () => {
         orientation: "Landscape",
         mode: "separate",
         background: "#C7DAE8",
-        dpi: 600,
+        resolutionLimit: 600,
         quality: 80
     });
 
@@ -85,7 +85,7 @@ test("what comes back is answers the form could have been given", () => {
         orientation: "Landscape",
         mode: "separate",
         background: "#C7DAE8",
-        dpi: "600",
+        resolutionLimit: "600",
         quality: "80"
     });
 });
@@ -96,9 +96,9 @@ test("anything that is not a record this version can read is no answer", () => {
     const settings = normalizeSettings({
         paperSize: "A4",
         orientation: "Portrait",
-        mode: "single",
+        mode: "combined",
         background: "#FFFFFF",
-        dpi: 300,
+        resolutionLimit: 300,
         quality: 92
     });
 
@@ -110,7 +110,7 @@ test("anything that is not a record this version can read is no answer", () => {
         "[]",
         "{}",
         JSON.stringify({ settings }),
-        JSON.stringify({ dpi: 99999 }),
+        JSON.stringify({ resolutionLimit: 99999 }),
         JSON.stringify({ ...settings, background: "puce" }),
         JSON.stringify({ ...settings, paperSize: "Legal" })
     ]) {

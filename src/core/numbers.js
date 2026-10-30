@@ -14,7 +14,6 @@ function positiveIntegerFrom(text) {
         : 0;
 }
 
-
 /*
  * Two decimal places with insignificant trailing zeros removed, which is the
  * form pdfcpu expects for page dimensions.

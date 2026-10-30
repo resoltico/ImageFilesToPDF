@@ -6,6 +6,9 @@
  */
 
 const MAXIMUM_PARAMETERS = 4;
+const MAXIMUM_STATEMENTS = 25;
+const MAXIMUM_FUNCTION_LINES = 80;
+const MAXIMUM_MODULE_LINES = 400;
 
 /*
  * Rules from `all` that are switched off deliberately.
@@ -44,19 +47,14 @@ export const tunedRules = {
         "error",
         { ignore: [-1, 0, 1], ignoreArrayIndexes: true, enforceConst: true }
     ],
-    /*
-     * Four, not the aggressive default of three.
-     *
-     * This was checked rather than assumed: at three, thirteen functions
-     * object, and all thirteen are naturally four-part — a tool path, an
-     * input, an output and a spec, or a value with a range and a label.
-     * Wrapping those in an options object reads worse, not better.
-     *
-     * The check did earn its keep once: it exposed a dead `label` parameter on
-     * testPath that only fed an error message the caller discarded. Anything
-     * above four still takes an object; nothing in the tree exceeds four.
-     */
+    // Four parameters preserve explicit operation inputs without artificial option bags.
     "max-params": ["error", MAXIMUM_PARAMETERS],
+    // A use-case step may have setup, action and error handling in one function.
+    "max-statements": ["error", MAXIMUM_STATEMENTS],
+    // Native adapter operations stay readable without splitting individual bridge calls.
+    "max-lines-per-function": ["error", MAXIMUM_FUNCTION_LINES],
+    // Related controls and their geometry belong together, within a reviewable module.
+    "max-lines": ["error", MAXIMUM_MODULE_LINES],
     /*
      * Path() and Application() are JavaScriptCore host APIs that are
      * capitalised but are not constructors. The NS-prefixed exceptions are

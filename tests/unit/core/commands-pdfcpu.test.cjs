@@ -7,28 +7,28 @@ const {
     readPageCountFrom,
     buildPdfcpuImportArgv,
     buildPdfcpuValidateArgv
-} = require("../../../src/runtime/backend-pdfcpu.js");
+} = require("../../../src/backend/pdfcpu.js");
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
 
 const geometry = calculatePageGeometry({
     paperSize: "A4",
     orientation: "Portrait",
-    dpi: 300,
+    resolutionLimit: 300,
     quality: 92,
-    mode: "single",
+    mode: "combined",
     background: "#FFFFFF"
 });
 
 test("pdfcpu import describes the page and preserves page order", () => {
     assert.deepEqual(
-        buildPdfcpuImportArgv("pdfcpu", "/tmp/output.pdf", ["/tmp/1.jpg", "/tmp/2.jpg"], geometry),
+        buildPdfcpuImportArgv("pdfcpu", "/tmp/output.pdf", ["/tmp/1.jpg", "/tmp/2.jpg"], { geometry, placement: { relativeScale: 1 }, background: "#FFFFFF" }),
         [
             "pdfcpu",
             "import",
             "--conf",
             "disable",
             "--",
-            "dim:595.28 841.89, pos:c, sc:1 rel",
+            "dim:595.2756 841.8898, pos:c, sc:1 rel, bgcolor:#FFFFFF",
             "/tmp/output.pdf",
             "/tmp/1.jpg",
             "/tmp/2.jpg"
@@ -38,11 +38,11 @@ test("pdfcpu import describes the page and preserves page order", () => {
 
 test("pdfcpu import requires at least one page", () => {
     assert.throws(
-        () => buildPdfcpuImportArgv("pdfcpu", "/tmp/o.pdf", [], geometry),
+        () => buildPdfcpuImportArgv("pdfcpu", "/tmp/o.pdf", [], { geometry, placement: { relativeScale: 1 }, background: "#FFFFFF" }),
         /At least one/u
     );
     assert.throws(
-        () => buildPdfcpuImportArgv("pdfcpu", "/tmp/o.pdf", null, geometry),
+        () => buildPdfcpuImportArgv("pdfcpu", "/tmp/o.pdf", null, { geometry }),
         /At least one/u
     );
 });

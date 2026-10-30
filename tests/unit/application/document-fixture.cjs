@@ -19,6 +19,8 @@ function fixture(count = 1, options = {}) {
         },
         fits: (ignored, pages) => pages.length <= (options.argv ?? 100),
         import: (staged, pages) => { events.push(["import", pages.slice()]); owned.add(staged); },
+        assemble: (staged) => { events.push(["assemble", staged]); },
+        beforeValidation: () => { events.push(["retain"]); },
         validate: (staged, expected) => { events.push(["validate", staged, expected]); },
         publish: (staged, path) => { events.push(["publish", staged, path]); owned.delete(staged); artifacts.get(staged).state="released"; return { path: `${path}.actual`, issues: [] }; },
         remove: (path) => { events.push(["remove", path]); owned.delete(path); },
@@ -26,7 +28,7 @@ function fixture(count = 1, options = {}) {
         completed: () => { events.push(["saved"]); },
         ...options.ports
     };
-    return { ports, events, owned, artifacts, plans: documentPlan({mode: options.mode ?? "single"}, sources, "20261029_123456") };
+    return { ports, events, owned, artifacts, plans: documentPlan({mode: options.mode ?? "combined"}, sources, "20261029_123456", sources.map((unused,index)=>index)) };
 }
 
 module.exports={fixture};

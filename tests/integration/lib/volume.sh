@@ -24,24 +24,25 @@ attach_test_volume() {
 
 # detach_test_volume <volume>
 #
-# A volume that was just written to is not always ready to go. macOS indexes
-# what appears on it, and a detach arriving during that is refused as
-# "Resource busy" -- which is the machine being busy, not the publication
-# holding anything open: the run that wrote the PDF exited before this is
-# called, and the test has already established that nothing was left behind.
-#
-# So waiting is the answer, and forcing is what is left when waiting has
-# plainly not worked. A detach that fails after both still fails the test,
-# because the next volume cannot be attached over one that is still there.
+# Detach only the mountpoint created by this test. Native consumers can keep a
+# volume busy after the conversion process exits; bounded retries allow them
+# to finish. Persistent failure remains a test failure, with the final native
+# error and mountpoint-scoped facts visible before EXIT cleanup removes WORK.
 detach_test_volume() {
     local volume=$1
 
-    # Five tries, two seconds apart. Indexing a forty-megabyte volume does not
-    # take ten seconds, and a volume still busy after that is not busy waiting.
+    # Five ordinary attempts, two seconds apart, before one forced attempt.
     for _ in 1 2 3 4 5; do
         hdiutil detach -quiet "$volume" 2>/dev/null && return 0
         sleep 2
     done
 
-    hdiutil detach -force -quiet "$volume"
+    if hdiutil detach -force "$volume"; then
+        return 0
+    else
+        local detach_status=$?
+        printf 'Could not detach test volume %s (exit %s)\n' "$volume" "$detach_status" >&2
+        diskutil info "$volume" >&2 || true
+        return "$detach_status"
+    fi
 }

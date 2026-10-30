@@ -23,3 +23,12 @@ test("publication requires the registered validated record, release changes that
     artifact.state="validated";assert.equal(requireValidatedArtifact(owned,"/pdf"),artifact);
     releaseArtifact(owned,"/pdf");assert.equal(owned.get("/pdf").state,"released");
 });
+
+test("publication confirmation requires the exact nonempty native identity and size", () => {
+    const { isPublished } = require("../../../src/core/artifacts.js");
+    const expected = { claimedIdentity: "1:2", claimedSize: 100 };
+    assert.equal(isPublished({ identity: "1:2", size: 100 }, expected), true);
+    assert.equal(isPublished({ identity: "", size: 100 }, expected), false);
+    assert.equal(isPublished({ identity: "1:3", size: 100 }, expected), false);
+    assert.equal(isPublished({ identity: "1:2", size: 99 }, expected), false);
+});

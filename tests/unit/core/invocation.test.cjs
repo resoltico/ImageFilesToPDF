@@ -4,26 +4,27 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     normalizeInvocationInput,
-    isHeadlessInput,
+    isCliInput,
     decodeFileUrl
-} = require("../../../src/runtime/invocation-syntax.js");
+} = require("../../../src/host/invocation-syntax.js");
 
 test("headless is detected through osascript's argument separator", () => {
     // osascript forwards its own "--" into run(), so the script's first
     // argument is "--". Missing this sent the headless integration suite down
     // the interactive path, where it blocked on a GUI dialog forever.
-    assert.equal(isHeadlessInput(["--", "--headless", "cfg.json", "a.png"]), true);
-    assert.equal(isHeadlessInput(["--headless", "cfg.json", "a.png"]), true);
-    assert.equal(isHeadlessInput(["--", "--", "--headless", "cfg.json"]), true);
+    assert.equal(isCliInput(["--", "--headless", "cfg.json", "a.png"]), true);
+    assert.equal(isCliInput(["--headless", "cfg.json", "a.png"]), true);
+    assert.equal(isCliInput(["--", "--", "--headless", "cfg.json"]), true);
 });
 
-test("non-headless invocations are left alone", () => {
-    assert.equal(isHeadlessInput([]), false);
-    assert.equal(isHeadlessInput(["--"]), false);
-    assert.equal(isHeadlessInput(undefined), false);
-    assert.equal(isHeadlessInput(null), false);
-    assert.equal(isHeadlessInput(["/a/b.png"]), false);
-    assert.equal(isHeadlessInput("/a/b.png"), false);
+test("CLI is every string argv array; Shortcuts and applets remain interactive", () => {
+    assert.equal(isCliInput([]), true);
+    assert.equal(isCliInput(["--"]), true);
+    assert.equal(isCliInput(undefined), false);
+    assert.equal(isCliInput(null), false);
+    assert.equal(isCliInput(["/a/b.png"]), true);
+    assert.equal(isCliInput("/a/b.png"), false);
+    assert.equal(isCliInput([["/a/b.png"],{}]), false);
 });
 
 test("normalizeInvocationInput strips only leading separators", () => {

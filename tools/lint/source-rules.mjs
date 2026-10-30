@@ -50,7 +50,7 @@ function checkWhitespace(relativePath, content) {
  * directly rather than only through a file on disk.
  */
 /*
- * Every binary the action runs is named in src/runtime/backend-executables.js and
+ * Every binary the action runs is named in src/host/backend-executables.js and
  * nowhere else, so the external surface of the artifact is a file you can
  * read rather than a fact to reassemble from five modules.
  *
@@ -60,7 +60,7 @@ function checkWhitespace(relativePath, content) {
  * is a byte-for-byte render of src/, so nothing can be true of one and not
  * the other.
  */
-const EXECUTABLES_MODULE = "src/runtime/backend-executables.js";
+const EXECUTABLES_MODULE = "src/host/backend-executables.js";
 
 const ABSOLUTE_EXECUTABLE =
     /"(?<path>\/(?:s?bin|usr\/s?bin|usr\/local\/bin|opt\/(?:homebrew|local)\/bin)\/[\w.-]+)"/gu;

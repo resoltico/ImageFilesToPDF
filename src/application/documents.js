@@ -31,14 +31,14 @@ function pageQueue(ports, context) {
     const flush = () => {
         if (pages.length > 0) {
             context.stage = "import";
-            ports.import(context.artifact.path, pages.map((page) => page.path));
+            ports.import(context.artifact.path, pages.map((page) => page.path), pages[0].placement);
             clear();
         }
     };
     return { clear, flush, add(page) {
         try {
-            if (pages.length > 0 && (bytes + page.size > MAX_QUEUED_BYTES ||
-                !ports.fits(context.artifact.path, [...pages, page].map((entry) => entry.path)))) { flush(); }
+            if (pages.length > 0 && (pages[0].group !== page.group || bytes + page.size > MAX_QUEUED_BYTES ||
+                !ports.fits(context.artifact.path, [...pages, page].map((entry) => entry.path), page.placement))) { flush(); }
             pages.push(page);
             bytes += page.size;
         } catch (error) { failedHandoff(ports, context, page, error); }
@@ -60,6 +60,7 @@ function prepareDocument(ports, plan, context, queue) {
 
 function validateDocument(ports, plan, context) {
     context.stage = "validation";
+    ports.beforeValidation(context.artifact.path);
     context.artifact.state = "validating";
     ports.validate(context.artifact.path, plan.sources.length);
     context.record.state = "validated";
@@ -72,6 +73,8 @@ function markFatal(record) {
 
 function finishDocument(ports, plan, context, queue) {
     queue.flush();
+    context.stage = "assembly";
+    ports.assemble(context.artifact.path);
     validateDocument(ports, plan, context);
     context.stage = "publication";
     const saved = ports.publish(context.artifact.path, plan.destination);
@@ -90,7 +93,6 @@ function resolveValidationFailure(context) {
         }
     }
 }
-
 
 function documentFailure(context, error) {
     const { artifact, record, stage } = context;

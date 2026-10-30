@@ -22,17 +22,6 @@ function errorMessage(error) {
     return String(error);
 }
 
-/*
- * Cancellation is a decision, not a phrase.
- *
- * This used to be read out of the message text, and every per-image failure
- * carries the name of the image it happened to -- so a file called
- * "User cancelled.jpg" that genuinely failed to convert looked exactly like
- * somebody pressing Cancel, and the run ended silently with no dialog at all.
- *
- * Host cancellation is translated into UserCancelled by its adapter before
- * entering the portable workflow.
- */
 class OperationError extends Error {
     constructor(message, options) {
         super(message, options);
@@ -47,20 +36,6 @@ class UserCancelled extends Error {
     }
 }
 
-/*
- * Read through the chain, not off the top.
- *
- * Every layer that adds context wraps the error it was given as a cause, and
- * a cancellation wrapped once stopped being one: the outermost error is a
- * plain Error about the stage that was running, and asking it alone turns a
- * deliberate stop into a photograph that failed to convert. commandOf, twelve
- * lines below, has always read the chain for the same reason. These are one
- * shape now rather than two.
- *
- * A false positive would end a run silently, so what it takes to be one is
- * exact: the domain UserCancelled. The bounded cause walk also handles
- * contextual wrappers without interpreting filenames or human messages.
- */
 function isUserCancelled(error) {
     let current = error;
 

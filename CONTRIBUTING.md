@@ -37,7 +37,8 @@ Commit generated JXA and checksums alongside source changes that affect them.
   geometry, artifact-retention policy and outcome vocabulary.
 - `src/application/` owns controller decisions and document/resource sequencing
   through explicit ports. Core and application import no native/UI adapters.
-- `src/runtime/` owns composition, native/platform/backend operations, transport
+- `src/backend/` owns pure backend argv builders, parsers and command budgeting.
+- `src/host/` owns composition, native/platform operations, transport
   parsing and presentation. Host globals and Apple Event cancellation translation
   belong here.
 - `src/entry.js` exports the production `run` capability.
@@ -47,10 +48,19 @@ Required source/filesystem/publication capabilities fail setup when absent.
 Optional UI, progress and preferences can be unavailable; programming faults must
 remain diagnosable rather than silently triggering fallback.
 
-`src/core/settings.js` owns canonical settings, defaults and legal choice IDs.
-`src/runtime/choices.js` derives offered IDs and bounds, adding presentation
-captions. Text fields are parsed at adapter boundaries and use the common
-all-issues validator. Numeric RGB components belong to colour policy; vips
+`src/core/settings.js` owns canonical settings, defaults, names, captions, hints
+and legal choice IDs. `src/host/settings-model.js` derives the offered form and
+stepwise records from that schema. Text fields are parsed at adapter boundaries
+and use the common all-issues validator. `documentPlan` requires complete native name-equivalence
+group facts for separate mode. `src/host/destination-names.js` obtains them from
+native folder identity and actual namespace probes; coarse search buckets only
+limit fallback lookups and never establish equality. Comparison probes use the
+owned workspace or an OS-created temporary directory on the destination volume,
+with ownership metadata copied before names. Normal and caught-failure paths
+remove every allocated probe before encoding. Unicode lookup fallback requires reliable persistent
+identities and hard-link support; missing facts stop planning. See
+[SECURITY.md](SECURITY.md) for the abrupt-termination boundary. Requested destination spellings remain
+unchanged for publication. Numeric RGB components belong to colour policy; vips
 comma-separated vectors belong to the backend adapter.
 
 `src/core/artifacts.js` owns retention policy. Each artifact is registered before
@@ -69,11 +79,17 @@ separate from interface wording and technical diagnostics.
 Tests that inject ports/fixtures belong in `tests/unit/`; tests that inspect the
 real checkout belong in `tests/repo/`. Mutation testing runs unit files. All
 production sources and applicable build rules must remain discoverable by their
-gates. Keep behavioral expectations independent of implementation calculations.
+gates. Coverage is 100% for core, application and backend; mutation is at least
+96 for those same layers. Host adapters require the native suites. Keep behavioral expectations independent of implementation calculations.
 
 ESLint uses `js.configs.all`; exceptions and tuned rules are justified in
 `tools/eslint/rules.mjs`. Group modules by responsibility and lifetime, respecting
-the active ESLint rules rather than splitting by incidental implementation order.
+the active ESLint limits: 25 statements, 80 lines per function, 400 lines per
+module and four parameters. Split by responsibility, not implementation order.
+
+Alpha PNG/TIFF normalization uses an image-sized lossless `.v` intermediate
+between thumbnail and flatten: one source decode and one final PNG encode.
+JPEG re-encoding uses the quality setting; pass-through JPEGs keep their bytes.
 
 `tools/scoped-bundle.mjs` uses the exact esbuild development pin from
 `package.json`: neutral IIFE bundling, Safari 15.4 target, compact whitespace,
@@ -84,7 +100,11 @@ rejects omitted source files and external runtime imports.
 Native probes use explicit entry files importing production modules through
 `tools/build-probe.mjs`. They must not append private global calls to the
 production bundle or expose private production APIs. Production end-to-end tests
-invoke the actual generated script.
+invoke the actual generated script. `tests/integration/cli.sh` is part of the
+native gate and CI; its Node driver orchestrates real osascript processes and
+independent PDF inspection. It does not substitute a fake host. Temporary
+workspace cleanup must identify this run's ownership; recovery cleanup removes
+only the confirmed test file, never its Downloads parent.
 
 Qualify build/toolchain changes with independent clean Linux/macOS restores and
 compare bytes. The Node pin is mirrored in `.node-version`, `mise.toml` and

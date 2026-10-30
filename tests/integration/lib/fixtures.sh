@@ -86,7 +86,7 @@ write_config() {
 {
   "paperSize": "$2",
   "orientation": "$3",
-  "dpi": 72,
+  "resolutionLimit": 72,
   "quality": 90,
   "mode": "$4",
   "background": "$5",
@@ -118,4 +118,9 @@ create_selection_fixtures() {
     echo "not an image" > "$work/album/notes.txt"
     ln "$work/names/image.png" "$work/names/image.backup"
     ln -s "$work/names/extra.png" "$work/names/alias.png"
+}
+
+# Expected output names use the platform date formatter, independently of JXA.
+combined_name() {
+    /bin/date -j -f '%Y%m%d_%H%M%S' "$1" '+Images %Y-%m-%d at %H.%M.%S.pdf'
 }

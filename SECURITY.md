@@ -14,10 +14,24 @@ Explicit selection is validated independently. Required file-kind, package,
 identity and source-capture capabilities must be available; processing does not
 fall back to weaker checks.
 
-Each admitted source is captured into an owned private workspace. Inspection and
+Candidates are inspected before consent and settings; captured-byte inspection
+remains authoritative. Each admitted source is captured into an owned private workspace. Inspection and
 decoding consume the same captured bytes. Required facts are checked around
 capture, and observed changes are refused. Coarse filesystem timestamps cannot
 establish an adversarial atomic snapshot of a changing original.
+
+Separate-output planning requires native directory identity and verified name
+equivalence. Comparison directories and small identity tokens use the owned workspace or an
+OS-created temporary directory on the destination volume. Ownership metadata is
+written before comparison names; cleanup is attempted for every allocated
+directory. When allocation is unavailable, Unicode comparisons require reliable
+persistent identities and hard-link support; lookups distinguish aliases from
+distinct hard-link entries. Unavailable comparison facts stop planning. These
+checks do not modify source files or reserve final output names.
+Exclusive publication remains necessary when entries change after planning.
+Abrupt process termination can leave an OS-created comparison directory on a
+destination volume. It contains ownership metadata and name tokens, not image
+or PDF bytes; workspace housekeeping does not reclaim these external directories.
 
 Publication uses native exact-path hard linking or exclusive rename of an owned
 destination copy. Only classified collisions are retried. Existing files,
@@ -31,13 +45,30 @@ must succeed and pass native checks before the original is released. Uncertain
 validation candidates are identified separately from validated recoveries.
 Cleanup removes owned resources; it does not adopt paths based on spelling or
 infer ownership from an unknown existence result. Recovery and unresolved-work
-locations may intentionally remain in the system temporary directory.
+locations may intentionally remain in the system temporary directory. Validated
+recovery first uses Downloads with exclusive publication and native confirmation;
+only a confirmed recovery allows the workspace original to be released.
+
+Workspace creation writes and confirms `owner.json` (PID and process start)
+before user data. A `retain` marker protects artifacts entering validation.
+A valid conversion startup reclaims only exact workspace-pattern directories
+whose recorded PID/start is dead and whose retain marker is absent. Retained,
+unreadable and ownerless directories are diagnostic and remain untouched.
+Help/version and invalid CLI requests do not run this housekeeping.
+
+## Embedded image metadata
+
+Eligible untagged, upright three-band JPEGs within the resolution ceiling are
+embedded unchanged, including EXIF and other metadata already inside those bytes.
+A PDF made from such an image is not a metadata-sanitized copy. Other image
+normalization removes saved-image metadata after colour conversion. Review source
+metadata before sharing a PDF when location or camera details are sensitive.
 
 ## Commands and trust
 
 External commands use argument vectors quoted by
-`src/runtime/backend-shell.js`; NUL bytes are rejected. Executable names are
-centralized in `src/runtime/backend-executables.js`, with source rules restricting
+`src/backend/shell.js`; NUL bytes are rejected. Executable names are
+centralized in `src/host/backend-executables.js`, with source rules restricting
 absolute executable paths elsewhere. Native publication uses numeric error
 classification and immediate native identity checks.
 

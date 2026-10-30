@@ -58,20 +58,30 @@ Actual content must be a supported single-image raster. Animated, multipage,
 corrupt, unknown or disguised unsupported content is refused.
 
 Review selection problems, choose the six page settings, then click Create.
-Stepwise dialogs end with confirmation. Each image gets its own centred,
-JPEG-compressed PDF page without cropping or enlargement. Originals stay intact.
+Stepwise dialogs end with confirmation. Each image gets its own centred
+PDF page without cropping or enlargement. Originals stay intact. PNG/TIFF
+use lossless encoding. Eligible JPEGs retain their bytes and embedded metadata;
+other JPEG, HEIC/HEIF, AVIF and WebP inputs use JPEG encoding when normalized.
+Maximum resolution is a downsampling ceiling. JPEG quality defaults to 82 and
+affects JPEG re-encoding only; valid remembered settings take precedence.
 
 "One PDF - one image per page" combines the pages into one document.
 "Separate PDFs - one page per image" creates a single-page document per image.
 Images found through a selected folder save there; explicit files save beside
 their source. A combined PDF uses the first ordered image's destination.
-Existing entries are never overwritten; filename collisions receive suffixes.
+Combined names are Images YYYY-MM-DD at HH.MM.SS.pdf (local time). Separate
+names use the sanitized source stem; same-run stem conflicts add the lower-case
+extension. Different spellings the destination treats as one name are disambiguated.
+Existing entries are never overwritten; collisions use " 2", " 3", etc.
 
 Combined mode publishes no subset after a candidate failure. Separate mode
 continues ordinary failures, while cancellation, cleanup or software faults can
 stop remaining work. Completion identifies saved/recovered work, failures and
 work not started. Follow any reported recovery or unconfirmed-candidate path;
-those files may intentionally remain in the system temporary directory.
+validated recovery first uses Downloads under the intended filename, then a
+confirmed temporary copy if Downloads is unavailable. Show in Finder opens the
+reported recovery. Retained or unreadable workspaces remain for inspection;
+the next valid conversion reclaims unretained work owned by dead processes.
 
 Remove it
 =========
