@@ -2,8 +2,11 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-30
+
 - Require stable pdfcpu 0.16.4 or later; run `brew update` and `brew upgrade pdfcpu`. Invalid explicit backend overrides fail setup.
 - Replace headless `dpi` with required `resolutionLimit` (ppi, default 300); use the six typed settings and current mode values in [HEADLESS.md](HEADLESS.md).
+- Settings remembered by earlier versions are not recalled; choose them once in the settings window and they are remembered again.
 - CLI string-array input is always noninteractive; use `--help`, `--version` or `--headless`. Exit codes are 0 complete, 1 incomplete/stopped, 2 invalid and 3 setup.
 - Combined PDFs use `Images YYYY-MM-DD at HH.MM.SS.pdf`; separate PDFs use source stems. Existing-name collisions use Finder-style ` 2` suffixes.
 - Separate files add source extensions when names coincide in their actual destination namespace, including case-insensitive and normalized-name conflicts.

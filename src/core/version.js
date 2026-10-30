@@ -9,6 +9,6 @@
  * tools/lint/consistency.mjs asserts it agrees with package.json.
  */
 const APP_NAME = "Image Files to PDF";
-const VERSION = "1.5.4";
+const VERSION = "2.0.0";
 
 module.exports = { APP_NAME, VERSION };

@@ -4,7 +4,7 @@ const test = require("node:test");
 const { readFile } = require("node:fs/promises");
 
 function checkBanner(release) {
-    assert.match(release, /^\/\*\n \* Image Files to PDF 1\.5\.4\n/u);
+    assert.match(release, /^\/\*\n \* Image Files to PDF 2\.0\.0\n/u);
     assert.match(release, /SPDX-License-Identifier: MPL-2\.0/u);
     assert.match(release, /Source Code Form: https:\/\/github\.com\/resoltico\/ImageFilesToPDF/u);
     assert.match(release, /Requires macOS 12\.3 or later/u);
