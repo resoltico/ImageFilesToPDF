@@ -19,6 +19,11 @@ source "$ROOT/tests/integration/lib/fixtures.sh"
 # shellcheck source=tests/integration/lib/volume.sh
 source "$ROOT/tests/integration/lib/volume.sh"
 require_tools
+NAMESPACE_TEST_STARTED=$(LC_ALL=C TZ=UTC /bin/ps -p "$$" -o lstart=)
+node - "$WORK/owner.json" "$$" "$NAMESPACE_TEST_STARTED" <<'NODE'
+const fs=require("node:fs");
+fs.writeFileSync(process.argv[2],JSON.stringify({pid:Number(process.argv[3]),started:process.argv[4].trim()}),{flag:"wx"});
+NODE
 solid_svg "$WORK/blue.svg" 400 200 '#235789'
 solid_svg "$WORK/red.svg" 400 200 '#DF2935'
 vips copy "$WORK/blue.svg" "$WORK/photo.jpg[Q=92,keep=none]"

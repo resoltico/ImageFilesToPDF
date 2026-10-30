@@ -41,10 +41,27 @@ function createDirectory(runtime, path) {
     return Boolean(runtime.manager.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(runtime.ns(path), false, runtime.ns(), runtime.ref()));
 }
 
-// These comparison directories and tokens stay inside the owned workspace.
+function replacementNamespace(runtime, scope) {
+    // Foundation's URL-prefixed selector is an instance method, not a constructor.
+    // eslint-disable-next-line new-cap
+    const url = runtime.manager.URLForDirectoryInDomainAppropriateForURLCreateError(runtime.ns.NSItemReplacementDirectory,
+        runtime.ns.NSUserDomainMask, scope.url, true, runtime.ref());
+    if (!url || url.isNil()) { return null; }
+    const path = String(runtime.objc.unwrap(url.path));
+    runtime.replacements.push(path);
+    const attributes = attributesAt(runtime.manager, runtime.ns, path);
+    if (kindOf(runtime.objc, runtime.ns, attributes) !== "NSFileTypeDirectory" ||
+        attributeText(runtime.objc, attributes, runtime.ns.NSFileSystemNumber) !== scope.device) { return null; }
+    const owner = runtime.ns.NSString.stringWithContentsOfFileEncodingError(runtime.ns(`${runtime.workspace}/owner.json`), runtime.ns.NSUTF8StringEncoding, runtime.ref());
+    if (!owner || owner.isNil() || !owner.writeToFileAtomicallyEncodingError(runtime.ns(`${path}/owner.json`), true,
+        runtime.ns.NSUTF8StringEncoding, runtime.ref())) { throw comparisonError(scope.path); }
+    return path;
+}
+
+// Owned comparison directories and tokens provide real namespace lookups.
 // Let the real namespace classify prospective names, including Unicode rules.
 function prototypeGroup(runtime, scope, name) {
-    if (!runtime.created) {
+    if (!scope.prototype && !runtime.created) {
         if (!createDirectory(runtime, runtime.root)) { throw comparisonError(scope.path); }
         runtime.created = true;
     }
@@ -120,6 +137,15 @@ function equivalent(runtime, scope, left, right) {
     if (/^[\x20-\x7e]+$/u.test(left.name) && /^[\x20-\x7e]+$/u.test(right.name)) {
         return !scope.sensitive && left.name.toLowerCase() === right.name.toLowerCase();
     }
+    // Lookup fallback requires persistent identifiers; older link-free
+    // providers may synthesize different IDs for Unicode lookup spellings.
+    if (scope.persistent === undefined) {
+        scope.persistent = resource(runtime, scope.url, runtime.ns.NSURLVolumeSupportsPersistentIDsKey);
+    }
+    if (scope.hardLinks === undefined) {
+        scope.hardLinks = resource(runtime, scope.url, runtime.ns.NSURLVolumeSupportsHardLinksKey);
+    }
+    if (scope.persistent !== true || scope.hardLinks !== true) { throw comparisonError(scope.path); }
     const forwards = projectedMatch(runtime, scope, left, right);
     if (forwards !== null) { return forwards; }
     const backwards = projectedMatch(runtime, scope, right, left);
@@ -143,15 +169,26 @@ function group(runtime, source) {
     const scope = folderScope(runtime, source.folder);
     const name = outputNameForSeparate(source);
     if (scope.names.has(name)) { return scope.names.get(name); }
-    const key = scope.device === runtime.device ? prototypeGroup(runtime, scope, name) : foreignGroup(runtime, scope, source, name);
+    if (scope.device !== runtime.device && scope.replacementTried !== true) {
+        scope.replacementTried = true;
+        scope.prototype = replacementNamespace(runtime, scope);
+    }
+    const key = scope.device === runtime.device || scope.prototype ? prototypeGroup(runtime, scope, name) : foreignGroup(runtime, scope, source, name);
     scope.names.set(name, key);
     return key;
 }
 
 function removePrototypes(runtime) {
-    if (runtime.created && !runtime.manager.removeItemAtPathError(runtime.ns(runtime.root), runtime.ref())) {
+    const paths = [...runtime.replacements, ...runtime.created ? [runtime.root] : []];
+    const issues = [];
+    for (const path of paths) {
+        if (!runtime.manager.removeItemAtPathError(runtime.ns(path), runtime.ref())) {
+            issues.push({ code: ISSUE.cleanup, stage: "cleanup", message: "Temporary output-name comparisons could not be removed.", diagnostic: { path } });
+        }
+    }
+    if (issues.length > 0) {
         const error = new OperationError("Temporary output-name comparisons could not be removed.");
-        error.issues = [{ code: ISSUE.cleanup, stage: "cleanup", message: error.message, diagnostic: { path: runtime.root } }];
+        error.issues = issues;
         throw error;
     }
 }
@@ -189,7 +226,7 @@ function nativeDestinationNames(objc, ns) {
     return {
         groups(sources, workspace) {
             if (sources.length <= 1) { return sources.map((unused, index) => index); }
-            const runtime = { objc, ns, manager, ref: globalThis.Ref, folders: new Map(), tokens: new Map(), next: 0, created: false, root: `${workspace}/output-names` };
+            const runtime = { objc, ns, manager, ref: globalThis.Ref, folders: new Map(), tokens: new Map(), next: 0, created: false, replacements: [], workspace, root: `${workspace}/output-names` };
             runtime.device = workspaceDevice(runtime, workspace);
             return managedGroups(runtime, sources);
         }

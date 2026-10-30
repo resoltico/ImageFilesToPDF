@@ -21,9 +21,11 @@ capture, and observed changes are refused. Coarse filesystem timestamps cannot
 establish an adversarial atomic snapshot of a changing original.
 
 Separate-output planning requires native directory identity and verified name
-equivalence. Comparison directories and small identity tokens stay inside the owned workspace;
-other-volume checks use confirmed namespace lookups, distinguishing hard-link
-entries. These checks do not modify source files or reserve final output names.
+equivalence. Comparison directories and small identity tokens use the owned workspace or an
+OS-created temporary directory on the destination volume. Ownership metadata is
+written before comparison names; cleanup is attempted for every allocated
+directory. When allocation is unavailable, confirmed lookups distinguish
+hard-link entries. These checks do not modify source files or reserve final output names.
 Exclusive publication remains necessary when entries change after planning.
 
 Publication uses native exact-path hard linking or exclusive rename of an owned

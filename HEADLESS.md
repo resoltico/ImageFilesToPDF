@@ -136,7 +136,9 @@ names use sanitized stems; same-run stem conflicts in one destination add the
 lower-case source extension. Conflicts follow the actual destination namespace,
 including its case and normalization behavior; directory aliases use native
 identity. Existing-entry collisions use ` 2`, ` 3`, etc. Unavailable comparison
-facts stop planning before PDF encoding rather than guessing.
+facts stop planning before PDF encoding rather than guessing. This includes
+Unicode conflicts on a foreign read-only volume when neither a temporary
+namespace nor reliable persistent identifiers with hard-link support are available.
 
 A failed destination first recovers a validated PDF to `~/Downloads` under its
 intended name. If that cannot be written and confirmed, a confirmed temporary
