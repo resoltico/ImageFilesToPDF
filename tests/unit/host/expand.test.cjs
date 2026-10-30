@@ -46,7 +46,7 @@ test("a link with an image's name is still a link", () => {
 
     assert.equal(
         imagesInFolder(tree, "/t", new Set()).reason,
-        "contains no supported images"
+        "This folder contains no supported images."
     );
 });
 
@@ -58,13 +58,13 @@ test("a link is not followed, however it is reached", () => {
         { "/t/elsewhere": "other" }
     );
 
-    assert.equal(imagesInFolder(tree, "/t", new Set()).reason, "contains no supported images");
+    assert.equal(imagesInFolder(tree, "/t", new Set()).reason, "This folder contains no supported images.");
 });
 
 test("a folder that cannot be read says so", () => {
     const tree = treeOf({ "/t": ["locked"] }, { "/t/locked": "directory" });
 
-    assert.equal(imagesInFolder(tree, "/nope", new Set()).reason, "could not be read");
+    assert.equal(imagesInFolder(tree, "/nope", new Set()).reason, "This item could not be read.");
 });
 
 test("a folder holding nothing to convert says that, not nothing", () => {
@@ -74,7 +74,7 @@ test("a folder holding nothing to convert says that, not nothing", () => {
 
     assert.equal(
         imagesInFolder(tree, "/t", new Set()).reason,
-        "contains no supported images"
+        "This folder contains no supported images."
     );
 });
 

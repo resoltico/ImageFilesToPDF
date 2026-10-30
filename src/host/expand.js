@@ -31,8 +31,8 @@ const { isSupportedImage } = require("../core/paths.js");
  */
 
 const HIDDEN = ".";
-const UNREADABLE = "could not be read";
-const UNEXAMINABLE = "could not be examined";
+const UNREADABLE = "This item could not be read.";
+const UNEXAMINABLE = "This item could not be examined.";
 
 function isHidden(name) {
     return name.startsWith(HIDDEN);
@@ -105,7 +105,7 @@ function walk(tree, folder, taken, outcome) {
  */
 function emptiness(outcome) {
     return outcome.found.length === 0 && !outcome.alreadyTaken && outcome.problems.length === 0
-        ? "contains no supported images"
+        ? "This folder contains no supported images."
         : "";
 }
 

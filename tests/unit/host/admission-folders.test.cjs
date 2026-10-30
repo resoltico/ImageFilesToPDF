@@ -77,7 +77,7 @@ test("a folder that holds nothing to convert says so", () => {
     );
 
     assert.deepEqual(rejected.map((entry) => `${entry.name}: ${entry.reason}`), [
-        "empty: contains no supported images"
+        "empty: This folder contains no supported images."
     ]);
 });
 
@@ -114,7 +114,7 @@ test("a subfolder that could not be read is named, not passed over", () => {
     assert.deepEqual(rejected, [{
         path: "/Trip/Locked",
         name: "Locked",
-        reason: "could not be read", code: "selection-refused", stage: "selection"
+        reason: "This item could not be read.", code: "selection-refused", stage: "selection"
     }]);
 });
 

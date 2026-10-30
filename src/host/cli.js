@@ -1,7 +1,7 @@
 "use strict";
 const { APP_NAME, VERSION } = require("../core/version.js");
 const { SETTINGS_SCHEMA, validateSettings } = require("../core/settings.js");
-const { readTimestamp } = require("../core/timestamps.js");
+const { readTimestamp, TIMESTAMP_FORM } = require("../core/timestamps.js");
 const { OperationError } = require("../core/errors.js");
 const { normalizeInvocationInput } = require("./invocation-syntax.js");
 const { writeReceipt, exitCli } = require("./receipt.js");
@@ -13,8 +13,9 @@ function choiceCaption(choice) {
 
 function settingsHelp() {
     return Object.entries(SETTINGS_SCHEMA).map(([field, rule]) => {
-        const values = rule.minimum === undefined ? rule.choices.map(choiceCaption).join(" | ") : `${rule.minimum}–${rule.maximum}`;
-        return `  ${field} — ${rule.name}: ${values}; default ${rule.default}${rule.hint ? `; ${rule.hint}` : ""}`;
+        // A numeric hint already states its range; a choice hint adds to the listed choices.
+        if (rule.minimum !== undefined) { return `  ${field} — ${rule.name}: ${rule.hint}; default ${rule.default}`; }
+        return `  ${field} — ${rule.name}: ${rule.choices.map(choiceCaption).join(" | ")}; default ${rule.default}${rule.hint ? `; ${rule.hint}` : ""}`;
     }).join("\n");
 }
 
@@ -22,7 +23,7 @@ function usage() {
     return `${APP_NAME} ${VERSION}\n\nUsage:\n  osascript -l JavaScript Image-Files-to-PDF.jxa -- --help\n` +
         "  osascript -l JavaScript Image-Files-to-PDF.jxa -- --version\n" +
         "  osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless <settings.json> <path…>\n\nSettings (all six required):\n" +
-        `${settingsHelp()}\n\nPaths may be absolute or relative to the working directory. Settings must be UTF-8 JSON without a BOM.\n`;
+        `${settingsHelp()}\n\nOptional run option:\n  timestamp — ${TIMESTAMP_FORM} in local time; default now\n\nPaths may be absolute or relative to the working directory. Settings must be UTF-8 JSON without a BOM.\n`;
 }
 
 function requestError(code, message, diagnostic = null) {

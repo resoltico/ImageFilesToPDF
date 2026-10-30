@@ -34,7 +34,7 @@ test("a URL that will not decode is refused, not guessed at", () => {
 test("a decoded path made of characters a path can hold", () => {
     // A NUL decodes without complaint and no filesystem can hold one. It used
     // to travel as far as the first shell command, where the refusal was
-    // caught and reported as "not a readable file" -- true, for the wrong
+    // caught and reported as "This file cannot be read; check that it still exists and that you have access." -- true, for the wrong
     // reason.
     assert.equal(decodeFileUrl("file:///a/x%00y.png"), "");
 });

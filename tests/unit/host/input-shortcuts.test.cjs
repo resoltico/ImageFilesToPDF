@@ -102,3 +102,21 @@ test("unsupported files in the selection are still filtered out", () => {
     assert.deepEqual(records.map((record) => record.path), ["/a/1.jpg", "/a/2.png"]);
 });
 
+
+test("an invocation without files falls back to Finder's selection", () => {
+    // Shortcuts run without files passes [[], parameters] and an applet passes
+    // {}. The record alone is not a selection, so Finder's is used instead of
+    // reporting that no images were selected.
+    const app = createFakeApp();
+    const previous = globalThis.Application;
+    globalThis.Application = () => ({ selection: () => [selectedFile("/finder/chosen.png")] });
+    try {
+        for (const input of [[[], PARAMETERS], {}, [[], { source: "Finder", ignoresInput: false }]]) {
+            const { inputItems } = collectInvocation(app, input, false);
+            assert.deepEqual(inputItems, [], "the record is not an item");
+            assert.deepEqual(collectImageFiles(app, inputItems).images.map((record) => record.path), ["/finder/chosen.png"]);
+        }
+    } finally {
+        globalThis.Application = previous;
+    }
+});

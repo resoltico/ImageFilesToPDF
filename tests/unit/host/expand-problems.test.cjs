@@ -27,7 +27,7 @@ test("a subfolder that cannot be read comes back with the images", () => {
 
     assert.deepEqual(outcome.found, ["/t/a.png", "/t/sub/b.png"]);
     assert.deepEqual(outcome.problems, [
-        { path: "/t/locked", reason: "could not be read" }
+        { path: "/t/locked", reason: "This item could not be read." }
     ]);
 });
 
@@ -44,8 +44,8 @@ test("an entry the walk cannot look at comes back too", () => {
 
     assert.deepEqual(outcome.found, ["/t/a.png"]);
     assert.deepEqual(outcome.problems, [
-        { path: "/t/b.png", reason: "could not be examined" },
-        { path: "/t/sub", reason: "could not be examined" }
+        { path: "/t/b.png", reason: "This item could not be examined." },
+        { path: "/t/sub", reason: "This item could not be examined." }
     ]);
 });
 
@@ -66,7 +66,7 @@ test("unexamined images do not establish an empty folder", () => {
 
     assert.equal(outcome.reason, "");
     assert.deepEqual(outcome.problems, [
-        { path: "/t/locked", reason: "could not be read" }
+        { path: "/t/locked", reason: "This item could not be read." }
     ]);
 });
 
@@ -75,7 +75,7 @@ test("the folder that was selected is reported as itself, once", () => {
     // unreadable inside it.
     const outcome = imagesInFolder(treeOf({}), "/nope", new Set());
 
-    assert.equal(outcome.reason, "could not be read");
+    assert.equal(outcome.reason, "This item could not be read.");
     assert.deepEqual(outcome.problems, []);
 });
 
@@ -83,11 +83,11 @@ test("the folder that was selected is reported as itself, once", () => {
 test("failed child traversal cannot establish an empty parent folder",()=>{
     const tree=treeOf({"/t":["child"],"/t/child":null},{"/t/child":"directory"});
     const result=imagesInFolder(tree,"/t",new Set());
-    assert.equal(result.reason,"");assert.deepEqual(result.problems,[{path:"/t/child",reason:"could not be read"}]);
+    assert.equal(result.reason,"");assert.deepEqual(result.problems,[{path:"/t/child",reason:"This item could not be read."}]);
 });
 
 test("all unknown file identities are refused without claiming known-empty",()=>{
     const tree=treeOf({"/t":["first.png","second.png"]},{},{"/t/first.png":"","/t/second.png":""});
     const result=imagesInFolder(tree,"/t",new Set());
-    assert.deepEqual(result,{found:[],reason:"",problems:[{path:"/t/first.png",reason:"could not be examined"},{path:"/t/second.png",reason:"could not be examined"}]});
+    assert.deepEqual(result,{found:[],reason:"",problems:[{path:"/t/first.png",reason:"This item could not be examined."},{path:"/t/second.png",reason:"This item could not be examined."}]});
 });

@@ -43,7 +43,7 @@ function describeUnresolved(item) {
             path: "",
             name: named,
             reason: /^[a-z][a-z\d+.-]*:\/\//iu.test(named) && !/^file:/iu.test(named)
-                ? "remote URLs are not supported; download the file first" : "not an absolute path to a file"
+                ? "Remote URLs are not supported; download the file first." : "This is not an absolute path to a file."
         }
         : null;
 }

@@ -16,6 +16,10 @@ function headline(summary) {
 }
 
 function summaryText(summary, includeHeadline = true) {
+    // An invalid request converted nothing, so it states its problems without counts or a conversion heading.
+    if (summary.kind === "invalid") {
+        return [includeHeadline ? headline(summary) : "", ...summary.failures.map((entry) => entry.message)].filter(Boolean).join("\n\n");
+    }
     const saved = summary.saved.map((group) => `${group.folder}\n${group.outputs.map((output) => output.name).join("\n")}`);
     const recovered = summary.recoveries.map((entry) => entry.location);
     return [includeHeadline ? headline(summary) : "", `${plural(summary.counts.saved, "PDF")} saved; ${plural(summary.counts.recovered, "PDF")} recovered; ${plural(summary.counts.failed, "PDF")} failed.`, saved.length > 0 ? `Saved to:\n${saved.join("\n\n")}` : "",

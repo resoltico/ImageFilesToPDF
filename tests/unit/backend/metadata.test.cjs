@@ -88,6 +88,8 @@ test("only the actual absent-field diagnostic establishes an optional default", 
     assert.equal(headerFailureCode("Command failed.\r\rvipsheader: VipsPng: broken"), "damaged");
     assert.equal(headerFailureCode("vipsheader: VipsForeignLoad: unknown format"), "not-an-image");
     assert.equal(headerFailureCode("vipsheader: glib: PDF document is damaged"), "not-an-image");
+    assert.equal(headerFailureCode("vipsheader: webp: unable to parse image"), "damaged", "a truncated WebP is damaged, not foreign");
+    assert.equal(headerFailureCode("vipsheader: webpload: unable to parse image"), "not-an-image");
 });
 
 test("scalar enum responses normalize to the same interpretation facts as printable dumps", () => {

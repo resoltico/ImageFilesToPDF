@@ -26,9 +26,9 @@ const ARGUMENT_SEPARATOR = "--";
  * just its element -- which is what made this look like a multi-image bug
  * rather than a shape the code never anticipated.
  *
- * The trailing parameters object needs no special case: it resolves to
- * nothing that looks like an image and is dropped by the same filter that
- * drops a selected text file.
+ * The trailing parameters object is removed by the interactive collector in
+ * input.js, so that an invocation without files still falls back to Finder's
+ * selection.
  */
 function normalizeInvocationInput(input) {
     if (input === undefined || input === null) {

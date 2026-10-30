@@ -63,8 +63,23 @@ function finderSelection() {
     return Application("Finder").selection();
 }
 
+/*
+ * The record Shortcuts appends to its input, or the empty one an applet run
+ * passes, is not a selected item. Counting it would leave the input never
+ * empty, so an invocation without files would never fall back to Finder's
+ * selection. Selected items stringify to their path; a bare record does not.
+ */
+function isParametersRecord(item) {
+    try {
+        return item !== null && typeof item === "object" && String(item) === "[object Object]";
+    } catch {
+        return false;
+    }
+}
+
 function collectInvocation(app, input) {
-    return { headless: false, settings: null, timestamp: "", inputItems: normalizeInvocationInput(input) };
+    return { headless: false, settings: null, timestamp: "",
+        inputItems: normalizeInvocationInput(input).filter((item) => !isParametersRecord(item)) };
 }
 
 module.exports = {

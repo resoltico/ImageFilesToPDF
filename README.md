@@ -3,6 +3,8 @@
 A Finder Quick Action that converts local images into PDFs, with one image on
 each page. Choose one multi-page PDF or one single-page PDF per image. Images
 are centred without cropping or enlargement; originals are never modified.
+The same script also runs from the command line for scripts and automation,
+with a JSON settings file and a JSON receipt; see [HEADLESS.md](HEADLESS.md).
 
 Source and releases: https://github.com/resoltico/ImageFilesToPDF
 

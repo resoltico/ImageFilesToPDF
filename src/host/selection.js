@@ -37,7 +37,7 @@ function remember(found, tree, path, rejected) {
 
     const entry = inspect(tree, standardized);
     if (path.endsWith("/") && !["directory", "package"].includes(entry.kind)) {
-        rejected.push({ path, name: path, reason: "not a folder (the path ends with a slash)" });
+        rejected.push({ path, name: path, reason: "This is not a folder; the path ends with a slash." });
         return;
     }
 

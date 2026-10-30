@@ -38,3 +38,10 @@ test("nothing-to-convert retains refusals in the machine receipt", () => {
     assert.equal(result.state, "incomplete");
     assert.deepEqual(result.rejected, refused);
 });
+
+test("an invalid request lists its problems without conversion counts", () => {
+    const result = { ...runOutcome([], [], [{ code: "usage", stage: "request", message: "Usage: run it properly" }]), state: "invalid" };
+    const writes = [];
+    reportHeadless(result, (...args) => writes.push(args), (status) => status);
+    assert.equal(writes[1][0], "The request is invalid.\n\nUsage: run it properly\n");
+});

@@ -34,7 +34,7 @@ test("what cannot be converted is reported, not dropped", () => {
     assert.deepEqual(images.map((record) => record.originalName), ["photo.JPG"]);
     assert.deepEqual(rejected.map((entry) => entry.name), ["notes.txt", "missing.png"]);
     assert.match(rejected[0].reason, /not a supported format/u);
-    assert.match(rejected[1].reason, /not a readable file/u);
+    assert.match(rejected[1].reason, /This file cannot be read; check that it still exists and that you have access./u);
 });
 
 test("collectImageFiles keeps only supported, regular files", () => {

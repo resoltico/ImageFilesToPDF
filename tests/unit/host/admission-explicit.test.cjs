@@ -59,7 +59,7 @@ test("a file that cannot be converted still says so when its folder is selected 
 
         assert.deepEqual(images, ["/photos/a.jpg"]);
         assert.deepEqual(rejected, [
-            "readme.txt: not a supported format (JPEG, PNG, HEIC, TIFF, WebP or AVIF)"
+            "readme.txt: This file is not a supported format; use JPEG, PNG, HEIC, TIFF, WebP or AVIF."
         ]);
     }
 });
@@ -101,7 +101,7 @@ test("an entry the walk could not look at is reported by name", () => {
     const { images, rejected } = collect(["/photos"], tree);
 
     assert.deepEqual(images, ["/photos/a.jpg"]);
-    assert.deepEqual(rejected, ["b.jpg: could not be examined"]);
+    assert.deepEqual(rejected, ["b.jpg: This item could not be examined."]);
 });
 
 test("a subfolder that could not be looked at is reported as well", () => {
@@ -112,5 +112,5 @@ test("a subfolder that could not be looked at is reported as well", () => {
     const { images, rejected } = collect(["/photos"], tree);
 
     assert.deepEqual(images, ["/photos/a.jpg"]);
-    assert.deepEqual(rejected, ["sub: could not be examined"]);
+    assert.deepEqual(rejected, ["sub: This item could not be examined."]);
 });

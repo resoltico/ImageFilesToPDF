@@ -17,5 +17,9 @@ vips invert "$WORK/first.tif" "$WORK/second.tif"
 tiffcp "$WORK/first.tif" "$WORK/second.tif" "$WORK/multi.tif"
 vips webpsave "$WORK/multi.tif[n=-1]" "$WORK/animated.webp" --page-height 200
 test "$(vipsheader -f n-pages "$WORK/animated.webp")" = 2
+# A WebP cut short is damaged: its loader is known, yet its header cannot be parsed.
+vips gaussnoise "$WORK/noise.v" 400 200
+vips copy "$WORK/noise.v" "$WORK/whole.webp"
+head -c "$(( $(wc -c <"$WORK/whole.webp") * 6 / 10 ))" "$WORK/whole.webp" >"$WORK/cut.webp"
 vips icc_transform "$WORK/photo.jpg" "$WORK/tagged.jpg" "$P3_PROFILE" --input-profile "$SRGB_PROFILE"
 node "$ROOT/tests/integration/cli-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.jxa" "$WORK"

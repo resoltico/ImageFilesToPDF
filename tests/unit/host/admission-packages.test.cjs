@@ -37,7 +37,7 @@ test("a package is refused rather than walked into", () => {
 
     assert.deepEqual(images, []);
     assert.deepEqual(rejected.map((entry) => `${entry.name}: ${entry.reason}`), [
-        "Photos.app: a package, not a folder of images"
+        "Photos.app: This is a package, not a folder of images."
     ]);
 });
 

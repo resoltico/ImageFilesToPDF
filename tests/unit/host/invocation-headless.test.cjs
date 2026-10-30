@@ -44,3 +44,11 @@ test("help renders canonical names, choice captions, defaults and bounds", () =>
     const text = usage();
     for (const expected of ["PDF files", "combined", "One PDF — one image per page", "Paper size", "US Letter", "Maximum resolution", "72–1017", "Page background", "JPEG quality", "default 82", "White"]) { assert.ok(text.includes(expected), expected); }
 });
+
+test("help states each numeric range once and documents the optional timestamp", () => {
+    const text = usage();
+    assert.match(text, /resolutionLimit — Maximum resolution: 72–1017 ppi; default 300\n/u);
+    assert.match(text, /quality — JPEG quality: 1–100, JPEG re-encoding only; default 82\n/u);
+    assert.equal(text.split("72–1017").length, 2, "the resolution range appears once");
+    assert.match(text, /timestamp — YYYYMMDD_HHMMSS in local time; default now/u);
+});

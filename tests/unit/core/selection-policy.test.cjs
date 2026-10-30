@@ -5,12 +5,12 @@ const {selectionReason,selectionRefusal}=require("../../../src/core/selection-po
 const {sourceIssues}=require("../../../src/core/source-policy.js");
 
 test("core owns file-selection policy and stable refusal tags",()=>{
-    assert.equal(selectionReason("package","a.png",true),"a package, not a folder of images");
-    assert.equal(selectionReason("other","a.png",true),"a link; select the file it points to");
-    assert.equal(selectionReason("directory","a.png",true),"a folder; select the images inside it");
+    assert.equal(selectionReason("package","a.png",true),"This is a package, not a folder of images.");
+    assert.equal(selectionReason("other","a.png",true),"This is a link; select the file it points to.");
+    assert.equal(selectionReason("directory","a.png",true),"This is a folder; select the images inside it.");
     assert.equal(selectionReason("file","a.png",true),"");
-    assert.equal(selectionReason("file","a.png",false),"not a readable file");
-    assert.match(selectionReason("file","a.gif",true),/^not a supported format/u);
+    assert.equal(selectionReason("file","a.png",false),"This file cannot be read; check that it still exists and that you have access.");
+    assert.match(selectionReason("file","a.gif",true),/^This file is not a supported format; use /u);
     assert.deepEqual(selectionRefusal({path:"bad",reason:"why"}),{path:"bad",reason:"why",code:"selection-refused",stage:"selection"});
 });
 

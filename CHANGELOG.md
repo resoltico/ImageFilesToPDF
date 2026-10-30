@@ -11,6 +11,7 @@
 - Embed image-sized rasters on vector backgrounds without enlargement; PNG/TIFF stay lossless. Eligible JPEGs keep exact bytes, including embedded metadata.
 - Normalize orientation, profiles, alpha and excess resolution; JPEG quality defaults to 82 and affects only JPEG encoding. Lossless WebP is re-encoded as JPEG.
 - Inspect candidates before settings, refuse unreadable, empty, disguised and multi-image sources, and report decode damage against the original path.
+- Running the action without files, for example from Shortcuts or the menu bar, converts Finder's current selection instead of reporting that no images were selected.
 - Recovery first publishes and confirms the intended filename in Downloads, then tries a confirmed temporary copy. Completion names the actual location and offers Show in Finder.
 - Record workspace owners and retain validation candidates; the next conversion reclaims unretained dead-owner work while leaving retained or unreadable work for inspection.
 - Use one progress panel with Stop and a live settings summary; dialogs show one headline, grouped saved paths, failures, not-started counts and optional copyable diagnostics.

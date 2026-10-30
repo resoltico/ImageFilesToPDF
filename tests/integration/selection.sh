@@ -55,7 +55,7 @@ WALKED="$WORK/album/Images 2026-09-07 at 01.01.01.pdf"
 assert_valid_pdf "$WALKED"
 test "$(pages "$WALKED")" = 2 ||
     fail "the walk took $(pages "$WALKED") pages: hidden, notes or locked leaked in"
-grep -q '"reason":"could not be read"' <<<"$RECEIPT" ||
+grep -q '"reason":"This item could not be read."' <<<"$RECEIPT" ||
     fail "the unreadable subfolder was passed over silently: $RECEIPT"
 grep -q '"name":"locked"' <<<"$RECEIPT" ||
     fail "the report did not say which folder was closed: $RECEIPT"
@@ -122,7 +122,7 @@ test "$(pages "$WORK/names/Images 2026-09-07 at 07.07.07.pdf")" = 2 ||
     fail "each photograph once: $NAMES"
 grep -q "not a supported format" <<<"$NAMES" ||
     fail "the unsupported name must be answered, not swallowed: $NAMES"
-grep -q "a link; select the file it points to" <<<"$NAMES" ||
+grep -q "This is a link; select the file it points to." <<<"$NAMES" ||
     fail "the symbolic link must be refused: $NAMES"
 
 # ---------------------------------------------------------------------------
@@ -132,7 +132,7 @@ grep -q "a link; select the file it points to" <<<"$NAMES" ||
 # ---------------------------------------------------------------------------
 
 run 20260907_040404 "$WORK/Photos.app" >/dev/null
-grep -q "a package, not a folder of images" "$WORK/error.txt" ||
+grep -q "This is a package, not a folder of images." "$WORK/error.txt" ||
     fail "the package was not refused: $(cat "$WORK/error.txt")"
 test -z "$(find "$WORK/Photos.app" -name '*.pdf')" ||
     fail "a PDF was written inside the bundle"

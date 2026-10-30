@@ -168,9 +168,9 @@ function refusals(pdf,separate) {
     fs.writeFileSync(at("empty.png"),"");fs.copyFileSync(at("source.svg"),at("vector.png"));
     fs.copyFileSync(pdf,at("document.png"));fs.writeFileSync(at("random.jpg"),"not an image");
     fs.copyFileSync(at("photo.jpg"),at("unreadable.jpg"));fs.chmodSync(at("unreadable.jpg"),0);
-    const corpus=["empty.png","vector.png","document.png","random.jpg","multi.tif","animated.webp","unreadable.jpg","photo.jpg"];
+    const corpus=["empty.png","vector.png","document.png","random.jpg","multi.tif","animated.webp","cut.webp","unreadable.jpg","photo.jpg"];
     const refused=convert(1,corpus,separate);
-    for(const [name,code] of [["empty.png","empty"],["vector.png","not-an-image"],["document.png","not-an-image"],["random.jpg","not-an-image"],["multi.tif","multiple-images"],["animated.webp","multiple-images"],["unreadable.jpg","unreadable"]]) {refusal(refused,name,code);}
+    for(const [name,code] of [["empty.png","empty"],["vector.png","not-an-image"],["document.png","not-an-image"],["random.jpg","not-an-image"],["multi.tif","multiple-images"],["animated.webp","multiple-images"],["cut.webp","damaged"],["unreadable.jpg","unreadable"]]) {refusal(refused,name,code);}
     assert.equal(refused.documents.length,1);assert.equal(refused.documents[0].state,"saved");
 }
 
