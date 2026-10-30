@@ -37,7 +37,7 @@ function unitsOf(settings, images) {
  * The invariants of a run, gathered once and passed as a unit.
  */
 function createJob(app, settings, timestamp, environment) {
-    const { tools, storage } = environment;
+    const { tools, storage, destinationNames } = environment;
     return {
         app,
         settings,
@@ -46,6 +46,7 @@ function createJob(app, settings, timestamp, environment) {
         geometry: calculatePageGeometry(settings),
         workspace: createWorkspace(app, storage),
         storage,
+        destinationNames,
         // Authoritative artifact lifecycles, registered before PDF bytes exist.
         artifacts: new Map(),
         parts: new Map(),
@@ -105,9 +106,12 @@ function cleanupJob(job, issues) {
 }
 
 function runJob(job, imageFiles) {
-    const plans = documentPlan(job.settings, imageFiles, job.timestamp);
     const issues = [], records = [];
-    try { executeDocuments(documentPorts(job), plans, records); }
+    try {
+        const groups = isSeparateMode(job.settings) ? job.destinationNames.groups(imageFiles, job.workspace) : [];
+        const plans = documentPlan(job.settings, imageFiles, job.timestamp, groups);
+        executeDocuments(documentPorts(job), plans, records);
+    }
     catch (error) { issues.push(...issuesOf(error, "execution")); }
     finally { cleanupJob(job, issues); }
     return runOutcome(records, [], issues, job.progress.diagnostics);

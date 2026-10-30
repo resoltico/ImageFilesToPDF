@@ -57,9 +57,7 @@ const CHOICE_ROWS = [
 
 const COLOUR_ROW = { key: "background", control: BACKGROUND };
 
-// Beside the control, where the numbers state their range. It says the shape
-// and that there is somewhere to type it, which is what a list of four codes
-// cannot say for itself.
+// State the custom hex input format beside the editable preset control.
 const COLOUR_HINT = SETTINGS_SCHEMA.background.hint;
 
 const NUMBER_ROWS = [
@@ -100,7 +98,7 @@ function formRows(answers, invalid) {
         hint: COLOUR_HINT,
         value: String(answers[COLOUR_ROW.key]),
         invalid: invalid.has(COLOUR_ROW.key),
-        // What each item reads as, which for this row is the colour itself.
+        // Named preset captions retain their canonical RGB values.
         options: COLOUR_ROW.control.choices.map((choice) => ({
             label: choice.label, value: choice.value
         }))

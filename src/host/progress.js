@@ -44,9 +44,8 @@ function broadcast(sinks, state) {
  * lost by not doing it, and a stage added later becomes a checkpoint by
  * writing the line that makes it visible.
  *
- * Afterwards rather than before, which is not a detail: a host raises at the
- * assignment following the button, so the report that discovers a stop is the
- * one being made, and checking first would miss it.
+ * A sink can register Stop while processing a report. Check after notifying
+ * it so that the same safe checkpoint observes that request.
  */
 function announce(state, say) {
     say();

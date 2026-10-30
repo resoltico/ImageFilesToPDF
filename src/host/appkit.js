@@ -69,8 +69,7 @@ const INVALID_TINT_ALPHA = 0.18;
 const ALIGN_RIGHT = 1;
 
 // NSLineBreakByTruncatingTail: a label too long for its column ends in an
-// ellipsis instead of being cut mid-word. Clipping is how "JPEG quality
-// (1-100, 90-95" reached a user looking like an unclosed parenthesis.
+// ellipsis instead of being cut mid-word.
 const TRUNCATE_TAIL = 4;
 
 function makeView(ns, width, height) {

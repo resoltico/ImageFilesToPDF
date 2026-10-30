@@ -1,15 +1,7 @@
 "use strict";
 
-/*
- * The machine-readable outcome of a headless run.
- *
- * A caller needs two things that cannot both travel on the same channel: the
- * receipt, and an exit status that reflects whether the request was honoured.
- * osascript returns the script's value on success and its error on failure, so
- * an incomplete run either reports what happened or reports that it failed —
- * not both. Writing the receipt to standard output directly settles that: the
- * receipt goes out, then the error propagates and the process exits non-zero.
- */
+// Native CLI transport keeps receipt JSON and prose on separate UTF-8 streams.
+// Exit status is explicit; no osascript return-value or thrown-error wrapper.
 
 const UTF8_ENCODING = 4;
 

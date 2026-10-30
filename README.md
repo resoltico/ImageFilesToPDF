@@ -103,7 +103,12 @@ A combined PDF is named `Images YYYY-MM-DD at HH.MM.SS.pdf` in local time.
 Separate PDFs use `<sanitized stem>.pdf`. Sources sharing a stem and destination
 in the same run include their lower-case extension, for example `photo-jpg.pdf`
 and `photo-png.pdf`. Existing-entry collisions use `photo 2.pdf`, `photo 3.pdf`,
-and so on. Existing files, directories, pipes and links are never overwritten.
+and so on. Existing files, directories, pipes and links are never overwritten. Names are
+compared in the actual destination namespace: differently cased stems can
+conflict on a case-insensitive volume while remaining distinct on a
+case-sensitive one. Alternate spellings of an existing destination are matched
+by native directory identity. Planning stops if reliable name-equivalence facts
+cannot be established.
 
 Combined mode publishes no subset if a candidate fails. Separate mode continues
 ordinary document failures; cancellation, cleanup failures and software faults

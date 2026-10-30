@@ -1,13 +1,6 @@
 "use strict";
 
-/*
- * Reporting to more than one surface, and to none.
- *
- * They are not alternatives falling back on one another: the host's own
- * Progress object is presented by Script Editor and by an applet, an AppKit
- * panel is what a Shortcut can show, and a run may be either. So every
- * surface gets every report, and one that refuses does not stop the others.
- */
+// Optional observer faults must not invalidate work or suppress healthy observers.
 
 const assert = require("node:assert/strict");
 const test = require("node:test");

@@ -86,10 +86,7 @@ test("the background is a control that is a list and a field at once", () => {
     assert.equal(background.accessibilityLabel, "Page background:");
 });
 
-test("a menu item is a title and nothing else", () => {
-    // The four backgrounds used to carry a colour swatch here. They are in a
-    // combo box now, whose list holds strings, so nothing builds an image and
-    // no option carries one.
+test("choice menu captions need no images", () => {
     const { controls } = build();
 
     for (const item of controls.paperSize.items) {

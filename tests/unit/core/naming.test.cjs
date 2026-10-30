@@ -14,8 +14,8 @@ test("combined names use the validated local timestamp and separate names use sa
 test("same-run destination conflicts get source extensions, while different destinations do not", () => {
     const source = (originalName, folder = "/out/") => ({ path: `${folder}${originalName}`, originalName, folder });
     const sources = [source("photo.jpg"), source("photo.PNG"), source("photo.jpg", "/other/")];
-    assert.deepEqual(documentPlan({ mode: "separate" }, sources, "20260904_070509").map((plan) => plan.destination), ["/out/photo-jpg.pdf", "/out/photo-png.pdf", "/other/photo.pdf"]);
-    assert.deepEqual(documentPlan({ mode: "separate" }, [source("photo.JPG"), source("photo.jpg")], "20260904_070509").map((plan) => plan.destination), ["/out/photo-jpg.pdf", "/out/photo-jpg.pdf"]);
+    assert.deepEqual(documentPlan({ mode: "separate" }, sources, "20260904_070509", [0,0,1]).map((plan) => plan.destination), ["/out/photo-jpg.pdf", "/out/photo-png.pdf", "/other/photo.pdf"]);
+    assert.deepEqual(documentPlan({ mode: "separate" }, [source("photo.JPG"), source("photo.jpg")], "20260904_070509", [0,0]).map((plan) => plan.destination), ["/out/photo-jpg.pdf", "/out/photo-jpg.pdf"]);
     assert.equal(documentPlan({ mode: "combined" }, sources, "20260904_070509")[0].destination, "/out/Images 2026-09-04 at 07.05.09.pdf");
     assert.deepEqual(documentPlan({ mode: "combined" }, [], "unused"), []);
 });
@@ -31,4 +31,17 @@ test("Finder-style collisions preserve the extension and reject non-PDF candidat
 test("staged paths remain in their workspace and sanitize tokens", () => {
     assert.equal(stagedPdfPath("/tmp/ws", "abc:123"), "/tmp/ws/staged-abc_123.pdf");
     for (const token of ["../escape", "a/b", "/absolute"]) { assert.equal(stagedPdfPath("/tmp/ws", token).slice("/tmp/ws/".length).includes("/"), false); }
+});
+
+
+test("host name equivalence determines conflicts without changing spelling or source order", () => {
+    const sources = [
+        {path:"/Trip/photo.jpg",folder:"/Trip/",originalName:"photo.jpg"},
+        {path:"/trip/PHOTO.png",folder:"/trip/",originalName:"PHOTO.png"}
+    ];
+    assert.deepEqual(documentPlan({mode:"separate"},sources,"unused",[7,7]).map((plan)=>plan.destination),["/Trip/photo-jpg.pdf","/trip/PHOTO-png.pdf"]);
+    assert.deepEqual(documentPlan({mode:"separate"},sources,"unused",[7,8]).map((plan)=>plan.destination),["/Trip/photo.pdf","/trip/PHOTO.pdf"]);
+    for (const groups of [undefined,null,[],[0],Array(2),[-1,0],[0.5,0],[NaN,0],["0",0],[Number.MAX_SAFE_INTEGER+1,0]]) {
+        assert.throws(()=>documentPlan({mode:"separate"},sources,"unused",groups),/identify every source/u);
+    }
 });

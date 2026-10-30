@@ -28,6 +28,7 @@ function makeJob(app) {
         parts: new Map(),
         cleanupIssues: [],
         storage: app.storage,
+        destinationNames: app.destinationNames,
         progress: createProgress([]),
         publication: app.publication,
         sources: app.sources,

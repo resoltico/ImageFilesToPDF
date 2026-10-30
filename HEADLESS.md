@@ -133,7 +133,10 @@ valid documents.
 
 Combined names use local time: `Images YYYY-MM-DD at HH.MM.SS.pdf`. Separate
 names use sanitized stems; same-run stem conflicts in one destination add the
-lower-case source extension. Existing-entry collisions use ` 2`, ` 3`, etc.
+lower-case source extension. Conflicts follow the actual destination namespace,
+including its case and normalization behavior; directory aliases use native
+identity. Existing-entry collisions use ` 2`, ` 3`, etc. Unavailable comparison
+facts stop planning before PDF encoding rather than guessing.
 
 A failed destination first recovers a validated PDF to `~/Downloads` under its
 intended name. If that cannot be written and confirmed, a confirmed temporary

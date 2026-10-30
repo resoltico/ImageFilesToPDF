@@ -11,7 +11,7 @@ const settings = {paperSize:"A4",orientation:"Portrait",mode:"combined",resoluti
 
 function fixture(options = {}) {
     const app = createFakeHost({ files:["/source.png"], ...options });
-    const caps = {storage:app.storage,tree:treeOf({}),sources:app.sources,publication:app.publication};
+    const caps = {storage:app.storage,destinationNames:app.destinationNames,tree:treeOf({}),sources:app.sources,publication:app.publication};
     return {app,caps};
 }
 

@@ -37,15 +37,8 @@ function reportNoImages(app, headless, rejected) {
     return undefined;
 }
 
-/*
- * A headless caller gets one thing back from osascript: the returned value on
- * success, the error on failure. An incomplete run has to be both, so the
- * receipt goes out on its own before the failure is raised — newline
- * terminated, because a caller reads it a line at a time.
- *
- * The writer is a parameter so the line that is actually written can be read
- * back in a test; the default is the real one.
- */
+// CLI writes one newline-terminated receipt to stdout, prose to stderr, then
+// exits explicitly. Injectable writers let tests inspect both transport channels.
 const INVALID_EXIT = 2;
 const SETUP_EXIT = 3;
 function exitCode(result) {

@@ -12,7 +12,7 @@ const stamp="20261029_070000";
 
 function jobFixture(mode="combined",failures=[]) {
     const app=createFakeHost({files:["/a/1.png","/a/2.png"],failures});
-    const job=createJob(app,{...settings,mode},stamp,{tools,storage:app.storage});
+    const job=createJob(app,{...settings,mode},stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
     const events=[];
     job.sources=app.sources;job.publication=app.publication;
     job.progress=createProgress([{start:(units)=>events.push(["expect",units]),report:(done,text,detail)=>events.push([done,text,detail])}]);
@@ -64,14 +64,14 @@ test("unconfirmed validated work keeps the workspace even after unexpected publi
 
 test("a default job has an inert progress capability, not a malformed sink",()=>{
     const app=createFakeHost();
-    const job=createJob(app,settings,stamp,{tools,storage:app.storage});
+    const job=createJob(app,settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
     job.progress.phase("Checking");assert.deepEqual(job.progress.diagnostics,[]);
 });
 
 function longPathFixture() {
     const sources=Array.from({length:35},(unused,index)=>`/a/${index}.png`);
     const app=createFakeHost({files:sources});
-    const job=createJob(app,settings,stamp,{tools,storage:app.storage});
+    const job=createJob(app,settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
     Object.assign(job,{sources:app.sources,publication:app.publication,tools:{...tools,pdfcpu:"/opt/homebrew/Cellar/pdfcpu/0.16.4/bin/pdfcpu"}});
     job.workspace=`/${[246,246,246,245].map((width)=>"'".repeat(width)).join("/")}/ImageFilesToPDF.x`;
     const counts=[];const original=app.doShellScript;
@@ -99,4 +99,15 @@ test("job accumulator outlives executor and workspace teardown faults",()=>{
     const {job}=jobFixture("combined");
     const result=module.exports.runJob(job,[imageOf("/a/1.png")]);
     assert.deepEqual([result.documents[0].output,Array.from(result.issues,issue=>issue.stage),result.state], ["/saved.pdf",["execution","cleanup"],"incomplete"]);
+});
+
+
+test("name-planning faults release the owned workspace before any PDF bytes",()=>{
+    const {job,app}=jobFixture("separate");
+    job.destinationNames={groups(){throw new TypeError("namespace unavailable");}};
+    const result=runJob(job,[imageOf("/a/1.png"),imageOf("/a/2.png")]);
+    assert.equal(result.state,"incomplete");assert.deepEqual(result.documents,[]);
+    assert.ok(result.issues.some(issue=>issue.code==="fault"));
+    assert.ok(app.commands.some(command=>command.includes("'/bin/rm' '-rf'")));
+    assert.ok(!app.commands.some(command=>command.includes("'thumbnail'")));
 });

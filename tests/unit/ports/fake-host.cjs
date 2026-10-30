@@ -1,17 +1,11 @@
 "use strict";
+const { outputNameForSeparate } = require("../../../src/core/naming.js");
 const { workspacePort } = require("./fake-workspace.cjs");
 
 const { boundedDialog } = require("./fake-dialogs.cjs");
 
-/*
- * A fake JXA host with a small in-memory filesystem.
- *
- * The runtime reaches the filesystem only through /bin/test, /bin/mv,
- * /bin/cp, /usr/bin/stat and /bin/rm, and produces files only through vips
- * and pdfcpu. Modelling those
- * few commands is enough to drive the publication logic — including the
- * non-clobbering move, which a stateless stub cannot exercise.
- */
+// Supplementary host fixture models shell commands and native filesystem ports.
+// Native suites verify the actual adapters and non-clobbering publication.
 
 const { createFilesystem } = require("./fake-filesystem.cjs");
 const {
@@ -165,6 +159,15 @@ function createFakeHost(settings = {}) {
     };
 
     host.storage = workspacePort(host);
+    // This fixture models a case-sensitive namespace; native tests cover volumes.
+    host.destinationNames = {groups(sources) {
+        const keys=new Map();
+        return sources.map((source)=>{
+            const path=source.folder+outputNameForSeparate(source);
+            if(!keys.has(path)) {keys.set(path,keys.size);}
+            return keys.get(path);
+        });
+    }};
     const surface = dialogSurface(host);
 
     surface.displayDialog = boundedDialog(surface.displayDialog);

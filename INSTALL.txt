@@ -70,7 +70,8 @@ Images found through a selected folder save there; explicit files save beside
 their source. A combined PDF uses the first ordered image's destination.
 Combined names are Images YYYY-MM-DD at HH.MM.SS.pdf (local time). Separate
 names use the sanitized source stem; same-run stem conflicts add the lower-case
-extension. Existing entries are never overwritten; collisions use " 2", " 3", etc.
+extension. Different spellings the destination treats as one name are disambiguated.
+Existing entries are never overwritten; collisions use " 2", " 3", etc.
 
 Combined mode publishes no subset after a candidate failure. Separate mode
 continues ordinary failures, while cancellation, cleanup or software faults can

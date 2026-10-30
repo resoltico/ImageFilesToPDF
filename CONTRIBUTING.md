@@ -51,7 +51,11 @@ remain diagnosable rather than silently triggering fallback.
 `src/core/settings.js` owns canonical settings, defaults, names, captions, hints
 and legal choice IDs. `src/host/settings-model.js` derives the offered form and
 stepwise records from that schema. Text fields are parsed at adapter boundaries and use the common
-all-issues validator. Numeric RGB components belong to colour policy; vips
+all-issues validator. `documentPlan` requires complete native name-equivalence
+group facts for separate mode. `src/host/destination-names.js` obtains them from
+native folder identity and namespace lookups; its coarse search buckets never
+establish equality. Empty prototypes remain inside the owned workspace; foreign
+namespace lookups preserve the original requested destination spellings. Numeric RGB components belong to colour policy; vips
 comma-separated vectors belong to the backend adapter.
 
 `src/core/artifacts.js` owns retention policy. Each artifact is registered before

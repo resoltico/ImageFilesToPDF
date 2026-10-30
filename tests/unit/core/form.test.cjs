@@ -30,10 +30,7 @@ test("every setting the pipeline needs has exactly one row", () => {
 });
 
 test("the form offers the same choices as the stepwise dialogs", () => {
-    // Two front ends that disagree about what may be chosen would be two
-    // different tools wearing the same name. They present them differently --
-    // the form's list holds the colours, the dialog's holds their names --
-    // but they are the same four.
+    // Both interfaces derive the same offered captions from the schema.
     assert.deepEqual(
         rowFor("background").options.map((option) => option.label),
         BACKGROUND.choices.map((choice) => choice.label)
@@ -44,11 +41,7 @@ test("the form offers the same choices as the stepwise dialogs", () => {
     );
 });
 
-test("everything in the background control is a colour", () => {
-    // The list held a menu's wording, "White (#FFFFFF)", which is what made a
-    // control you can type into look like one you cannot -- and made editing
-    // what it put there a mistake, since a person replacing the code inside
-    // those brackets has written a perfectly good colour.
+test("named background presets preserve canonical values and custom-entry guidance", () => {
     const row = rowFor("background");
 
     assert.equal(row.kind, "colour");
@@ -56,6 +49,7 @@ test("everything in the background control is a colour", () => {
         row.options.map((option) => option.label),
         ["White (#FFFFFF)", "Black (#000000)", "Purple (#8E79E0)", "Dark blue (#204486)"]
     );
+    assert.deepEqual(row.options.map((option) => option.value), ["#FFFFFF", "#000000", "#8E79E0", "#204486"]);
     assert.equal(row.value, "#FFFFFF");
     assert.equal(
         row.hint,

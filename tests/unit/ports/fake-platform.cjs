@@ -4,6 +4,14 @@ const { TextDecoder } = require("node:util");
 const { createFakeObjC } = require("./fake-objc.cjs");
 
 function attributesFor(app, path) {
+    const prefix=`${path.replace(/\/$/u,"")}/`;
+    const directory=app.nativeDirectories?.has(path)||[...app.files].some((name)=>name.startsWith(prefix));
+    if(directory) {
+        const ids=app.nativeDirectoryIds;
+        if(!ids.has(path)) {ids.set(path,String(100000+ids.size));}
+        const fields={kind:"NSFileTypeDirectory",device:"1",number:ids.get(path)};
+        return {plain:{NSFileType:"NSFileTypeDirectory"},isNil:()=>false,objectForKey:(key)=>({boxed:fields[key],stringValue:fields[key]})};
+    }
     if (!app.files.has(path)) { return null; }
     const facts = app.publication.facts(path);
     const [device, number] = facts.identity.split(":");
@@ -21,7 +29,16 @@ function managerFor(app, unbox) {
             const names=[...new Set([...app.files].filter((name)=>name.startsWith(prefix)).map((name)=>name.slice(prefix.length).split("/")[0]))];
             names.isNil=()=>false;return names;
         },
-        removeItemAtPathError(path) {app.files.delete(unbox(path));app.fileTexts.delete(unbox(path));return true;},
+        createDirectoryAtPathWithIntermediateDirectoriesAttributesError(path) {
+            const name=unbox(path);
+            if(attributesFor(app,name)) {return false;}
+            app.nativeDirectories.add(name);return true;
+        },
+        removeItemAtPathError(path) {
+            const name=unbox(path);
+            for(const directory of app.nativeDirectories) {if(directory===name||directory.startsWith(`${name}/`)) {app.nativeDirectories.delete(directory);}}
+            app.files.delete(name);app.fileTexts.delete(name);return true;
+        },
         isReadableFileAtPath: (path) => app.files.has(unbox(path)) || app.fileTexts.has(unbox(path)),
         currentDirectoryPath: "/cwd",
         fileExistsAtPathIsDirectory(path, directory) { const name = unbox(path); directory[0] = false; return app.files.has(name) || app.fileTexts.has(name); },
@@ -48,6 +65,7 @@ function decodedText(data) {
 
 function installPlatform(app, options = {}) {
     const bridge = createFakeObjC(options);
+    app.nativeDirectories=new Set();app.nativeDirectoryIds=new Map();
     const output = [];
     const stderr = [];
     const unbox = (value) => value?.boxed ?? value;
@@ -63,7 +81,12 @@ function installPlatform(app, options = {}) {
         NSFileManager: { defaultManager: managerFor(app, unbox) },
         NSWorkspace: { sharedWorkspace: { isFilePackageAtPath: () => false } },
         NSFileType: "kind", NSFileSystemNumber: "device", NSFileSystemFileNumber: "number", NSFileSize: "size", NSFileModificationDate: "modified", NSFileCreationDate: "created",
-        NSURL: { fileURLWithPath: (path) => path },
+        NSURLVolumeSupportsCaseSensitiveNamesKey:"caseSensitive", NSURLCanonicalPathKey:"canonicalPath",
+        NSURL: {fileURLWithPath(path) {
+            const name=unbox(path);
+            const url={path:name,resourceValuesForKeysError:()=>({isNil:()=>false,objectForKey:(key)=>({boxed:key==="caseSensitive"?true:name,isNil:()=>false})})};
+            url.URLByResolvingSymlinksInPath=url;return url;
+        }},
         CGImageSourceCreateWithURL: () => ({}), CGImageSourceGetCount: () => app.pages ?? 1,
         CFRelease: () => undefined,
         exit: (code) => code,

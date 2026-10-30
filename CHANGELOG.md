@@ -4,7 +4,8 @@
 
 - Replace headless `dpi` with required `resolutionLimit` (ppi, default 300); use the six typed settings and current mode values in [HEADLESS.md](HEADLESS.md).
 - CLI string-array input is always noninteractive; use `--help`, `--version` or `--headless`. Exit codes are 0 complete, 1 incomplete/stopped, 2 invalid and 3 setup.
-- Combined PDFs use `Images YYYY-MM-DD at HH.MM.SS.pdf`; separate PDFs use source stems, adding extensions for same-run conflicts. Existing-name collisions use Finder-style ` 2` suffixes.
+- Combined PDFs use `Images YYYY-MM-DD at HH.MM.SS.pdf`; separate PDFs use source stems. Existing-name collisions use Finder-style ` 2` suffixes.
+- Separate files add source extensions when names coincide in their actual destination namespace, including case-insensitive and normalized-name conflicts.
 - Receipts expose document states, source mappings, actual saved/recovery paths and structured issues; update consumers to the [active contract](HEADLESS.md).
 - Embed image-sized rasters on vector backgrounds without enlargement; PNG/TIFF stay lossless. Eligible JPEGs keep exact bytes, including embedded metadata.
 - Normalize orientation, profiles, alpha and excess resolution; JPEG quality affects only JPEG encoding. Lossless WebP is re-encoded as JPEG.
@@ -15,7 +16,6 @@
 - Read UTF-8 settings natively and resolve relative CLI paths from the working directory; invalid requests report their cause without an osascript error wrapper.
 - Keep confirmed outputs across cancellation and reporting faults; validate exact page counts, assemble bounded batches and never publish a combined subset after failure.
 - Require stable pdfcpu 0.16.4 or later; run `brew update` and `brew upgrade pdfcpu`. Invalid explicit backend overrides fail setup.
-- Contributor setup requires Node 26.13.0 and npm 12.2.1; builds use pinned esbuild and native CLI, filesystem, colour and form contract suites run in CI.
 
 ## [1.5.4] - 2026-10-05
 

@@ -11,7 +11,7 @@ const settings={paperSize:"A4",orientation:"Portrait",mode:"separate",resolution
 const tools={vips:"/v/vips",vipsheader:"/v/vipsheader",pdfcpu:"/v/pdfcpu"};
 function fixture(failures=[]){
     const app=createFakeHost({files:["/a/1.png","/a/2.png"],failures});
-    const job=createJob(app,settings,"20261029_070000",{tools,storage:app.storage});
+    const job=createJob(app,settings,"20261029_070000",{tools,storage:app.storage,destinationNames:app.destinationNames});
     job.sources=app.sources;job.publication=app.publication;
     return {app,job};
 }
