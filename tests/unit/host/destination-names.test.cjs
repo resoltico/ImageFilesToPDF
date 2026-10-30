@@ -24,6 +24,7 @@ test("owned namespace prototypes are removed after classification",()=>{
     try {
         assert.deepEqual(port.groups(records,"/work"),[0,0]);
         assert.equal(app.nativeDirectories.size,0);
+        assert.ok([...app.files].every(file=>!file.startsWith("/work/output-names/")));
         assert.ok(app.files.has("/input/photo.jpg"));assert.ok(app.files.has("/input/photo.png"));
     } finally {platform.restore();}
 });

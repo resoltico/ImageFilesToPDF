@@ -21,7 +21,7 @@ capture, and observed changes are refused. Coarse filesystem timestamps cannot
 establish an adversarial atomic snapshot of a changing original.
 
 Separate-output planning requires native directory identity and verified name
-equivalence. Empty comparison prototypes stay inside the owned private workspace;
+equivalence. Comparison directories and small identity tokens stay inside the owned workspace;
 other-volume checks use confirmed namespace lookups, distinguishing hard-link
 entries. These checks do not modify source files or reserve final output names.
 Exclusive publication remains necessary when entries change after planning.

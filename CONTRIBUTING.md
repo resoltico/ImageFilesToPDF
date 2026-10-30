@@ -54,7 +54,7 @@ stepwise records from that schema. Text fields are parsed at adapter boundaries 
 all-issues validator. `documentPlan` requires complete native name-equivalence
 group facts for separate mode. `src/host/destination-names.js` obtains them from
 native folder identity and namespace lookups; its coarse search buckets never
-establish equality. Empty prototypes remain inside the owned workspace; foreign
+establish equality. Comparison probes remain inside the owned workspace; foreign
 namespace lookups preserve the original requested destination spellings. Numeric RGB components belong to colour policy; vips
 comma-separated vectors belong to the backend adapter.
 

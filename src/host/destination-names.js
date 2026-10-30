@@ -41,7 +41,7 @@ function createDirectory(runtime, path) {
     return Boolean(runtime.manager.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(runtime.ns(path), false, runtime.ns(), runtime.ref()));
 }
 
-// These empty directories live only inside the already-owned run workspace.
+// These comparison directories and tokens stay inside the owned workspace.
 // Let the real namespace classify prospective names, including Unicode rules.
 function prototypeGroup(runtime, scope, name) {
     if (!runtime.created) {
@@ -54,13 +54,18 @@ function prototypeGroup(runtime, scope, name) {
         scope.prototype = path;
     }
     const path = `${scope.prototype}/${name}`;
-    const made = createDirectory(runtime, path);
-    const attributes = attributesAt(runtime.manager, runtime.ns, path);
-    const identity = identityOf(runtime.objc, runtime.ns, attributes);
-    if (kindOf(runtime.objc, runtime.ns, attributes) !== "NSFileTypeDirectory" || !identity ||
-        (!made && !runtime.prototypes.has(identity))) { throw comparisonError(scope.path); }
-    if (!runtime.prototypes.has(identity)) { runtime.prototypes.set(identity, runtime.next); runtime.next += 1; }
-    return runtime.prototypes.get(identity);
+    const marker = `${path}/group`;
+    if (createDirectory(runtime, path)) {
+        const token = String(runtime.next);
+        if (!runtime.ns(token).writeToFileAtomicallyEncodingError(runtime.ns(marker), true, runtime.ns.NSUTF8StringEncoding, runtime.ref())) {
+            throw comparisonError(scope.path);
+        }
+        runtime.tokens.set(token, runtime.next); runtime.next += 1;
+    }
+    const stored = runtime.ns.NSString.stringWithContentsOfFileEncodingError(runtime.ns(marker), runtime.ns.NSUTF8StringEncoding, runtime.ref());
+    const token = stored && !stored.isNil() ? String(runtime.objc.unwrap(stored)) : "";
+    if (!runtime.tokens.has(token)) { throw comparisonError(scope.path); }
+    return runtime.tokens.get(token);
 }
 
 // A broad search bucket is not an equivalence decision: native lookups below
@@ -184,7 +189,7 @@ function nativeDestinationNames(objc, ns) {
     return {
         groups(sources, workspace) {
             if (sources.length <= 1) { return sources.map((unused, index) => index); }
-            const runtime = { objc, ns, manager, ref: globalThis.Ref, folders: new Map(), prototypes: new Map(), next: 0, created: false, root: `${workspace}/output-names` };
+            const runtime = { objc, ns, manager, ref: globalThis.Ref, folders: new Map(), tokens: new Map(), next: 0, created: false, root: `${workspace}/output-names` };
             runtime.device = workspaceDevice(runtime, workspace);
             return managedGroups(runtime, sources);
         }

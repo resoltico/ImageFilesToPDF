@@ -13,12 +13,12 @@ const hash=(file)=>crypto.createHash("sha256").update(fs.readFileSync(file)).dig
 function alias(folder,left,right) {
     const first=path.join(folder,left),second=path.join(folder,right);
     fs.writeFileSync(first,"owned naming oracle",{flag:"wx"});
-    const exists=fs.existsSync(second);
-    if(exists) {
-        const leftInfo=fs.statSync(first,{bigint:true}),rightInfo=fs.statSync(second,{bigint:true});
-        assert.equal(`${leftInfo.dev}:${leftInfo.ino}`,`${rightInfo.dev}:${rightInfo.ino}`);
-    }
-    fs.unlinkSync(first);return exists;
+    let same=false;
+    try {fs.writeFileSync(second,"second owned marker",{flag:"wx"});fs.unlinkSync(second);}
+    catch(error) {if(error.code!=="EEXIST") {throw error;} same=true;}
+    assert.equal(fs.readFileSync(first,"utf8"),"owned naming oracle");
+    if(same) {assert.equal(fs.readFileSync(second,"utf8"),"owned naming oracle");}
+    fs.unlinkSync(first);return same;
 }
 function sources(folder,left,right) {
     fs.mkdirSync(folder);
@@ -55,7 +55,9 @@ function pair(index,left,right,options={}) {
     const oracle=path.join(root,`oracle-${index}`);fs.mkdirSync(oracle);
     const leftName=options.bareLeft??left,rightName=options.bareRight??right;
     const same=alias(oracle,`${leftName}.pdf`,`${rightName}.pdf`);
-    const actual=groups(records);assert.equal(actual[0]===actual[1],same,`${label}: ${left}/${right} native equivalence`);
+    const actual=groups(records);
+    const diagnostic=(actual[0]===actual[1])===same?"":spawnSync("/usr/bin/osascript",["-l","JavaScript",path.join(work,"names.jxa"),JSON.stringify(records),work,"details"],{encoding:"utf8"});
+    assert.equal(actual[0]===actual[1],same,`${label}: ${left}/${right} native equivalence ${diagnostic.stdout??""} ${diagnostic.stderr??""}`);
     let saved=[];
     if(label!=="exfat"&&options.production) {
         const wanted=same?[`${leftName}-jpg.pdf`,`${rightName}-png.pdf`]:[`${leftName}.pdf`,`${rightName}.pdf`];

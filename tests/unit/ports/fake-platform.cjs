@@ -37,7 +37,8 @@ function managerFor(app, unbox) {
         removeItemAtPathError(path) {
             const name=unbox(path);
             for(const directory of app.nativeDirectories) {if(directory===name||directory.startsWith(`${name}/`)) {app.nativeDirectories.delete(directory);}}
-            app.files.delete(name);app.fileTexts.delete(name);return true;
+            for(const file of app.files) {if(file===name||file.startsWith(`${name}/`)) {app.files.delete(file);app.fileTexts.delete(file);}}
+            return true;
         },
         isReadableFileAtPath: (path) => app.files.has(unbox(path)) || app.fileTexts.has(unbox(path)),
         currentDirectoryPath: "/cwd",
