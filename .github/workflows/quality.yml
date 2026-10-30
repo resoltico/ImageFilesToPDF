@@ -64,7 +64,7 @@ jobs:
       - run: npm install --global "$(node --print 'require("./package.json").packageManager')"
       - run: npm ci --ignore-scripts
       - run: npm run quality
-      # form.sh, the last suite, leaves a picture of the settings form in
+      # form.sh records a picture of the settings form in
       # each appearance: layout is checked by measurement, and read by eye.
       - run: npm run test:integration:macos
         env:
