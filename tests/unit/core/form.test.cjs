@@ -72,7 +72,7 @@ test("the defaults are the ones the dialogs would have offered first", () => {
         mode: "combined",
         background: "#FFFFFF",
         resolutionLimit: "300",
-        quality: "92"
+        quality: "82"
     });
 });
 

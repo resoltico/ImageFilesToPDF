@@ -45,7 +45,7 @@ test("full details are bounded and accessible through native and paged fallback 
     assert.equal(pages.join("").replaceAll("\n",""),text);
     assert.ok(pages.every((page)=>page.split("\n").length<=14));
     const app=createFakeApp();
-    assert.equal(showDetails(app,{title:"Review",summary:"Review",detail:text,buttons:["Continue","Cancel"]},null),0);
+    assert.equal(showDetails(app,{title:"Review",summary:"Review",detail:"Native details",fallbackDetail:text,buttons:["Continue","Cancel"]},null),0);
     assert.equal(app.dialogs.length,pages.length);
     assert.equal(showDetails({displayDialog:()=>({buttonReturned:"Cancel"})},{title:"Review",detail:"short",buttons:["Continue","Cancel"]},null),1);
 });

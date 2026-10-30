@@ -75,7 +75,7 @@ source. A combined document uses the first ordered image's destination folder.
 | `paperSize` | Paper size | A4 or US Letter | A4 |
 | `orientation` | Orientation | Portrait or Landscape | Portrait |
 | `resolutionLimit` | Maximum resolution | Integer 72–1017 ppi | 300 ppi |
-| `quality` | JPEG quality | Integer 1–100 | 92 |
+| `quality` | JPEG quality | Integer 1–100 | 82 |
 | `background` | Page background | Six hexadecimal sRGB digits, optional `#` | `#FFFFFF` |
 
 The background presets are white, black, purple `#8E79E0` and dark blue
@@ -92,8 +92,9 @@ use the same validation and end with a confirmation. Coding faults are diagnosed
 
 Confirmed interactive settings are remembered under
 `com.resoltico.ImageFilesToPDF`, shared by all installed copies of this action.
-Invalid stored records use the defaults. Headless runs neither read nor write
-these preferences. To reset them:
+Valid remembered values take precedence over the defaults, including JPEG
+quality. Invalid stored records use the defaults. Headless runs neither read nor
+write these preferences. To reset them:
 
 ```sh
 defaults delete com.resoltico.ImageFilesToPDF
@@ -113,7 +114,8 @@ cannot be established.
 Combined mode publishes no subset if a candidate fails. Separate mode continues
 ordinary document failures; cancellation, cleanup failures and software faults
 can stop remaining work. Completion distinguishes saved, recovered, failed,
-cancelled and not-started documents and includes full relevant paths.
+cancelled and not-started documents and includes full relevant paths. The native
+dialog shows its headline once, above selectable details.
 
 ## Processing and recovery
 
@@ -137,9 +139,9 @@ An untagged three-band sRGB JPEG with upright orientation and density within
 the ceiling is embedded byte for byte after a full decode check. Its embedded
 metadata is retained. Other images are oriented, converted from embedded profiles
 to sRGB and flattened onto the page background as needed. Untagged one-band grey
-stays grey. PNG/TIFF use lossless PNG; JPEG/HEIF/WebP use the JPEG quality setting
-when re-encoded. Lossless WebP is also re-encoded as JPEG. Images are never
-upsampled.
+stays grey. PNG/TIFF use lossless PNG; JPEG, HEIC/HEIF, AVIF and WebP use the JPEG
+quality setting when re-encoded. Lossless WebP is also re-encoded as JPEG. Images
+are never upsampled.
 
 Pages are imported in batches bounded by 32 queued pages, 64 MiB of encoded
 page data and command length. One newly prepared page may temporarily coexist

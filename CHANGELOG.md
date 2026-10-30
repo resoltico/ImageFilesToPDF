@@ -2,20 +2,20 @@
 
 ## [Unreleased]
 
+- Require stable pdfcpu 0.16.4 or later; run `brew update` and `brew upgrade pdfcpu`. Invalid explicit backend overrides fail setup.
 - Replace headless `dpi` with required `resolutionLimit` (ppi, default 300); use the six typed settings and current mode values in [HEADLESS.md](HEADLESS.md).
 - CLI string-array input is always noninteractive; use `--help`, `--version` or `--headless`. Exit codes are 0 complete, 1 incomplete/stopped, 2 invalid and 3 setup.
 - Combined PDFs use `Images YYYY-MM-DD at HH.MM.SS.pdf`; separate PDFs use source stems. Existing-name collisions use Finder-style ` 2` suffixes.
 - Separate files add source extensions when names coincide in their actual destination namespace, including case-insensitive and normalized-name conflicts.
 - Receipts expose document states, source mappings, actual saved/recovery paths and structured issues; update consumers to the [active contract](HEADLESS.md).
 - Embed image-sized rasters on vector backgrounds without enlargement; PNG/TIFF stay lossless. Eligible JPEGs keep exact bytes, including embedded metadata.
-- Normalize orientation, profiles, alpha and excess resolution; JPEG quality affects only JPEG encoding. Lossless WebP is re-encoded as JPEG.
+- Normalize orientation, profiles, alpha and excess resolution; JPEG quality defaults to 82 and affects only JPEG encoding. Lossless WebP is re-encoded as JPEG.
 - Inspect candidates before settings, refuse unreadable, empty, disguised and multi-image sources, and report decode damage against the original path.
 - Recovery first publishes and confirms the intended filename in Downloads, then tries a confirmed temporary copy. Completion names the actual location and offers Show in Finder.
 - Record workspace owners and retain validation candidates; the next conversion reclaims unretained dead-owner work while leaving retained or unreadable work for inspection.
-- Use one progress panel with Stop and a live settings summary; completion groups saved paths, explains failures and counts not-started work, with optional copyable diagnostics.
+- Use one progress panel with Stop and a live settings summary; completion shows one headline, grouped saved paths, failures, not-started counts and optional copyable diagnostics.
 - Read UTF-8 settings natively and resolve relative CLI paths from the working directory; invalid requests report their cause without an osascript error wrapper.
 - Keep confirmed outputs across cancellation and reporting faults; validate exact page counts, assemble bounded batches and never publish a combined subset after failure.
-- Require stable pdfcpu 0.16.4 or later; run `brew update` and `brew upgrade pdfcpu`. Invalid explicit backend overrides fail setup.
 
 ## [1.5.4] - 2026-10-05
 

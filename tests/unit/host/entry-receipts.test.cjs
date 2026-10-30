@@ -40,6 +40,10 @@ test("interactive Create produces no return value or stray text output",()=>{
     assert.equal(output.length,0);
     assert.ok([...app.files].some((path)=>path.endsWith(".pdf")));
     assert.equal(state.alerts.length,2,"settings and completion");
+    const completion=state.alerts[1];
+    assert.equal(completion.informativeText,"Created 1 PDF.");
+    assert.doesNotMatch(completion.accessoryView.documentView.string,/Created 1 PDF\./u);
+    assert.match(completion.accessoryView.documentView.string,/1 PDF saved; 0 PDFs recovered; 0 PDFs failed\./u);
 });
 
 test("interactive errors are presented and cancellation stays silent",()=>{

@@ -9,7 +9,7 @@ const SETTINGS_SCHEMA = Object.freeze({
         { value: "combined", label: "One PDF — one image per page" }, { value: "separate", label: "Separate PDFs — one page per image" }
     ] },
     resolutionLimit: { name: "Maximum resolution", default: 300, minimum: MINIMUM_RESOLUTION_LIMIT, maximum: MAXIMUM_RESOLUTION_LIMIT, hint: `${MINIMUM_RESOLUTION_LIMIT}–${MAXIMUM_RESOLUTION_LIMIT} ppi` },
-    quality: { name: "JPEG quality", default: 92, minimum: MINIMUM_QUALITY, maximum: MAXIMUM_QUALITY, hint: `${MINIMUM_QUALITY}–${MAXIMUM_QUALITY}, JPEG re-encoding only` },
+    quality: { name: "JPEG quality", default: 82, minimum: MINIMUM_QUALITY, maximum: MAXIMUM_QUALITY, hint: `${MINIMUM_QUALITY}–${MAXIMUM_QUALITY}, JPEG re-encoding only` },
     background: { name: "Page background", default: "#FFFFFF", hint: "or type #RRGGBB", choices: [
         { name: "White", value: "#FFFFFF" }, { name: "Black", value: "#000000" },
         { name: "Purple", value: "#8E79E0" }, { name: "Dark blue", value: "#204486" }

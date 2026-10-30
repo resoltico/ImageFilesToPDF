@@ -9,24 +9,20 @@ Compatibility on macOS 12.3 and macOS 15 is accepted as a target assumption.
 Automated native CI uses macOS 15; target-floor checks do not establish full
 interactive behavior on every supported host.
 
-The current artifact has been driven through the real Shortcuts helper using
-Term At Target's installed integration harness. The helper exposes the native
-settings form, completion and custom progress panel, but does not draw JXA
-`Progress` or provide its Stop control. The action therefore uses only its own
-panel, with a native Stop button. Live stopping preserved saved PDFs and
-reported cancelled and not-started work separately. The panel hides for modals
-and closes before completion.
+The interactive action uses one custom progress panel with a native Stop
+button. It hides for questions and closes before completion. Do not rely on
+JXA `Progress` being visible or stoppable in the Shortcuts helper.
 
-Downloads recovery has also been exercised inside
-`com.apple.WorkflowKit.MacHelper`: a validated PDF with an unwritable requested
-destination was published and confirmed in the user's Downloads folder under
-its intended filename. An inaccessible Downloads folder still requires the
-confirmed-copy temporary-folder fallback; a test of one host's permissions does
-not guarantee permission on every installation.
+Recovery must publish and confirm a validated PDF in Downloads under its
+intended filename, with a confirmed temporary-copy fallback when Downloads is
+unavailable. Access depends on the actual host's permissions; applet or CLI
+results cannot establish the Shortcuts helper's access.
 
-Live stepwise fallback in a host genuinely lacking form capability remains
-unverified. Native applet tests, port tests and offscreen layout do not establish
-that host-specific condition.
+Live stepwise fallback in a host genuinely lacking form capability and full
+interactive behavior at the macOS 12.3 floor remain unverified. Native applet
+tests, port tests and offscreen layout do not establish those conditions.
+A passing check applies to its exact artifact and environment; source changes
+require new evidence before claiming the changed artifact is verified.
 
 ## Automated gates
 
@@ -71,9 +67,9 @@ not current product documentation.
 | `volumes.sh` | Cross-volume APFS and HFS+ publication in both modes |
 | `cards.sh` | FAT32 exclusive publication/collisions and exFAT recovery in both modes |
 | `damaged.sh` | Damaged-source refusal and combined/separate behavior |
-| `naming.sh` | Actual case/normalization namespaces, directory aliases, hard-link controls, source integrity and occupied-name protection on local/APFS/APFSX/HFS+/HFSX/FAT32/exFAT |
-| `cli.sh` | Production CLI grammar/statuses, native reader, refusal corpus, names, JPEG streams, placement and TERM/reclaim/retention |
 | `form.sh` | Explicit production-renderer probe, native geometry/accessibility and PNG previews |
+| `cli.sh` | Production CLI grammar/statuses, native reader, refusal corpus, names, JPEG streams, placement and TERM/reclaim/retention |
+| `naming.sh` | Actual case/normalization namespaces, directory aliases, hard-link controls, source integrity and occupied-name protection on local/APFS/APFSX/HFS+/HFSX/FAT32/exFAT |
 
 Install the complete native tool set from the contributor guide. Volume tests
 require permission to create and attach disk images. Inspect and report every
@@ -81,7 +77,10 @@ skip; inability to attach a volume is not a passing filesystem result.
 
 Published PDFs require exact page counts and strict pdfcpu validation.
 Independent qpdf structure checks and Poppler rendering/pixel assertions provide
-checks beyond the PDF-producing backend. Source hashes must remain unchanged.
+checks beyond the PDF-producing backend. Derive all eight EXIF transforms from
+an asymmetric source: check the expected dimensions and corner positions for
+each orientation rather than expecting identical rendered images. Source hashes
+must remain unchanged.
 
 Set `IFTP_FORM_PREVIEWS` to an external output directory to retain form captures.
 Review normal, correction, deep-path/error, multiple-destination and large-detail
@@ -132,13 +131,19 @@ Verify selection consent, all six controls, keyboard navigation, full-detail
 selection/copy/scrolling, Create and Cancel. Enter Maximum resolution `1018`, JPEG quality `101` and
 background `purple`: all three errors must appear while other draft choices
 remain. Correct the fields and complete conversion; verify the actual saved
-PDF, output count and truthful completion. Check canonical recall on another
+PDF, output count and truthful completion, with one headline above the native
+details and no repeated headline inside them. Check canonical recall on another
 run and that interactive return creates no text-result files.
 
 Exercise visible progress and Stop during actual work, including committed
 outputs and retained validated work. Exercise stepwise fallback on an accessible
 intended host where the native form capability is genuinely unavailable;
 programming faults must be diagnosed rather than treated as unavailable UI.
+
+Force an unwritable requested destination inside the real Shortcuts helper.
+Confirm the reported Downloads recovery exists with the expected validated
+bytes; when Downloads access is unavailable, confirm the temporary fallback
+instead. Inspect saved/recovered paths independently of the receipt.
 
 Remove the temporary Shortcut after testing. A helper access timeout is an
 unperformed check, not a passing UI test or proof that product code hangs.

@@ -44,7 +44,7 @@ function detailPages(text) {
 }
 
 function showDetailPages(app, spec) {
-    const pages = detailPages(spec.detail);
+    const pages = detailPages(spec.fallbackDetail ?? spec.detail);
     for (const [index, page] of pages.entries()) {
         const action = index === pages.length - 1 ? spec.buttons[0] : "Next";
         const buttons = spec.buttons.length > 1 ? [spec.buttons.at(-1), action] : [action];

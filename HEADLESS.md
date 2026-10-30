@@ -18,7 +18,7 @@ The settings file is read natively as UTF-8 without a byte-order mark. Its JSON
 root must be an object. All six page settings are required:
 
 ```json
-{"paperSize":"A4","orientation":"Portrait","mode":"combined","resolutionLimit":300,"quality":92,"background":"#FFFFFF"}
+{"paperSize":"A4","orientation":"Portrait","mode":"combined","resolutionLimit":300,"quality":82,"background":"#FFFFFF"}
 ```
 
 | Field | Setting | JSON type and allowed values |

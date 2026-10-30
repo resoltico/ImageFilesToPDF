@@ -44,7 +44,7 @@ test("fallback confirmation states the actual settings and count", () => {
         "Create 1 PDF with 2 pages?",
         "Each image gets its own page, centred without cropping. " +
             "The original files are\n not changed.",
-        "A4, Portrait; 300 ppi; JPEG quality 92.",
+        "A4, Portrait; 300 ppi; JPEG quality 82.",
         "Page background: #FFFFFF.",
         "Save to: /a/"
     ].join("\n"));

@@ -33,7 +33,7 @@ test("the form's answers become the settings", () => {
         mode: "combined",
         background: "#FFFFFF",
         resolutionLimit: 300,
-        quality: 92
+        quality: 82
     });
     assert.equal(present.seen.length, 1, "one good answer needs one form");
     assert.match(

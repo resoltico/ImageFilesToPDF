@@ -24,9 +24,14 @@ Separate-output planning requires native directory identity and verified name
 equivalence. Comparison directories and small identity tokens use the owned workspace or an
 OS-created temporary directory on the destination volume. Ownership metadata is
 written before comparison names; cleanup is attempted for every allocated
-directory. When allocation is unavailable, confirmed lookups distinguish
-hard-link entries. These checks do not modify source files or reserve final output names.
+directory. When allocation is unavailable, Unicode comparisons require reliable
+persistent identities and hard-link support; lookups distinguish aliases from
+distinct hard-link entries. Unavailable comparison facts stop planning. These
+checks do not modify source files or reserve final output names.
 Exclusive publication remains necessary when entries change after planning.
+Abrupt process termination can leave an OS-created comparison directory on a
+destination volume. It contains ownership metadata and name tokens, not image
+or PDF bytes; workspace housekeeping does not reclaim these external directories.
 
 Publication uses native exact-path hard linking or exclusive rename of an owned
 destination copy. Only classified collisions are retried. Existing files,
