@@ -22,7 +22,7 @@ test("selection problems are reviewed separately before any conversion", () => {
     assert.deepEqual(app.dialogs, []);
     reviewSelection(app, CONTEXT);
     assert.equal(app.dialogs[0].message,
-        "1 item in your selection cannot be included:\n" +
+        "Not included:\n" +
         "locked: unreadable folder\n\nContinue with 2 images?");
     assert.deepEqual(app.dialogs[0].options.buttons, ["Cancel", "Continue"]);
     assert.equal(app.dialogs[0].options.cancelButton, "Cancel");

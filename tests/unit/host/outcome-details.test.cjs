@@ -102,3 +102,23 @@ test("a native modal-unavailable response uses bounded host detail pages without
     assert.equal(showDetails(app,{title:"Review",summary:"Summary",detail:"Full details",buttons:["Continue","Cancel"]},bridge),0);
     assert.equal(app.dialogs[0].message,"Full details");assert.deepEqual(app.dialogs[0].options.buttons,["Cancel","Continue"]);
 });
+
+
+test("paged completion keeps every final action and its original response index",()=>{
+    const spec={title:"Completion",summary:"Created 1 PDF.",detail:"Saved paths",fallbackDetail:"Created 1 PDF.\n\nSaved paths",buttons:["OK","Show in Finder","Details"]};
+    for(const [index,button] of spec.buttons.entries()) {
+        const seen=[];
+        const app={displayDialog:(message,options)=>{seen.push({message,options});return {buttonReturned:button};}};
+        assert.equal(showDetails(app,spec,null),index);
+        const [dialog]=seen;
+        assert.deepEqual(dialog.options.buttons,["Show in Finder","Details","OK"]);
+        assert.equal(dialog.options.defaultButton,"OK");
+        assert.equal(dialog.options.cancelButton,undefined);
+        assert.equal(dialog.message.split("Created 1 PDF.").length,2);
+    }
+    const seen=[];
+    const app={displayDialog:(message,options)=>{seen.push(options);return {buttonReturned:options.defaultButton};}};
+    assert.equal(showDetails(app,{...spec,fallbackDetail:"a".repeat(1200)},null),0);
+    assert.deepEqual(seen[0].buttons,["Details","Next"]);
+    assert.deepEqual(seen.at(-1).buttons,["Show in Finder","Details","OK"]);
+});

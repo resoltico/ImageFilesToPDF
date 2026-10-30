@@ -13,7 +13,8 @@
 - Inspect candidates before settings, refuse unreadable, empty, disguised and multi-image sources, and report decode damage against the original path.
 - Recovery first publishes and confirms the intended filename in Downloads, then tries a confirmed temporary copy. Completion names the actual location and offers Show in Finder.
 - Record workspace owners and retain validation candidates; the next conversion reclaims unretained dead-owner work while leaving retained or unreadable work for inspection.
-- Use one progress panel with Stop and a live settings summary; completion shows one headline, grouped saved paths, failures, not-started counts and optional copyable diagnostics.
+- Use one progress panel with Stop and a live settings summary; dialogs show one headline, grouped saved paths, failures, not-started counts and optional copyable diagnostics.
+- Paged fallback completion offers Show in Finder alongside Details when both actions are available.
 - Read UTF-8 settings natively and resolve relative CLI paths from the working directory; invalid requests report their cause without an osascript error wrapper.
 - Keep confirmed outputs across cancellation and reporting faults; validate exact page counts, assemble bounded batches and never publish a combined subset after failure.
 

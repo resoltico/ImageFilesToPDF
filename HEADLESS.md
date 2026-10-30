@@ -117,10 +117,13 @@ The executables must be trusted and support the required pipeline operations.
 ## Source inspection
 
 After identity deduplication, admission checks file access, empty files, the
-actual loader, image count and dimensions before conversion. Refusals in
-`rejected` use `unreadable`, `empty`, `not-an-image`, `unsupported-content`,
-`multiple-images` or `damaged`, with the original path and a plain `reason`.
-Backend text and commands belong to `diagnostic` only.
+actual loader, image count and dimensions before conversion. Selection refusals
+use `code: "selection-refused"` and `stage: "selection"` for unsupported names,
+links/packages, unresolved inputs and traversal failures. Inspection refusals use
+`unreadable`, `empty`, `not-an-image`, `unsupported-content`, `multiple-images` or
+`damaged`, with `stage: "inspection"`. Each refusal in `rejected` identifies the
+original path/name and a plain `reason`. Backend text and commands belong to
+`diagnostic` only.
 
 The captured copy is independently inspected and must match the admitted
 identity, version and image facts. A source that changes after selection fails

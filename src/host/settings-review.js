@@ -40,8 +40,7 @@ function reviewSelection(app, context) {
 
     if (rejected.length > 0) {
         confirmAction(app, [
-            describeRejections(rejected, `${plural(rejected.length, "item")} ` +
-                "in your selection cannot be included:"),
+            describeRejections(rejected, "Not included:"),
             `Continue with ${plural(context.count, "image")}?`
         ].join("\n\n"), "Continue", `${plural(rejected.length, "item")} in your selection cannot be included.`);
     }

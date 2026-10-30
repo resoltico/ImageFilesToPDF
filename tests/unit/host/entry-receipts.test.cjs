@@ -40,7 +40,7 @@ test("interactive Create produces no return value or stray text output",()=>{
     assert.equal(output.length,0);
     assert.ok([...app.files].some((path)=>path.endsWith(".pdf")));
     assert.equal(state.alerts.length,2,"settings and completion");
-    const completion=state.alerts[1];
+    const [,completion]=state.alerts;
     assert.equal(completion.informativeText,"Created 1 PDF.");
     assert.doesNotMatch(completion.accessoryView.documentView.string,/Created 1 PDF\./u);
     assert.match(completion.accessoryView.documentView.string,/1 PDF saved; 0 PDFs recovered; 0 PDFs failed\./u);
@@ -97,6 +97,8 @@ test("the production controller reviews refusals before asking settings",()=>{
     assert.equal(run([["/source.png","/notes.txt"],{}]),undefined);
     assert.deepEqual(context.state.alerts[0].buttons,["Continue","Cancel"]);
     assert.match(context.state.alerts[0].accessoryView.documentView.string,/notes\.txt/u);
+    assert.equal(context.state.alerts[0].informativeText,"1 item in your selection cannot be included.");
+    assert.doesNotMatch(context.state.alerts[0].accessoryView.documentView.string,/in your selection cannot be included/u);
     assert.equal(context.state.alerts[1].messageText,"Image Files to PDF");
     assert.ok(![...context.app.files].some((path)=>path.endsWith(".pdf")));
 });
@@ -109,4 +111,20 @@ test("a failed completion surface retains the saved outcome in its error report"
     assert.match(details,/completion view failed/u);
     assert.match(details,/Saved to:/u);
     assert.ok([...context.app.files].some((path)=>path.endsWith(".pdf")));
+});
+
+
+test("no-image native dialogs show one headline and retain actionable details",()=>{
+    for(const files of [[],["/notes.txt"]]) {
+        const context=fixture();
+        const {reportNoImages}=require("../../../src/host/reporting.js");
+        const rejected=files.map((path)=>({path,reason:"unsupported"}));
+        assert.equal(reportNoImages(context.app,false,rejected),undefined);
+        const [alert]=context.state.alerts;
+        const headline=files.length>0 ? "Nothing to convert." : "No images selected.";
+        assert.equal(alert.informativeText,headline);
+        const detail=alert.accessoryView.documentView.string;
+        assert.ok(!detail.includes(headline));
+        assert.match(detail,files.length>0 ? /notes\.txt/u : /Select image files or folders in Finder/u);
+    }
 });

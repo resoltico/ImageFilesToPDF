@@ -132,7 +132,10 @@ selection/copy/scrolling, Create and Cancel. Enter Maximum resolution `1018`, JP
 background `purple`: all three errors must appear while other draft choices
 remain. Correct the fields and complete conversion; verify the actual saved
 PDF, output count and truthful completion, with one headline above the native
-details and no repeated headline inside them. Check canonical recall on another
+details and no repeated headline inside them. Repeat with no selected images,
+only refused inputs and a mixed valid/refused selection; each headline or refusal
+count must appear once, while fallback pages retain the complete explanation.
+Check canonical recall on another
 run and that interactive return creates no text-result files.
 
 Exercise visible progress and Stop during actual work, including committed

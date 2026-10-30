@@ -17,14 +17,15 @@ const {
  * nothing, and saying "no images selected" to someone who selected one is how
  * a rejection becomes invisible.
  */
-function describeNoImages(rejected) {
-    if (rejected.length === 0) {
-        return "No images selected.\n\nSelect image files or folders in " +
-            `Finder, then run the action again.\n\nSupported: ${
-                supportedFormatList()}.`;
-    }
+function noImagesHeadline(rejected) {
+    return rejected.length > 0 ? "Nothing to convert." : "No images selected.";
+}
 
-    return `Nothing to convert.\n\n${describeRejections(rejected)}`;
+function describeNoImages(rejected, includeHeadline = true) {
+    const detail = rejected.length > 0 ? describeRejections(rejected)
+        : "Select image files or folders in Finder, then run the action again.\n\n" +
+            `Supported: ${supportedFormatList()}.`;
+    return includeHeadline ? `${noImagesHeadline(rejected)}\n\n${detail}` : detail;
 }
 
 function reportNoImages(app, headless, rejected) {
@@ -33,7 +34,7 @@ function reportNoImages(app, headless, rejected) {
     }
 
     const { showDetails } = require("./details-dialog.js");
-    showDetails(app, { title: APP_NAME, summary: "Nothing to convert.", detail: describeNoImages(rejected), buttons: ["OK"] });
+    showDetails(app, { title: APP_NAME, summary: noImagesHeadline(rejected), detail: describeNoImages(rejected, false), fallbackDetail: describeNoImages(rejected), buttons: ["OK"] });
     return undefined;
 }
 

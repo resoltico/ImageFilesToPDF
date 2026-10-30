@@ -64,6 +64,11 @@ test("empty selections explain how to select sources in both interfaces",()=>{
     const app=createFakeHost();
     assert.equal(reportNoImages(app,false,[]),undefined);
     assert.match(app.dialogs[0].message,/Finder/u);
+    assert.equal(app.dialogs[0].message.split("No images selected.").length,2);
+    const refused=[{path:"/notes.txt",reason:"unsupported"}];
+    reportNoImages(app,false,refused);
+    assert.equal(app.dialogs[1].message.split("Nothing to convert.").length,2);
+    assert.match(app.dialogs[1].message,/notes\.txt: unsupported/u);
 });
 
 test("an unidentifiable selected source is refused before conversion",()=>{
