@@ -2,7 +2,7 @@
 const test=require("node:test");
 const assert=require("node:assert/strict");
 const {runOutcome,issuesOf}=require("../../../src/core/outcomes.js");
-const {UserCancelled,OperationError}=require("../../../src/core/errors.js");
+const {UserCanceled,OperationError}=require("../../../src/core/errors.js");
 const saved={state:"saved",sources:["a"],pages:1,output:"/a.pdf",issues:[]};
 const failed={state:"failed",sources:["b"],pages:0,issues:[]};
 
@@ -15,15 +15,15 @@ test("outcome defaults and refusal/failure/stop states are one canonical record"
 });
 
 test("cancellation is explicit and recovery never means publication",()=>{
-    const recovered={state:"recovered",sources:["b"],pages:1,recovery:"/kept.pdf",issues:[{code:"cancelled"},{code:"operation"}]};
-    assert.equal(runOutcome([saved,recovered]).state,"cancelled");
-    assert.equal(runOutcome([saved,{...failed,state:"cancelled"}]).state,"cancelled");
+    const recovered={state:"recovered",sources:["b"],pages:1,recovery:"/kept.pdf",issues:[{code:"canceled"},{code:"operation"}]};
+    assert.equal(runOutcome([saved,recovered]).state,"canceled");
+    assert.equal(runOutcome([saved,{...failed,state:"canceled"}]).state,"canceled");
     assert.equal(runOutcome([saved,{...recovered,issues:[{code:"publication"}]}]).state,"incomplete");
 });
 
 test("expected errors, stops, unknown faults and provided issues retain their diagnostic kind",()=>{
-    const stop=new UserCancelled();
-    assert.equal(issuesOf(stop,"inspection")[0].code,"cancelled");
+    const stop=new UserCanceled();
+    assert.equal(issuesOf(stop,"inspection")[0].code,"canceled");
     assert.equal(issuesOf(new OperationError("denied"),"capture")[0].code,"operation");
     assert.equal(issuesOf(new Error("bug"),"publication")[0].code,"fault");
     assert.deepEqual(issuesOf({message:"bad"},"prepare"),[{code:"fault",stage:"prepare",message:"bad",diagnostic:{command:"",stack:""}}]);
@@ -47,15 +47,15 @@ test("malformed supplied issues stay software faults instead of breaking the out
     }
 });
 
-test("a handled setup stop is cancelled even before a document plan exists",()=>{
-    assert.equal(runOutcome([],[],[{code:"cancelled",stage:"setup",message:"Stopped"}]).state,"cancelled");
+test("a handled setup stop is canceled even before a document plan exists",()=>{
+    assert.equal(runOutcome([],[],[{code:"canceled",stage:"setup",message:"Stopped"}]).state,"canceled");
 });
 
 test("reporting faults retain saved documents and late cancellation invents no unfinished work",()=>{
     const {failedRun}=require("../../../src/core/outcomes.js");const outcome=runOutcome([saved]);
     const failedResult=failedRun(new TypeError("view failed"),outcome);
     assert.equal(failedResult.state,"incomplete");assert.deepEqual(failedResult.documents,[saved]);assert.equal(failedResult.issues[0].stage,"reporting");
-    assert.equal(failedRun(new UserCancelled(),outcome),outcome);
+    assert.equal(failedRun(new UserCanceled(),outcome),outcome);
 });
 
 test("saved documents with recorded failures preserve output paths but make the run incomplete",()=>{

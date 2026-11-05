@@ -40,7 +40,7 @@ function settled(job, paths, outcome) {
     releaseOwnedArtifact(job, paths.staged);
     job.cleanupIssues.push(...clearAway(job.app, outcome));
     removeOwned(job, paths.staged);
-    if (job.cleanupIssues.some((issue) => issue.code === ISSUE.cancelled)) { job.progress.requestStop(); }
+    if (job.cleanupIssues.some((issue) => issue.code === ISSUE.canceled)) { job.progress.requestStop(); }
 }
 
 function confirm(job, paths, outcome) {

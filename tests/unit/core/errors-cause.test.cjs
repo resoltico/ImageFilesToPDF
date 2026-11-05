@@ -9,7 +9,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
-    UserCancelled,
+    UserCanceled,
     commandOf
 } = require("../../../src/core/errors.js");
 
@@ -52,10 +52,10 @@ test("the walk stops at the depth it says it stops at", () => {
 });
 
 test("a cancellation says what it is in a log", () => {
-    // It reaches stderr in headless runs, where "UserCancelled: User
-    // cancelled." says which of the two it was and "Error:" does not.
-    const cancelled = new UserCancelled();
+    // It reaches stderr in headless runs, where "UserCanceled: User
+    // canceled." says which of the two it was and "Error:" does not.
+    const canceled = new UserCanceled();
 
-    assert.equal(cancelled.name, "UserCancelled");
-    assert.equal(String(cancelled), "UserCancelled: User cancelled.");
+    assert.equal(canceled.name, "UserCanceled");
+    assert.equal(String(canceled), "UserCanceled: User canceled.");
 });

@@ -107,7 +107,7 @@ function makeContent(ns, rect) {
     return ns.NSView.alloc.initWithFrame(rectOf(ns, rect));
 }
 
-function makeText(ns, rect, font, colour) {
+function makeText(ns, rect, font, color) {
     const text = ns.NSTextField.alloc.initWithFrame(rectOf(ns, rect));
 
     text.stringValue = "";
@@ -116,7 +116,7 @@ function makeText(ns, rect, font, colour) {
     text.drawsBackground = false;
     text.selectable = false;
     text.font = font;
-    text.textColor = colour;
+    text.textColor = color;
     text.lineBreakMode = TRUNCATES_TAIL;
 
     return text;
@@ -140,14 +140,14 @@ function makeDetail(ns, rect) {
     );
 }
 
-function makeBar(ns, rect, colour) {
+function makeBar(ns, rect, color) {
     const box = ns.NSBox.alloc.initWithFrame(rectOf(ns, rect));
 
     box.boxType = BOX_CUSTOM;
     box.borderType = NO_BORDER;
     box.borderWidth = 0;
     box.titlePosition = NO_TITLE;
-    box.fillColor = colour;
+    box.fillColor = color;
     box.cornerRadius = BAR_RADIUS;
 
     return box;
@@ -211,7 +211,7 @@ function setHidden(view, hidden) {
     view.hidden = hidden;
 }
 
-const { UserCancelled } = require("../core/errors.js");
+const { UserCanceled } = require("../core/errors.js");
 const { APP_NAME } = require("../core/version.js");
 const { appkitBridge } = require("./objc-bridge.js");
 
@@ -273,7 +273,7 @@ function panelSink(view, ns, now, restore) {
 
             show(view.panel);
             paint(ns, view.panel);
-            if (Number(view.stop.state) !== 0) { throw new UserCancelled(); }
+            if (Number(view.stop.state) !== 0) { throw new UserCanceled(); }
         },
 
         // Out of the way of a question, and armed again: whatever happens

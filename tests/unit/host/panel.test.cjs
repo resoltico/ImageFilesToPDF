@@ -71,7 +71,7 @@ test("a run that is over quickly never puts a window up", () => {
     now.at = APPEARANCE_DELAY - 1;
     sink.report(1, "Preparing", "1 of 4 — x.png");
 
-    assert.deepEqual(view.panel.done, ["center"], "built and centred, not shown");
+    assert.deepEqual(view.panel.done, ["center"], "built and centered, not shown");
 });
 
 test("the window appears once the run has been going long enough", () => {

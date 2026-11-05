@@ -29,18 +29,18 @@ class OperationError extends Error {
     }
 }
 
-class UserCancelled extends Error {
+class UserCanceled extends Error {
     constructor() {
-        super("User cancelled.");
-        this.name = "UserCancelled";
+        super("User canceled.");
+        this.name = "UserCanceled";
     }
 }
 
-function isUserCancelled(error) {
+function isUserCanceled(error) {
     let current = error;
 
     for (let depth = 0; current && depth < MAXIMUM_CAUSE_DEPTH; depth += 1) {
-        if (current instanceof UserCancelled) {
+        if (current instanceof UserCanceled) {
             return true;
         }
 
@@ -74,8 +74,8 @@ function commandOf(error) {
 
 module.exports = {
     OperationError,
-    UserCancelled,
+    UserCanceled,
     errorMessage,
     commandOf,
-    isUserCancelled
+    isUserCanceled
 };

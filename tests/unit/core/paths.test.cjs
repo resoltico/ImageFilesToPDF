@@ -31,7 +31,7 @@ test("isSupportedImage accepts the still-image formats vips reads", () => {
 test("isSupportedImage rejects formats whose semantics would surprise", () => {
     // vips can read all of these. GIF and animated WebP would contribute only
     // their first frame, SVG would land as a stamp because the pipeline never
-    // upscales, PDF would rasterise page one of a PDF to build a PDF, and RAW
+    // upscales, PDF would rasterize page one of a PDF to build a PDF, and RAW
     // is a processing job rather than a conversion.
     for (const rejected of [
         "/a/b.gif", "/a/b.svg", "/a/b.pdf", "/a/b.cr2", "/a/b.nef",

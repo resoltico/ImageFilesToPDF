@@ -11,7 +11,7 @@ test("consented refusals do not change a fully saved GUI headline", () => {
     const summary = summarizeRun(outcome);
     assert.equal(outcome.state, "incomplete");
     assert.equal(summary.kind, "all-saved");
-    assert.deepEqual(summary.counts, { saved: 3, recovered: 0, failed: 0, cancelled: 0, "not-started": 0 });
+    assert.deepEqual(summary.counts, { saved: 3, recovered: 0, failed: 0, canceled: 0, "not-started": 0 });
     assert.deepEqual(summary.saved, [
         { folder: "/out/", outputs: [{ path: "/out/a.pdf", name: "a.pdf", sources: ["/a.png"] }, { path: "/out/b.pdf", name: "b.pdf", sources: ["/a.png"] }] },
         { folder: "/other/", outputs: [{ path: "/other/c.pdf", name: "c.pdf", sources: ["/a.png"] }] }
@@ -30,7 +30,7 @@ test("summary distinguishes invalid, empty, stopped, failed and partially saved 
     assert.deepEqual(summary.recoveries, [{ location: "/Downloads/kept.pdf", sources: ["/kept.png"] }]);
     assert.equal(summarizeRun(runOutcome([failed])).kind, "none-saved");
     assert.equal(summarizeRun(runOutcome([{ ...saved(), issues: [{ message: "saved reporting fault" }] }])).kind, "some-saved");
-    const stopped = summarizeRun(runOutcome([saved(), { state: "cancelled", sources: ["/stop.png"], issues: [{ code: "cancelled" }] }, { state: "not-started", sources: ["/later.png"], issues: [] }], [], [{ code: "cancelled" }, { code: "no-images" }]));
+    const stopped = summarizeRun(runOutcome([saved(), { state: "canceled", sources: ["/stop.png"], issues: [{ code: "canceled" }] }, { state: "not-started", sources: ["/later.png"], issues: [] }], [], [{ code: "canceled" }, { code: "no-images" }]));
     assert.equal(stopped.kind, "stopped");
     assert.equal(stopped.notStarted, 1);
     assert.deepEqual(stopped.failures, []);
@@ -46,5 +46,5 @@ test("run-level failures remain errors even without documents or after every sav
     const fault = {code: "setup", message: "Required tools are unavailable."};
     assert.equal(summarizeRun(runOutcome([], [], [fault])).kind, "none-saved");
     assert.equal(summarizeRun(runOutcome([saved()], [], [fault])).kind, "some-saved");
-    assert.equal(summarizeRun({ ...runOutcome(), state: "cancelled" }).kind, "stopped");
+    assert.equal(summarizeRun({ ...runOutcome(), state: "canceled" }).kind, "stopped");
 });

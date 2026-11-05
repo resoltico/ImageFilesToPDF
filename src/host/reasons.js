@@ -1,6 +1,6 @@
 "use strict";
 
-const { selectionReason } = require("../core/selection-policy.js");
+const { selectionReason, selectionRefusal } = require("../core/selection-policy.js");
 const { isRegularFile, isDirectory } = require("./asking.js");
 const { pathCandidates } = require("./input.js");
 
@@ -13,7 +13,7 @@ const { pathCandidates } = require("./input.js");
  */
 
 /*
- * Why a resolved path is not something this action can convert, or "" when it
+ * The refusal code for a resolved path this action cannot convert, or "" when it
  * is. Kept apart from the filtering so that a rejection is a stated reason
  * rather than the absence of an entry in a list.
  */
@@ -38,14 +38,9 @@ function describeUnresolved(item) {
     const named = pathCandidates(item)
         .find((candidate) => candidate && candidate !== ANONYMOUS);
 
-    return named
-        ? {
-            path: "",
-            name: named,
-            reason: /^[a-z][a-z\d+.-]*:\/\//iu.test(named) && !/^file:/iu.test(named)
-                ? "Remote URLs are not supported; download the file first." : "This is not an absolute path to a file."
-        }
-        : null;
+    if (!named) { return null; }
+    const remote = /^[a-z][a-z\d+.-]*:\/\//iu.test(named) && !/^file:/iu.test(named);
+    return selectionRefusal("", remote ? "remote-url" : "not-a-path", named);
 }
 
 module.exports = { rejectionReason, describeUnresolved };

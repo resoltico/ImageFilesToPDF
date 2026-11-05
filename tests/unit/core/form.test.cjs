@@ -44,7 +44,7 @@ test("the form offers the same choices as the stepwise dialogs", () => {
 test("named background presets preserve canonical values and custom-entry guidance", () => {
     const row = rowFor("background");
 
-    assert.equal(row.kind, "colour");
+    assert.equal(row.kind, "color");
     assert.deepEqual(
         row.options.map((option) => option.label),
         ["White (#FFFFFF)", "Black (#000000)", "Purple (#8E79E0)", "Dark blue (#204486)"]
@@ -94,7 +94,7 @@ test("previous answers are carried back into a redisplayed form", () => {
 
     assert.equal(rowFor("paperSize", spec).value, "Letter");
     assert.equal(rowFor("resolutionLimit", spec).value, "600");
-    assert.match(spec.detail, /enter a whole number from 72 to 1017/u);
+    assert.match(spec.fullDetail, /^Resolution: enter a whole number from 72 to 1017\.\n\n/u);
 });
 
 test("several problems stay on separate lines", () => {
@@ -105,7 +105,8 @@ test("several problems stay on separate lines", () => {
         { key: "quality", message: "second problem" }
     ]);
 
-    assert.deepEqual(spec.detail.split("\n").slice(0, 2), ["first problem", "second problem"]);
+    assert.equal(spec.detail, "Correct the 2 highlighted settings, listed below.");
+    assert.deepEqual(spec.fullDetail.split("\n").slice(0, 3), ["first problem", "second problem", ""]);
 });
 
 test("with nothing wrong the form explains itself instead", () => {

@@ -7,7 +7,7 @@ const { createProgress } = require("../../../src/host/progress.js");
  *
  * Driven through the real reporter rather than a stub of it, because the
  * mechanism is the reporter: a surface raises, broadcast records it, and the
- * next report of what is about to happen raises UserCancelled. A stub that
+ * next report of what is about to happen raises UserCanceled. A stub that
  * threw where the test wanted it to throw would prove only that the test can
  * throw.
  *
@@ -25,7 +25,7 @@ function stoppingSink(asked, said) {
                 return;
             }
 
-            const error = new Error("User cancelled.");
+            const error = new Error("User canceled.");
 
             error.errorNumber = -128;
 

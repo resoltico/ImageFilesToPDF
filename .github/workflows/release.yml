@@ -67,7 +67,8 @@ jobs:
       # building first would make that comparison vacuous.
       - run: npm run check-dist
       - run: npm run build
-      # The build is a deterministic concatenation, so rebuilding on a clean
+      # The build is a scoped esbuild bundle from the pinned compiler, with no
+      # timestamps or absolute paths in its output, so rebuilding on a clean
       # runner must reproduce the committed bytes exactly. This is what makes
       # the attestation below worth having: what is signed is both built here
       # and identical to what was reviewed in the repository.
@@ -104,7 +105,7 @@ jobs:
         with:
           name: release-dist
           path: dist
-      # The artifact travelled through the runner's storage, so its checksums
+      # The artifact traveled through the runner's storage, so its checksums
       # are checked again on arrival rather than trusted. The manifest names
       # its files without a directory, so it verifies from beside them.
       - name: Reverify the downloaded artifact

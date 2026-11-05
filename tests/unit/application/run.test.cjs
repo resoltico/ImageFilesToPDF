@@ -30,11 +30,11 @@ test("presentation faults carry the same confirmed outcome rather than discardin
 });
 
 test("interactive consent precedes settings and cancellation creates no job",()=>{
-    const {UserCancelled}=require("../../../src/core/errors.js");const events=[];
+    const {UserCanceled}=require("../../../src/core/errors.js");const events=[];
     const request={invocation:{headless:false},selection:{images:[{path:"a",folder:"/a/"}],rejected:[{name:"bad",reason:"refused"}]}};
     const ports={progress:{pause:()=>events.push("pause"),diagnostics:[]},prepare:()=>request,
-        review:(context)=>{assert.equal(context.count,1);events.push("review");throw new UserCancelled();},settings:()=>events.push("settings"),createJob:()=>events.push("job")};
-    assert.throws(()=>executeRun(ports),/User cancelled/u);assert.deepEqual(events,["pause","review"]);
+        review:(context)=>{assert.equal(context.count,1);events.push("review");throw new UserCanceled();},settings:()=>events.push("settings"),createJob:()=>events.push("job")};
+    assert.throws(()=>executeRun(ports),/User canceled/u);assert.deepEqual(events,["pause","review"]);
 });
 
 test("interactive settings and consent share the core selection facts",()=>{
@@ -66,11 +66,11 @@ test("interactive requests without refusals do not ask an unnecessary selection 
 });
 
 test("a late native cancellation during reporting carries its cause and all saved outputs",()=>{
-    const {UserCancelled,isUserCancelled}=require("../../../src/core/errors.js");
+    const {UserCanceled,isUserCanceled}=require("../../../src/core/errors.js");
     const {failedRun}=require("../../../src/core/outcomes.js");
     const result={documents:[{state:"saved",sources:["a"],pages:1,output:"/saved.pdf",issues:[]}],issues:[]};
-    const ports={progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>({invocation:{headless:true,settings:{}},selection:{images:[{path:"a"}],rejected:[]}}),createJob:()=>({}),convert:()=>result,present:()=>{throw new UserCancelled();}};
-    assert.throws(()=>executeRun(ports),(error)=>isUserCancelled(error)&&failedRun(error,error.outcome)===result);
+    const ports={progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>({invocation:{headless:true,settings:{}},selection:{images:[{path:"a"}],rejected:[]}}),createJob:()=>({}),convert:()=>result,present:()=>{throw new UserCanceled();}};
+    assert.throws(()=>executeRun(ports),(error)=>isUserCanceled(error)&&failedRun(error,error.outcome)===result);
 });
 
 for(const thrown of [null,undefined,new TypeError("close fault")]) {

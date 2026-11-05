@@ -2,6 +2,7 @@
 
 const { inputItemToPosixPath } = require("./input.js");
 const { describeUnresolved } = require("./reasons.js");
+const { selectionRefusal } = require("../core/selection-policy.js");
 
 /*
  * What the path is and which file it is, as the tree that would walk it sees
@@ -37,7 +38,7 @@ function remember(found, tree, path, rejected) {
 
     const entry = inspect(tree, standardized);
     if (path.endsWith("/") && !["directory", "package"].includes(entry.kind)) {
-        rejected.push({ path, name: path, reason: "This is not a folder; the path ends with a slash." });
+        rejected.push(selectionRefusal(path, "not-a-folder", path));
         return;
     }
 

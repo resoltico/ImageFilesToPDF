@@ -70,7 +70,7 @@ assert_pixel "$WORK/first.png" 30 42 223 41 53 28 \
     "natural order (page 2 must precede page 10, so page one is red)"
 
 # ---------------------------------------------------------------------------
-# Separate PDFs, Letter landscape, alpha flattening. What colour ends up on a
+# Separate PDFs, Letter landscape, alpha flattening. What color ends up on a
 # page is background.sh; this is about the mode and the paper.
 # ---------------------------------------------------------------------------
 
@@ -90,18 +90,18 @@ run_headless "$WORK/separate.json" "$WORK/alpha image.png"
 test -s "$WORK/alpha image 2.pdf"
 
 # ---------------------------------------------------------------------------
-# Colour management: a Display P3 source must be ICC-converted, not passed
+# Color management: a Display P3 source must be ICC-converted, not passed
 # through. The source encodes sRGB #E01010 (224,16,16); ignoring the profile
 # renders it around (206,48,36), so green and blue are the discriminators.
 # ---------------------------------------------------------------------------
 
-write_config "$WORK/colour.json" A4 Portrait "combined" "#FFFFFF" 20260904_030405
-run_headless "$WORK/colour.json" "$WORK/wide gamut.png"
+write_config "$WORK/color.json" A4 Portrait "combined" "#FFFFFF" 20260904_030405
+run_headless "$WORK/color.json" "$WORK/wide gamut.png"
 
-COLOUR="$WORK/Images 2026-09-04 at 03.04.05.pdf"
-test -s "$COLOUR"
-pdftoppm -f 1 -singlefile -r 72 -png "$COLOUR" "$WORK/colour" >/dev/null 2>&1
-assert_pixel "$WORK/colour.png" 297 421 224 16 16 18 \
+COLOR="$WORK/Images 2026-09-04 at 03.04.05.pdf"
+test -s "$COLOR"
+pdftoppm -f 1 -singlefile -r 72 -png "$COLOR" "$WORK/color" >/dev/null 2>&1
+assert_pixel "$WORK/color.png" 297 421 224 16 16 18 \
     "Display P3 source must be ICC-converted, not passed through"
 
 # ---------------------------------------------------------------------------

@@ -22,7 +22,7 @@ for (const resolutionLimit of ["", " ", "abc", "300abc", "abc300", "1e3", "300.5
     });
 }
 
-test("numeric boundaries and colour normalization pass unchanged", () => {
+test("numeric boundaries and color normalization pass unchanged", () => {
     for (const resolutionLimit of ["72","1017"," 600 "]) { assert.ok(readAnswers({...defaultAnswers(),resolutionLimit}).settings); }
     for (const quality of ["1","100"]) { assert.ok(readAnswers({...defaultAnswers(),quality}).settings); }
     assert.equal(readAnswers({...defaultAnswers(),background:" c7dae8 "}).settings.background,"#C7DAE8");

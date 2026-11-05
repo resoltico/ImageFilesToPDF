@@ -13,15 +13,15 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     makeField,
-    makeColourCombo
+    makeColorCombo
 } = require("../../../src/host/appkit.js");
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 const RECT = { left: 10, bottom: 20, width: 100, height: 24 };
 
-const COLOUR_ROW = {
+const COLOR_ROW = {
     key: "background",
-    kind: "colour",
+    kind: "color",
     label: "Page background:",
     hint: "or type #RRGGBB",
     value: "#FFFFFF",
@@ -40,8 +40,8 @@ test("a field keeps its value and its place", () => {
     assert.notEqual(field.editable, false, "a field must stay editable");
 });
 
-test("the colour control offers the presets and takes a typed value", () => {
-    const combo = makeColourCombo(bridge().ns, COLOUR_ROW, RECT);
+test("the color control offers the presets and takes a typed value", () => {
+    const combo = makeColorCombo(bridge().ns, COLOR_ROW, RECT);
 
     assert.deepEqual(combo.items, ["#FFFFFF", "#000000"]);
     assert.equal(combo.stringValue, "#FFFFFF");
@@ -52,16 +52,16 @@ test("the colour control offers the presets and takes a typed value", () => {
 test("completion is off, so what the field holds is what was typed", () => {
     // With it on, typing over a selected preset offers to finish the word,
     // and the value submitted is one the user did not write.
-    const combo = makeColourCombo(bridge().ns, COLOUR_ROW, RECT);
+    const combo = makeColorCombo(bridge().ns, COLOR_ROW, RECT);
 
     assert.equal(combo.completes, false);
     assert.equal(combo.usesDataSource, false, "four static items need no source");
 });
 
 test("the list is as long as it has presets, and says what it is for", () => {
-    const combo = makeColourCombo(bridge().ns, COLOUR_ROW, RECT);
+    const combo = makeColorCombo(bridge().ns, COLOR_ROW, RECT);
 
-    assert.equal(combo.numberOfVisibleItems, COLOUR_ROW.options.length);
+    assert.equal(combo.numberOfVisibleItems, COLOR_ROW.options.length);
     assert.equal(
         combo.accessibilityLabel,
         "Page background:",

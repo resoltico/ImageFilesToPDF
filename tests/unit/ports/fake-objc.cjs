@@ -25,17 +25,17 @@ const { makeWindow, makeBox } = require("./fake-panel-objects.cjs");
  * The classes the widget layer reaches for, and nothing else: a fake that
  * grew past what is used would stop being evidence about the real code.
  */
-function colourClass() {
+function colorClass() {
     return {
-        labelColor: { kind: "colour", name: "label" },
-        separatorColor: { kind: "colour", name: "separator" },
-        controlAccentColor: { kind: "colour", name: "controlAccent" },
-        secondaryLabelColor: { kind: "colour", name: "secondaryLabel" },
+        labelColor: { kind: "color", name: "label" },
+        separatorColor: { kind: "color", name: "separator" },
+        controlAccentColor: { kind: "color", name: "controlAccent" },
+        secondaryLabelColor: { kind: "color", name: "secondaryLabel" },
         systemRedColor: {
-            kind: "colour",
+            kind: "color",
             name: "systemRed",
             colorWithAlphaComponent: (alpha) => ({
-                kind: "colour",
+                kind: "color",
                 name: "systemRed",
                 alpha
             })
@@ -51,12 +51,18 @@ function installClasses(ns, state, application) {
         NSModalPanelRunLoopMode: "NSModalPanelRunLoopMode",
         NSButton: { alloc: { initWithFrame: (rect) => ({...makeView(rect), state: 0, setButtonType(type) {this.buttonType=type;}}) } },
         NSView: { alloc: { initWithFrame: makeView } },
-        NSScrollView: { alloc: { initWithFrame: (rect) => ({ ...makeView(rect), contentSize: { width: rect.width - 15, height: rect.height } }) } },
+        NSScrollView: { alloc: { initWithFrame: (rect) => {
+            const scroll = { ...makeView(rect), contentSize: { width: rect.width - 15, height: rect.height }, reflected: 0 };
+            scroll.contentView = { scrollToPoint(point) { scroll.scrolledTo = point; } };
+            scroll.reflectScrolledClipView = () => { scroll.reflected += 1; };
+            return scroll;
+        } } },
+        NSMakePoint: (left, top) => ({ left, top }),
         NSTextView: { alloc: { initWithFrame: (rect) => ({ ...makeField(rect), textContainer: {} }) } },
         NSTextField: { alloc: { initWithFrame: makeField } },
         NSPopUpButton: { alloc: { initWithFramePullsDown: makePopup } },
         NSComboBox: { alloc: { initWithFrame: makeCombo } },
-        NSColor: colourClass(),
+        NSColor: colorClass(),
         NSFont: {
             systemFontSize: 13,
             systemFontOfSize: (size) => ({ kind: "font", size }),

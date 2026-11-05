@@ -1,7 +1,7 @@
 "use strict";
 
 const { hostError } = require("./cancellation.js");
-const { UserCancelled, errorMessage } = require("../core/errors.js");
+const { UserCanceled, errorMessage } = require("../core/errors.js");
 const { APP_NAME } = require("../core/version.js");
 const { labelsOf, valueOfLabel, labelOfValue } = require("./settings-model.js");
 const { readNumber } = require("./settings-model.js");
@@ -26,7 +26,7 @@ function chooseRequired(app, control, opening) {
     });
 
     if (!choice) {
-        throw new UserCancelled();
+        throw new UserCanceled();
     }
 
     return valueOfLabel(control, choice[0]);

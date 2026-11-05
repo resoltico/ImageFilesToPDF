@@ -57,7 +57,8 @@ test("a folder, a file, a package and a link are told apart", () => {
             "/t": { NSFileType: "NSFileTypeDirectory" },
             "/t/a.png": { NSFileType: "NSFileTypeRegular" },
             "/t/app": { NSFileType: "NSFileTypeDirectory" },
-            "/t/link": { NSFileType: "NSFileTypeSymbolicLink" }
+            "/t/link": { NSFileType: "NSFileTypeSymbolicLink" },
+            "/t/pipe": { NSFileType: "NSFileTypeUnknown" }
         },
         packages: { "/t/app": true }
     };
@@ -67,7 +68,8 @@ test("a folder, a file, a package and a link are told apart", () => {
     assert.equal(tree.inspect("/t").kind, "directory");
     assert.equal(tree.inspect("/t/a.png").kind, "file");
     assert.equal(tree.inspect("/t/app").kind, "package");
-    assert.equal(tree.inspect("/t/link").kind, "other");
+    assert.equal(tree.inspect("/t/link").kind, "link");
+    assert.equal(tree.inspect("/t/pipe").kind, "other", "a pipe, socket or device is not a link");
     assert.equal(tree.inspect("/t/gone").kind, "missing");
 });
 

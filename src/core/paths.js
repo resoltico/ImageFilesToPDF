@@ -13,7 +13,7 @@
  *
  * Deliberately excluded, though vips can read them: GIF and animated WebP
  * (only the first frame would be taken), SVG (vector, and --size=down would
- * leave an icon-sized file as a stamp on the page), PDF (rasterising page one
+ * leave an icon-sized file as a stamp on the page), PDF (rasterizing page one
  * of a PDF to make a PDF), and camera RAW (slow, huge, and users expect
  * processing rather than conversion).
  *

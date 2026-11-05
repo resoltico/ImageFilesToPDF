@@ -61,14 +61,14 @@ test("a form coding fault remains identifiable", () => {
     assert.equal(host.listPrompts.length, 0);
 });
 
-test("but a cancellation is honoured, not turned into dialogs", () => {
+test("but a cancellation is honored, not turned into dialogs", () => {
     // Falling back here would ask a person who just said no to answer six
     // more questions.
     const host = createFakeHost({});
 
     assert.throws(
-        () => collectSettings(host, {}, BRIDGE, scripted([{ cancelled: true }])),
-        /User cancelled/u
+        () => collectSettings(host, {}, BRIDGE, scripted([{ canceled: true }])),
+        /User canceled/u
     );
     assert.equal(host.listPrompts.length, 0);
 });

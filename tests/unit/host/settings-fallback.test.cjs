@@ -60,10 +60,10 @@ test("fallback keeps submitted corrections and selection context after a native 
 
 test("a cancellation thrown by the native host never starts fallback", () => {
     const app = createFakeApp();
-    const cancelled = Object.assign(new Error("User cancelled"), { errorNumber: -128 });
+    const canceled = Object.assign(new Error("User canceled"), { errorNumber: -128 });
 
-    assert.throws(() => collectSettings(app, {}, BRIDGE, () => { throw cancelled; }),
-        /User cancelled/u);
+    assert.throws(() => collectSettings(app, {}, BRIDGE, () => { throw canceled; }),
+        /User canceled/u);
     assert.deepEqual(app.listPrompts, []);
     assert.deepEqual(app.dialogs, []);
 });

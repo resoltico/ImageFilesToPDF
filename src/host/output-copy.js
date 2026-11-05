@@ -1,12 +1,12 @@
 "use strict";
 const { CP } = require("./backend-executables.js");
-const { OperationError, isUserCancelled } = require("../core/errors.js");
+const { OperationError, isUserCanceled } = require("../core/errors.js");
 const { runArgv } = require("./shell.js");
 const { openStaging } = require("./staging-area.js");
 const SIZE_UNKNOWN = -1;
 
 function copyFailure(error, area) {
-    return { state: isUserCancelled(error) ? "cancelled" : "failed", area, error };
+    return { state: isUserCanceled(error) ? "canceled" : "failed", area, error };
 }
 
 function copiedFacts(job, area, expected) {

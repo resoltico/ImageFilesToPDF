@@ -6,6 +6,8 @@ const { OperationError } = require("../core/errors.js");
 const { normalizeInvocationInput } = require("./invocation-syntax.js");
 const { writeReceipt, exitCli } = require("./receipt.js");
 
+const RUN_LINE = "osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless <settings.json> <path…>";
+
 function choiceCaption(choice) {
     const caption = choice.label ?? choice.name;
     return caption && caption !== choice.value ? `${choice.value} (${caption})` : choice.value;
@@ -13,8 +15,9 @@ function choiceCaption(choice) {
 
 function settingsHelp() {
     return Object.entries(SETTINGS_SCHEMA).map(([field, rule]) => {
-        // A numeric hint already states its range; a choice hint adds to the listed choices.
-        if (rule.minimum !== undefined) { return `  ${field} — ${rule.name}: ${rule.hint}; default ${rule.default}`; }
+        if (rule.minimum !== undefined) {
+            return `  ${field} — ${rule.name}: ${rule.minimum}–${rule.maximum}${rule.unit ? ` ${rule.unit}` : ""}; default ${rule.default}${rule.note ? `; ${rule.note}` : ""}`;
+        }
         return `  ${field} — ${rule.name}: ${rule.choices.map(choiceCaption).join(" | ")}; default ${rule.default}${rule.hint ? `; ${rule.hint}` : ""}`;
     }).join("\n");
 }
@@ -22,8 +25,21 @@ function settingsHelp() {
 function usage() {
     return `${APP_NAME} ${VERSION}\n\nUsage:\n  osascript -l JavaScript Image-Files-to-PDF.jxa -- --help\n` +
         "  osascript -l JavaScript Image-Files-to-PDF.jxa -- --version\n" +
-        "  osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless <settings.json> <path…>\n\nSettings (all six required):\n" +
+        `  ${RUN_LINE}\n\nSettings (all six required):\n` +
         `${settingsHelp()}\n\nOptional run option:\n  timestamp — ${TIMESTAMP_FORM} in local time; default now\n\nPaths may be absolute or relative to the working directory. Settings must be UTF-8 JSON without a BOM.\n`;
+}
+
+// One sentence on what was wrong and the run line; the settings stay in --help.
+function usageProblem(args) {
+    if (args.length === 0) { return "No arguments were given."; }
+    if (args.some((argument) => argument === "")) { return "An argument is empty."; }
+    if (["--help", "--version"].includes(args[0])) { return "--help and --version take no other arguments."; }
+    if (args[0] !== "--headless") { return `Unknown option: ${args[0]}.`; }
+    return "--headless needs a settings file and at least one path.";
+}
+
+function usageMessage(problem) {
+    return `${problem}\nUsage: ${RUN_LINE}\nRun with --help to see the settings.`;
 }
 
 function requestError(code, message, diagnostic = null) {
@@ -109,7 +125,7 @@ function cliCommand(input, injected = null) {
     if (args.length === 1 && args[0] === "--version") { return { kind: "version" }; }
     const minimumArguments = 3;
     if (args[0] !== "--headless" || args.length < minimumArguments || args.some((argument) => argument === "")) {
-        throw requestError("usage", usage());
+        throw requestError("usage", usageMessage(usageProblem(args)));
     }
     const io = injected ?? nativeCliIO();
     const configuration = io.read(io.absolute(args[1]));

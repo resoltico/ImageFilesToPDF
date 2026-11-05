@@ -31,8 +31,6 @@ const { isSupportedImage } = require("../core/paths.js");
  */
 
 const HIDDEN = ".";
-const UNREADABLE = "This item could not be read.";
-const UNEXAMINABLE = "This item could not be examined.";
 
 function isHidden(name) {
     return name.startsWith(HIDDEN);
@@ -54,7 +52,7 @@ function childrenOf(tree, folder, names) {
  */
 function consider(path, entry, taken, outcome) {
     if (entry.kind === "missing" || (entry.kind === "file" && !entry.identity)) {
-        outcome.problems.push({ path, reason: UNEXAMINABLE });
+        outcome.problems.push({ path, code: "unexaminable" });
 
         return;
     }
@@ -80,7 +78,7 @@ function walk(tree, folder, taken, outcome) {
     const names = tree.entries(folder);
 
     if (!names) {
-        outcome.problems.push({ path: folder, reason: UNREADABLE });
+        outcome.problems.push({ path: folder, code: "unreadable" });
 
         return false;
     }
@@ -99,13 +97,13 @@ function walk(tree, folder, taken, outcome) {
 }
 
 /*
- * Why there is nothing to take from this folder, or "" when there is. Nothing
+ * The refusal code when there is nothing to take from this folder, or "" when there is. Nothing
  * new is not the same as nothing at all: what is in here may already be in
  * the run because a folder above it was selected too.
  */
 function emptiness(outcome) {
     return outcome.found.length === 0 && !outcome.alreadyTaken && outcome.problems.length === 0
-        ? "This folder contains no supported images."
+        ? "empty-folder"
         : "";
 }
 
@@ -120,13 +118,13 @@ function imagesInFolder(tree, folder, taken) {
     if (!walk(tree, folder, taken, outcome)) {
         // The folder that was selected, which is reported as itself rather
         // than as something unreadable inside it.
-        return { found: [], problems: [], reason: UNREADABLE };
+        return { found: [], problems: [], code: "unreadable" };
     }
 
     return {
         found: outcome.found,
         problems: outcome.problems,
-        reason: emptiness(outcome)
+        code: emptiness(outcome)
     };
 }
 

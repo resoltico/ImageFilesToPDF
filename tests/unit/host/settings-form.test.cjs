@@ -66,14 +66,15 @@ test("a bad answer redisplays the form with the problem and the rest intact", ()
     const [, redisplayed] = present.seen;
     const paperRow = redisplayed.rows.find((row) => row.key === "paperSize");
 
-    assert.match(redisplayed.detail, /Maximum resolution must be a whole number from 72 to 1017/u);
+    assert.equal(redisplayed.detail, "Correct the highlighted setting, listed below.");
+    assert.match(redisplayed.fullDetail, /^Maximum resolution must be a whole number from 72 to 1017/u);
     assert.equal(paperRow.value, "Letter");
 });
 
-test("cancelling the form cancels the run", () => {
+test("canceling the form cancels the run", () => {
     assert.throws(
-        () => collectViaForm(BRIDGE, scripted([{ cancelled: true }])),
-        /User cancelled/u
+        () => collectViaForm(BRIDGE, scripted([{ canceled: true }])),
+        /User canceled/u
     );
 });
 

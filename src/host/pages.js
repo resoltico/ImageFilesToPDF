@@ -1,6 +1,6 @@
 "use strict";
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
-const { OperationError, isUserCancelled } = require("../core/errors.js");
+const { OperationError, isUserCanceled } = require("../core/errors.js");
 const { calculatePlacement, canPassThrough } = require("../core/geometry.js");
 const { inspectCaptured } = require("./source-inspection.js");
 const { sourceIssue, matchesAdmission, changedSourceIssue } = require("../core/source-policy.js");
@@ -15,7 +15,7 @@ function normalizeImage(job, captured, source, page) {
     const prepared = `${path}.v`;
     try {
         runArgv(job.app, buildThumbnailArgv(job.tools.vips, captured.path, intermediate ? prepared : path,
-            { placement, source, intermediate, background: job.settings.background, quality: job.settings.quality }), "normalising the image");
+            { placement, source, intermediate, background: job.settings.background, quality: job.settings.quality }), "normalizing the image");
         if (intermediate) {
             runArgv(job.app, buildFlattenArgv(job.tools.vips, prepared, path, job.settings.background), "flattening transparency");
         }
@@ -57,7 +57,7 @@ function preparePage(job, imageFile, index) {
                 runArgv(job.app, buildDecodeArgv(job.tools.vips, captured.path), "checking image data");
                 job.sources.capture(captured.path, pagePath);
             } else { normalizeImage(job, captured, source, { path: pagePath, placement }); }
-        } catch (error) { if (isUserCancelled(error) || issuesOf(error, "preparation")[0].code === ISSUE.fault) { throw error; } throw damaged(error, imageFile.path); }
+        } catch (error) { if (isUserCanceled(error) || issuesOf(error, "preparation")[0].code === ISSUE.fault) { throw error; } throw damaged(error, imageFile.path); }
         made = true;
         return { path: pagePath, placement };
     } finally {

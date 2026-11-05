@@ -36,10 +36,10 @@ test("clicking Create returns what the controls hold", () => {
     const { outcome } = present([CREATE]);
 
     assert.deepEqual(outcome.answers, defaultAnswers());
-    assert.equal(outcome.cancelled, undefined);
+    assert.equal(outcome.canceled, undefined);
 });
 
-test("a colour typed over a preset is the answer, not the preset", () => {
+test("a color typed over a preset is the answer, not the preset", () => {
     // Selecting White and then replacing its text is the whole point of the
     // control. Reading the item last selected from the list would take the
     // preset and discard what the person actually wrote.
@@ -57,7 +57,7 @@ test("what is being typed is committed before it is read", () => {
     const { bridge } = present([CREATE]);
     const { combo, resolution, popup } = controlsIn(bridge.state.alerts[0]);
 
-    assert.ok(combo.committed > 0, "the colour");
+    assert.ok(combo.committed > 0, "the color");
     assert.ok(resolution.committed > 0, "and the numbers, which had the same fault");
     assert.equal(popup.committed, 0, "a menu has no editor to commit");
 });
@@ -65,7 +65,7 @@ test("what is being typed is committed before it is read", () => {
 test("clicking Cancel is an answer, not a failure", () => {
     const { outcome } = present([CANCEL]);
 
-    assert.deepEqual(outcome, { cancelled: true });
+    assert.deepEqual(outcome, { canceled: true });
 });
 
 test("a form that never appeared is reported as unavailable", () => {
@@ -81,9 +81,9 @@ test("nothing is scheduled against the form, and nothing ends it early", () => {
     // There was a watchdog here: an abortModal two minutes out, so a form that
     // never returned could not hang the run. It fired on forms that were
     // working perfectly -- taking two minutes to choose a paper size and a
-    // colour is not evidence of anything -- and dropped the user into the
+    // color is not evidence of anything -- and dropped the user into the
     // stepwise dialogs half way through answering. Nothing replaced it,
-    // deliberately: the form ends when it is answered or cancelled.
+    // deliberately: the form ends when it is answered or canceled.
     const { bridge } = present([CREATE]);
 
     assert.deepEqual(bridge.state.watchdogs, []);
@@ -101,6 +101,10 @@ test("the alert carries the form's own title, detail and buttons", () => {
     assert.deepEqual(alert.buttons, ["Create", "Cancel"]);
     assert.ok(alert.accessoryView, "the form must be attached to the alert");
     assert.equal(alert.accessoryView.kind, "view");
+    const [note] = alert.accessoryView.subviews;
+
+    assert.deepEqual(note.scrolledTo, { left: 0, top: 0 }, "the note opens at its start");
+    assert.equal(note.reflected, 1);
 });
 
 test("the current answers are preselected rather than left at the top", () => {

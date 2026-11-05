@@ -56,7 +56,7 @@ test("built-ins newer than the floor are rejected", async () => {
 });
 
 test("ES2022 syntax that postdates the floor is rejected", async () => {
-    // static initialisation blocks are accepted by ecmaVersion 2022 but did
+    // static initialization blocks are accepted by ecmaVersion 2022 but did
     // not reach JavaScriptCore until Safari 16.4, so the denylist carries them.
     const { checkFeatures } = await loadTarget();
 

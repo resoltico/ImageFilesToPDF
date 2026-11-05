@@ -1,12 +1,12 @@
 "use strict";
-const { OperationError, errorMessage, commandOf, isUserCancelled } = require("./errors.js");
+const { OperationError, errorMessage, commandOf, isUserCanceled } = require("./errors.js");
 
-/** @typedef {{state:"saved"|"recovered"|"failed"|"cancelled"|"not-started", sources:string[], pages:number, issues:Object[], output?:string, recovery?:string, fatal?:boolean, diagnostics?:Object[]}} DocumentOutcome */
-const ISSUE = Object.freeze({ operation: "operation", fault: "fault", cancelled: "cancelled",
+/** @typedef {{state:"saved"|"recovered"|"failed"|"canceled"|"not-started", sources:string[], pages:number, issues:Object[], output?:string, recovery?:string, fatal?:boolean, diagnostics?:Object[]}} DocumentOutcome */
+const ISSUE = Object.freeze({ operation: "operation", fault: "fault", canceled: "canceled",
     cleanup: "cleanup", publication: "publication", recovery: "recovery" });
 
 function errorCode(error) {
-    if (isUserCancelled(error)) { return ISSUE.cancelled; }
+    if (isUserCanceled(error)) { return ISSUE.canceled; }
     if (error?.cause instanceof TypeError || error?.cause instanceof ReferenceError) { return ISSUE.fault; }
     return error instanceof OperationError ? ISSUE.operation : ISSUE.fault;
 }
@@ -26,14 +26,14 @@ function issuesOf(error, stage) {
 /** Saved paths/source mappings are authoritative; rendered-page counts never imply publication. */
 function runOutcome(documents = [], rejected = [], issues = [], diagnostics = []) {
     const undone = documents.some((document) => document.state !== "saved");
-    const stopped = issues.some((issue) => issue.code === ISSUE.cancelled) || documents.some((document) => document.state === "cancelled" || document.issues.some((issue) => issue.code === ISSUE.cancelled));
+    const stopped = issues.some((issue) => issue.code === ISSUE.canceled) || documents.some((document) => document.state === "canceled" || document.issues.some((issue) => issue.code === ISSUE.canceled));
     let state = "complete";
     if (undone || documents.some((document) => document.issues.length > 0) || rejected.length > 0 || issues.length > 0 || documents.length === 0) { state = "incomplete"; }
-    if (stopped && (undone || documents.length === 0)) { state = "cancelled"; }
+    if (stopped && (undone || documents.length === 0)) { state = "canceled"; }
     return { state, documents, rejected, issues, diagnostics };
 }
 function failedRun(error, outcome = null) {
-    if (outcome && isUserCancelled(error)) { return outcome; }
+    if (outcome && isUserCanceled(error)) { return outcome; }
     return runOutcome(outcome?.documents ?? [], outcome?.rejected ?? [],
         [...(outcome?.issues ?? []), ...issuesOf(error, outcome ? "reporting" : "setup")], outcome?.diagnostics ?? []);
 }

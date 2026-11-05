@@ -3,7 +3,7 @@
 /*
  * What /bin/test answers about a path.
  *
- * Modelled from the real thing rather than from what the code hopes: -e and
+ * Modeled from the real thing rather than from what the code hopes: -e and
  * -s both pass for a directory, -e follows a symbolic link and so calls one
  * whose target is gone absent, and only -f tells a regular file from a
  * folder. None of that is academic. A directory standing where the output PDF

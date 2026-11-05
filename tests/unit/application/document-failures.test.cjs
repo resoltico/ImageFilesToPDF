@@ -2,7 +2,7 @@
 const test=require("node:test");
 const assert=require("node:assert/strict");
 const {executeDocuments}=require("../../../src/application/documents.js");
-const {OperationError,UserCancelled}=require("../../../src/core/errors.js");
+const {OperationError,UserCanceled}=require("../../../src/core/errors.js");
 const {runOutcome}=require("../../../src/core/outcomes.js");
 const {fixture}=require("./document-fixture.cjs");
 
@@ -99,9 +99,9 @@ for(const operation of ["import","validate","publish"]) {
 }
 
 test("a cancellation remains a stop even if its supplied issue has another code",()=>{
-    const error=new UserCancelled();error.issues=[{code:"operation",stage:"preparation",message:"stop"}];
+    const error=new UserCanceled();error.issues=[{code:"operation",stage:"preparation",message:"stop"}];
     const sample=fixture(2,{mode:"separate",ports:{prepare:()=>{throw error;}}});
-    assert.deepEqual(executeDocuments(sample.ports,sample.plans).map(record=>record.state),["cancelled","not-started"]);
+    assert.deepEqual(executeDocuments(sample.ports,sample.plans).map(record=>record.state),["canceled","not-started"]);
 });
 
 test("failure-normalization faults before validation preserve earlier commits and the failed current source",()=>{

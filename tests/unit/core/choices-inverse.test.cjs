@@ -26,7 +26,7 @@ test("a value that is offered under no label is refused, not guessed at", () => 
     // form would open on something nobody offered.
     assert.equal(labelOfValue(PAPER_SIZE, "A4"), "A4");
     assert.equal(labelOfValue(PAPER_SIZE, "Letter"), "US Letter");
-    assert.throws(() => labelOfValue(PAPER_SIZE, "Legal"), /Unrecognised value: Legal/u);
+    assert.throws(() => labelOfValue(PAPER_SIZE, "Legal"), /Unrecognized value: Legal/u);
 });
 
 test("every label and value are inverses of each other", () => {

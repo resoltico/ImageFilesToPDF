@@ -1,11 +1,11 @@
 "use strict";
-const { isUserCancelled } = require("../core/errors.js");
+const { isUserCanceled } = require("../core/errors.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { sourceIssue, sourceFileIssue, sourceIssues, sourceRefusal } = require("../core/source-policy.js");
 const ACCESS_CHECK_INTERVAL = 32;
 
 function expectedFailure(error) {
-    if (isUserCancelled(error) || issuesOf(error, "inspection")[0].code === ISSUE.fault) { throw error; }
+    if (isUserCanceled(error) || issuesOf(error, "inspection")[0].code === ISSUE.fault) { throw error; }
 }
 
 function fileCandidates(ports, images, rejected) {

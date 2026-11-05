@@ -95,6 +95,6 @@ test("native ImageIO ownership binding is explicit and imported once",()=>{
     assert.deepEqual(events,["Foundation","ImageIO","CoreFoundation",["CFRelease",["void",["void *"]]]]);
 });
 
-test("unreadable native version facts are not relabelled as a stable snapshot",()=>{
+test("unreadable native version facts are not relabeled as a stable snapshot",()=>{
     assert.throws(()=>fixture({modified:NaN}).access.capture("/source","/owned"),(error)=>error.issues[0].diagnostic.message==="Source must be an identifiable regular non-link file with readable version facts.");
 });

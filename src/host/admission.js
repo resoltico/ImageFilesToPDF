@@ -26,21 +26,17 @@ function record(path, folder) {
     return { path, originalName: basename(path), folder };
 }
 
-function rejection(path, reason) {
-    return { path, name: basename(path), reason };
-}
-
 function admitFolder(tree, path, outcome) {
     const found = imagesInFolder(tree, path, outcome.taken);
 
     // Reported as themselves: naming the folder or the file the walk could
     // not look at is what lets someone go and see why.
     for (const problem of found.problems) {
-        outcome.rejected.push(rejection(problem.path, problem.reason));
+        outcome.rejected.push(selectionRefusal(problem.path, problem.code));
     }
 
-    if (found.reason) {
-        outcome.rejected.push(rejection(path, found.reason));
+    if (found.code) {
+        outcome.rejected.push(selectionRefusal(path, found.code));
 
         return;
     }
@@ -61,7 +57,7 @@ function admitFolder(tree, path, outcome) {
  * target -- so a link and the file it points to were two images.
  */
 function reasonFor(app, root) {
-    return ["package", "other"].includes(root.kind)
+    return ["package", "link", "other"].includes(root.kind)
         ? selectionReason(root.kind, root.path, false) : rejectionReason(app, root.path);
 }
 
@@ -91,10 +87,10 @@ function admit(app, tree, root, outcome) {
         return;
     }
 
-    const reason = root.kind === "file" && !root.identity ? "could not be identified" : reasonFor(app, root);
+    const code = root.kind === "file" && !root.identity ? "unexaminable" : reasonFor(app, root);
 
-    if (reason) {
-        outcome.rejected.push(rejection(root.path, reason));
+    if (code) {
+        outcome.rejected.push(selectionRefusal(root.path, code));
 
         return;
     }
@@ -121,7 +117,7 @@ function collectImageFiles(app, inputItems, tree = null) {
 
     return {
         images: sortImageRecords(outcome.images),
-        rejected: outcome.rejected.map(selectionRefusal),
+        rejected: outcome.rejected,
         selectedFolders: roots.filter((root) => root.kind === "directory").length
     };
 }

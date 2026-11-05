@@ -7,7 +7,7 @@ const {
     FORM_WIDTH,
     ROW_HEIGHT,
     NUMBER_WIDTH,
-    COLOUR_WIDTH,
+    COLOR_WIDTH,
     PADDING
 } = require("../../../src/host/appkit.js");
 const { WIDGETS } = require("../../../src/host/appkit.js");
@@ -64,7 +64,7 @@ test("a choice row offers every option, in order", () => {
 
 test("the background is a control that is a list and a field at once", () => {
     // A popup could offer the four presets and nothing else; a plain field
-    // could take any colour and offer nothing. The row has to do both, in one
+    // could take any color and offer nothing. The row has to do both, in one
     // control, or the form grows a second one to keep in step with the first.
     const { controls } = build();
     const { background } = controls;
@@ -73,7 +73,7 @@ test("the background is a control that is a list and a field at once", () => {
     assert.deepEqual(
         background.items,
         ["White (#FFFFFF)", "Black (#000000)", "Purple (#8E79E0)", "Dark blue (#204486)"],
-        "the presets as the colours they are"
+        "the presets as the colors they are"
     );
     assert.equal(
         background.stringValue,
@@ -82,7 +82,7 @@ test("the background is a control that is a list and a field at once", () => {
     );
     assert.equal(background.editable, true, "and it can be typed into");
     assert.equal(background.completes, false, "without finishing the word for you");
-    assert.equal(background.rect.width, COLOUR_WIDTH, "as wide as a colour needs");
+    assert.equal(background.rect.width, COLOR_WIDTH, "as wide as a color needs");
     assert.equal(background.accessibilityLabel, "Page background:");
 });
 
@@ -124,7 +124,7 @@ test("the form is as tall as it has rows, plus its margins", () => {
     assert.equal(view.rect.width, FORM_WIDTH);
 });
 
-test("a colour that could not be read is marked, keeping what was typed", () => {
+test("a color that could not be read is marked, keeping what was typed", () => {
     // The raw text stays in the control rather than being replaced by a
     // preset, so correcting it is a correction and not a retype.
     const spec = formSpec(

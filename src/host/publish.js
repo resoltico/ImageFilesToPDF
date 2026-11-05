@@ -3,7 +3,7 @@ const { requireValidatedArtifact, isPublished } = require("../core/artifacts.js"
 const { keep } = require("./recovery.js");
 const { confirm } = require("./settling.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
-const { errorMessage, isUserCancelled } = require("../core/errors.js");
+const { errorMessage, isUserCanceled } = require("../core/errors.js");
 const { claimAvailable } = require("./destination.js");
 
 function confirmed(context) {
@@ -27,7 +27,7 @@ function publicationCode(error) {
 
 function failedPublication(context, error) {
     const { job, paths, claimed, area } = context;
-    if (isUserCancelled(error) && isPublished(job.publication.facts(paths.final), {
+    if (isUserCanceled(error) && isPublished(job.publication.facts(paths.final), {
         claimedIdentity: claimed.identity, claimedSize: claimed.size
     })) {
         const saved = confirmed(context);

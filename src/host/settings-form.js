@@ -3,7 +3,7 @@ const { hostError } = require("./cancellation.js");
 
 const { formSpec } = require("./settings-model.js");
 const { readAnswers } = require("./settings-model.js");
-const { UserCancelled } = require("../core/errors.js");
+const { UserCanceled } = require("../core/errors.js");
 const { appkitBridge } = require("./objc-bridge.js");
 const { presentForm } = require("./appkit.js");
 const { collectDialogSettings } = require("./dialogs.js");
@@ -28,7 +28,7 @@ function defaultMemory() {
  * One pass: present, and report what came back as either unusable (null),
  * the settings, or the answers to try again with and what is wrong with them.
  *
- * A cancellation is an answer and must be honoured. Anything else the form
+ * A cancellation is an answer and must be honored. Anything else the form
  * throws remains a diagnostic. Only an explicit unavailable outcome falls
  * back; programming faults do not silently change interfaces.
  */
@@ -43,8 +43,8 @@ function formRound(bridge, present, state) {
             return null;
         }
 
-        if (outcome.cancelled) {
-            throw new UserCancelled();
+        if (outcome.canceled) {
+            throw new UserCanceled();
         }
 
         return { ...readAnswers(outcome.answers), answers: outcome.answers };

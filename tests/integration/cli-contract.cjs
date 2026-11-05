@@ -27,7 +27,11 @@ function convert(status, files, file=config, options={}) {
     const result=command(status,["--","--headless",file,...files],options);
     assert.equal(result.stdout.trim().split("\n").length,1,"one receipt line");
     const receipt=JSON.parse(result.stdout);
-    assert.ok(["complete","incomplete","invalid","cancelled"].includes(receipt.state));
+    assert.ok(["complete","incomplete","invalid","canceled"].includes(receipt.state));
+    // The stderr report has no version line, no zero counts, and ends with the elapsed time when known.
+    assert.doesNotMatch(result.stderr,/Image Files to PDF \d|(?:^|; )0 \w/mu);
+    if (receipt.elapsed) {assert.ok(result.stderr.endsWith(`\n\nElapsed: ${receipt.elapsed}\n`),result.stderr);}
+    for(const entry of receipt.rejected) {assert.ok(typeof entry.code==="string"&&["selection","inspection"].includes(entry.stage),JSON.stringify(entry));}
     return receipt;
 }
 function saved(receipt) {
@@ -95,9 +99,13 @@ async function ownership() {
 }
 
 function grammar() {
-    for(const args of [[],["--headless"],["--headless",config],["--bogus"]]) {
+    const runLine="Usage: osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless <settings.json> <path…>\nRun with --help to see the settings.";
+    for(const [args,problem] of [[[],"No arguments were given."],[["--headless"],"--headless needs a settings file and at least one path."],
+        [["--headless",config],"--headless needs a settings file and at least one path."],[["--bogus"],"Unknown option: --bogus."],
+        [["--help","extra"],"--help and --version take no other arguments."],[["--headless","",config],"An argument is empty."]]) {
         const started=Date.now();const result=command(2,args,{timeout:2000});
-        assert.ok(Date.now()-started<2000);assert.equal(JSON.parse(result.stdout).state,"invalid");assert.match(result.stderr,/Usage:/u);
+        assert.ok(Date.now()-started<2000);assert.equal(JSON.parse(result.stdout).state,"invalid");
+        assert.equal(result.stderr,`The request is invalid.\n\n${problem}\n${runLine}\n`,"a usage error is one problem and the run line, not the help");
     }
     const help=command(0,["--help"],{timeout:2000});
     for(const name of ["PDF files","Paper size","Orientation","Page background","Maximum resolution","JPEG quality"]) {assert.ok(help.stdout.includes(name));}

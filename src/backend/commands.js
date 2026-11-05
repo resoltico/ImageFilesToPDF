@@ -1,7 +1,7 @@
 "use strict";
-const { rgbOf } = require("../core/colour.js");
+const { rgbOf } = require("../core/color.js");
 const FAIL_ON_DAMAGE = "--fail-on=error";
-const GREY_ALPHA_BANDS = 2;
+const GRAY_ALPHA_BANDS = 2;
 const RGB_ALPHA_BANDS = 4;
 
 function backgroundVector(background) {
@@ -11,7 +11,7 @@ function backgroundVector(background) {
 
 function hasAlphaBand(bandCount, interpretation = "") {
     const bands = Number(bandCount);
-    return bands === GREY_ALPHA_BANDS || (interpretation === "cmyk" ? bands > RGB_ALPHA_BANDS : bands >= RGB_ALPHA_BANDS);
+    return bands === GRAY_ALPHA_BANDS || (interpretation === "cmyk" ? bands > RGB_ALPHA_BANDS : bands >= RGB_ALPHA_BANDS);
 }
 
 function buildThumbnailArgv(vipsPath, inputPath, outputPath, options) {

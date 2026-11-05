@@ -23,7 +23,7 @@ const { normalizeSettings } = require("../../../src/core/settings.js");
 const PAPERS = ["A4", "Letter"];
 const ORIENTATIONS = ["Portrait", "Landscape"];
 const MODES = ["combined", "separate"];
-const COLOURS = ["#FFFFFF", "#000000", "#8E79E0", "#204486", "#C7DAE8", "#7F7F7F"];
+const COLORS = ["#FFFFFF", "#000000", "#8E79E0", "#204486", "#C7DAE8", "#7F7F7F"];
 const NUMBERS = [[72, 1], [300, 92], [1017, 100], [600, 50]];
 
 function combinations(choices) {
@@ -36,7 +36,7 @@ function combinations(choices) {
 }
 
 function everySettings() {
-    const rows = combinations([PAPERS, ORIENTATIONS, MODES, COLOURS, NUMBERS]);
+    const rows = combinations([PAPERS, ORIENTATIONS, MODES, COLORS, NUMBERS]);
 
     return rows.map(([paperSize, orientation, mode, background, numbers]) =>
         normalizeSettings({

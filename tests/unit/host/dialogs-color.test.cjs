@@ -10,51 +10,51 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { chooseColour } = require("../../../src/host/dialogs.js");
+const { chooseColor } = require("../../../src/host/dialogs.js");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
-test("the fallback offers the four presets and a colour of your own", () => {
+test("the fallback offers the four presets and a color of your own", () => {
     const app = createFakeApp();
 
     app.nextChoice = ["Dark blue (#204486)"];
-    assert.equal(chooseColour(app, "#FFFFFF"), "#204486");
+    assert.equal(chooseColor(app, "#FFFFFF"), "#204486");
     assert.deepEqual(app.listPrompts[0].options, [
         "White (#FFFFFF)",
         "Black (#000000)",
         "Purple (#8E79E0)",
         "Dark blue (#204486)",
-        "Custom colour..."
+        "Custom color..."
     ]);
     assert.deepEqual(app.dialogs, [], "a preset is not asked about twice");
     assert.deepEqual(
         app.listPrompts[0].settings.defaultItems,
         ["White (#FFFFFF)"],
-        "and the list opens on the colour a run would otherwise use"
+        "and the list opens on the color a run would otherwise use"
     );
 });
 
-test("a colour of your own is prompted for and read like any other", () => {
+test("a color of your own is prompted for and read like any other", () => {
     const app = createFakeApp();
 
-    app.nextChoice = ["Custom colour..."];
+    app.nextChoice = ["Custom color..."];
     app.nextAnswer = [" c7dae8 "];
-    assert.equal(chooseColour(app, "#FFFFFF"), "#C7DAE8");
+    assert.equal(chooseColor(app, "#FFFFFF"), "#C7DAE8");
     assert.match(app.dialogs[0].message, /six hexadecimal digits/u);
 });
 
-test("the colour prompt is a question, with an answer and a way out", () => {
+test("the color prompt is a question, with an answer and a way out", () => {
     const app = createFakeApp();
 
-    app.nextChoice = ["Custom colour..."];
+    app.nextChoice = ["Custom color..."];
     app.nextAnswer = ["#C7DAE8"];
-    chooseColour(app, "#FFFFFF");
+    chooseColor(app, "#FFFFFF");
 
     const [prompt] = app.dialogs;
 
     assert.equal(
         prompt.options.defaultAnswer,
         "#FFFFFF",
-        "opening on the colour in force, which shows the shape and is one"
+        "opening on the color in force, which shows the shape and is one"
     );
     assert.equal(prompt.message, "Page background as six hexadecimal digits:");
     assert.deepEqual(prompt.options.buttons, ["Cancel", "OK"]);
@@ -62,15 +62,15 @@ test("the colour prompt is a question, with an answer and a way out", () => {
     assert.equal(prompt.options.cancelButton, "Cancel");
 });
 
-test("a colour that cannot be read is asked again, holding what was typed", () => {
+test("a color that cannot be read is asked again, holding what was typed", () => {
     // A value being corrected is the one thing the person has that the
     // program does not. Asking again with "#" in the box threw it away, so
-    // one wrong character meant entering the whole colour afresh.
+    // one wrong character meant entering the whole color afresh.
     const app = createFakeApp();
 
-    app.nextChoice = ["Custom colour..."];
+    app.nextChoice = ["Custom color..."];
     app.nextAnswer = ["#C7DAEG", "#C7DAE", "#C7DAE8"];
-    assert.equal(chooseColour(app, "#FFFFFF"), "#C7DAE8");
+    assert.equal(chooseColor(app, "#FFFFFF"), "#C7DAE8");
     assert.deepEqual(
         app.dialogs.map((dialog) => dialog.options.defaultAnswer),
         ["#FFFFFF", "#C7DAEG", "#C7DAE"],
@@ -84,9 +84,9 @@ test("the reason is on the screen that asks again, not on one before it", () => 
     // screen, which is what the form does with its problems.
     const app = createFakeApp();
 
-    app.nextChoice = ["Custom colour..."];
+    app.nextChoice = ["Custom color..."];
     app.nextAnswer = ["#C7DAEG", "#C7DAE8"];
-    chooseColour(app, "#FFFFFF");
+    chooseColor(app, "#FFFFFF");
     assert.equal(app.dialogs.length, 2, "one dialog per attempt, not two");
     assert.equal(
         app.dialogs[1].message,
@@ -96,15 +96,15 @@ test("the reason is on the screen that asks again, not on one before it", () => 
     );
 });
 
-test("cancelling either step cancels the run", () => {
+test("canceling either step cancels the run", () => {
     const dismissed = createFakeApp();
 
     dismissed.nextChoice = false;
-    assert.throws(() => chooseColour(dismissed), /User cancelled/u);
+    assert.throws(() => chooseColor(dismissed), /User canceled/u);
 
-    const cancelled = createFakeApp();
+    const canceled = createFakeApp();
 
-    cancelled.nextChoice = ["Custom colour..."];
-    cancelled.nextAnswer = [new Error("User cancelled.")];
-    assert.throws(() => chooseColour(cancelled), /User cancelled/u);
+    canceled.nextChoice = ["Custom color..."];
+    canceled.nextAnswer = [new Error("User canceled.")];
+    assert.throws(() => chooseColor(canceled), /User canceled/u);
 });

@@ -10,7 +10,7 @@ const { createFakeObjC }=require("../ports/fake-objc.cjs");
 const { createFakeApp }=require("../ports/fake-app.cjs");
 
 function assertOutcomeText(message) {
-    assert.match(message,/1 PDF saved; 1 PDF recovered/u);
+    assert.match(message,/1 saved; 1 recovered/u);
     assert.match(message,/\/recovery\/b\.pdf/u);
     assert.match(message,/Not started: 1/u);
     assert.doesNotMatch(message,/backend command/u);
@@ -27,6 +27,8 @@ test("recovery and prepared pages cannot be mistaken for publication",()=>{
     const message=completionMessage(result);
     assertOutcomeText(message);
     assert.match(message,/Not included from your selection:/u);
+    assert.match(message,/^1 saved; 1 recovered; 1 failed; 1 not started; 1 not included\.$/mu);
+    assert.match(message,/Elapsed: 3 seconds\n\nImage Files to PDF \S+$/u, "the dialog ends with elapsed time, then the version");
 });
 
 test("source policy fails closed for unknown formats and counts",()=>{

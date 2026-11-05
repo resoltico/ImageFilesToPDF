@@ -13,6 +13,7 @@ test("summary follows grouping and retains complete save locations", () => {
 test("an unknown selection count is not invented", () => { assert.equal(invitation(), "Choose the PDF settings."); });
 test("validation does not replace the output preview", () => {
     const spec = formSpec(defaultAnswers(), [{key:"quality",message:"JPEG quality is invalid"}], {count:1});
-    assert.equal(spec.detail, "JPEG quality is invalid");
-    assert.match(spec.fullDetail, /^1 image → 1 PDF with 1 page/u);
+    assert.equal(spec.detail, "Correct the highlighted setting, listed below.");
+    assert.match(spec.fullDetail, /^JPEG quality is invalid\n\n1 image → 1 PDF with 1 page/u);
+    for (const note of Object.values(spec.summaryDetails)) { assert.match(note, /^JPEG quality is invalid\n\n1 image → /u, "switching mode keeps the problems"); }
 });

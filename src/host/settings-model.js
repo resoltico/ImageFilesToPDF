@@ -1,12 +1,12 @@
 "use strict";
 const { SETTINGS_SCHEMA, validateSettings, settingIssue } = require("../core/settings.js");
-const { normalizeColour } = require("../core/colour.js");
+const { normalizeColor } = require("../core/color.js");
 const { APP_NAME } = require("../core/version.js");
 const { formSummary } = require("./output-description.js");
 
 function controlFor(field) {
     const rule = SETTINGS_SCHEMA[field];
-    return { field, label: `${rule.name}:`, prompt: rule.minimum ? `${rule.name} (${rule.minimum}–${rule.maximum}):` : `${rule.name}:`, defaultValue: rule.default,
+    return { field, label: `${rule.name}:`, prompt: rule.minimum ? `${rule.name} (${rule.minimum}–${rule.maximum}${rule.unit ? ` ${rule.unit}` : ""}):` : `${rule.name}:`, defaultValue: rule.default,
         defaultAnswer: String(rule.default), minimum: rule.minimum, maximum: rule.maximum, hint: rule.hint,
         choices: (rule.choices ?? []).map((choice) => ({ value: choice.value, label: choice.label ?? `${choice.name} (${choice.value})` })) };
 }
@@ -29,7 +29,7 @@ function labelOfValue(control, value) {
     const chosen = control.choices.find((choice) => choice.value === value);
 
     if (!chosen) {
-        throw new Error(`Unrecognised value: ${value}`);
+        throw new Error(`Unrecognized value: ${value}`);
     }
 
     return chosen.label;
@@ -43,7 +43,7 @@ function valueOfLabel(control, label) {
     const chosen = control.choices.find((choice) => choice.label === label);
 
     if (!chosen) {
-        throw new Error(`Unrecognised choice: ${label}`);
+        throw new Error(`Unrecognized choice: ${label}`);
     }
 
     return chosen.value;
@@ -55,10 +55,10 @@ const CHOICE_ROWS = [
     { key: "orientation", control: ORIENTATION }
 ];
 
-const COLOUR_ROW = { key: "background", control: BACKGROUND };
+const COLOR_ROW = { key: "background", control: BACKGROUND };
 
 // State the custom hex input format beside the editable preset control.
-const COLOUR_HINT = SETTINGS_SCHEMA.background.hint;
+const COLOR_HINT = SETTINGS_SCHEMA.background.hint;
 
 const NUMBER_ROWS = [
     { key: "resolutionLimit", control: RESOLUTION },
@@ -72,7 +72,7 @@ function defaultAnswers() {
         answers[key] = defaultValueOf(control);
     }
 
-    answers[COLOUR_ROW.key] = defaultValueOf(COLOUR_ROW.control);
+    answers[COLOR_ROW.key] = defaultValueOf(COLOR_ROW.control);
 
     for (const { key, control } of NUMBER_ROWS) {
         answers[key] = control.defaultAnswer;
@@ -91,15 +91,15 @@ function formRows(answers, invalid) {
         options: control.choices.map((choice) => ({ ...choice }))
     }));
 
-    const colour = {
-        key: COLOUR_ROW.key,
-        kind: "colour",
-        label: COLOUR_ROW.control.label,
-        hint: COLOUR_HINT,
-        value: String(answers[COLOUR_ROW.key]),
-        invalid: invalid.has(COLOUR_ROW.key),
+    const color = {
+        key: COLOR_ROW.key,
+        kind: "color",
+        label: COLOR_ROW.control.label,
+        hint: COLOR_HINT,
+        value: String(answers[COLOR_ROW.key]),
+        invalid: invalid.has(COLOR_ROW.key),
         // Named preset captions retain their canonical RGB values.
-        options: COLOUR_ROW.control.choices.map((choice) => ({
+        options: COLOR_ROW.control.choices.map((choice) => ({
             label: choice.label, value: choice.value
         }))
     };
@@ -115,7 +115,7 @@ function formRows(answers, invalid) {
         maximum: control.maximum
     }));
 
-    return [...choices, colour, ...numbers];
+    return [...choices, color, ...numbers];
 }
 
 
@@ -132,7 +132,7 @@ function readNumber(answer, control) {
     return value;
 }
 
-function readColour(answer) { const issue = settingIssue("background", answer); if (issue) { throw new Error(issue.message); } return normalizeColour(answer); }
+function readColor(answer) { const issue = settingIssue("background", answer); if (issue) { throw new Error(issue.message); } return normalizeColor(answer); }
 
 function readAnswers(answers) {
     const values = { ...answers };
@@ -146,7 +146,7 @@ function readAnswers(answers) {
 function answersFromSettings(settings) {
     const answers = {};
     for (const { key } of CHOICE_ROWS) { answers[key] = settings[key]; }
-    answers[COLOUR_ROW.key] = settings[COLOUR_ROW.key];
+    answers[COLOR_ROW.key] = settings[COLOR_ROW.key];
     for (const { key } of NUMBER_ROWS) { answers[key] = String(settings[key]); }
     return answers;
 }
@@ -163,15 +163,23 @@ function invitation(context = {}, mode = "combined") {
     return [formSummary(context, mode), folders.length > 0 ? `Save locations:\n${folders.join("\n")}` : ""].filter(Boolean).join("\n\n");
 }
 
+// The message line names what to do; the scrollable note lists each problem before the usual note.
+function correctionLine(problems) {
+    if (problems.length === 0) { return "Choose the page settings, then Create."; }
+    return problems.length === 1 ? "Correct the highlighted setting, listed below."
+        : `Correct the ${problems.length} highlighted settings, listed below.`;
+}
+
 function formSpec(answers = defaultAnswers(), problems = [], context = {}) {
+    const note = (mode) => [problems.map((problem) => problem.message).join("\n"), invitation(context, mode)].filter(Boolean).join("\n\n");
     return {
         title: APP_NAME,
-        detail: problems.length > 0 ? problems.map((problem) => problem.message).join("\n") : "Choose the page settings, then Create.",
-        fullDetail: invitation(context, answers.mode),
-        summaryDetails: { combined: invitation(context, "combined"), separate: invitation(context, "separate") },
+        detail: correctionLine(problems),
+        fullDetail: note(answers.mode),
+        summaryDetails: { combined: note("combined"), separate: note("separate") },
         rows: formRows(answers, new Set(problems.map((problem) => problem.key))),
         buttons: [CREATE_BUTTON, CANCEL_BUTTON]
     };
 }
 
-module.exports = { PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND, RESOLUTION, QUALITY, labelsOf, defaultLabelOf, defaultValueOf, valueOfLabel, labelOfValue, CHOICE_ROWS, COLOUR_ROW, NUMBER_ROWS, defaultAnswers, formRows, readAnswers, answersFromSettings, readNumber, readColour, invitation, CREATE_BUTTON, CANCEL_BUTTON, formSpec };
+module.exports = { PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND, RESOLUTION, QUALITY, labelsOf, defaultLabelOf, defaultValueOf, valueOfLabel, labelOfValue, CHOICE_ROWS, COLOR_ROW, NUMBER_ROWS, defaultAnswers, formRows, readAnswers, answersFromSettings, readNumber, readColor, invitation, CREATE_BUTTON, CANCEL_BUTTON, formSpec };

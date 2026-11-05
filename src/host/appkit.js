@@ -6,14 +6,14 @@ const CONTROL_WIDTH = 320;
 const NUMBER_WIDTH = 70;
 
 // Preset captions and editable custom hex share one control.
-const COLOUR_WIDTH = 190;
+const COLOR_WIDTH = 190;
 const CONTROL_HEIGHT = 24;
 const HINT_HEIGHT = 16;
 const GAP = 10;
 const HINT_GAP = 8;
 const PADDING = 6;
 
-// Padding sits above and below; a hint is centred against its field.
+// Padding sits above and below; a hint is centered against its field.
 const BOTH_EDGES = 2;
 const HALVES = 2;
 
@@ -64,7 +64,7 @@ const HINT_FONT_SIZE = 11;
 // wrong the moment the form appears in dark mode.
 const INVALID_TINT_ALPHA = 0.18;
 
-// NSTextAlignmentRight. On macOS right is 1 and centre is 2, which is the
+// NSTextAlignmentRight. On macOS right is 1 and center is 2, which is the
 // reverse of UIKit, so the constant is named rather than written inline.
 const ALIGN_RIGHT = 1;
 
@@ -158,7 +158,7 @@ function makeField(ns, text, rect) {
     return field;
 }
 
-function makeColourCombo(ns, row, rect) {
+function makeColorCombo(ns, row, rect) {
     const combo = ns.NSComboBox.alloc.initWithFrame(
         ns.NSMakeRect(rect.left, rect.bottom, rect.width, rect.height)
     );
@@ -214,10 +214,10 @@ function addTyped(context, row, rect, control) {
     return field;
 }
 
-function addColour(context, row, rect) {
+function addColor(context, row, rect) {
     return addTyped(context, row, rect, {
-        width: COLOUR_WIDTH,
-        make: (frame) => context.widgets.makeColourCombo(context.ns, row, frame)
+        width: COLOR_WIDTH,
+        make: (frame) => context.widgets.makeColorCombo(context.ns, row, frame)
     });
 }
 
@@ -230,7 +230,7 @@ function addNumber(context, row, rect) {
 
 const ADD_ROW = {
     choice: addChoice,
-    colour: addColour,
+    color: addColor,
     number: addNumber
 };
 
@@ -308,7 +308,7 @@ const WIDGETS = {
     makePopup,
     addPopupItem,
     makeField,
-    makeColourCombo,
+    makeColorCombo,
     markInvalid,
     markHintInvalid,
     makeAlert
@@ -329,7 +329,7 @@ function readControls(bridge, spec, controls) {
         }
 
         answers[row.key] = row.kind === "choice" ? row.options[Number(control.indexOfSelectedItem)].value : String(bridge.objc.unwrap(control.stringValue));
-        if (row.kind === "colour") {
+        if (row.kind === "color") {
             const option = row.options[Number(control.indexOfSelectedItem)];
             if (option && answers[row.key] === option.label) { answers[row.key] = option.value; }
         }
@@ -346,6 +346,13 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
     alert.accessoryView = view;
     const focus = spec.rows.find((row) => row.invalid) ?? spec.rows.find((row) => row.kind === "number");
     alert.window.initialFirstResponder = controls[focus.key];
+    // Measured in Stamp Images: laid out inside a running alert, a note that
+    // overflows opened two lines down, hiding its first line. It is laid out
+    // first and put back at its start.
+    // eslint-disable-next-line no-unused-expressions -- zero-argument ObjC method, invoked on property access
+    alert.layout;
+    built.details.contentView.scrollToPoint(bridge.ns.NSMakePoint(0, 0));
+    built.details.reflectScrolledClipView(built.details.contentView);
 
     const response = Number(alert.runModal);
 
@@ -355,7 +362,7 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
 
     return response === FIRST_BUTTON
         ? { answers: readControls(bridge, spec, controls) }
-        : { cancelled: true };
+        : { canceled: true };
 }
 
-module.exports = { ROW_HEIGHT, PADDING, COLOUR_WIDTH, NUMBER_WIDTH, FORM_WIDTH, formSize, labelRect, controlRect, hintRect, makeView, makeLabel, makeHint, makePopup, addPopupItem, markInvalid, markHintInvalid, makeAlert, makeField, makeColourCombo, buildForm, presentForm, WIDGETS };
+module.exports = { ROW_HEIGHT, PADDING, COLOR_WIDTH, NUMBER_WIDTH, FORM_WIDTH, formSize, labelRect, controlRect, hintRect, makeView, makeLabel, makeHint, makePopup, addPopupItem, markInvalid, markHintInvalid, makeAlert, makeField, makeColorCombo, buildForm, presentForm, WIDGETS };

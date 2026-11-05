@@ -1,7 +1,7 @@
 "use strict";
 const { hostError } = require("./cancellation.js");
 
-const { isUserCancelled, UserCancelled } = require("../core/errors.js");
+const { isUserCanceled, UserCanceled } = require("../core/errors.js");
 
 /*
  * Saying what the run is doing while it does it: the counting, the wording,
@@ -26,7 +26,7 @@ function broadcast(sinks, state) {
                 } catch (caught) {
                     const error = hostError(caught);
                     // Record the fault without unwinding from a publication.
-                    if (isUserCancelled(error)) { state.stopped = true; }
+                    if (isUserCanceled(error)) { state.stopped = true; }
                     else {
                         failed.add(sink);
                         state.diagnostics.push({ code: "observer-fault", message: String(error), stack: error?.stack ?? "" });
@@ -51,7 +51,7 @@ function announce(state, say) {
     say();
 
     if (state.stopped) {
-        throw new UserCancelled();
+        throw new UserCanceled();
     }
 }
 

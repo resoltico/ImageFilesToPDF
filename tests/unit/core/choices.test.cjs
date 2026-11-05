@@ -41,7 +41,7 @@ test("no prompt restates the options listed beneath it", () => {
 
 test("the numeric prompts state the range they will accept", () => {
     // Otherwise a rejection is the first time anyone learns it.
-    assert.match(RESOLUTION.prompt, /\(72–1017\)/u);
+    assert.match(RESOLUTION.prompt, /\(72–1017 ppi\)/u);
     assert.match(QUALITY.prompt, /\(1–100/u);
     assert.match(QUALITY.hint, /JPEG re-encoding only/u);
 });
@@ -61,14 +61,14 @@ test("the default answer is within the range it offers", () => {
     }
 });
 
-test("Letter is labelled the way macOS labels it", () => {
+test("Letter is labeled the way macOS labels it", () => {
     // "Letter" alone is an English word rather than an obviously named paper
     // size; macOS itself says "US Letter".
     assert.deepEqual(labelsOf(PAPER_SIZE), ["A4", "US Letter"]);
     assert.equal(valueOfLabel(PAPER_SIZE, "US Letter"), "Letter");
 });
 
-test("every background is labelled the same way: a name and its hex", () => {
+test("every background is labeled the same way: a name and its hex", () => {
     // A bare word beside a bare hex code is the inconsistency this replaced.
     assert.deepEqual(labelsOf(BACKGROUND), [
         "White (#FFFFFF)",
@@ -84,7 +84,7 @@ test("every background is labelled the same way: a name and its hex", () => {
 
 test("each background label carries the value it selects", () => {
     // The hex a person reads is the hex the pipeline uses, so a label cannot
-    // drift from the colour it actually produces.
+    // drift from the color it actually produces.
     for (const { label, value } of BACKGROUND.choices) {
         assert.ok(label.includes(value), `${label  } should contain ${  value}`);
         assert.equal(valueOfLabel(BACKGROUND, label), value);
@@ -99,8 +99,8 @@ test("the common case is offered first", () => {
 });
 
 test("an unknown label is refused rather than passed through", () => {
-    assert.throws(() => valueOfLabel(PAPER_SIZE, "Legal"), /Unrecognised choice/u);
-    assert.throws(() => valueOfLabel(BACKGROUND, "#000000"), /Unrecognised choice/u);
+    assert.throws(() => valueOfLabel(PAPER_SIZE, "Legal"), /Unrecognized choice/u);
+    assert.throws(() => valueOfLabel(BACKGROUND, "#000000"), /Unrecognized choice/u);
 });
 
 const BASELINE = {

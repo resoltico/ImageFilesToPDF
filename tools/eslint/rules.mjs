@@ -15,7 +15,7 @@ const MAXIMUM_MODULE_LINES = 400;
  */
 export const deliberateExceptions = {
     // Contradicts `no-var` and `init-declarations`: requires a single combined
-    // declaration per scope, which forces uninitialised variables.
+    // declaration per scope, which forces uninitialized variables.
     "one-var": "off",
     // Requires alphabetical object keys. Settings, geometry and argv objects
     // are ordered semantically, which carries more meaning than the alphabet.
@@ -57,9 +57,9 @@ export const tunedRules = {
     "max-lines": ["error", MAXIMUM_MODULE_LINES],
     /*
      * Path() and Application() are JavaScriptCore host APIs that are
-     * capitalised but are not constructors. The NS-prefixed exceptions are
+     * capitalized but are not constructors. The NS-prefixed exceptions are
      * Foundation and AppKit C functions bridged by JXA -- NSMakeRect,
-     * NSMakeSize, NSSelectorFromString -- which Apple capitalises by
+     * NSMakeSize, NSSelectorFromString -- which Apple capitalizes by
      * convention and which likewise construct nothing. The optional
      * qualifier is there because the rule matches the whole callee text, so
      * the namespace they are reached through is part of the name.

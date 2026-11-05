@@ -1,17 +1,28 @@
 "use strict";
 const test=require("node:test");
 const assert=require("node:assert/strict");
-const {selectionReason,selectionRefusal}=require("../../../src/core/selection-policy.js");
+const {SELECTION_REASONS,selectionReason,selectionRefusal}=require("../../../src/core/selection-policy.js");
 const {sourceIssues}=require("../../../src/core/source-policy.js");
 
-test("core owns file-selection policy and stable refusal tags",()=>{
-    assert.equal(selectionReason("package","a.png",true),"This is a package, not a folder of images.");
-    assert.equal(selectionReason("other","a.png",true),"This is a link; select the file it points to.");
-    assert.equal(selectionReason("directory","a.png",true),"This is a folder; select the images inside it.");
+test("core owns file-selection policy and its receipt codes",()=>{
+    assert.equal(selectionReason("package","a.png",true),"package");
+    assert.equal(selectionReason("link","a.png",true),"link");
+    assert.equal(selectionReason("other","a.png",true),"special-file");
+    assert.equal(selectionReason("directory","a.png",true),"folder");
     assert.equal(selectionReason("file","a.png",true),"");
-    assert.equal(selectionReason("file","a.png",false),"This file cannot be read; check that it still exists and that you have access.");
-    assert.match(selectionReason("file","a.gif",true),/^This file is not a supported format; use /u);
-    assert.deepEqual(selectionRefusal({path:"bad",reason:"why"}),{path:"bad",reason:"why",code:"selection-refused",stage:"selection"});
+    assert.equal(selectionReason("file","a.png",false),"not-a-file");
+    assert.equal(selectionReason("file","a.gif",true),"unsupported-format");
+    assert.deepEqual(selectionRefusal("/x/bad.gif","unsupported-format"),{path:"/x/bad.gif",name:"bad.gif",
+        reason:"This file is not a supported format; use JPEG, PNG, HEIC, TIFF, WebP or AVIF.",code:"unsupported-format",stage:"selection"});
+    assert.deepEqual(selectionRefusal("","remote-url","https://a/b.png"),{path:"",name:"https://a/b.png",
+        reason:"Remote URLs are not supported; download the file first.",code:"remote-url",stage:"selection"});
+    assert.throws(()=>selectionRefusal("/a","selection-refused"),/Unknown selection refusal code: selection-refused/u);
+});
+
+test("every selection refusal code reads as a full sentence",()=>{
+    assert.deepEqual(Object.keys(SELECTION_REASONS),["folder","unsupported-format","not-a-file","not-a-path","remote-url","not-a-folder",
+        "package","link","special-file","unreadable","unexaminable","empty-folder"]);
+    for(const [code,reason] of Object.entries(SELECTION_REASONS)) { assert.match(reason,/^[A-Z].*\.$/u,code); }
 });
 
 for(const format of ["JPEG","PNG","TIFF","HEIF","WebP"]) {

@@ -1,7 +1,7 @@
 "use strict";
 const { attributesAt, attributeText, identityOf, kindOf } = require("./native-file-attributes.js");
 const { hostError } = require("./cancellation.js");
-const { OperationError, isUserCancelled, errorMessage } = require("../core/errors.js");
+const { OperationError, isUserCanceled, errorMessage } = require("../core/errors.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { captureIssue, changedSourceIssue } = require("../core/source-policy.js");
 
@@ -41,7 +41,7 @@ function captureSource(context, path, destination) {
         return { path: destination, identity: before.identity, version: before.version };
     } catch (caught) {
         const error = hostError(caught);
-        if (isUserCancelled(error) || error.issues || issuesOf(error, "capture")[0].code === ISSUE.fault) { throw error; }
+        if (isUserCanceled(error) || error.issues || issuesOf(error, "capture")[0].code === ISSUE.fault) { throw error; }
         throw captureFailure(path, captureIssue(path, { message: errorMessage(error) }), error);
     }
 }

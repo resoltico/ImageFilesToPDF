@@ -55,7 +55,7 @@ test("the panel cannot take focus, accepts Stop clicks, and stays visible", () =
         false,
         "JXA holds the reference; an over-release is a crash with no dialog"
     );
-    assert.deepEqual(panel.done, ["center"], "centred, and nothing else done to it yet");
+    assert.deepEqual(panel.done, ["center"], "centered, and nothing else done to it yet");
 });
 
 test("the panel is asked for at the size the layout describes", () => {
@@ -91,7 +91,7 @@ test("the headline is the louder of the two lines", () => {
     assert.equal(headline.font.bold, true);
     assert.ok(headline.font.size > detail.font.size, "and the larger");
     assert.equal(headline.textColor.name, "label");
-    assert.equal(detail.textColor.name, "secondaryLabel", "the quieter colour");
+    assert.equal(detail.textColor.name, "secondaryLabel", "the quieter color");
 });
 
 test("the bar is a filled box with no border and no title", () => {

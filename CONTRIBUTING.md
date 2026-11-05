@@ -51,16 +51,16 @@ remain diagnosable rather than silently triggering fallback.
 `src/core/settings.js` owns canonical settings, defaults, names, captions, hints
 and legal choice IDs. `src/host/settings-model.js` derives the offered form and
 stepwise records from that schema. Text fields are parsed at adapter boundaries
-and use the common all-issues validator. `documentPlan` requires complete native name-equivalence
-group facts for separate mode. `src/host/destination-names.js` obtains them from
+and use the common all-issues validator. `documentPlan` requires complete native
+name-equivalence group facts for separate mode. `src/host/destination-names.js` obtains them from
 native folder identity and actual namespace probes; coarse search buckets only
 limit fallback lookups and never establish equality. Comparison probes use the
 owned workspace or an OS-created temporary directory on the destination volume,
 with ownership metadata copied before names. Normal and caught-failure paths
-remove every allocated probe before encoding. Unicode lookup fallback requires reliable persistent
-identities and hard-link support; missing facts stop planning. See
-[SECURITY.md](SECURITY.md) for the abrupt-termination boundary. Requested destination spellings remain
-unchanged for publication. Numeric RGB components belong to colour policy; vips
+remove every allocated probe before encoding. Unicode lookup fallback requires
+reliable persistent identities and hard-link support; missing facts stop planning. See
+[SECURITY.md](SECURITY.md) for the abrupt-termination boundary. Requested
+destination spellings remain unchanged for publication. Numeric RGB components belong to color policy; vips
 comma-separated vectors belong to the backend adapter.
 
 `src/core/artifacts.js` owns retention policy. Each artifact is registered before
@@ -74,13 +74,50 @@ The document/run outcomes own source mappings, counts and actual saved/recovery
 locations. Progress counters do not establish publication. Keep issue meaning
 separate from interface wording and technical diagnostics.
 
+## Interface wording
+
+Image Files to PDF and its sibling [Stamp Images](https://github.com/resoltico/StampImages)
+are Finder Quick Actions on the same stack, used by the same people, so they share
+one set of interface conventions and one document layout. Mirror a change here in
+the sibling repository.
+
+- US English everywhere: UI text, receipt tokens and messages, documents, comments
+  and identifiers. Preference domains and keys do not change.
+- Selected files are *images*; outputs are *PDFs* (*stamped copies* in the sibling).
+  Buttons are `Create`, `Cancel`, `Continue`, `Stop`, `OK`, `Show in Finder`,
+  `Details` and `Back`.
+- Settings form: the message line is `Choose the page settings, then Create.`; the
+  note opens with `<N images> → <outputs>, saved in <place>` and `Save locations:`.
+  Corrections say `Correct the highlighted setting, listed below.` and the note lists
+  them first. Range hints use an en dash and a unit (`72–1017 ppi`); color presets
+  add `or type #RRGGBB`.
+- Selection review: `<N items> in your selection cannot be included.`, then
+  `Not included:` with `<name>: <reason sentence>` and `in <folder>`, ending
+  `Continue with <N images>?`.
+- Completion: `Created …` or `No … was created.`, prefixed `Finished with issues.`
+  or `Stopped.`; PDFs saved elsewhere are counted in the headline, and refusals
+  agreed to in the review do not add `Finished with issues.`. The detail lists the
+  non-zero counts, `Saved to:`, failures, recoveries, `Not started`,
+  `Not included from your selection:`, `Elapsed:` and, in the dialog only, the
+  version. `Show in Finder` reveals every saved or recovered PDF; `Details` shows
+  `key: value` lines and `Back` returns to the summary.
+- Command line: the same commands and exit statuses; usage errors name the problem
+  and print only the run line; `--help` lists `field — Name: values; default X`;
+  stderr sections are separated by one blank line; receipts share the state and
+  issue-code vocabulary in [HEADLESS.md](HEADLESS.md).
+- Documents: README (users), INSTALL.txt (release asset), HEADLESS.md (command
+  line), SECURITY.md (trust and file safety), QA.md (verification) and this file,
+  with matching section order in both repositories. Documents describe the current
+  state only; history belongs in `CHANGELOG.md`.
+
 ## Tests and build
 
 Tests that inject ports/fixtures belong in `tests/unit/`; tests that inspect the
 real checkout belong in `tests/repo/`. Mutation testing runs unit files. All
 production sources and applicable build rules must remain discoverable by their
 gates. Coverage is 100% for core, application and backend; mutation is at least
-96 for those same layers. Host adapters require the native suites. Keep behavioral expectations independent of implementation calculations.
+96 for those same layers. Host adapters require the native suites. Keep behavioral
+expectations independent of implementation calculations.
 
 ESLint uses `js.configs.all`; exceptions and tuned rules are justified in
 `tools/eslint/rules.mjs`. Group modules by responsibility and lifetime, respecting

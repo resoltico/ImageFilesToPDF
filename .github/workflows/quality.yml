@@ -63,7 +63,11 @@ jobs:
       - run: node tools/check-pdfcpu.mjs
       - run: npm install --global "$(node --print 'require("./package.json").packageManager')"
       - run: npm ci --ignore-scripts
-      - run: npm run quality
+      # Coverage and mutation run in source-quality; this job adds what needs
+      # macOS: lint with shellcheck and actionlint installed, the committed
+      # artifact check, and the native suites.
+      - run: npm run lint
+      - run: npm run check-dist
       # form.sh records a picture of the settings form in
       # each appearance: layout is checked by measurement, and read by eye.
       - run: npm run test:integration:macos

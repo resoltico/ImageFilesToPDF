@@ -2,7 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { executeDocuments } = require("../../../src/application/documents.js");
-const { OperationError, UserCancelled } = require("../../../src/core/errors.js");
+const { OperationError, UserCanceled } = require("../../../src/core/errors.js");
 const { documentPlan } = require("../../../src/core/document-plan.js");
 const { runOutcome } = require("../../../src/core/outcomes.js");
 
@@ -53,10 +53,10 @@ test("separate source failures continue other documents", () => {
 
 for (const operation of ["beginning", "prepare", "import", "validate"]) {
     test(`${operation} stop removes only disposable work`, () => {
-        const sample = fixture(2, { mode: "separate", ports: { [operation]: () => { throw new UserCancelled(); } } });
+        const sample = fixture(2, { mode: "separate", ports: { [operation]: () => { throw new UserCanceled(); } } });
         const records = executeDocuments(sample.ports, sample.plans);
-        assert.deepEqual(records.map((record) => record.state), ["cancelled", "not-started"]);
-        assert.equal(runOutcome(records).state, "cancelled");
+        assert.deepEqual(records.map((record) => record.state), ["canceled", "not-started"]);
+        assert.equal(runOutcome(records).state, "canceled");
         assert.equal(sample.owned.size, 0);
     });
 }
@@ -121,7 +121,7 @@ test("source mappings, ordered page arguments and semantic failure stages are re
 });
 
 test("fault mixtures and recovered cancellation stop subsequent work without losing source mappings",()=>{
-    for(const code of ["fault","cancelled"]) {
+    for(const code of ["fault","canceled"]) {
         const error=new Error("failure");error.issues=[{code:"operation"},{code}];
         const sample=fixture(2,{mode:"separate",ports:{publish:()=>{throw error;}}});
         const records=executeDocuments(sample.ports,sample.plans);

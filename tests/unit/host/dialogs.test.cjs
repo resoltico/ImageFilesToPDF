@@ -22,14 +22,14 @@ test("chooseRequired rejects a label it did not offer", () => {
     const app = createFakeApp();
 
     app.nextChoice = ["Legal"];
-    assert.throws(() => chooseRequired(app, PAPER_SIZE, "A4"), /Unrecognised choice: Legal/u);
+    assert.throws(() => chooseRequired(app, PAPER_SIZE, "A4"), /Unrecognized choice: Legal/u);
 });
 
 test("chooseRequired treats a dismissed list as cancellation", () => {
     const app = createFakeApp();
 
     app.nextChoice = false;
-    assert.throws(() => chooseRequired(app, PAPER_SIZE, "A4"), /User cancelled/u);
+    assert.throws(() => chooseRequired(app, PAPER_SIZE, "A4"), /User canceled/u);
 });
 
 test("collectDialogSettings asks for every setting", () => {

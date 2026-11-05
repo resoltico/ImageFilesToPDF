@@ -9,7 +9,7 @@ const test = require("node:test");
  */
 const loadWorkflowRules = () => import("../../../tools/lint/workflow-rules.mjs");
 
-test("workflow files are recognised by extension", async () => {
+test("workflow files are recognized by extension", async () => {
     const { isWorkflow } = await loadWorkflowRules();
 
     assert.equal(isWorkflow("quality.yml"), true);

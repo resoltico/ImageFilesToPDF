@@ -1,151 +1,151 @@
-# Headless automation
+# Command line
 
-Run the standalone JXA with a settings-file path and at least one local image
-or folder path. Relative paths resolve against the process working directory. Local `file://` URLs are also accepted; remote URLs
-are refused.
+Image Files to PDF runs from the command line with `osascript`. Node is not needed.
 
 ```sh
-osascript -l JavaScript dist/Image-Files-to-PDF.jxa -- --headless /absolute/config.json /absolute/image.png
+osascript -l JavaScript Image-Files-to-PDF.jxa -- --help
+osascript -l JavaScript Image-Files-to-PDF.jxa -- --version
+osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless settings.json photo.jpg folder
 ```
 
-Headless mode uses no settings, consent or completion dialogs and does not read
-or write interactive preferences. Selection, conversion, validation, publication
-and recovery use the same application rules as the Quick Action.
+`--help` lists every setting with its values and default; `--version` prints
+`Image Files to PDF <version>`. Both print to stdout and exit 0. Anything else that
+is not a complete `--headless` request is a usage error: it names the problem in one
+sentence (`No arguments were given.`, `Unknown option: <arg>.`,
+`--headless needs a settings file and at least one path.`, `An argument is empty.`
+or `--help and --version take no other arguments.`), prints the run line and exits 2.
 
-## Request
+A command-line run never opens a dialog and neither reads nor writes remembered
+settings. Paths may be absolute or relative to the working directory. Local
+`file://` URLs are accepted; remote URLs are refused. Selection, conversion,
+validation, saving and recovery follow the same rules as the Quick Action.
 
-The settings file is read natively as UTF-8 without a byte-order mark. Its JSON
-root must be an object. All six page settings are required:
+## Settings file
+
+The settings file is UTF-8 JSON without a byte-order mark, and its root is an
+object. All six page settings are required; unknown fields, display captions in
+place of values, numeric strings, fractional numbers, `null` and wrong types are
+refused, and every problem is reported together. JSON number `3e2` is 300; the
+string `"3e2"` is refused. Duplicate keys follow `JSON.parse`: the last value wins.
 
 ```json
-{"paperSize":"A4","orientation":"Portrait","mode":"combined","resolutionLimit":300,"quality":82,"background":"#FFFFFF"}
+{
+  "mode": "combined",
+  "paperSize": "A4",
+  "orientation": "Portrait",
+  "resolutionLimit": 300,
+  "quality": 82,
+  "background": "#FFFFFF"
+}
 ```
 
-| Field | Setting | JSON type and allowed values |
+| Field | Setting | JSON value |
 | --- | --- | --- |
-| `paperSize` | Paper size | String: `A4` or `Letter` |
-| `orientation` | Orientation | String: `Portrait` or `Landscape` |
-| `mode` | PDF files | String: `combined` or `separate` |
-| `resolutionLimit` | Maximum resolution | Number: integer 72–1017 ppi |
-| `quality` | JPEG quality | Number: integer 1–100 |
-| `background` | Page background | String: six hexadecimal digits, optional leading `#`, surrounding whitespace allowed |
-| `timestamp` | Run timestamp | Optional string shaped `YYYYMMDD_HHMMSS` |
+| `mode` | PDF files | `combined` or `separate` |
+| `paperSize` | Paper size | `A4` or `Letter` |
+| `orientation` | Orientation | `Portrait` or `Landscape` |
+| `resolutionLimit` | Maximum resolution | Integer 72–1017 (ppi) |
+| `quality` | JPEG quality | Integer 1–100 |
+| `background` | Page background | Six hexadecimal digits, optional `#`, surrounding whitespace allowed; normalized to uppercase `#RRGGBB` |
+| `timestamp` | Run timestamp | Optional `YYYYMMDD_HHMMSS` |
 
-Background is normalized to uppercase `#RRGGBB`, representing opaque sRGB.
-Numeric strings, booleans, arrays and object coercion are not accepted. JSON
-number `3e2` is 300; string `"3e2"` is invalid. Unknown fields and display labels
-in place of canonical choice IDs are errors. All detected field issues are
-returned together. Duplicate JSON keys follow `JSON.parse`: the last value wins.
-
-Omitting `timestamp` generates one in the host's local time. When supplied, it
-must be a real local date-time in exactly the stated shape, validated by a date
-round trip. `null`,
-`false`, numbers and empty strings are invalid. It is a run option, not a page
-setting.
+`timestamp` is a run option, not a page setting: it names a combined PDF and
+defaults to the current local time. When present it must be a real local date and
+time in exactly that shape; `null`, `false`, numbers and empty strings are refused.
 
 ## Receipt and exit status
 
-Every orderly handled conversion request emits one JSON object on stdout and a
-plain run summary on stderr. Diagnostics remain in the receipt. Read both the
-receipt and the exit status:
+Every handled request writes one JSON object, ending in a newline, to stdout, and a
+plain-language report to stderr. Read both the receipt and the exit status.
 
 | Exit | Meaning |
 | --- | --- |
 | `0` | Complete |
-| `1` | Incomplete or handled cancellation |
-| `2` | Usage or invalid request |
-| `3` | Required-tool/setup failure |
-
-`--help` prints usage and the settings schema; `--version` prints
-`Image Files to PDF <version>`. Both exit zero without conversion. Unknown flags,
-no arguments and missing operands print usage and exit `2`, with no dialog.
-String argv always selects the CLI; only a Shortcuts envelope or applet input
-selects the interactive path. Abrupt process
-death, an external host stop or a failed stdout transport cannot guarantee a
-receipt.
+| `1` | Incomplete or stopped; confirmed PDFs are kept |
+| `2` | Usage error or invalid settings |
+| `3` | A required tool is missing or unusable |
 
 ```json
-{"state":"complete","documents":[{"state":"saved","sources":["/absolute/image.png"],"pages":1,"issues":[],"output":"/absolute/Images 2026-10-29 at 12.00.00.pdf"}],"rejected":[],"issues":[],"diagnostics":[],"elapsed":"1 second"}
+{"state":"complete","documents":[{"state":"saved","sources":["/Users/me/Pictures/photo.png"],"pages":1,"issues":[],"output":"/Users/me/Pictures/Images 2026-10-29 at 12.00.00.pdf"}],"rejected":[],"issues":[],"diagnostics":[],"elapsed":"1 second"}
 ```
 
-| Run field | Meaning |
+| Field | Meaning |
 | --- | --- |
-| `state` | `complete`, `incomplete`, `cancelled` or `invalid` |
-| `documents` | Ordered document outcomes and their source mappings |
-| `rejected` | Selection refusals, with original path/name and reason |
-| `issues` | Failures affecting the request as a whole |
-| `diagnostics` | Optional-surface and cleanup diagnostics |
-| `elapsed` | Human-readable elapsed time, when conversion reaches presentation |
+| `state` | `complete`, `incomplete`, `canceled` or `invalid` |
+| `documents` | One record per planned PDF, in order |
+| `rejected` | Selected items that were not admitted |
+| `issues` | Problems affecting the request as a whole |
+| `diagnostics` | Optional-surface and cleanup diagnostics, such as retained workspaces |
+| `elapsed` | Human-readable run time; absent when the run ends before conversion |
 
-`complete` requires every document saved, no refusals and no recorded document
-or run issues. Requests rejected before work are `invalid`. Handled failures
-or partial success are `incomplete`. An
-acknowledged stop that leaves work undone is `cancelled`. A late stop does not
-invent omissions or erase confirmed saved outputs. Optional observer diagnostics
-alone need not make an otherwise complete conversion incomplete.
+`complete` requires every PDF saved, nothing rejected and no issues. A request
+refused before any work is `invalid`. A stop that leaves work undone is `canceled`;
+a stop that arrives after everything was saved does not erase the saved PDFs. An
+abrupt process end, an external kill or a failed stdout cannot guarantee a receipt.
 
-## Document outcomes
+The stderr report is the headline, then sections separated by one blank line. Its
+counts line lists only non-zero counts, as in `1 saved; 1 not included.`, and is
+left out when all are zero. `Elapsed: …` is the last section when known. An
+invalid request reports `The request is invalid.` and each problem.
 
-Each document has `state`, `sources`, `pages` and `issues`:
+## Document records
 
-| State | Meaning and location |
+Each record has `state`, `sources` (the full paths of its images, in page order),
+`pages` and `issues`.
+
+| State | Meaning |
 | --- | --- |
-| `saved` | Confirmed publication; `output` is the actual chosen path |
-| `recovered` | Validated PDF retained outside the requested publication; `recovery` names its location |
-| `failed` | Document could not complete; inspect issues for details or an unconfirmed retained candidate |
-| `cancelled` | Stopped without a confirmed save |
-| `not-started` | Work left unattempted after the run stopped |
+| `saved` | Saved; `output` is the PDF's full path |
+| `recovered` | Validated but saved somewhere else; `recovery` is the actual location |
+| `failed` | Not saved; `issues` explain |
+| `canceled` | Stop interrupted this PDF before it was saved |
+| `not-started` | An earlier stop or fault ended the run first |
 
-`pages` counts prepared pages, including preparation completed before a failing
-batch handoff. It is not a saved-page count. Derive saved counts and paths from
-`saved` records, and recovery counts from `recovered` records. A saved document
-can carry a later fault while retaining its confirmed `output`.
+`pages` counts prepared pages, not saved pages; take saved counts and paths from
+`saved` records and recovery locations from `recovered` records. A saved record can
+carry a later fault while keeping its `output`. A candidate whose validation
+faulted is identified in `issues` and is not a validated recovery.
 
-Issues carry a code, stage and message, with source or field attribution where
-applicable. Command/native-error/stack data is retained in diagnostic detail.
-Unconfirmed candidates are identified in issues and must not be treated as
-validated recoveries. Additional internal facts such as fatal-stop markers or
-per-document observer diagnostics may be present.
+## Issue codes
 
-## Backend overrides
+Every issue and every `rejected` entry carries a `code`, a `stage` and a message:
+`message` for issues, `reason` for rejected entries, which also carry `path` and
+`name`. An issue may also carry `field`, `source` and `diagnostic`; commands,
+native errors and stacks appear only in `diagnostic`.
+
+| Stage | Codes |
+| --- | --- |
+| `request` | `usage`, `settings-file`, `timestamp` |
+| `settings` | `unknown`, `choice`, `integer`, `color`, `object` |
+| `setup` | `operation` when a required tool or capability is missing or unusable |
+| `selection` | `folder`, `unsupported-format`, `not-a-file`, `not-a-path`, `remote-url`, `not-a-folder`, `package`, `link`, `special-file`, `unreadable`, `unexaminable`, `empty-folder`, and the run issue `no-images` |
+| `inspection` | `unreadable`, `empty`, `not-an-image`, `unsupported-content`, `multiple-images`, `damaged` |
+| `allocation`, `planning`, `capture`, `preparation`, `execution`, `validation`, `publication`, `recovery`, `cleanup`, `workspace`, `reporting` | `operation`, `fault`, `canceled`, `damaged`, `publication`, `recovery`, `cleanup` |
+
+When nothing is admitted, the run issue `no-images` says
+`None of the selected items can be converted.` and the refused items are in
+`rejected`. Damage found only by a full decode is `damaged` at the `preparation`
+stage; a combined PDF with such an image is not saved, while separate mode saves
+the others. Software faults (`fault`), cleanup failures and a stop end the run;
+remaining PDFs are `not-started`. Confirmed PDFs are kept in every case.
+
+## Names and saving
+
+Combined PDFs are named `Images YYYY-MM-DD at HH.MM.SS.pdf` from `timestamp`.
+Separate PDFs use the image's sanitized name; images whose names would clash in one
+destination add their lower-case extension. Clashes follow the destination's own
+rules for case and Unicode normalization, and folder aliases are matched by native
+identity. An existing name gets ` 2`, ` 3` and so on. If those facts cannot be
+established, planning stops before any PDF is made rather than guessing.
+
+A PDF that cannot be saved at its destination is saved to `~/Downloads` under its
+intended name, or failing that to a confirmed copy in the system temporary
+directory. Always use the receipt's actual `output` or `recovery` path. Retained
+and unreadable workspaces are left in place and listed in `diagnostics`.
+
+## Tool overrides
 
 `IMAGE_FILES_TO_PDF_VIPS`, `IMAGE_FILES_TO_PDF_VIPSHEADER` and
-`IMAGE_FILES_TO_PDF_PDFCPU` select explicit executable paths. An invalid explicit
-override fails setup with that path; it does not select another executable.
-The executables must be trusted and support the required pipeline operations.
-
-## Source inspection
-
-After identity deduplication, admission checks file access, empty files, the
-actual loader, image count and dimensions before conversion. Selection refusals
-use `code: "selection-refused"` and `stage: "selection"` for unsupported names,
-links/packages, unresolved inputs and traversal failures. Inspection refusals use
-`unreadable`, `empty`, `not-an-image`, `unsupported-content`, `multiple-images` or
-`damaged`, with `stage: "inspection"`. Each refusal in `rejected` identifies the
-original path/name and a plain `reason`. Backend text and commands belong to
-`diagnostic` only.
-
-The captured copy is independently inspected and must match the admitted
-identity, version and image facts. A source that changes after selection fails
-its document. Damage that requires a full decode is a document failure with
-code `damaged`; it can still fail a combined document after admission. No subset
-of a failed combined document is published. Separate mode can save the other
-valid documents.
-
-## Names and retained work
-
-Combined names use local time: `Images YYYY-MM-DD at HH.MM.SS.pdf`. Separate
-names use sanitized stems; same-run stem conflicts in one destination add the
-lower-case source extension. Conflicts follow the actual destination namespace,
-including its case and normalization behavior; directory aliases use native
-identity. Existing-entry collisions use ` 2`, ` 3`, etc. Unavailable comparison
-facts stop planning before PDF encoding rather than guessing. This includes
-Unicode conflicts on a foreign read-only volume when neither a temporary
-namespace nor reliable persistent identifiers with hard-link support are available.
-
-A failed destination first recovers a validated PDF to `~/Downloads` under its
-intended name. If that cannot be written and confirmed, a confirmed temporary
-copy is used. Always consume the receipt's actual `output` or `recovery` path.
-A valid conversion startup reclaims dead-owner workspaces without retention
-markers; help, version and invalid requests do not perform housekeeping.
-Retained and unreadable workspaces are left in place and appear in diagnostics.
+`IMAGE_FILES_TO_PDF_PDFCPU` may name explicit executables. An override that is
+missing, relative or unusable fails setup with exit status 3; another executable is
+never substituted.

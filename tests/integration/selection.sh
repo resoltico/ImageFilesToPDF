@@ -55,7 +55,7 @@ WALKED="$WORK/album/Images 2026-09-07 at 01.01.01.pdf"
 assert_valid_pdf "$WALKED"
 test "$(pages "$WALKED")" = 2 ||
     fail "the walk took $(pages "$WALKED") pages: hidden, notes or locked leaked in"
-grep -q '"reason":"This item could not be read."' <<<"$RECEIPT" ||
+grep -q '"reason":"This item could not be read.","code":"unreadable","stage":"selection"' <<<"$RECEIPT" ||
     fail "the unreadable subfolder was passed over silently: $RECEIPT"
 grep -q '"name":"locked"' <<<"$RECEIPT" ||
     fail "the report did not say which folder was closed: $RECEIPT"

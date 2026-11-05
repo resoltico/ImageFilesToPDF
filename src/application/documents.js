@@ -1,5 +1,5 @@
 "use strict";
-const { isUserCancelled } = require("../core/errors.js");
+const { isUserCanceled } = require("../core/errors.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 
 const MAX_QUEUED_PAGES = 32;
@@ -86,7 +86,7 @@ function finishDocument(ports, plan, context, queue) {
 function resolveValidationFailure(context) {
     const { artifact, record } = context;
     if (artifact?.state === "validating") {
-        if (record.issues.every((issue) => issue.code === ISSUE.operation || issue.code === ISSUE.cancelled)) {
+        if (record.issues.every((issue) => issue.code === ISSUE.operation || issue.code === ISSUE.canceled)) {
             artifact.state = "building";
         } else {
             record.issues.push({ code: ISSUE.fault, stage: "validation", message: `Validation was not confirmed; the candidate PDF remains here:\n${artifact.path}` });
@@ -101,7 +101,7 @@ function documentFailure(context, error) {
     if (record.state === "validated") {
         Object.assign(record, { state: "recovered", recovery: error?.recovery ?? artifact.path });
     } else if (record.state !== "saved") {
-        record.state = isUserCancelled(error) ? "cancelled" : "failed";
+        record.state = isUserCanceled(error) ? "canceled" : "failed";
         resolveValidationFailure(context);
     }
     markFatal(record);
@@ -155,7 +155,7 @@ function executeDocuments(ports, plans, records = []) {
         const record = stopped ? { state: "not-started", sources: plan.sources.map((source) => source.path), pages: 0, issues: [] }
             : executeDocument(ports, plan, index);
         records.push(record);
-        stopped ||= record.state === "cancelled" || record.fatal || record.issues.some((issue) => issue.code === ISSUE.cancelled);
+        stopped ||= record.state === "canceled" || record.fatal || record.issues.some((issue) => issue.code === ISSUE.canceled);
     }
     return records;
 }

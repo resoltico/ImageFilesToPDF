@@ -16,11 +16,11 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { UserCancelled, isUserCancelled } = require("../../../src/core/errors.js");
+const { UserCanceled, isUserCanceled } = require("../../../src/core/errors.js");
 const { createProgress } = require("../../../src/host/progress.js");
 
 function hostCancellation() {
-    const error = new Error("User cancelled.");
+    const error = new Error("User canceled.");
 
     error.errorNumber = -128;
 
@@ -80,7 +80,7 @@ test("the report that discovers a stop is the one that acts on it", () => {
     // saying would miss it and carry on into the work being announced.
     const progress = createProgress([stoppingOnce()]);
 
-    assert.throws(() => progress.phase("Creating PDF"), isUserCancelled);
+    assert.throws(() => progress.phase("Creating PDF"), isUserCanceled);
 });
 
 test("every way of saying what is about to happen stops the run", () => {
@@ -91,7 +91,7 @@ test("every way of saying what is about to happen stops the run", () => {
     ]) {
         const progress = createProgress([stoppingOnce()]);
 
-        assert.throws(() => say(progress), isUserCancelled, String(say));
+        assert.throws(() => say(progress), isUserCanceled, String(say));
     }
 });
 
@@ -103,7 +103,7 @@ test("saying what has happened does not, whatever has been recorded", () => {
 
     assert.doesNotThrow(() => progress.finished("Saved"));
     assert.doesNotThrow(() => progress.finished("Saved"), "and still does not");
-    assert.throws(() => progress.phase("Creating PDF"), isUserCancelled);
+    assert.throws(() => progress.phase("Creating PDF"), isUserCanceled);
 });
 
 test("the lifecycle calls never stop the run", () => {
@@ -119,17 +119,17 @@ test("the lifecycle calls never stop the run", () => {
     });
 });
 
-test("our own cancellation is recognised as well as the host's", () => {
-    const progress = createProgress([throwing(new UserCancelled())]);
+test("our own cancellation is recognized as well as the host's", () => {
+    const progress = createProgress([throwing(new UserCanceled())]);
 
-    assert.throws(() => progress.phase("Preparing"), isUserCancelled);
+    assert.throws(() => progress.phase("Preparing"), isUserCanceled);
 });
 
 test("a stop wrapped in context is still a stop", () => {
     const wrapped = new Error("while drawing", { cause: hostCancellation() });
     const progress = createProgress([throwing(wrapped)]);
 
-    assert.throws(() => progress.phase("Preparing"), isUserCancelled);
+    assert.throws(() => progress.phase("Preparing"), isUserCanceled);
 });
 
 test("nothing to report to is nothing to be stopped by", () => {

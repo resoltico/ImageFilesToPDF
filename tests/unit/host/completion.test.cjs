@@ -1,0 +1,69 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { runOutcome } = require("../../../src/core/outcomes.js");
+const { summarizeRun } = require("../../../src/core/run-summary.js");
+const { headline, showCompletion } = require("../../../src/host/completion.js");
+
+const saved = { state: "saved", sources: ["/a/one.png"], pages: 1, output: "/a/one.pdf", issues: [] };
+const recovered = { state: "recovered", sources: ["/b/two.png"], pages: 1, recovery: "/Downloads/two.pdf", issues: [] };
+const failed = { state: "failed", sources: ["/c/three.png"], pages: 0, issues: [{ code: "damaged", message: "damaged", diagnostic: { command: "vips copy" } }] };
+
+function headlineOf(documents) {
+    return headline(summarizeRun(runOutcome(documents)));
+}
+
+test("a recovered PDF is never reported as nothing created", () => {
+    assert.equal(headlineOf([recovered]),
+        "Finished with issues.\n1 PDF could not be saved where it was meant to go and was kept elsewhere; the location is below.");
+    assert.equal(headlineOf([saved, recovered, { ...recovered, recovery: "/Downloads/four.pdf" }]),
+        "Finished with issues.\nCreated 1 PDF. 2 PDFs could not be saved where they were meant to go and were kept elsewhere; the location is below.");
+});
+
+test("an incomplete run finishes with issues and a complete one only counts", () => {
+    assert.equal(headlineOf([saved]), "Created 1 PDF.");
+    assert.equal(headlineOf([failed]), "Finished with issues.\nNo PDF was created.");
+    assert.equal(headlineOf([saved, { ...failed, state: "not-started", issues: [] }]), "Stopped. 1 PDF not created.\nCreated 1 PDF.");
+});
+
+// Paged dialogs stand in for the native alert: with no AppKit bridge, each answer is a button name.
+function scriptedApp(answers) {
+    const seen = [];
+    return { seen, displayDialog(message, options) { seen.push({ message, options }); return { buttonReturned: answers.shift() }; } };
+}
+
+test("Show in Finder reveals every saved and recovered PDF", () => {
+    const app = scriptedApp(["Show in Finder"]);
+    const revealed = [];
+    showCompletion(app, runOutcome([saved, recovered]), (paths) => revealed.push(paths));
+    assert.deepEqual(revealed, [["/a/one.pdf", "/Downloads/two.pdf"]]);
+    assert.deepEqual(app.seen[0].options.buttons, ["Show in Finder", "OK"]);
+});
+
+test("Show in Finder appears for saved PDFs alone and not when nothing exists", () => {
+    const withSaved = scriptedApp(["OK"]);
+    showCompletion(withSaved, runOutcome([saved]), () => assert.fail("OK must not reveal"));
+    assert.deepEqual(withSaved.seen[0].options.buttons, ["Show in Finder", "OK"]);
+    const none = scriptedApp(["OK"]);
+    showCompletion(none, runOutcome([{ ...failed, issues: [{ code: "damaged", message: "damaged" }] }]));
+    assert.deepEqual(none.seen[0].options.buttons, ["OK"]);
+});
+
+test("Details returns to the summary with Back until the summary is dismissed", () => {
+    const app = scriptedApp(["Details", "Back", "Details", "Back", "Show in Finder"]);
+    const revealed = [];
+    showCompletion(app, runOutcome([saved, failed]), (paths) => revealed.push(paths));
+    assert.equal(app.seen.length, 5);
+    assert.deepEqual(app.seen[0].options.buttons, ["Show in Finder", "Details", "OK"]);
+    assert.deepEqual(app.seen[1].options.buttons, ["Back"]);
+    assert.match(app.seen[1].message, /^code: damaged$/mu);
+    assert.match(app.seen[1].message, /command: vips copy/u);
+    assert.deepEqual(app.seen[2].options.buttons, app.seen[0].options.buttons, "the summary comes back unchanged");
+    assert.deepEqual(revealed, [["/a/one.pdf"]]);
+});
+
+test("OK on the summary after Details ends the run without revealing", () => {
+    const app = scriptedApp(["Details", "Back", "OK"]);
+    showCompletion(app, runOutcome([saved, failed]), () => assert.fail("OK must not reveal"));
+    assert.equal(app.seen.length, 3);
+});

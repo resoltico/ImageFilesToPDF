@@ -32,7 +32,7 @@ function buildPdfcpuProbeArgv(pdfcpuPath) {
 }
 
 /*
- * vips reports an unrecognised flag as "Unknown option --x" and a missing
+ * vips reports an unrecognized flag as "Unknown option --x" and a missing
  * input as a load failure, so only the former means the build is too old.
  */
 /*
@@ -45,7 +45,7 @@ function isVipsUsable(probeOutput) {
     return /VipsForeignLoad/u.test(String(probeOutput));
 }
 
-/* Stable releases only; an unrecognised or prerelease version fails closed. */
+/* Stable releases only; an unrecognized or prerelease version fails closed. */
 function isPdfcpuUsable(probeOutput) {
     const match = /^version: v(?<version>\d+\.\d+\.\d+)[ \t]*$/mu.exec(String(probeOutput));
 

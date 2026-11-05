@@ -50,7 +50,7 @@ test("a hint sits past the control it belongs to, whatever its width", () => {
     const { view, controls, spec } = build();
     const { hints } = columnsOf(view);
 
-    assert.equal(hints.length, 3, "the colour and the two numbers");
+    assert.equal(hints.length, 3, "the color and the two numbers");
 
     for (const row of spec.rows.filter((candidate) => candidate.hint)) {
         const control = controls[row.key];
@@ -130,8 +130,8 @@ test("a choice row can be marked too, not only a typed one", () => {
     assert.equal(controls.paperSize.backgroundColor.name, "systemRed");
 });
 
-test("a hint is centred against the field it describes", () => {
-    // Off-centre by a few points reads as a misalignment rather than as a
+test("a hint is centered against the field it describes", () => {
+    // Off-center by a few points reads as a misalignment rather than as a
     // caption, and the sign of the offset decides whether it sits above or
     // below the value it qualifies.
     const { view, controls } = buildForm(createFakeObjC(), formSpec(), WIDGETS);
@@ -140,8 +140,8 @@ test("a hint is centred against the field it describes", () => {
     const [hint] = hints;
     const field = controls.resolutionLimit;
 
-    const centreOf = (rect) => rect.bottom + (rect.height / 2);
+    const centerOf = (rect) => rect.bottom + (rect.height / 2);
 
-    assert.equal(centreOf(hint.rect), centreOf(field.rect));
+    assert.equal(centerOf(hint.rect), centerOf(field.rect));
     assert.ok(hint.rect.height < field.rect.height, "the hint is the smaller of the two");
 });

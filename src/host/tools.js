@@ -4,7 +4,7 @@ const { OperationError } = require("../core/errors.js");
 const { PRINTENV } = require("./backend-executables.js");
 const { shellQuote } = require("../backend/shell.js");
 const { runArgv } = require("./shell.js");
-const { isUserCancelled } = require("../core/errors.js");
+const { isUserCanceled } = require("../core/errors.js");
 const { hostError } = require("./cancellation.js");
 const { isExecutable } = require("./asking.js");
 
@@ -36,7 +36,7 @@ const ENVIRONMENT_OVERRIDES = {
 function optionalEnvironment(app, name) {
     try { return { state: "provided", value: String(runArgv(app, [PRINTENV, name], "reading the requested tool override")).trim() }; }
     catch (error) {
-        if (isUserCancelled(error)) { throw error; }
+        if (isUserCanceled(error)) { throw error; }
         if (error.cause?.errorNumber === 1) { return { state: "absent" }; }
         throw error;
     }
@@ -54,7 +54,7 @@ function searchPath(app, executableName) {
         return found && isExecutable(app, found) ? found : "";
     } catch (caught) {
         const error = hostError(caught);
-        if (isUserCancelled(error) || error instanceof TypeError || error instanceof ReferenceError) { throw error; }
+        if (isUserCanceled(error) || error instanceof TypeError || error instanceof ReferenceError) { throw error; }
         return "";
     }
 }

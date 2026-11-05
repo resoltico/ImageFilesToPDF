@@ -1,8 +1,8 @@
 "use strict";
 
 const { normalizeSettings } = require("../core/settings.js");
-const { UserCancelled } = require("../core/errors.js");
-const { readColour } = require("./settings-model.js");
+const { UserCanceled } = require("../core/errors.js");
+const { readColor } = require("./settings-model.js");
 const { chooseRequired, askUntil, promptInteger } = require("./prompts.js");
 
 /*
@@ -28,37 +28,37 @@ const { defaultAnswers } = require("./settings-model.js");
 const { selectionSummary, outputAlternatives } = require("./output-description.js");
 const { confirmSettings } = require("./settings-review.js");
 
-const CUSTOM_COLOUR = "Custom colour...";
+const CUSTOM_COLOR = "Custom color...";
 
 /*
- * A colour typed rather than chosen, with its own wording: "Page background:"
+ * A color typed rather than chosen, with its own wording: "Page background:"
  * is the question a list answers, and not this one.
  */
-const COLOUR_QUESTION = { prompt: "Page background as six hexadecimal digits:" };
+const COLOR_QUESTION = { prompt: "Page background as six hexadecimal digits:" };
 
 /*
  * The stepwise path has no control that is a list and a field at once, so the
  * two are two steps: the presets, and -- only when the last of them is chosen
- * -- the colour itself.
+ * -- the color itself.
  *
- * A remembered colour that is one of the presets opens on that preset. One
- * that is not opens on "Custom colour...", with the colour itself already in
- * the prompt behind it, because a colour worth remembering is worth offering
+ * A remembered color that is one of the presets opens on that preset. One
+ * that is not opens on "Custom color...", with the color itself already in
+ * the prompt behind it, because a color worth remembering is worth offering
  * back rather than making somebody type again.
  */
 function openingChoice(opening) {
     const preset = BACKGROUND.choices.find((choice) => choice.value === opening);
 
-    return preset ? preset.label : CUSTOM_COLOUR;
+    return preset ? preset.label : CUSTOM_COLOR;
 }
 
-function promptColour(app, opening) {
-    return askUntil(app, { ...COLOUR_QUESTION, defaultAnswer: opening }, readColour);
+function promptColor(app, opening) {
+    return askUntil(app, { ...COLOR_QUESTION, defaultAnswer: opening }, readColor);
 }
 
-function chooseColour(app, opening) {
+function chooseColor(app, opening) {
     const choice = app.chooseFromList(
-        [...labelsOf(BACKGROUND), CUSTOM_COLOUR],
+        [...labelsOf(BACKGROUND), CUSTOM_COLOR],
         {
             withTitle: APP_NAME,
             withPrompt: BACKGROUND.prompt,
@@ -67,11 +67,11 @@ function chooseColour(app, opening) {
     );
 
     if (!choice) {
-        throw new UserCancelled();
+        throw new UserCanceled();
     }
 
-    return String(choice[0]) === CUSTOM_COLOUR
-        ? promptColour(app, opening)
+    return String(choice[0]) === CUSTOM_COLOR
+        ? promptColor(app, opening)
         : valueOfLabel(BACKGROUND, choice[0]);
 }
 
@@ -85,10 +85,10 @@ function collectDialogSettings(app, answers = defaultAnswers(), context = {}) {
         orientation: chooseRequired(app, ORIENTATION, answers.orientation),
         resolutionLimit: promptInteger(app, RESOLUTION, answers.resolutionLimit),
         quality: promptInteger(app, QUALITY, answers.quality),
-        background: chooseColour(app, answers.background)
+        background: chooseColor(app, answers.background)
     };
 
     return confirmSettings(app, normalizeSettings(settings), context);
 }
 
-module.exports = { chooseColour, collectDialogSettings };
+module.exports = { chooseColor, collectDialogSettings };

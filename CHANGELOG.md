@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-11-05
+
+- Receipt state and issue code `cancelled` is now `canceled`; settings issue code `colour` is now `color`. Update receipt consumers; no aliases are provided.
+- Selection refusals replace `selection-refused` with specific codes such as `unsupported-format`, `link` and `empty-folder`; see [HEADLESS.md](HEADLESS.md).
+- The `no-images` issue message is now one sentence; read the refused items from `rejected` instead of the message.
+- Usage errors name the one problem and show the run line instead of the full help; `--help` lists numeric hints after the default.
+- The stderr report lists only non-zero counts, drops the version line and ends with `Elapsed: …`; the dialog ends with the elapsed time and then the version.
+- Symbolic links and special files (pipes, sockets, devices) are now refused with separate reasons.
+- Interface text, receipt messages and docs use US English; for example, the cancellation message now reads "User canceled.".
+- Completion offers Show in Finder whenever a PDF was saved or recovered and reveals all of them; Details now has Back, which returns to the summary.
+- Incomplete runs say "Finished with issues."; a PDF recovered elsewhere is counted in the headline instead of "No PDF was created."; stopped runs begin with "Stopped.".
+- Settings corrections say which settings to correct and list each problem at the top of the scrollable note; the stepwise resolution prompt shows its unit.
+- The selection review lists each item left out by name and reason, with its containing folder on the next line; without AppKit its count leads the text.
+- The settings form's note opens at its first line instead of partway down when its text overflows.
+- Report suspected vulnerabilities privately through GitHub private vulnerability reporting, as described in [SECURITY.md](SECURITY.md).
+
 ## [2.0.0] - 2026-10-30
 
 - Require stable pdfcpu 0.16.4 or later; run `brew update` and `brew upgrade pdfcpu`. Invalid explicit backend overrides fail setup.
@@ -32,9 +48,9 @@
   and make covered source and modifications available as required by MPL 2.0.
 - The standalone JXA header includes the MPL notice and a link to the source
   for its version. Releases include the full `LICENSE` as an attested asset.
-- **Breaking:** pdfcpu 0.16.1 or later is required. Older releases and prerelease
+- pdfcpu 0.16.1 or later is required. Older releases and prerelease
   builds are unsupported; run `brew update` and `brew upgrade pdfcpu` to upgrade.
-- **Breaking:** the maximum resolution is now 1017 DPI, reduced from 1041,
+- the maximum resolution is now 1017 DPI, reduced from 1041,
   to fit pdfcpu's stateless 100,000,000-pixel image limit. Settings above the
   new ceiling must be lowered before conversion.
 - PDF creation, page counting and strict validation use pdfcpu's stateless

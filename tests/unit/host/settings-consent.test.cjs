@@ -14,12 +14,12 @@ test("native cancellation wins over valid answers and never invokes fallback", (
     let presentations = 0;
     const present = () => {
         presentations += 1;
-        assert.equal(presentations, 1, "a cancelled form must not be shown again");
+        assert.equal(presentations, 1, "a canceled form must not be shown again");
 
-        return { cancelled: true, answers: defaultAnswers() };
+        return { canceled: true, answers: defaultAnswers() };
     };
 
-    assert.throws(() => collectSettings(app, {}, BRIDGE, present), /User cancelled/u);
+    assert.throws(() => collectSettings(app, {}, BRIDGE, present), /User canceled/u);
     assert.equal(presentations, 1);
     assert.deepEqual(app.listPrompts, []);
     assert.deepEqual(app.dialogs, []);

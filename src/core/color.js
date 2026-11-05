@@ -1,26 +1,26 @@
 "use strict";
 
-const HEX_COLOUR =
+const HEX_COLOR =
     /^#?(?<red>[\da-f]{2})(?<green>[\da-f]{2})(?<blue>[\da-f]{2})$/iu;
 const HEX_RADIX = 16;
 
-const COLOUR_ERROR = "must be six hexadecimal digits, for example #C7DAE8. The # is optional, and transparency is not supported.";
+const COLOR_ERROR = "must be six hexadecimal digits, for example #C7DAE8. The # is optional, and transparency is not supported.";
 
 function groupsOf(value) {
     if (typeof value !== "string") {
         return null;
     }
 
-    const match = HEX_COLOUR.exec(value.trim());
+    const match = HEX_COLOR.exec(value.trim());
 
     return match ? match.groups : null;
 }
 
-function normalizeColour(value) {
+function normalizeColor(value) {
     const groups = groupsOf(value);
 
     if (!groups) {
-        throw new Error(COLOUR_ERROR);
+        throw new Error(COLOR_ERROR);
     }
 
     return `#${groups.red}${groups.green}${groups.blue}`.toUpperCase();
@@ -30,7 +30,7 @@ function rgbOf(value) {
     const groups = groupsOf(value);
 
     if (!groups) {
-        throw new Error(COLOUR_ERROR);
+        throw new Error(COLOR_ERROR);
     }
 
     return {
@@ -40,4 +40,4 @@ function rgbOf(value) {
     };
 }
 
-module.exports = { COLOUR_ERROR, normalizeColour, rgbOf };
+module.exports = { COLOR_ERROR, normalizeColor, rgbOf };

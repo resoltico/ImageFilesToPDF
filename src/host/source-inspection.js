@@ -1,6 +1,6 @@
 "use strict";
 const { hostError } = require("./cancellation.js");
-const { OperationError, isUserCancelled, errorMessage, commandOf } = require("../core/errors.js");
+const { OperationError, isUserCanceled, errorMessage, commandOf } = require("../core/errors.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { sourceIssues } = require("../core/source-policy.js");
 const { REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata,
@@ -12,7 +12,7 @@ const { HEADER_ARGV_BUDGET, runHeaderArgv } = require("./shell.js");
 function expectedHeaderFailure(caught) {
     const error = hostError(caught);
     const [issue] = issuesOf(error, "inspection");
-    if (isUserCancelled(error) || issue.code === ISSUE.fault) { throw error; }
+    if (isUserCanceled(error) || issue.code === ISSUE.fault) { throw error; }
     return { error, issue };
 }
 

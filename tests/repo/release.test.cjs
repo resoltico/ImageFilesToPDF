@@ -3,8 +3,11 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { readFile } = require("node:fs/promises");
 
+// The banner names the version package.json declares; the consistency gate keeps the other declarations in agreement.
+const { version } = require("../../package.json");
+
 function checkBanner(release) {
-    assert.match(release, /^\/\*\n \* Image Files to PDF 2\.0\.0\n/u);
+    assert.ok(release.startsWith(`/*\n * Image Files to PDF ${version}\n`), "the banner names the declared version");
     assert.match(release, /SPDX-License-Identifier: MPL-2\.0/u);
     assert.match(release, /Source Code Form: https:\/\/github\.com\/resoltico\/ImageFilesToPDF/u);
     assert.match(release, /Requires macOS 12\.3 or later/u);

@@ -23,6 +23,7 @@ const { attributesAt, identityOf, kindOf } = require("./native-file-attributes.j
 
 const DIRECTORY = "NSFileTypeDirectory";
 const REGULAR = "NSFileTypeRegular";
+const SYMBOLIC_LINK = "NSFileTypeSymbolicLink";
 
 /*
  * Which file this is, as the filesystem knows it: the volume it is on and its
@@ -40,7 +41,8 @@ function kindFrom(attributes, workspace, path, ns) {
     }
 
     if (attributes.NSFileType !== DIRECTORY) {
-        return attributes.NSFileType === REGULAR ? "file" : "other";
+        if (attributes.NSFileType === REGULAR) { return "file"; }
+        return attributes.NSFileType === SYMBOLIC_LINK ? "link" : "other";
     }
 
     return workspace.isFilePackageAtPath(ns(path)) ? "package" : "directory";
@@ -80,7 +82,7 @@ function createTree(objc, ns, ref) {
         },
 
         // So that a folder selected twice, or a folder and its parent, are
-        // recognised as the same folder.
+        // recognized as the same folder.
         standardize(path) {
             return objc.unwrap(ns(path).stringByStandardizingPath);
         }

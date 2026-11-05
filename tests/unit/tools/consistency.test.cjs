@@ -72,7 +72,7 @@ test("each file that states the Node version is compared", async () => {
         )));
 });
 
-test("checkConsistency summarises every fact it agreed", async () => {
+test("checkConsistency summarizes every fact it agreed", async () => {
     const { checkConsistency } = await loadConsistency();
 
     assert.equal(

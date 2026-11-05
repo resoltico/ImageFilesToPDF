@@ -4,7 +4,7 @@ const assert=require("node:assert/strict");
 const {createJob,runJob}=require("../../../src/host/job.js");
 const {createFakeHost}=require("../ports/fake-host.cjs");
 const {imageOf}=require("../ports/fake-job.cjs");
-const {UserCancelled}=require("../../../src/core/errors.js");
+const {UserCanceled}=require("../../../src/core/errors.js");
 const {removeOwned,requireReleasedResources}=require("../../../src/host/owned-cleanup.js");
 const {removeFile}=require("../../../src/host/shell.js");
 const settings={paperSize:"A4",orientation:"Portrait",mode:"separate",resolutionLimit:72,quality:85,background:"#FFFFFF"};
@@ -39,9 +39,9 @@ test("cleanup after import fails closed before validation and preserves a bounde
 });
 
 test("cleanup cancellation remains cancellation and never erases prior outcomes",()=>{
-    const {job}=fixture([["'/bin/rm' '-f'",new UserCancelled()]]);
+    const {job}=fixture([["'/bin/rm' '-f'",new UserCanceled()]]);
     const result=runJob(job,[imageOf("/a/1.png"),imageOf("/a/2.png")]);
-    assert.equal(result.state,"cancelled");assert.equal(result.documents[0].state,"cancelled");
+    assert.equal(result.state,"canceled");assert.equal(result.documents[0].state,"canceled");
     assert.equal(result.documents[1].state,"not-started");
 });
 

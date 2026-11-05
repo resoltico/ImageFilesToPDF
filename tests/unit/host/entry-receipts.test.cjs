@@ -43,17 +43,17 @@ test("interactive Create produces no return value or stray text output",()=>{
     const [,completion]=state.alerts;
     assert.equal(completion.informativeText,"Created 1 PDF.");
     assert.doesNotMatch(completion.accessoryView.documentView.string,/Created 1 PDF\./u);
-    assert.match(completion.accessoryView.documentView.string,/1 PDF saved; 0 PDFs recovered; 0 PDFs failed\./u);
+    assert.match(completion.accessoryView.documentView.string,/^1 saved\.$/mu);
 });
 
 test("interactive errors are presented and cancellation stays silent",()=>{
     const {state}=fixture({executables:[]});
     assert.equal(run([["/source.png"],{}]),undefined);
     assert.equal(state.alerts.length,1);
-    const cancelled=fixture();
-    cancelled.state.responses.push(1001);
+    const canceled=fixture();
+    canceled.state.responses.push(1001);
     assert.equal(run([["/source.png"],{}]),undefined);
-    assert.equal(cancelled.state.alerts.length,1);
+    assert.equal(canceled.state.alerts.length,1);
 });
 
 test("separate mode and unmeasurable prepared pages produce truthful entry outcomes",()=>{
@@ -85,7 +85,7 @@ test("setup failure closes every progress surface before presenting its structur
     const closed=[];globalThis.Progress={get totalUnitCount(){return closed.at(-1);},set totalUnitCount(value){closed.push(value);}};
     assert.equal(run([["/source.png"],{}]),undefined);
     const [alert]=state.alerts;
-    assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","Finished with errors.\nNo PDF was created."]);
+    assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","Finished with issues.\nNo PDF was created."]);
     assert.deepEqual(alert.buttons,["OK", "Details"]);
     assert.match(alert.accessoryView.documentView.string,/brew install vips pdfcpu/u);
     assert.doesNotMatch(alert.accessoryView.documentView.string,/diagnostic|stack/u);

@@ -10,7 +10,7 @@ fail() {
 # Reads one pixel of a rendered page as "R G B".
 #
 # vips getpoint prints the channels space separated on a single line, so the
-# separators must be normalised rather than deleted.
+# separators must be normalized rather than deleted.
 getpoint() {
     vips getpoint "$1" "$2" "$3" | tr -d '[],' | tr -s ' ' ' '
 }

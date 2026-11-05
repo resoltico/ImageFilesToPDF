@@ -27,7 +27,7 @@ test("a subfolder that cannot be read comes back with the images", () => {
 
     assert.deepEqual(outcome.found, ["/t/a.png", "/t/sub/b.png"]);
     assert.deepEqual(outcome.problems, [
-        { path: "/t/locked", reason: "This item could not be read." }
+        { path: "/t/locked", code: "unreadable" }
     ]);
 });
 
@@ -44,8 +44,8 @@ test("an entry the walk cannot look at comes back too", () => {
 
     assert.deepEqual(outcome.found, ["/t/a.png"]);
     assert.deepEqual(outcome.problems, [
-        { path: "/t/b.png", reason: "This item could not be examined." },
-        { path: "/t/sub", reason: "This item could not be examined." }
+        { path: "/t/b.png", code: "unexaminable" },
+        { path: "/t/sub", code: "unexaminable" }
     ]);
 });
 
@@ -57,16 +57,16 @@ test("a folder holding nothing new is not a folder holding nothing", () => {
     const outcome = imagesInFolder(tree, "/t", new Set(["/t/a.png"]));
 
     assert.deepEqual(outcome.found, []);
-    assert.equal(outcome.reason, "");
+    assert.equal(outcome.code, "");
 });
 
 test("unexamined images do not establish an empty folder", () => {
     const tree = treeOf({ "/t": ["locked"] }, { "/t/locked": "directory" });
     const outcome = imagesInFolder(tree, "/t", new Set());
 
-    assert.equal(outcome.reason, "");
+    assert.equal(outcome.code, "");
     assert.deepEqual(outcome.problems, [
-        { path: "/t/locked", reason: "This item could not be read." }
+        { path: "/t/locked", code: "unreadable" }
     ]);
 });
 
@@ -75,7 +75,7 @@ test("the folder that was selected is reported as itself, once", () => {
     // unreadable inside it.
     const outcome = imagesInFolder(treeOf({}), "/nope", new Set());
 
-    assert.equal(outcome.reason, "This item could not be read.");
+    assert.equal(outcome.code, "unreadable");
     assert.deepEqual(outcome.problems, []);
 });
 
@@ -83,11 +83,11 @@ test("the folder that was selected is reported as itself, once", () => {
 test("failed child traversal cannot establish an empty parent folder",()=>{
     const tree=treeOf({"/t":["child"],"/t/child":null},{"/t/child":"directory"});
     const result=imagesInFolder(tree,"/t",new Set());
-    assert.equal(result.reason,"");assert.deepEqual(result.problems,[{path:"/t/child",reason:"This item could not be read."}]);
+    assert.equal(result.code,"");assert.deepEqual(result.problems,[{path:"/t/child",code:"unreadable"}]);
 });
 
 test("all unknown file identities are refused without claiming known-empty",()=>{
     const tree=treeOf({"/t":["first.png","second.png"]},{},{"/t/first.png":"","/t/second.png":""});
     const result=imagesInFolder(tree,"/t",new Set());
-    assert.deepEqual(result,{found:[],reason:"",problems:[{path:"/t/first.png",reason:"This item could not be examined."},{path:"/t/second.png",reason:"This item could not be examined."}]});
+    assert.deepEqual(result,{found:[],code:"",problems:[{path:"/t/first.png",code:"unexaminable"},{path:"/t/second.png",code:"unexaminable"}]});
 });

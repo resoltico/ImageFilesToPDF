@@ -14,8 +14,8 @@ const { hostError } = require("../../../src/host/cancellation.js");
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
-    UserCancelled,
-    isUserCancelled
+    UserCanceled,
+    isUserCanceled
 } = require("../../../src/core/errors.js");
 
 function wrap(error, depth) {
@@ -29,7 +29,7 @@ function wrap(error, depth) {
 }
 
 function hostCancellation() {
-    const error = new Error("User cancelled.");
+    const error = new Error("User canceled.");
 
     error.errorNumber = -128;
 
@@ -38,14 +38,14 @@ function hostCancellation() {
 
 test("a cancellation is one however many layers are over it", () => {
     for (const depth of [0, 1, 2, 5]) {
-        assert.equal(isUserCancelled(wrap(new UserCancelled(), depth)), true, `own, ${depth}`);
-        assert.equal(isUserCancelled(wrap(hostError(hostCancellation()), depth)), true, `host, ${depth}`);
+        assert.equal(isUserCanceled(wrap(new UserCanceled(), depth)), true, `own, ${depth}`);
+        assert.equal(isUserCanceled(wrap(hostError(hostCancellation()), depth)), true, `host, ${depth}`);
     }
 });
 
 test("an ordinary failure stays ordinary however deep it is", () => {
     for (const depth of [0, 1, 5]) {
-        assert.equal(isUserCancelled(wrap(new Error("broke"), depth)), false, String(depth));
+        assert.equal(isUserCanceled(wrap(new Error("broke"), depth)), false, String(depth));
     }
 
     // A number that is not the one. Reading it loosely would end runs in
@@ -53,12 +53,12 @@ test("an ordinary failure stays ordinary however deep it is", () => {
     const nearly = new Error("nearly");
 
     nearly.errorNumber = 128;
-    assert.equal(isUserCancelled(nearly), false);
+    assert.equal(isUserCanceled(nearly), false);
 });
 
 test("nothing is not a cancellation", () => {
     for (const value of [null, undefined, 0, ""]) {
-        assert.equal(isUserCancelled(value), false, String(value));
+        assert.equal(isUserCanceled(value), false, String(value));
     }
 });
 
@@ -70,18 +70,18 @@ test("the walk is bounded, and the bound is where it says it is", () => {
     // that can drift.
     const DEEPEST = 7;
 
-    assert.equal(isUserCancelled(wrap(new UserCancelled(), DEEPEST)), true, "at the bound");
+    assert.equal(isUserCanceled(wrap(new UserCanceled(), DEEPEST)), true, "at the bound");
     assert.equal(
-        isUserCancelled(wrap(new UserCancelled(), DEEPEST + 1)),
+        isUserCanceled(wrap(new UserCanceled(), DEEPEST + 1)),
         false,
         "one link past it"
     );
-    assert.equal(isUserCancelled(wrap(new UserCancelled(), 20)), false);
+    assert.equal(isUserCanceled(wrap(new UserCanceled(), 20)), false);
 
     const circular = new Error("round");
 
     circular.cause = circular;
-    assert.equal(isUserCancelled(circular), false, "and it terminates");
+    assert.equal(isUserCanceled(circular), false, "and it terminates");
 });
 
 test("a cancellation the runtime wraps the way it really wraps them", () => {
@@ -93,5 +93,5 @@ test("a cancellation the runtime wraps the way it really wraps them", () => {
     });
     const named = new Error(`photo.png: ${command.message}`, { cause: command });
 
-    assert.equal(isUserCancelled(named), true);
+    assert.equal(isUserCanceled(named), true);
 });

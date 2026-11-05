@@ -61,10 +61,10 @@ test("reversing the pair reverses the answer, and nothing else", () => {
     }));
 });
 
-test("a sorted list is in order between every pair, not only neighbours", () => {
+test("a sorted list is in order between every pair, not only neighbors", () => {
     // Transitivity, without discarding any input. Sorting consults only the
     // pairs it happens to compare, so a comparison that is not transitive
-    // leaves a list whose neighbours agree and whose far ends do not.
+    // leaves a list whose neighbors agree and whose far ends do not.
     fc.assert(fc.property(fc.array(NAME), (names) => {
         const sorted = [...names].sort(naturalCompare);
 

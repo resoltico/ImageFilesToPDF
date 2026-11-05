@@ -22,7 +22,7 @@ test("a rejected answer is explained where it is corrected", () => {
     // default -- so the one thing worth keeping, the value being corrected,
     // was the one thing thrown away. The reason now leads the prompt that
     // asks again, with what was typed still in it, and the Cancel on that
-    // prompt is honoured where the notice's never was.
+    // prompt is honored where the notice's never was.
     const app = createFakeApp();
 
     app.nextAnswer = ["3O0", "600"];

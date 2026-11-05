@@ -2,12 +2,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { inspectSelection } = require("../../../src/application/inspection.js");
-const { OperationError, UserCancelled } = require("../../../src/core/errors.js");
+const { OperationError, UserCanceled } = require("../../../src/core/errors.js");
 const image = { loader: "pngload", format: "PNG", width: 600, height: 400, bands: 3, pages: 1, orientation: 1, icc: false, interpretation: "srgb" };
 
 function fixture(count = 2, overrides = {}) {
     const events = [];
-    const selection = { selectedFolders: 1, rejected: [{ path: "/notes.txt", reason: "unsupported", code: "selection-refused" }],
+    const selection = { selectedFolders: 1, rejected: [{ path: "/notes.txt", reason: "unsupported", code: "unsupported-format", stage: "selection" }],
         images: Array.from({ length: count }, (ignored, index) => ({ path: `/source/${index}.png`, originalName: `${index}.png`, folder: "/out/" })) };
     const ports = {
         begin: (total) => events.push(["begin", total]),
@@ -71,7 +71,7 @@ test("unavailable source facts are refusals with a separate diagnostic", () => {
 });
 
 for (const operation of ["fileFacts", "inspect"]) {
-    for (const error of [new UserCancelled(), new TypeError("adapter fault"), new OperationError("wrapped fault", { cause: new TypeError("bridge fault") })]) {
+    for (const error of [new UserCanceled(), new TypeError("adapter fault"), new OperationError("wrapped fault", { cause: new TypeError("bridge fault") })]) {
         test(`${operation} does not relabel ${error.name} as a source refusal`, () => {
             const sample = fixture(1, { [operation]() { throw error; } });
             assert.throws(() => inspectSelection(sample.ports, sample.selection), (caught) => caught === error);

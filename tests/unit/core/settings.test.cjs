@@ -64,8 +64,8 @@ test("normalizeSettings enforces the numeric ranges", () => {
     }
 });
 
-test("the vips vector is the three components of the colour", () => {
-    // One number for a grey and three for a colour is what the table of four
+test("the vips vector is the three components of the color", () => {
+    // One number for a gray and three for a color is what the table of four
     // held. The reason was a one-band image reaching the flatten, which the
     // resize stage rules out -- and vips broadcasts a single value across
     // every band in any case, so the two forms said the same thing.
@@ -77,9 +77,9 @@ test("the vips vector is the three components of the colour", () => {
     assert.throws(() => backgroundVector("black"), /six hexadecimal digits/u);
 });
 
-test("a grey is three components like anything else", () => {
-    // Nothing distinguishes them any more, and nothing has to: a colour that
-    // is grey in two of its three channels was the case a shorter form got
+test("a gray is three components like anything else", () => {
+    // Nothing distinguishes them any more, and nothing has to: a color that
+    // is gray in two of its three channels was the case a shorter form got
     // wrong, and there is no shorter form to get it wrong.
     assert.equal(backgroundVector("#7F7F7F"), "127,127,127");
     assert.equal(backgroundVector("#C7C7E8"), "199,199,232");
@@ -87,7 +87,7 @@ test("a grey is three components like anything else", () => {
 });
 
 test("every offered background has a vips vector", () => {
-    // A colour that reaches the dialog without one would fail mid-run, after
+    // A color that reaches the dialog without one would fail mid-run, after
     // the user has answered everything.
     for (const hex of ["#FFFFFF", "#000000", "#8E79E0", "#204486", "#C7DAE8"]) {
         assert.match(backgroundVector(hex), /^\d+,\d+,\d+$/u, hex);
@@ -95,7 +95,7 @@ test("every offered background has a vips vector", () => {
 });
 
 test("the vips vector is the hex it was made from", () => {
-    // Whatever else it is, the numbers vips is given have to be the colour
+    // Whatever else it is, the numbers vips is given have to be the color
     // that was asked for.
     for (const hex of ["#FFFFFF", "#000000", "#8E79E0", "#204486", "#C7DAE8"]) {
         assert.deepEqual(

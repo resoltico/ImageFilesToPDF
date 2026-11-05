@@ -13,6 +13,23 @@ test("CLI grammar rejects incomplete/unknown commands without any I/O", () => {
     assert.deepEqual(cliCommand(["--version"]), { kind: "version" });
 });
 
+test("a usage error states the one problem and the run line, never the whole help", () => {
+    const run = "Usage: osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless <settings.json> <path…>\nRun with --help to see the settings.";
+    for (const [args, problem] of [
+        [[], "No arguments were given."], [["--"], "No arguments were given."],
+        [["--headles", "a", "b"], "Unknown option: --headles."], [["image.png"], "Unknown option: image.png."],
+        [["--headless"], "--headless needs a settings file and at least one path."],
+        [["--headless", "config"], "--headless needs a settings file and at least one path."],
+        [["--headless", "", "image"], "An argument is empty."], [[""], "An argument is empty."],
+        [["--help", "extra"], "--help and --version take no other arguments."], [["--version", "--help"], "--help and --version take no other arguments."]
+    ]) {
+        assert.throws(() => cliCommand(args, { read() { throw new Error("must not read"); } }), (error) => {
+            assert.deepEqual(error.issues, [{ code: "usage", stage: "request", message: `${problem}\n${run}` }], args.join(" "));
+            return true;
+        });
+    }
+});
+
 test("CLI request uses one settings read and resolves every operand through its path port", () => {
     const reads = [];
     const port = io({ ...settings, timestamp: "20260904_010203" });
@@ -48,7 +65,7 @@ test("help renders canonical names, choice captions, defaults and bounds", () =>
 test("help states each numeric range once and documents the optional timestamp", () => {
     const text = usage();
     assert.match(text, /resolutionLimit — Maximum resolution: 72–1017 ppi; default 300\n/u);
-    assert.match(text, /quality — JPEG quality: 1–100, JPEG re-encoding only; default 82\n/u);
+    assert.match(text, /quality — JPEG quality: 1–100; default 82; JPEG re-encoding only\n/u);
     assert.equal(text.split("72–1017").length, 2, "the resolution range appears once");
     assert.match(text, /timestamp — YYYYMMDD_HHMMSS in local time; default now/u);
 });

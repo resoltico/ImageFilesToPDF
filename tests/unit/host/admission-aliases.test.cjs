@@ -67,7 +67,7 @@ test("a link is refused rather than followed", () => {
     // the folder it was given and how it converts the same photograph twice.
     // Asking the shell instead followed it -- test -f reports on the target --
     // so a link and the file it points to were two images.
-    const tree = treeOf({}, { "/a/link.jpg": "other" }, {
+    const tree = treeOf({}, { "/a/link.jpg": "link" }, {
         "/a/image.jpg": "16777232:8",
         "/a/link.jpg": "16777232:9"
     });
@@ -82,7 +82,7 @@ test("a link inside a selected folder is refused when it is selected too", () =>
     // the photograph it points to in the PDF a second time.
     const tree = treeOf(
         { "/a": ["image.jpg", "link.jpg"] },
-        { "/a/link.jpg": "other" },
+        { "/a/link.jpg": "link" },
         { "/a/image.jpg": "16777232:8", "/a/link.jpg": "16777232:9" }
     );
     const app = createFakeApp();

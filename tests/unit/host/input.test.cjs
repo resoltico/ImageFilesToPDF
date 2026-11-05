@@ -18,7 +18,7 @@ test("a file URL is decoded to a POSIX path", () => {
 
 test("an item that is not a path resolves to nothing", () => {
     // Not an error: Shortcuts appends a parameters object to every Quick
-    // Action input, so this is the ordinary case, and one unrecognisable item
+    // Action input, so this is the ordinary case, and one unrecognizable item
     // must not discard the images beside it.
     assert.equal(inputItemToPosixPath("not-a-path"), "");
     assert.equal(inputItemToPosixPath({}), "");

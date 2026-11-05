@@ -115,7 +115,7 @@ test("a run with nowhere to remember still gets the form", () => {
     assert.deepEqual(host.listPrompts, [], "and nobody was asked six questions");
 });
 
-test("a cancelled run leaves the last run's settings alone", () => {
+test("a canceled run leaves the last run's settings alone", () => {
     // Nothing was confirmed, so there is nothing to remember -- and what is
     // already there belongs to the last run that did confirm.
     const memory = memoryHolding(encode(LAST_RUN));
@@ -123,13 +123,13 @@ test("a cancelled run leaves the last run's settings alone", () => {
 
     host.chooseFromList = () => false;
 
-    assert.throws(() => chooseSettings(host, { count: 1 }, { openMemory: memory.open }), /User cancelled/u);
+    assert.throws(() => chooseSettings(host, { count: 1 }, { openMemory: memory.open }), /User canceled/u);
     assert.deepEqual(memory.state.wrote, []);
 });
 
-test("a remembered colour that is no preset is offered back as a colour", () => {
+test("a remembered color that is no preset is offered back as a color", () => {
     // The stepwise path has a list and a prompt rather than one control, so a
-    // custom colour has to survive the trip through both of them.
+    // custom color has to survive the trip through both of them.
     const memory = memoryHolding(encode(LAST_RUN));
     const host = acceptingHost();
     const asked = [];
@@ -142,7 +142,7 @@ test("a remembered colour that is no preset is offered back as a colour", () => 
 
     chooseSettings(host, { count: 1 }, { openMemory: memory.open });
     assert.ok(
-        asked.includes("Custom colour..."),
-        `the colour list opened on ${JSON.stringify(asked)}`
+        asked.includes("Custom color..."),
+        `the color list opened on ${JSON.stringify(asked)}`
     );
 });

@@ -1,7 +1,7 @@
 "use strict";
 const { hostError } = require("./cancellation.js");
 const { formatDuration } = require("./formatting.js");
-const { OperationError, isUserCancelled } = require("../core/errors.js");
+const { OperationError, isUserCanceled } = require("../core/errors.js");
 const { failedRun } = require("../core/outcomes.js");
 const { executeRun } = require("../application/run.js");
 const { isCliInput } = require("./invocation-syntax.js");
@@ -86,7 +86,7 @@ function handled(app, input, headless) {
             if (!outcome && error.issues?.some((issue) => ["settings", "request"].includes(issue.stage))) { failed.state = "invalid"; }
             return failed;
         }
-        if (!isUserCancelled(error)) {
+        if (!isUserCanceled(error)) {
             showCompletion(app, failedRun(error, outcome));
         }
         return undefined;

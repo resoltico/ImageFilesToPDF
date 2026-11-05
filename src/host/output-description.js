@@ -51,7 +51,7 @@ function outputAlternatives(count = 0) {
         `${outputSummary("separate", count)}.`;
 }
 
-const PAGE_LAYOUT_NOTE = "Each image gets its own page, centred without " +
+const PAGE_LAYOUT_NOTE = "Each image gets its own page, centered without " +
     "cropping. The original files are not changed.";
 const ORDER_NOTE = "Pages follow the full path, with 2 before 10, not the " +
     "order you clicked.";

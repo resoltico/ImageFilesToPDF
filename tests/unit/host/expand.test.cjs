@@ -30,7 +30,7 @@ test("what nobody asked for is passed over without a word", () => {
     // A folder of documents would otherwise report a rejection for each one.
     const tree = treeOf(
         { "/t": ["a.png", "notes.txt", "clip.gif", ".hidden.png", "Photos.app", "link"] },
-        { "/t/Photos.app": "package", "/t/link": "other" }
+        { "/t/Photos.app": "package", "/t/link": "link" }
     );
 
     assert.deepEqual(imagesInFolder(tree, "/t", new Set()).found, ["/t/a.png"]);
@@ -41,12 +41,12 @@ test("a link with an image's name is still a link", () => {
     // folder it was given and how it finds the same file twice.
     const tree = treeOf(
         { "/t": ["photo.png"] },
-        { "/t/photo.png": "other" }
+        { "/t/photo.png": "link" }
     );
 
     assert.equal(
-        imagesInFolder(tree, "/t", new Set()).reason,
-        "This folder contains no supported images."
+        imagesInFolder(tree, "/t", new Set()).code,
+        "empty-folder"
     );
 });
 
@@ -55,16 +55,16 @@ test("a link is not followed, however it is reached", () => {
     // finds the same file twice.
     const tree = treeOf(
         { "/t": ["elsewhere"], "/elsewhere": ["a.png"] },
-        { "/t/elsewhere": "other" }
+        { "/t/elsewhere": "link" }
     );
 
-    assert.equal(imagesInFolder(tree, "/t", new Set()).reason, "This folder contains no supported images.");
+    assert.equal(imagesInFolder(tree, "/t", new Set()).code, "empty-folder");
 });
 
 test("a folder that cannot be read says so", () => {
     const tree = treeOf({ "/t": ["locked"] }, { "/t/locked": "directory" });
 
-    assert.equal(imagesInFolder(tree, "/nope", new Set()).reason, "This item could not be read.");
+    assert.equal(imagesInFolder(tree, "/nope", new Set()).code, "unreadable");
 });
 
 test("a folder holding nothing to convert says that, not nothing", () => {
@@ -73,8 +73,8 @@ test("a folder holding nothing to convert says that, not nothing", () => {
     const tree = treeOf({ "/t": ["notes.txt"] });
 
     assert.equal(
-        imagesInFolder(tree, "/t", new Set()).reason,
-        "This folder contains no supported images."
+        imagesInFolder(tree, "/t", new Set()).code,
+        "empty-folder"
     );
 });
 
@@ -96,7 +96,7 @@ test("a folder whose images are all in the run already is not called empty", () 
     // supported images", said about a folder of photographs, is untrue.
     const tree = treeOf({ "/t": ["a.png"] });
 
-    assert.equal(imagesInFolder(tree, "/t", new Set(["/t/a.png"])).reason, "");
+    assert.equal(imagesInFolder(tree, "/t", new Set(["/t/a.png"])).code, "");
 });
 
 test("a file taken under another of its names is not taken again", () => {

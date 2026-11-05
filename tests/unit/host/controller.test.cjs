@@ -76,7 +76,7 @@ test("an unidentifiable selected source is refused before conversion",()=>{
     const tree=treeOf({}, {}, {"/source.png":""});
     const result=collectImageFiles(createFakeHost({files:["/source.png"]}),["/source.png"],tree);
     assert.equal(result.images.length,0);
-    assert.match(result.rejected[0].reason,/identified/u);
+    assert.deepEqual([result.rejected[0].code,result.rejected[0].reason],["unexaminable","This item could not be examined."]);
 });
 
 test("a combined pair exercises the backend command budget before import",()=>{

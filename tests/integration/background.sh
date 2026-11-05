@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# What colour ends up on the page.
+# What color ends up on the page.
 #
-# The four named colours are presets now rather than the list of colours the
+# The four named colors are presets now rather than the list of colors the
 # program permits, so what is checked here is that an arbitrary one arrives
 # whole: on the margins, and behind transparency, through the real pipeline
 # and out of a rendered PDF. Command construction is a unit test; this is the
@@ -38,8 +38,8 @@ render() {
 }
 
 # ---------------------------------------------------------------------------
-# A grey, which vips is given as one number, and a colour, which it is given
-# as three. The colour is not one of the presets, and is written in lower case
+# A gray, which vips is given as one number, and a color, which it is given
+# as three. The color is not one of the presets, and is written in lower case
 # without its hash, as a person or a script may supply it.
 # ---------------------------------------------------------------------------
 
@@ -51,34 +51,34 @@ assert_pixel "$WORK/custom.png" 0 0 199 218 232 6 \
     "a background that is not one of the presets"
 
 # ---------------------------------------------------------------------------
-# A greyscale source with an alpha channel, which is two bands rather than
+# A grayscale source with an alpha channel, which is two bands rather than
 # four. A two-band image takes only the first number of a background triple,
-# so the colour would arrive as its red alone -- were it not that the resize
+# so the color would arrive as its red alone -- were it not that the resize
 # stage converts to sRGB before anything is flattened onto it. Measured:
 # thumbnail --export-profile=srgb turns this fixture from 2 bands to 4.
 #
-# Nothing else in the suite is greyscale: the alpha fixture is a rendered SVG,
+# Nothing else in the suite is grayscale: the alpha fixture is a rendered SVG,
 # which is always RGBA, so this path went unexercised while being the one the
 # comments warn about.
 # ---------------------------------------------------------------------------
 
-grey_alpha_png "$WORK/grey alpha.png"
-BANDS=$(vipsheader -f bands "$WORK/grey alpha.png")
+gray_alpha_png "$WORK/gray alpha.png"
+BANDS=$(vipsheader -f bands "$WORK/gray alpha.png")
 test "$BANDS" = "2" ||
     fail "the fixture is $BANDS bands, so it tests nothing it was built for"
 
-render 20260904_080910 "#204486" "$WORK/grey alpha.png" grey
+render 20260904_080910 "#204486" "$WORK/gray alpha.png" gray
 
 # The margin and the transparent half of the image are both background and
-# must both be the colour asked for. The opaque half is asserted as well, and
+# must both be the color asked for. The opaque half is asserted as well, and
 # is what makes the other two mean anything: two points that were meant to be
 # inside the image and were in fact margin would agree with each other
 # perfectly.
-assert_pixel "$WORK/grey.png" 2 2 32 68 134 6 \
-    "a colour on the margin of a greyscale page"
-assert_pixel "$WORK/grey.png" 55 52 32 68 134 6 \
-    "a colour behind greyscale transparency"
-assert_pixel "$WORK/grey.png" 25 52 200 200 200 6 \
+assert_pixel "$WORK/gray.png" 2 2 32 68 134 6 \
+    "a color on the margin of a grayscale page"
+assert_pixel "$WORK/gray.png" 55 52 32 68 134 6 \
+    "a color behind grayscale transparency"
+assert_pixel "$WORK/gray.png" 25 52 200 200 200 6 \
     "the opaque half of the image, which fixes where the other two are"
 
 printf 'macOS background integration passed\n'

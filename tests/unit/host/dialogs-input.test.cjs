@@ -11,7 +11,7 @@ test("promptInteger accepts a value inside the range", () => {
 
     app.nextAnswer = " 300 ";
     assert.equal(promptInteger(app, RESOLUTION, "300"), 300);
-    assert.match(app.dialogs[0].message, /Maximum resolution \(72–1017\)/u);
+    assert.match(app.dialogs[0].message, /Maximum resolution \(72–1017 ppi\)/u);
 });
 
 test("promptInteger re-asks until the answer is valid", () => {
@@ -81,7 +81,7 @@ test("promptInteger rejects a number with anything attached to it", () => {
     );
 });
 
-test("the number prompt identifies the app and can be cancelled", () => {
+test("the number prompt identifies the app and can be canceled", () => {
     const app = createFakeApp();
 
     app.nextAnswer = "300";

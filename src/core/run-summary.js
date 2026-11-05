@@ -3,7 +3,7 @@ const { dirname, basename } = require("./paths.js");
 
 function summaryKind(outcome, counts) {
     if (outcome.state === "invalid") { return "invalid"; }
-    if (outcome.state === "cancelled" || counts["not-started"] > 0) { return "stopped"; }
+    if (outcome.state === "canceled" || counts["not-started"] > 0) { return "stopped"; }
     if (outcome.documents.length === 0 && outcome.issues.every((issue) => issue.code === "no-images")) { return "nothing-to-convert"; }
     if (counts.saved === outcome.documents.length && counts.saved > 0 && outcome.issues.length === 0 &&
         outcome.documents.every((document) => document.issues.length === 0)) { return "all-saved"; }
@@ -12,7 +12,7 @@ function summaryKind(outcome, counts) {
 
 /** Presentation-independent facts; machine run state and GUI consent semantics remain distinct. */
 function summarizeRun(outcome) {
-    const counts = { saved: 0, recovered: 0, failed: 0, cancelled: 0, "not-started": 0 };
+    const counts = { saved: 0, recovered: 0, failed: 0, canceled: 0, "not-started": 0 };
     const folders = new Map();
     const failures = [];
     const recoveries = [];
@@ -25,10 +25,10 @@ function summarizeRun(outcome) {
         }
         if (document.state === "recovered") { recoveries.push({ location: document.recovery, sources: document.sources }); }
         for (const issue of document.issues) {
-            if (issue.code !== "cancelled") { failures.push({ source: issue.source ?? document.sources[0], message: issue.message }); }
+            if (issue.code !== "canceled") { failures.push({ source: issue.source ?? document.sources[0], message: issue.message }); }
         }
     }
-    failures.push(...outcome.issues.filter((issue) => issue.code !== "cancelled" && issue.code !== "no-images")
+    failures.push(...outcome.issues.filter((issue) => issue.code !== "canceled" && issue.code !== "no-images")
         .map((issue) => ({ source: issue.source ?? "", message: issue.message })));
     return { kind: summaryKind(outcome, counts), counts,
         saved: Array.from(folders, ([folder, outputs]) => ({ folder, outputs })), failures, recoveries,

@@ -1,5 +1,5 @@
 "use strict";
-const { normalizeColour, COLOUR_ERROR } = require("./colour.js");
+const { normalizeColor, COLOR_ERROR } = require("./color.js");
 const { PAGE_DEFINITIONS, MINIMUM_RESOLUTION_LIMIT, MAXIMUM_RESOLUTION_LIMIT, MINIMUM_QUALITY, MAXIMUM_QUALITY } = require("./limits.js");
 
 const SETTINGS_SCHEMA = Object.freeze({
@@ -8,8 +8,8 @@ const SETTINGS_SCHEMA = Object.freeze({
     mode: { name: "PDF files", default: "combined", choices: [
         { value: "combined", label: "One PDF — one image per page" }, { value: "separate", label: "Separate PDFs — one page per image" }
     ] },
-    resolutionLimit: { name: "Maximum resolution", default: 300, minimum: MINIMUM_RESOLUTION_LIMIT, maximum: MAXIMUM_RESOLUTION_LIMIT, hint: `${MINIMUM_RESOLUTION_LIMIT}–${MAXIMUM_RESOLUTION_LIMIT} ppi` },
-    quality: { name: "JPEG quality", default: 82, minimum: MINIMUM_QUALITY, maximum: MAXIMUM_QUALITY, hint: `${MINIMUM_QUALITY}–${MAXIMUM_QUALITY}, JPEG re-encoding only` },
+    resolutionLimit: { name: "Maximum resolution", default: 300, minimum: MINIMUM_RESOLUTION_LIMIT, maximum: MAXIMUM_RESOLUTION_LIMIT, unit: "ppi", hint: `${MINIMUM_RESOLUTION_LIMIT}–${MAXIMUM_RESOLUTION_LIMIT} ppi` },
+    quality: { name: "JPEG quality", default: 82, minimum: MINIMUM_QUALITY, maximum: MAXIMUM_QUALITY, note: "JPEG re-encoding only", hint: `${MINIMUM_QUALITY}–${MAXIMUM_QUALITY}, JPEG re-encoding only` },
     background: { name: "Page background", default: "#FFFFFF", hint: "or type #RRGGBB", choices: [
         { name: "White", value: "#FFFFFF" }, { name: "Black", value: "#000000" },
         { name: "Purple", value: "#8E79E0" }, { name: "Dark blue", value: "#204486" }
@@ -22,8 +22,8 @@ const SETTING_CHOICES = Object.freeze(Object.fromEntries(["paperSize", "orientat
 function settingIssue(field, value) {
     const rule = SETTINGS_SCHEMA[field];
     if (field === "background") {
-        try { normalizeColour(value); return null; }
-        catch { return { field, code: "colour", stage: "settings", message: `${rule.name} ${COLOUR_ERROR}` }; }
+        try { normalizeColor(value); return null; }
+        catch { return { field, code: "color", stage: "settings", message: `${rule.name} ${COLOR_ERROR}` }; }
     }
     if (rule.choices) {
         return typeof value === "string" && rule.choices.some((choice) => choice.value === value) ? null
@@ -45,7 +45,7 @@ function validateSettings(input) {
     }
     return issues.length > 0 ? { issues } : { issues: [], settings: {
         paperSize: input.paperSize, orientation: input.orientation, mode: input.mode,
-        background: normalizeColour(input.background), resolutionLimit: input.resolutionLimit, quality: input.quality
+        background: normalizeColor(input.background), resolutionLimit: input.resolutionLimit, quality: input.quality
     } };
 }
 

@@ -1,7 +1,6 @@
 "use strict";
 
-const { summarizeRun } = require("../core/run-summary.js");
-const { summaryText } = require("./completion.js");
+const { reportText } = require("./completion.js");
 const { runOutcome } = require("../core/outcomes.js");
 const { APP_NAME } = require("../core/version.js");
 const { supportedFormatList } = require("../core/paths.js");
@@ -30,7 +29,8 @@ function describeNoImages(rejected, includeHeadline = true) {
 
 function reportNoImages(app, headless, rejected) {
     if (headless) {
-        return runOutcome([], rejected, [{ code: "no-images", stage: "selection", message: describeNoImages(rejected) }]);
+        // The refusals are listed once, in the receipt's rejected entries and the report's own section.
+        return runOutcome([], rejected, [{ code: "no-images", stage: "selection", message: "None of the selected items can be converted." }]);
     }
 
     const { showDetails } = require("./details-dialog.js");
@@ -50,7 +50,7 @@ function exitCode(result) {
 
 function reportHeadless(result, write = writeReceipt, exit = exitCli) {
     write(`${JSON.stringify(result)}\n`);
-    write(`${summaryText(summarizeRun(result))}\n`, undefined, true);
+    write(`${reportText(result)}\n`, undefined, true);
     return exit(exitCode(result));
 }
 
