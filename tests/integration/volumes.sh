@@ -19,7 +19,9 @@ VOLUME_NAME=ImageFilesToPDF-test-volume
 VOLUME="$WORK/mount-APFS"
 
 cleanup() {
-    hdiutil detach -force -quiet "$VOLUME" 2>/dev/null || true
+    if [ -f "$WORK/$VOLUME_NAME.dmg" ]; then
+        detach_test_volume "$VOLUME" "$WORK/$VOLUME_NAME.dmg" || return 1
+    fi
     rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -70,7 +72,7 @@ if attach_test_volume APFS "$VOLUME_NAME" "$VOLUME"; then
     run 20260907_020204 separate "$VOLUME/photo.png"
     assert_valid_pdf "$VOLUME/photo.pdf"
     assert_nothing_left_behind "$VOLUME"
-    detach_test_volume "$VOLUME"
+    detach_test_volume "$VOLUME" "$WORK/$VOLUME_NAME.dmg"
 else
     printf 'cross-volume publication skipped: no test volume could be attached\n'
 fi
@@ -84,7 +86,7 @@ if attach_test_volume "HFS+" "$VOLUME_NAME" "$VOLUME"; then
     run 20260907_020204 separate "$VOLUME/photo.png"
     assert_valid_pdf "$VOLUME/photo.pdf"
     assert_nothing_left_behind "$VOLUME"
-    detach_test_volume "$VOLUME"
+    detach_test_volume "$VOLUME" "$WORK/$VOLUME_NAME.dmg"
 else
     printf 'HFS+ publication skipped: no test volume could be attached\n'
 fi

@@ -4,8 +4,9 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 WORK=$(mktemp -d -t ImageFilesToPDF-naming)
 MOUNT=''
+IMAGE=''
 cleanup() {
-    if [ -n "$MOUNT" ]; then hdiutil detach -force -quiet "$MOUNT" 2>/dev/null || true; fi
+    if [ -f "$IMAGE" ]; then detach_test_volume "$MOUNT" "$IMAGE" || return 1; fi
     node - "$WORK" <<'NODE'
 const fs=require("node:fs"),path=require("node:path");
 const folder=process.argv[2];
@@ -34,11 +35,12 @@ node "$ROOT/tests/integration/naming-contract.cjs" "$ROOT/dist/Image-Files-to-PD
 for spec in 'APFS|apfs|insensitive' 'Case-sensitive APFS|apfs-cs|sensitive' 'HFS+|hfs|insensitive' 'Case-sensitive HFS+|hfs-cs|sensitive' 'MS-DOS FAT32|fat32|insensitive' 'ExFAT|exfat|insensitive'; do
     format=${spec%%|*}; rest=${spec#*|}; label=${rest%%|*}; expected=${rest#*|}
     MOUNT="$WORK/mount-$label"
+    IMAGE="$WORK/IFTP-$label.dmg"
     if ! attach_test_volume "$format" "IFTP-$label" "$MOUNT"; then
         printf 'Required naming-control volume could not attach: %s\n' "$format" >&2
         exit 1
     fi
     node "$ROOT/tests/integration/naming-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.jxa" "$WORK" "$MOUNT" "$label" "$expected"
-    detach_test_volume "$MOUNT"; MOUNT=''
+    detach_test_volume "$MOUNT" "$IMAGE"; MOUNT=''; IMAGE=''
 done
 printf 'macOS naming integration passed\n'

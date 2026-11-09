@@ -12,7 +12,7 @@
   "author": "Ervins Strauhmanis",
   "engines": {
     "node": ">=26.13.0",
-    "npm": ">=12.2.1"
+    "npm": ">=12.2.2"
   },
   "scripts": {
     "build": "node tools/build.mjs",
@@ -33,12 +33,14 @@
     "@stryker-mutator/tap-runner": "10.1.1",
     "acorn": "8.19.0",
     "esbuild": "0.28.2",
-    "eslint": "10.13.0",
+    "eslint": "10.14.0",
     "fast-check": "4.10.2"
   },
   "overrides": {
-    "qs": "6.17.1"
+    "qs": "6.17.1",
+    "minimatch": "11.0.5",
+    "glob": "14.0.4"
   },
   "copyright": "2026 Ervins Strauhmanis",
-  "packageManager": "npm@12.2.1"
+  "packageManager": "npm@12.2.2"
 }

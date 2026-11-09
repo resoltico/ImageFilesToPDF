@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Native test cleanup detaches the owned disk image by device and verifies its removal, avoiding false exFAT cleanup failures and retaining work on unresolved attachment errors.
+- Update ESLint, npm and locked development dependencies; override minimatch and glob together to remove denial-of-service vulnerabilities.
+
 ## [3.0.0] - 2026-11-05
 
 - Receipt state and issue code `cancelled` is now `canceled`; settings issue code `colour` is now `color`. Update receipt consumers; no aliases are provided.

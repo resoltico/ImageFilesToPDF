@@ -22,27 +22,31 @@ attach_test_volume() {
         hdiutil attach -quiet -mountpoint "$mountpoint" "$image"
 }
 
-# detach_test_volume <volume>
+# detach_test_volume <volume> <image>
 #
-# Detach only the mountpoint created by this test. Native consumers can keep a
+# Detach only the image created by this test. Native consumers can keep a
 # volume busy after the conversion process exits; bounded retries allow them
 # to finish. Persistent failure remains a test failure, with the final native
-# error and mountpoint-scoped facts visible before EXIT cleanup removes WORK.
+# error and image facts visible. EXIT cleanup preserves WORK if still attached.
 detach_test_volume() {
-    local volume=$1
+    local volume=$1 image=$2 device detach_status=0
 
     # Five ordinary attempts, two seconds apart, before one forced attempt.
     for _ in 1 2 3 4 5; do
-        hdiutil detach -quiet "$volume" 2>/dev/null && return 0
+        device=$(node "$ROOT/tests/integration/lib/volume-device.cjs" "$image") || return 1
+        [ -n "$device" ] || return 0
+        hdiutil detach -quiet "$device" 2>/dev/null || true
+        device=$(node "$ROOT/tests/integration/lib/volume-device.cjs" "$image") || return 1
+        [ -n "$device" ] || return 0
         sleep 2
     done
 
-    if hdiutil detach -force "$volume"; then
-        return 0
-    else
-        local detach_status=$?
-        printf 'Could not detach test volume %s (exit %s)\n' "$volume" "$detach_status" >&2
-        diskutil info "$volume" >&2 || true
-        return "$detach_status"
-    fi
+    device=$(node "$ROOT/tests/integration/lib/volume-device.cjs" "$image") || return 1
+    [ -n "$device" ] || return 0
+    hdiutil detach -force "$device" || detach_status=$?
+    device=$(node "$ROOT/tests/integration/lib/volume-device.cjs" "$image") || return 1
+    [ -n "$device" ] || return 0
+    printf 'Could not detach test image %s at %s (exit %s)\n' "$image" "$volume" "$detach_status" >&2
+    hdiutil info >&2 || true
+    return 1
 }

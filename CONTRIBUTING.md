@@ -14,6 +14,11 @@ npm ci --ignore-scripts
 Keep optional platform packages enabled: the pinned esbuild installation uses
 them. No development package is a runtime dependency of the generated JXA.
 
+The minimatch and glob overrides keep development tools on patched releases.
+They move together: glob 13 expects RegExp pattern parts, while minimatch 11
+returns Matcher objects supported by glob 14. Remove these overrides when the
+upstream ESLint and Stryker dependency ranges accept the patched versions.
+
 | Command | Purpose |
 | --- | --- |
 | `npm run build` | Regenerate JXA and checksum manifest |

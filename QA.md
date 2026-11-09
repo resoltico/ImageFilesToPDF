@@ -62,6 +62,11 @@ skipped environment check, never a passing filesystem result. `cards.sh` and
 driver refuses it, the action correctly recovers to Downloads, the suites fail, and
 the FAT32 result is unverified on that host.
 
+Volume cleanup resolves the owned image's current whole device through DiskImages,
+including when its mount path is gone. It verifies image detachment after bounded
+retries and a forced attempt; unreadable state or a still-attached image fails the
+suite and preserves its working directory.
+
 Published PDFs require exact page counts and strict pdfcpu validation; qpdf
 structure checks and Poppler rendering and pixel assertions check them
 independently of pdfcpu. Derive all eight EXIF orientations from an asymmetric

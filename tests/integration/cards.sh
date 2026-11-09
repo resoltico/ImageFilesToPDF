@@ -23,8 +23,12 @@ EXFAT_NAME=IMGPDFEXF
 EXFAT_VOLUME="$WORK/mount-exFAT"
 
 cleanup() {
-    hdiutil detach -force -quiet "$FAT_VOLUME" 2>/dev/null || true
-    hdiutil detach -force -quiet "$EXFAT_VOLUME" 2>/dev/null || true
+    if [ -f "$WORK/$FAT_NAME.dmg" ]; then
+        detach_test_volume "$FAT_VOLUME" "$WORK/$FAT_NAME.dmg" || return 1
+    fi
+    if [ -f "$WORK/$EXFAT_NAME.dmg" ]; then
+        detach_test_volume "$EXFAT_VOLUME" "$WORK/$EXFAT_NAME.dmg" || return 1
+    fi
     rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -88,7 +92,7 @@ if attach_test_volume "MS-DOS FAT32" "$FAT_NAME" "$FAT_VOLUME"; then
         fail "separate publication replaced an occupied name"
     assert_valid_pdf "$FAT_VOLUME/photo 2.pdf"
     assert_nothing_left_behind "$FAT_VOLUME"
-    detach_test_volume "$FAT_VOLUME"
+    detach_test_volume "$FAT_VOLUME" "$WORK/$FAT_NAME.dmg"
 else
     printf 'link-free publication skipped: no MS-DOS volume could be attached\n'
 fi
@@ -138,7 +142,7 @@ if attach_test_volume "ExFAT" "$EXFAT_NAME" "$EXFAT_VOLUME"; then
     test -n "$KEPT" || fail "separate exFAT recovery was not named"
     assert_valid_pdf "$KEPT"
 
-    detach_test_volume "$EXFAT_VOLUME"
+    detach_test_volume "$EXFAT_VOLUME" "$WORK/$EXFAT_NAME.dmg"
 else
     printf 'exFAT publication skipped: no exFAT volume could be attached\n'
 fi
