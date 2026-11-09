@@ -53,7 +53,8 @@ test("everything the toolchain generates must be covered", async () => {
     for (const missing of COVERED) {
         assert.throws(
             () => checkIgnoreRules(COVERED.filter((path) => path !== missing)),
-            new RegExp(`does not cover them: ${missing.replace(".", "\\.")}`, "u"),
+            { message: "the toolchain writes these into the working tree and the ignore " +
+                `file does not cover them: ${missing}` },
             `${missing} must be required`
         );
     }
