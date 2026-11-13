@@ -17,7 +17,7 @@ them. No development package is a runtime dependency of the generated JXA.
 The minimatch and glob overrides keep development tools off releases affected by
 GHSA-g3hv-75wg-m249 and GHSA-3g3m-2fjr-6pw4.
 They move together: glob 13 expects RegExp pattern parts, while minimatch 11
-returns Matcher objects supported by glob 14. Remove these overrides when the
+returns Matcher objects supported by glob 14. Remove these overrides when
 all upstream ESLint and Stryker dependency ranges exclude every affected version.
 The qs override fixes GHSA-6pq8-jhm2-2vcw in typed-rest-client, whose
 pinned qs 6.15.1 is affected; remove it when that range excludes affected versions.
