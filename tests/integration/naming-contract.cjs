@@ -4,8 +4,11 @@ const fs=require("node:fs");
 const path=require("node:path");
 const crypto=require("node:crypto");
 const {spawnSync,execFileSync}=require("node:child_process");
+const {probeExclusiveRename}=require("./lib/exclusive-rename.cjs");
+const {recoveryInventory,assertRecoveredPdf,removeRecovery}=require("./lib/recovered-pdf.cjs");
 const [artifact,work,volume,label,expected]=process.argv.slice(2);
 const root=path.join(volume,"naming-contract");fs.mkdirSync(root);
+const capability=label==="fat32"?probeExclusiveRename(path.join(work,"rename.jxa"),root):{supported:label!=="exfat",code:0};
 const settings=path.join(root,"settings.json");
 fs.writeFileSync(settings,JSON.stringify({mode:"separate",paperSize:"A4",orientation:"Portrait",resolutionLimit:300,quality:92,background:"#FFFFFF",timestamp:"20261030_010203"}));
 const hash=(file)=>crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
@@ -32,22 +35,34 @@ function groups(records) {
     assert.ifError(result.error);assert.equal(result.status,0,result.stderr);
     return JSON.parse(result.stdout);
 }
+function assertSavedPdf(document,wanted) {
+    assert.equal(document.state,"saved");assert.equal(document.pages,1);
+    assert.equal(path.basename(document.output).normalize("NFC"),wanted.normalize("NFC"));
+    execFileSync("qpdf",["--check",document.output],{stdio:"pipe"});
+}
 function convert(records,wanted,protectedFile=null) {
     const before=records.map(record=>hash(record.path));
+    const inventory=capability.supported?null:recoveryInventory();
+    const recoveries=[];
     const protectedHash=protectedFile?hash(protectedFile):null;
     const result=spawnSync("/usr/bin/osascript",["-l","JavaScript",artifact,"--headless",settings,...records.map(record=>record.path)],{encoding:"utf8",timeout:60000});
-    assert.ifError(result.error);assert.equal(result.status,0,result.stderr);
+    assert.ifError(result.error);assert.equal(result.status,capability.supported?0:1,`${result.stderr}\n${result.stdout}`);
     const receipt=JSON.parse(result.stdout);
-    assert.equal(receipt.state,"complete");assert.equal(receipt.documents.length,2);
+    assert.equal(receipt.state,capability.supported?"complete":"incomplete");
+    assert.deepEqual(receipt.rejected,[]);assert.deepEqual(receipt.issues,[]);assert.equal(receipt.documents.length,2);
     for(const document of receipt.documents) {
-        assert.equal(document.state,"saved");assert.equal(document.pages,1);
         const index=document.sources[0].endsWith(".jpg")?0:1;
-        assert.equal(path.basename(document.output).normalize("NFC"),wanted[index].normalize("NFC"));
-        execFileSync("qpdf",["--check",document.output],{stdio:"pipe"});
+        if(capability.supported) {
+            assertSavedPdf(document,wanted[index]);
+        } else {
+            recoveries.push(assertRecoveredPdf(document,records[index].path,capability,inventory));
+            assert.equal(fs.existsSync(path.join(records[index].folder,wanted[index])),false,"no partial output on the unsupported volume");
+        }
     }
     assert.deepEqual(records.map(record=>hash(record.path)),before,"source bytes unchanged");
     if(protectedFile) {assert.equal(hash(protectedFile),protectedHash,"occupied name preserved");}
-    return receipt.documents.map(document=>path.basename(document.output));
+    recoveries.forEach(removeRecovery);
+    return receipt.documents.map(document=>path.basename(document.output??document.recovery));
 }
 
 function pair(index,left,right,options={}) {
@@ -58,16 +73,17 @@ function pair(index,left,right,options={}) {
     const actual=groups(records);
     const diagnostic=(actual[0]===actual[1])===same?"":spawnSync("/usr/bin/osascript",["-l","JavaScript",path.join(work,"names.jxa"),JSON.stringify(records),work,"details"],{encoding:"utf8"});
     assert.equal(actual[0]===actual[1],same,`${label}: ${left}/${right} native equivalence ${diagnostic.stdout??""} ${diagnostic.stderr??""}`);
-    let saved=[];
+    let outputs=[],publication="namespace-only";
     if(label!=="exfat"&&options.production) {
         const wanted=same?[`${leftName}-jpg.pdf`,`${rightName}-png.pdf`]:[`${leftName}.pdf`,`${rightName}.pdf`];
         const occupied=path.join(folder,wanted[0]);fs.writeFileSync(occupied,"keep this existing entry",{flag:"wx"});
         const numbered=[wanted[0].replace(/\.pdf$/u," 2.pdf"),wanted[1]];
-        saved=convert(records,numbered,occupied);
+        outputs=convert(records,numbered,occupied);
+        publication=capability.supported?"saved":"recovered";
     }
     // Diagnostic output records the independently observed namespace oracle.
     // eslint-disable-next-line no-console
-    console.log(JSON.stringify({volume:label,left,right,alias:same,groups:actual,saved}));
+    console.log(JSON.stringify({volume:label,left,right,alias:same,groups:actual,publication,outputs}));
 }
 
 function folderAliases() {

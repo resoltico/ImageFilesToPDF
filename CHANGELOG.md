@@ -8,6 +8,7 @@
 - `--help` lists settings in the documented order: mode, paper size, orientation, maximum resolution, JPEG quality, background.
 - Contributors must use Node 26.13.1 and npm 12.2.2; restore refreshed development dependencies with `npm ci --ignore-scripts`.
 - Native CI and release qualification run on macOS 26.
+- FAT32 native tests independently probe exclusive rename, checking publication/collisions when supported and validated recovery when unsupported.
 
 ## [3.0.0] - 2026-11-05
 

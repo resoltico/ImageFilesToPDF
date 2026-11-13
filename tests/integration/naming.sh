@@ -30,6 +30,7 @@ solid_svg "$WORK/red.svg" 400 200 '#DF2935'
 vips copy "$WORK/blue.svg" "$WORK/photo.jpg[Q=92,keep=none]"
 vips copy "$WORK/red.svg" "$WORK/photo.png"
 node "$ROOT/tools/build-probe.mjs" tests/integration/naming-probe.js "$WORK/names.jxa"
+node "$ROOT/tools/build-probe.mjs" tests/integration/rename-probe.js "$WORK/rename.jxa"
 mkdir "$WORK/local"
 node "$ROOT/tests/integration/naming-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.jxa" "$WORK" "$WORK/local" local measure
 for spec in 'APFS|apfs|insensitive' 'Case-sensitive APFS|apfs-cs|sensitive' 'HFS+|hfs|insensitive' 'Case-sensitive HFS+|hfs-cs|sensitive' 'MS-DOS FAT32|fat32|insensitive' 'ExFAT|exfat|insensitive'; do

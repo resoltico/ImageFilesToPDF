@@ -49,7 +49,7 @@ sequence:
 | `selection.sh` | Folder traversal, overlap, identity, links, packages, explicit selections and refusal codes |
 | `publication.sh` | Occupied entries, permissions, ownership and recoverable failures |
 | `volumes.sh` | Cross-volume APFS and HFS+ publication in both modes |
-| `cards.sh` | FAT32 exclusive publication and collisions, and exFAT recovery, in both modes |
+| `cards.sh` | FAT32 independent rename probe, publication/collisions or validated recovery, and exFAT recovery, in both modes |
 | `damaged.sh` | Damaged-source refusal and combined/separate behavior |
 | `form.sh` | Production-renderer probe, native geometry and accessibility, PNG previews |
 | `cli.sh` | CLI grammar and statuses, settings reader, refusal corpus, names, JPEG streams, placement, TERM, reclaim and retention |
@@ -61,9 +61,11 @@ ExifTool edits only synthetic HDR fixture metadata; the action does not use it.
 Install the native tools listed in [CONTRIBUTING.md](CONTRIBUTING.md). Volume tests
 need permission to create and attach disk images; inability to attach one is a
 skipped environment check, never a passing filesystem result. `cards.sh` and
-`naming.sh` require a FAT32 driver that accepts exclusive rename; on a host whose
-driver refuses it, the action correctly recovers to Downloads, the suites fail, and
-the FAT32 result is unverified on that host.
+`naming.sh` independently probe FAT32 exclusive rename with free and occupied
+destinations. Supported drivers must pass publication and collision checks;
+unsupported drivers must leave final names untouched and produce validated
+recoveries matching the primitive's error. Unexpected probe errors fail the suite.
+Recovery is a tested outcome, not a skipped publication assertion.
 
 Volume cleanup resolves the owned image's current whole device through DiskImages,
 including when its mount path is gone. It verifies image detachment after bounded
