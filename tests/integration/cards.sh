@@ -157,8 +157,9 @@ if attach_test_volume "ExFAT" "$EXFAT_NAME" "$EXFAT_VOLUME"; then
     KEPT=$(receipt_recovery "$WORK/receipt.json")
     test -n "$KEPT" || fail "no recovery path was named: $(cat "$WORK/error.txt")"
     assert_valid_pdf "$KEPT"
-    # Retain the validated recovery as failure evidence; its log spelling alone
-    # is not sufficient authority to recursively delete the containing folder.
+    # A failed assertion exits before this, so a failing run keeps its
+    # recovery as evidence; a passing one removes only the recovered file.
+    remove_test_recovery "$KEPT"
     run 20260907_070708 separate "$EXFAT_VOLUME/photo.png"
     test -z "$(find "$EXFAT_VOLUME" -maxdepth 1 -name '*.pdf')" ||
         fail "separate publication left a PDF on exFAT"
@@ -167,6 +168,7 @@ if attach_test_volume "ExFAT" "$EXFAT_NAME" "$EXFAT_VOLUME"; then
     KEPT=$(receipt_recovery "$WORK/receipt.json")
     test -n "$KEPT" || fail "separate exFAT recovery was not named"
     assert_valid_pdf "$KEPT"
+    remove_test_recovery "$KEPT"
 
     detach_test_volume "$EXFAT_VOLUME" "$WORK/$EXFAT_NAME.dmg"
 else
