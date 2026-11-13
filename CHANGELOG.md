@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Licensed under AGPL-3.0-only instead of MPL-2.0: distributing the script or a modified version requires offering its corresponding source; see [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md).
+- Contributions are accepted under the [contribution terms](CONTRIBUTING.md#contribution-terms), which also let Ervins Strauhmanis license them commercially.
 - Single-image PDFs now use the image name in both modes, including after refusals. Update receipt consumers to read actual output/recovery paths; see [HEADLESS.md](HEADLESS.md).
 - Ultra HDR JPEG photos are accepted and converted as standard-range images; gain maps are never embedded in PDFs.
 - Unsupported-content refusals use clearer wording and include the vips loader in receipt diagnostics and completion Details.

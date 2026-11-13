@@ -125,3 +125,12 @@ test("the same hygiene the source files are held to", async () => {
     assert.throws(() => checkDocument("a.md", "# T\r\n"), /carriage return/u);
     assert.throws(() => checkDocument("a.md", "# T\n\ntext"), /does not end with a newline/u);
 });
+
+test("only the pull request template may have sections without a title", async () => {
+    const { checkDocument } = await load();
+    const form = "## Change\n\ntext\n\n## Terms\n\n- [ ] agreed\n";
+
+    assert.doesNotThrow(() => checkDocument(".github/PULL_REQUEST_TEMPLATE.md", form));
+    assert.throws(() => checkDocument("PULL_REQUEST_TEMPLATE.md", form), /top-level heading/u);
+    assert.throws(() => checkDocument(".github/PULL_REQUEST_TEMPLATE.md", `${form}\n## Change\n\nagain\n`), /\S/u);
+});

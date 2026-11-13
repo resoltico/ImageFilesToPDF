@@ -187,12 +187,20 @@ Release notes are extracted from `CHANGELOG.md`. Follow its writing rules in
 `AGENTS.md`; do not maintain a second release-summary source. Editing source or
 committing to `main` does not authorize a version bump, tag or release.
 
-## Contribution rights
+## Contribution terms
 
-Before merging an outside original contribution, obtain and retain documented
-permission from its rights holder covering both the public AGPL grant and the
-intended separate commercial licensing route described in
-[LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md). Contributor commercial terms are
-not yet settled; until they are, do not merge such contributions without that
-permission. Submitting a pull request, a sign-off, a bot identity or a coauthor
-trailer does not establish it. Third-party dependencies keep their own terms.
+By submitting a contribution (code, documentation, tests or other material) to
+this repository, you:
+
+- confirm that you wrote it or otherwise have the right to submit it on these
+  terms;
+- license it to everyone under this repository's public license,
+  `AGPL-3.0-only`; and
+- also grant Ervins Strauhmanis a perpetual, worldwide, non-exclusive,
+  royalty-free, irrevocable license to use, reproduce, modify, distribute and
+  sublicense it, and to license it under other terms, including the commercial
+  terms described in [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md).
+
+You keep the copyright in your contribution. Do not submit material you cannot
+license on these terms; third-party components keep their own licenses. Each
+pull request confirms these terms with the checkbox in its template.

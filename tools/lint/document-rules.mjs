@@ -20,6 +20,9 @@ import { root } from "../repository.mjs";
 // hygiene checks even though neither is Markdown.
 const PLAIN_DOCUMENTS = new Set(["INSTALL.txt", "LICENSE"]);
 const MARKDOWN = /\.md$/u;
+// A pull request template fills the body of a pull request, which GitHub titles
+// itself: it has sections but no title of its own.
+const UNTITLED_FORMS = new Set([".github/PULL_REQUEST_TEMPLATE.md"]);
 const HEADING = /^(?<hashes>#{1,6}) \S/u;
 const TITLE_LEVEL = 1;
 
@@ -114,7 +117,9 @@ export function checkDocument(file, text) {
         throw new Error(`${file}: has no headings; it is not a document`);
     }
 
-    assertOneTitle(file, headings);
+    if (!UNTITLED_FORMS.has(file)) {
+        assertOneTitle(file, headings);
+    }
     assertSectionsDiffer(file, headings);
 }
 

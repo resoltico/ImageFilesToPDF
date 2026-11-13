@@ -51,3 +51,13 @@ test("the pending commercial route grants nothing and points to the public licen
         assert.match(text, /\[LICENSE-COMMERCIAL\.md\]\(LICENSE-COMMERCIAL\.md\)/u);
     }
 });
+
+test("contributions are accepted under stated terms that permit commercial licensing", async () => {
+    const [contributing, template] = await Promise.all([read("CONTRIBUTING.md"), read(".github/PULL_REQUEST_TEMPLATE.md")]);
+    const terms = contributing.split("\n## Contribution terms\n")[1]?.split("\n## ")[0] ?? "";
+
+    assert.match(terms, /license it to everyone under this repository's public license,\n {2}`AGPL-3\.0-only`/u);
+    assert.match(terms, /grant Ervins Strauhmanis a perpetual, worldwide, non-exclusive,\n {2}royalty-free, irrevocable license/u);
+    assert.match(terms, /including the commercial\n {2}terms described in \[LICENSE-COMMERCIAL\.md\]\(LICENSE-COMMERCIAL\.md\)/u);
+    assert.match(template, /^- \[ \] I agree to the \[contribution terms\]\([^)]*CONTRIBUTING\.md#contribution-terms\)/mu);
+});
