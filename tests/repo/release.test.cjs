@@ -8,8 +8,8 @@ const { version } = require("../../package.json");
 
 function checkBanner(release) {
     assert.ok(release.startsWith(`/*\n * Image Files to PDF ${version}\n`), "the banner names the declared version");
-    assert.match(release, /SPDX-License-Identifier: MPL-2\.0/u);
-    assert.match(release, /Source Code Form: https:\/\/github\.com\/resoltico\/ImageFilesToPDF/u);
+    assert.match(release, /SPDX-License-Identifier: AGPL-3\.0-only/u);
+    assert.match(release, /Corresponding Source: https:\/\/github\.com\/resoltico\/ImageFilesToPDF/u);
     assert.match(release, /Requires macOS 12\.3 or later/u);
 }
 

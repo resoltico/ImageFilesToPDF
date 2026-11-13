@@ -10,14 +10,14 @@ const lock = require("../../package-lock.json");
 const root = path.resolve(__dirname, "../..");
 const read = (file) => readFile(path.join(root, file), "utf8");
 
-test("first-party licensing is MPL 2.0 in metadata and the license file", async () => {
-    assert.equal(packageJson.license, "MPL-2.0");
-    assert.equal(lock.packages[""].license, "MPL-2.0");
+test("first-party licensing is AGPL-3.0-only in metadata and the license file", async () => {
+    assert.equal(packageJson.license, "AGPL-3.0-only");
+    assert.equal(lock.packages[""].license, "AGPL-3.0-only");
     const license = await read("LICENSE");
 
-    assert.match(license, /Mozilla Public License Version 2\.0/u);
-    assert.match(license, /3\. Responsibilities/u);
-    assert.match(license, /This Source Code Form is subject to the terms/u);
+    assert.match(license, /^ {20}GNU AFFERO GENERAL PUBLIC LICENSE\n {23}Version 3, 19 November 2007\n/u);
+    assert.match(license, /13\. Remote Network Interaction; Use with the GNU General Public License\./u);
+    assert.match(license, /END OF TERMS AND CONDITIONS/u);
 });
 
 test("the standalone artifact preserves licensing and its matching source location", async () => {
@@ -26,10 +26,10 @@ test("the standalone artifact preserves licensing and its matching source locati
     const artifact = await read("dist/Image-Files-to-PDF.jxa");
 
     for (const text of [rendered, artifact]) {
-        assert.match(text, /SPDX-License-Identifier: MPL-2\.0/u);
-        assert.match(text, /This Source Code Form is subject to the terms/u);
-        assert.match(text, /https:\/\/mozilla\.org\/MPL\/2\.0\//u);
-        assert.ok(text.includes(`Source Code Form: ${packageJson.homepage}/tree/v${packageJson.version}`));
+        assert.match(text, /SPDX-License-Identifier: AGPL-3\.0-only/u);
+        assert.match(text, /GNU Affero General Public License, version 3 only/u);
+        assert.match(text, /https:\/\/www\.gnu\.org\/licenses\/agpl-3\.0\.html/u);
+        assert.ok(text.includes(`Corresponding Source: ${packageJson.homepage}/tree/v${packageJson.version}`));
     }
 });
 
@@ -39,4 +39,15 @@ test("the full license is uploaded, attested and verified as a release asset", a
     assert.match(workflow, /subject-path: \|\n(?: {12}[^\n]+\n)* {12}LICENSE\n/u);
     assert.match(workflow, /for subject in [^\n]* INSTALL\.txt LICENSE; do/u);
     assert.match(workflow, /gh release create [\s\S]*?\n {12}LICENSE \\\n/u);
+});
+
+test("the pending commercial route grants nothing and points to the public license", async () => {
+    const commercial = await read("LICENSE-COMMERCIAL.md");
+
+    assert.match(commercial, /public license is AGPL-3\.0-only; see \[LICENSE\]\(LICENSE\)/u);
+    assert.match(commercial, /grants no commercial exception/u);
+    const linking = await Promise.all(["README.md", "CONTRIBUTING.md"].map(read));
+    for (const text of linking) {
+        assert.match(text, /\[LICENSE-COMMERCIAL\.md\]\(LICENSE-COMMERCIAL\.md\)/u);
+    }
 });

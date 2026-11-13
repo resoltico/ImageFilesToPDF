@@ -151,7 +151,11 @@ script's header and completion details state its version.
 [QA.md](QA.md) defines the verification requirements and their limits.
 [SECURITY.md](SECURITY.md) describes the trust boundaries and private reporting.
 
-First-party files use [Mozilla Public License 2.0](LICENSE) (`MPL-2.0`). Preserve
-license and source notices and provide covered source as that license requires
-when distributing covered files or modifications. Dependencies keep their own
-licenses. The generated JXA carries the MPL and corresponding-source notices.
+Image Files to PDF is licensed under the [GNU Affero General Public License, version 3
+only](LICENSE) (`AGPL-3.0-only`). You may use it, including commercially, and copy,
+modify and share it under those terms; it comes without any warranty. If you
+distribute the script or a modified version, keep its notices and make the
+corresponding source available as the license requires; the generated JXA names
+the source for its version. Dependencies keep their own licenses. A separate
+commercial licensing route is intended but not yet offered; see
+[LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md).

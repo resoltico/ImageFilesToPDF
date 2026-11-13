@@ -168,10 +168,12 @@ its version heading and actionable installation/removal instructions.
 Keep operational docs about supported current behavior. Store run-specific logs,
 artifact hashes, audit narratives and superseded evidence outside these guides.
 
-`tools/banner.mjs` derives version, repository and MPL notices from metadata.
+`tools/banner.mjs` derives version, repository and license notices from metadata
+and refuses a license other than `AGPL-3.0-only`, which its notice states.
 First-party source, tests, tools and docs are covered by the canonical root
-`LICENSE`. Preserve third-party notices. Generated JXA retains its source/license
-notice, and releases include the complete license.
+`LICENSE` (`AGPL-3.0-only`). Preserve third-party notices. Generated JXA retains
+its license and corresponding-source notice, and releases include the complete
+license.
 
 Release publication requires separate authorization. An authorized `v<version>`
 tag must match the repository's version declarations and dated release notes.
@@ -184,3 +186,13 @@ helpers remain dependency-free and it does not restore an npm cache.
 Release notes are extracted from `CHANGELOG.md`. Follow its writing rules in
 `AGENTS.md`; do not maintain a second release-summary source. Editing source or
 committing to `main` does not authorize a version bump, tag or release.
+
+## Contribution rights
+
+Before merging an outside original contribution, obtain and retain documented
+permission from its rights holder covering both the public AGPL grant and the
+intended separate commercial licensing route described in
+[LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md). Contributor commercial terms are
+not yet settled; until they are, do not merge such contributions without that
+permission. Submitting a pull request, a sign-off, a bot identity or a coauthor
+trailer does not establish it. Third-party dependencies keep their own terms.

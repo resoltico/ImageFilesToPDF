@@ -14,7 +14,7 @@ const load = () => import("../../../tools/banner.mjs");
 const FILES = {
     "package.json": JSON.stringify({
         version: "9.9.9",
-        license: "MPL-2.0",
+        license: "AGPL-3.0-only",
         copyright: "2026 Someone",
         homepage: "https://github.com/someone/Project"
     })
@@ -29,10 +29,10 @@ test("the banner is quoted from the repository, not retyped", async () => {
     assert.match(banner, /Image Files to PDF 9\.9\.9/u);
     assert.match(banner, /https:\/\/github\.com\/someone\/Project/u);
     assert.match(banner, /Copyright \(c\) 2026 Someone/u);
-    assert.match(banner, /SPDX-License-Identifier: MPL-2\.0/u);
-    assert.match(banner, /This Source Code Form is subject to the terms/u);
-    assert.match(banner, /https:\/\/mozilla\.org\/MPL\/2\.0\//u);
-    assert.match(banner, /Source Code Form: https:\/\/github\.com\/someone\/Project\/tree\/v9\.9\.9/u);
+    assert.match(banner, /SPDX-License-Identifier: AGPL-3\.0-only/u);
+    assert.match(banner, /GNU Affero General Public License, version 3 only/u);
+    assert.match(banner, /https:\/\/www\.gnu\.org\/licenses\/agpl-3\.0\.html/u);
+    assert.match(banner, /Corresponding Source: https:\/\/github\.com\/someone\/Project\/tree\/v9\.9\.9/u);
     assert.match(banner, /Requires macOS 12\.3 or later/u);
 });
 
@@ -69,8 +69,16 @@ test("missing or invalid copyright metadata is refused", async () => {
 test("the copyright notice is preserved with outer whitespace removed", async () => {
     const { readMetadata } = await load();
     const metadata = await readMetadata(() => Promise.resolve(JSON.stringify({
+        license: "AGPL-3.0-only",
         copyright: "  2019-2026 A. Person and others  "
     })), "12.3");
 
     assert.equal(metadata.copyright, "2019-2026 A. Person and others");
+});
+
+test("a license the banner does not state is refused", async () => {
+    const { readMetadata } = await load();
+    const other = JSON.stringify({ version: "9.9.9", license: "MIT", copyright: "2026 Someone", homepage: "https://example.com" });
+
+    await assert.rejects(() => readMetadata(() => Promise.resolve(other), "12.3"), /license is not AGPL-3\.0-only/u);
 });

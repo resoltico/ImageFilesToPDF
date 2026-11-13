@@ -22,6 +22,10 @@ export async function readMetadata(read, minimumMacos) {
     if (typeof packageJson.copyright !== "string" || !packageJson.copyright.trim()) {
         throw new Error("package.json no longer carries a copyright notice");
     }
+    // The notice below states these terms in words, so it must agree with them.
+    if (packageJson.license !== "AGPL-3.0-only") {
+        throw new Error("package.json license is not AGPL-3.0-only, which the banner states");
+    }
 
     return {
         version: packageJson.version,
@@ -33,7 +37,7 @@ export async function readMetadata(read, minimumMacos) {
 }
 
 /*
- * The standalone artifact retains the MPL notice and the source location for
+ * The standalone artifact retains the AGPL notice and the source location for
  * its version even when copied without the repository or release assets.
  */
 export function renderBanner(meta) {
@@ -44,10 +48,12 @@ export function renderBanner(meta) {
  * Copyright (c) ${meta.copyright}
  * SPDX-License-Identifier: ${meta.license}
  *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- * Source Code Form: ${meta.homepage}/tree/v${meta.version}
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License, version 3 only,
+ * as published by the Free Software Foundation. It is distributed WITHOUT ANY
+ * WARRANTY; see the license for details:
+ * https://www.gnu.org/licenses/agpl-3.0.html
+ * Corresponding Source: ${meta.homepage}/tree/v${meta.version}
  *
  * Generated file. Edit the sources and rebuild; changes made to this copy are
  * overwritten and are not covered by any test. Comments are stripped on build:

@@ -86,8 +86,11 @@ vips and pdfcpu may be used by other software. If nothing needs them, remove:
 License terms
 =============
 
-First-party project files use Mozilla Public License 2.0 (MPL-2.0).
-The complete terms are in LICENSE and at https://mozilla.org/MPL/2.0/.
-Preserve license/source notices and provide covered source as required by the
-license when distributing covered files or modifications. The JXA header
-identifies its corresponding source. Dependencies retain their own licenses.
+Image Files to PDF is licensed under the GNU Affero General Public License,
+version 3 only (AGPL-3.0-only). The complete terms are in LICENSE and at
+https://www.gnu.org/licenses/agpl-3.0.html. It comes without any warranty.
+Keep license and source notices and make the corresponding source available as
+the license requires when you distribute the script or a modified version. The
+JXA header names the source for its version. Dependencies retain their own
+licenses. A separate commercial licensing route is intended but not yet
+offered; see LICENSE-COMMERCIAL.md in the source repository.
