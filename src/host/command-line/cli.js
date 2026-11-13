@@ -1,9 +1,9 @@
 "use strict";
-const { APP_NAME, VERSION } = require("../core/version.js");
-const { SETTINGS_SCHEMA, validateSettings } = require("../core/settings.js");
-const { readTimestamp, TIMESTAMP_FORM } = require("../core/timestamps.js");
-const { OperationError } = require("../core/errors.js");
-const { normalizeInvocationInput } = require("./invocation-syntax.js");
+const { APP_NAME, VERSION } = require("../../core/version.js");
+const { SETTINGS_SCHEMA, validateSettings } = require("../../core/settings.js");
+const { readTimestamp, TIMESTAMP_FORM } = require("../../core/timestamps.js");
+const { OperationError } = require("../../core/errors.js");
+const { normalizeInvocationInput } = require("../invocation-syntax.js");
 const { writeReceipt, exitCli } = require("./receipt.js");
 
 const RUN_LINE = "osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless <settings.json> <path…>";
@@ -15,7 +15,7 @@ function choiceCaption(choice) {
 
 function settingsHelp() {
     return Object.entries(SETTINGS_SCHEMA).map(([field, rule]) => {
-        if (rule.minimum !== undefined) {
+        if (rule.kind === "integer") {
             return `  ${field} — ${rule.name}: ${rule.minimum}–${rule.maximum}${rule.unit ? ` ${rule.unit}` : ""}; default ${rule.default}${rule.note ? `; ${rule.note}` : ""}`;
         }
         return `  ${field} — ${rule.name}: ${rule.choices.map(choiceCaption).join(" | ")}; default ${rule.default}${rule.hint ? `; ${rule.hint}` : ""}`;
@@ -43,8 +43,7 @@ function usageMessage(problem) {
 }
 
 function requestError(code, message, diagnostic = null) {
-    const error = new OperationError(message);
-    error.issues = [{ code, stage: "request", message, ...(diagnostic ? { diagnostic } : {}) }];
+    const error = new OperationError(message, { issues: [{ code, stage: "request", message, ...(diagnostic ? { diagnostic } : {}) }] });
     return error;
 }
 
@@ -76,8 +75,7 @@ function configurationValues(configuration) {
         catch (error) { validated.issues.push({ code: "timestamp", field: "timestamp", stage: "request", message: error.message }); }
     }
     if (validated.issues.length > 0) {
-        const error = new OperationError(validated.issues.map((issue) => issue.message).join("\n"));
-        error.issues = validated.issues;
+        const error = new OperationError(validated.issues.map((issue) => issue.message).join("\n"), { issues: validated.issues });
         throw error;
     }
     return { settings: validated.settings, timestamp };
@@ -130,7 +128,7 @@ function cliCommand(input, injected = null) {
     const io = injected ?? nativeCliIO();
     const configuration = io.read(io.absolute(args[1]));
     const firstImageIndex = 2;
-    return { kind: "run", invocation: { headless: true, ...configurationValues(configuration),
+    return { kind: "run", invocation: { ...configurationValues(configuration),
         inputItems: args.slice(firstImageIndex).map((path) => io.absolute(path)) } };
 }
 

@@ -7,10 +7,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    collectInvocation,
-    inputItemToPosixPath
-} = require("../../../src/host/input.js");
+const { collectInvocation } = require("../../../src/host/quick-action/input.js");
+const { inputItemToPosixPath } = require("../../../src/host/input.js");
 const { collectImageFiles } = require("../ports/fake-selection.cjs");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
@@ -99,5 +97,5 @@ test("a value that mentions a file URL is not a file URL", () => {
 });
 
 test("interactive envelopes produce an explicitly interactive request", () => {
-    assert.equal(collectInvocation(createFakeApp(), [["/a/photo.png"], {}]).headless, false);
+    assert.deepEqual(collectInvocation(createFakeApp(), [["/a/photo.png"], {}]), { timestamp: "", inputItems: ["/a/photo.png"] });
 });

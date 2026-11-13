@@ -1,9 +1,9 @@
 "use strict";
-const { formSpec, defaultAnswers } = require("../../src/host/settings-model.js");
-const { readAnswers } = require("../../src/host/settings-model.js");
-const { buildForm } = require("../../src/host/appkit.js");
-const { WIDGETS } = require("../../src/host/appkit.js");
-const { detailsAlert } = require("../../src/host/details-dialog.js");
+const { formSpec, defaultAnswers } = require("../../src/host/quick-action/settings-model.js");
+const { readAnswers } = require("../../src/host/quick-action/settings-model.js");
+const { buildForm } = require("../../src/host/quick-action/appkit.js");
+const { WIDGETS } = require("../../src/host/quick-action/appkit.js");
+const { detailsAlert } = require("../../src/host/quick-action/details-dialog.js");
 const SMALLEST_VISIBLE_HEIGHT = 744;
 const PNG_TYPE = 4;
 

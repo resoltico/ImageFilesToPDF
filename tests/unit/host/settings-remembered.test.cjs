@@ -11,11 +11,11 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { chooseSettings } = require("../../../src/host/settings-form.js");
-const { encode, rememberedAnswers } = require("../../../src/host/preferences.js");
+const { chooseSettings } = require("../../../src/host/quick-action/settings-form.js");
+const { encode, rememberedAnswers } = require("../../../src/host/quick-action/preferences.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
-const { defaultAnswers } = require("../../../src/host/settings-model.js");
-const { readAnswers } = require("../../../src/host/settings-model.js");
+const { defaultAnswers } = require("../../../src/host/quick-action/settings-model.js");
+const { readAnswers } = require("../../../src/host/quick-action/settings-model.js");
 const { boundedDialog } = require("../ports/fake-dialogs.cjs");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 

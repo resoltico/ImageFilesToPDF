@@ -2,16 +2,16 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { buildForm } = require("../../../src/host/appkit.js");
+const { buildForm } = require("../../../src/host/quick-action/appkit.js");
 const {
     FORM_WIDTH,
     ROW_HEIGHT,
     NUMBER_WIDTH,
     COLOR_WIDTH,
     PADDING
-} = require("../../../src/host/appkit.js");
-const { WIDGETS } = require("../../../src/host/appkit.js");
-const { formSpec, defaultAnswers } = require("../../../src/host/settings-model.js");
+} = require("../../../src/host/quick-action/appkit.js");
+const { WIDGETS } = require("../../../src/host/quick-action/appkit.js");
+const { formSpec, defaultAnswers } = require("../../../src/host/quick-action/settings-model.js");
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 function build(spec = formSpec()) {

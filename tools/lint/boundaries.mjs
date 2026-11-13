@@ -19,6 +19,10 @@ function hasHostGlobal(node) {
         ? value.some(hasHostGlobal) : hasHostGlobal(value));
 }
 
+function hostInterface(file) {
+    return /^src\/host\/(?<name>quick-action|command-line)\//u.exec(file)?.groups.name;
+}
+
 export function checkBoundary(file, source) {
     const layer = file === "src/entry.js" ? "entry" : file.split("/")[1];
     if (!ALLOWED[layer]) { throw new Error(`${file}: unknown source layer`); }
@@ -28,6 +32,9 @@ export function checkBoundary(file, source) {
     for (const match of source.matchAll(/require\("(?<target>[^"]+)"\)/gu)) {
         if (!match.groups.target.startsWith(".")) { throw new Error(`${file}: external dependency ${match.groups.target}`); }
         const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), match.groups.target));
+        if (layer === "host" && hostInterface(target) && hostInterface(file) !== hostInterface(target)) {
+            throw new Error(`${file}: forbidden host interface dependency ${target}`);
+        }
         if (!target.startsWith("src/") || !ALLOWED[layer].includes(target.split("/")[1])) {
             throw new Error(`${file}: forbidden dependency ${target}`);
         }

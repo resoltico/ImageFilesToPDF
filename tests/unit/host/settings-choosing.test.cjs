@@ -2,8 +2,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { collectSettings } = require("../../../src/host/settings-form.js");
-const { defaultAnswers } = require("../../../src/host/settings-model.js");
+const { collectSettings } = require("../../../src/host/quick-action/settings-form.js");
+const { defaultAnswers } = require("../../../src/host/quick-action/settings-model.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 
 const BRIDGE = { objc: {}, ns: {} };

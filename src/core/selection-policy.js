@@ -1,5 +1,6 @@
 "use strict";
-const { basename, isSupportedImage, supportedFormatList } = require("./paths.js");
+const { basename } = require("./paths.js");
+const { isSupportedImage, supportedFormatList } = require("./formats.js");
 
 /* Receipt code for each selection refusal, and the sentence that explains it. */
 const SELECTION_REASONS = Object.freeze({

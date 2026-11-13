@@ -14,7 +14,7 @@ const {
     DETAIL_RECT,
     TRACK_RECT,
     fillRect
-} = require("../../../src/host/panel.js");
+} = require("../../../src/host/quick-action/panel.js");
 
 function top(rect) {
     return rect.bottom + rect.height;

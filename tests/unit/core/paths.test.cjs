@@ -2,15 +2,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    SUPPORTED_FORMATS,
-    supportedFormatList,
-    isSupportedImage,
-    basename,
-    dirname,
-    fileStem,
-    sanitizeFilename
-} = require("../../../src/core/paths.js");
+const { basename, dirname, fileStem, sanitizeFilename } = require("../../../src/core/paths.js");
+const { SUPPORTED_FORMATS, supportedFormatList, isSupportedImage } = require("../../../src/core/formats.js");
 
 const NUL = String.fromCharCode(0);
 const DEL = String.fromCharCode(127);

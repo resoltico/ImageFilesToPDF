@@ -45,3 +45,13 @@ test("host name equivalence determines conflicts without changing spelling or so
         assert.throws(()=>documentPlan({mode:"separate"},sources,"unused",groups),/identify every source/u);
     }
 });
+
+
+test("one admitted image uses its name in both modes and ignores the timestamp", () => {
+    const source = { path: "/out/photo.jpg", originalName: "photo.jpg", folder: "/out/" };
+    for (const mode of ["combined", "separate"]) {
+        assert.deepEqual(documentPlan({ mode }, [source], "unused", [0]), [{ sources: [source], destination: "/out/photo.pdf" }]);
+    }
+    assert.equal(documentPlan({ mode: "combined" }, [source, { ...source, path: "/out/other.jpg", originalName: "other.jpg" }], "20261113_010203")[0].destination,
+        "/out/Images 2026-11-13 at 01.02.03.pdf");
+});

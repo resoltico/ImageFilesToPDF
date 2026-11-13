@@ -31,9 +31,11 @@ vips copy "$WORK/tiny.svg" "$WORK/tiny.png"
 render() {
     write_config "$WORK/config.json" A4 Portrait "combined" "$2" "$1"
     osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$3" \
-        >/dev/null 2>&1
-    assert_valid_pdf "$WORK/$(combined_name "$1")"
-    pdftoppm -f 1 -singlefile -r 10 -png "$WORK/$(combined_name "$1")" "$WORK/$4" \
+        >"$WORK/render-receipt.json" 2>"$WORK/render-stderr.txt"
+    local pdf
+    pdf=$(node -p 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).documents[0].output' "$WORK/render-receipt.json")
+    assert_valid_pdf "$pdf"
+    pdftoppm -f 1 -singlefile -r 10 -png "$pdf" "$WORK/$4" \
         >/dev/null 2>&1
 }
 

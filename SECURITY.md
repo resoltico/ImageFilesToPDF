@@ -16,8 +16,8 @@ fall back to weaker checks.
 
 Candidates are inspected before consent and settings. Each admitted source is then
 copied into an owned private workspace, and the same captured bytes are inspected
-and decoded. Identity, version and image facts are checked around the capture, and
-an observed change refuses the image. Coarse filesystem timestamps cannot guarantee
+and decoded. Identity, version and image facts, including gain-map presence, are
+checked around the capture, and an observed change refuses the image. Coarse filesystem timestamps cannot guarantee
 an atomic snapshot of an original that another program is changing, so stop other
 writers while converting.
 
@@ -56,11 +56,12 @@ left alone. Help, version and invalid command-line requests do not run this clea
 
 ## Embedded image metadata
 
-An RGB JPEG without an embedded color profile, upright and within the resolution
-limit is embedded byte for byte, including EXIF, GPS and other metadata inside it.
-A PDF made from such an image is not a metadata-free copy: review the source
+A standard-range RGB JPEG without an embedded color profile, upright and within
+the resolution limit is embedded byte for byte, including EXIF, GPS and other
+metadata inside it. A PDF made from such an image is not a metadata-free copy: review the source
 metadata before sharing it when location or camera details are sensitive. Every
-other image is re-encoded without its metadata.
+other image is re-encoded without its metadata. Ultra HDR JPEGs are normalized to
+their SDR base image; the gain map is excluded from pass-through and from the PDF.
 
 Remembered settings, under `com.resoltico.ImageFilesToPDF`, hold page settings only.
 

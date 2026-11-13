@@ -16,8 +16,8 @@ const {
     APPEARANCE_DELAY,
     build,
     panelSink
-} = require("../../../src/host/panel.js");
-const { TRACK_RECT } = require("../../../src/host/panel.js");
+} = require("../../../src/host/quick-action/panel.js");
+const { TRACK_RECT } = require("../../../src/host/quick-action/panel.js");
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 /*

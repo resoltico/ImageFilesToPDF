@@ -122,8 +122,7 @@ function inspectCaptured(job, owned, original) {
     const issues = sourceIssues(facts);
     if (issues.length > 0) {
         const issue = { ...issues[0], source: original };
-        const error = new OperationError(`${original}: ${issue.message}`);
-        error.issues = [issue];
+        const error = new OperationError(`${original}: ${issue.message}`, { issues: [issue] });
         throw error;
     }
     return { ...owned, ...facts };

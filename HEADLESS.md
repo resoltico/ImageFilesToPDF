@@ -8,7 +8,7 @@ osascript -l JavaScript Image-Files-to-PDF.jxa -- --version
 osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless settings.json photo.jpg folder
 ```
 
-`--help` lists every setting with its values and default; `--version` prints
+`--help` lists every setting in the table order below with its values and default; `--version` prints
 `Image Files to PDF <version>`. Both print to stdout and exit 0. Anything else that
 is not a complete `--headless` request is a usage error: it names the problem in one
 sentence (`No arguments were given.`, `Unknown option: <arg>.`,
@@ -49,9 +49,10 @@ string `"3e2"` is refused. Duplicate keys follow `JSON.parse`: the last value wi
 | `background` | Page background | Six hexadecimal digits, optional `#`, surrounding whitespace allowed; normalized to uppercase `#RRGGBB` |
 | `timestamp` | Run timestamp | Optional `YYYYMMDD_HHMMSS` |
 
-`timestamp` is a run option, not a page setting: it names a combined PDF and
-defaults to the current local time. When present it must be a real local date and
-time in exactly that shape; `null`, `false`, numbers and empty strings are refused.
+`timestamp` is a run option, not a page setting: it names a combined PDF of two
+or more admitted images and defaults to the current local time. It stays accepted
+and is unused for separate PDFs and for a combined PDF with one admitted image.
+When present it must be a real local date and time in exactly that shape; `null`, `false`, numbers and empty strings are refused.
 
 ## Receipt and exit status
 
@@ -66,7 +67,7 @@ plain-language report to stderr. Read both the receipt and the exit status.
 | `3` | A required tool is missing or unusable |
 
 ```json
-{"state":"complete","documents":[{"state":"saved","sources":["/Users/me/Pictures/photo.png"],"pages":1,"issues":[],"output":"/Users/me/Pictures/Images 2026-10-29 at 12.00.00.pdf"}],"rejected":[],"issues":[],"diagnostics":[],"elapsed":"1 second"}
+{"state":"complete","documents":[{"state":"saved","sources":["/Users/me/Pictures/photo.png"],"pages":1,"issues":[],"output":"/Users/me/Pictures/photo.pdf"}],"rejected":[],"issues":[],"diagnostics":[],"elapsed":"1 second"}
 ```
 
 | Field | Meaning |
@@ -111,7 +112,8 @@ faulted is identified in `issues` and is not a validated recovery.
 Every issue and every `rejected` entry carries a `code`, a `stage` and a message:
 `message` for issues, `reason` for rejected entries, which also carry `path` and
 `name`. An issue may also carry `field`, `source` and `diagnostic`; commands,
-native errors and stacks appear only in `diagnostic`.
+native errors and stacks appear only in `diagnostic`. An `unsupported-content`
+refusal includes `diagnostic.loader`, the vips loader that recognized its content.
 
 | Stage | Codes |
 | --- | --- |
@@ -131,8 +133,11 @@ remaining PDFs are `not-started`. Confirmed PDFs are kept in every case.
 
 ## Names and saving
 
-Combined PDFs are named `Images YYYY-MM-DD at HH.MM.SS.pdf` from `timestamp`.
-Separate PDFs use the image's sanitized name; images whose names would clash in one
+A PDF made from exactly one admitted image uses that image's sanitized name in
+either mode: `photo.jpg` becomes `photo.pdf`, then `photo 2.pdf` if occupied.
+A combined PDF of two or more admitted images is named
+`Images YYYY-MM-DD at HH.MM.SS.pdf` from `timestamp`. Separate PDFs use the
+image's sanitized name; images whose names would clash in one
 destination add their lower-case extension. Clashes follow the destination's own
 rules for case and Unicode normalization, and folder aliases are matched by native
 identity. An existing name gets ` 2`, ` 3` and so on. If those facts cannot be

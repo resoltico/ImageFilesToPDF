@@ -187,8 +187,7 @@ function removePrototypes(runtime) {
         }
     }
     if (issues.length > 0) {
-        const error = new OperationError("Temporary output-name comparisons could not be removed.");
-        error.issues = issues;
+        const error = new OperationError("Temporary output-name comparisons could not be removed.", { issues });
         throw error;
     }
 }
@@ -201,8 +200,7 @@ function managedGroups(runtime, sources) {
     catch (error) {
         if (failure) {
             const issues = [...issuesOf(failure, "planning"), ...issuesOf(error, "cleanup")];
-            failure = new OperationError("Output-name comparison failed.", { cause: failure });
-            failure.issues = issues;
+            failure = new OperationError("Output-name comparison failed.", { cause: failure, issues });
         } else { failure = error; }
     }
     if (failure) { throw failure; }
@@ -212,9 +210,9 @@ function managedGroups(runtime, sources) {
 function workspaceDevice(runtime, path) {
     try { return directory(runtime, path).device; }
     catch (cause) {
-        const error = new OperationError("The private working folder could not be inspected.", { cause });
-        error.issues = issuesOf(cause, "planning").map((issue) => ({ ...issue, message: error.message,
-            diagnostic: { ...issue.diagnostic, path, detail: issue.message } }));
+        const message = "The private working folder could not be inspected.";
+        const error = new OperationError(message, { cause, issues: issuesOf(cause, "planning").map((issue) => ({ ...issue, message,
+            diagnostic: { ...issue.diagnostic, path, detail: issue.message } })) });
         throw error;
     }
 }

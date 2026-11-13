@@ -1,95 +1,99 @@
 "use strict";
-const test=require("node:test");
-const assert=require("node:assert/strict");
-const {executeRun}=require("../../../src/application/run.js");
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { executeRun } = require("../../../src/application/run.js");
+const { IssueError, UserCanceled, isUserCanceled } = require("../../../src/core/errors.js");
+const { failedRun } = require("../../../src/core/outcomes.js");
 
-test("controller closes progress and presents the same authoritative document outcomes",()=>{
-    const events=[];
-    const selection={images:[{path:"a"}],rejected:[{path:"bad"}]};
-    const documents=[{state:"saved",sources:["a"],pages:1,output:"out.pdf",issues:[]}];
-    const progress={diagnostics:[{code:"observer"}],pause:()=>events.push("pause"),close:()=>events.push("close")};
-    const ports={progress,prepare:()=>({selection,invocation:{headless:true,settings:{mode:"combined"}}}),createJob:()=>({kind:"job"}),convert:()=>({documents,issues:[]}),
-        present(result){events.push(result);return "presented";}};
-    assert.equal(executeRun(ports),"presented");
-    assert.deepEqual(events,["pause","close",{state:"incomplete",documents,rejected:selection.rejected,issues:[],diagnostics:progress.diagnostics}]);
+function fixture() {
+    const events = [];
+    const settings = { mode: "combined" };
+    const request = { invocation: { settings }, selection: { images: [{ path: "a", folder: "/a/" }], rejected: [] } };
+    const result = { documents: [{ state: "saved", sources: ["a"], pages: 1, output: "/saved.pdf", issues: [] }], issues: [] };
+    const ports = { progress: { diagnostics: [], pause: () => events.push("pause"), close: () => events.push("close") },
+        prepare: () => request, createJob: () => ({}), convert: () => result,
+        interaction: { settings: () => settings, present: (value) => value } };
+    return { ports, events, settings, request, result };
+}
+
+test("controller presents authoritative outcomes after closing progress", () => {
+    const { ports, request, result, events } = fixture();
+    request.selection.rejected = [{ path: "bad" }];
+    ports.progress.diagnostics = [{ code: "observer" }];
+    ports.interaction.present = (value) => { events.push(value); return "presented"; };
+    assert.equal(executeRun(ports), "presented");
+    assert.deepEqual(events, ["pause", "close", { state: "incomplete", documents: result.documents,
+        rejected: [{ path: "bad" }], issues: [], diagnostics: [{ code: "observer" }] }]);
+    assert.equal(result.rejected, request.selection.rejected);
 });
 
-test("empty selection never asks settings or starts conversion",()=>{
-    const events=[];
-    const refused=[{path:"bad"}];
-    const result=executeRun({prepare:()=>({selection:{images:[],rejected:refused}}),noImages:(items)=>{events.push(items);return "empty";}});
-    assert.equal(result,"empty");
-    assert.deepEqual(events,[refused]);
+test("empty selection never asks settings or starts conversion", () => {
+    const rejected = [{ path: "bad" }];
+    const ports = { prepare: () => ({ selection: { images: [], rejected } }),
+        interaction: { noImages(items) { assert.equal(items, rejected); return "empty"; } } };
+    assert.equal(executeRun(ports), "empty");
 });
 
-test("presentation faults carry the same confirmed outcome rather than discarding saved outputs",()=>{
-    const outcome={documents:[{state:"saved",sources:["a"],pages:1,output:"/saved.pdf",issues:[]}],issues:[]};
-    const ports={progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>({invocation:{headless:true,settings:{}},selection:{images:[{path:"a"}],rejected:[]}}),
-        createJob:()=>({}),convert:()=>outcome,present:()=>{throw new TypeError("view failed");}};
-    assert.throws(()=>executeRun(ports),(error)=>error.outcome===outcome&&error.outcome.documents[0].output==="/saved.pdf");
+test("the interaction receives core selection facts before the job is created", () => {
+    const { ports, request, settings, events } = fixture();
+    request.selection.rejected = [{ name: "bad", reason: "refused" }];
+    ports.interaction.settings = (context, prepared) => {
+        assert.equal(prepared, request);
+        assert.deepEqual(context, { count: 1, selectedFolders: 0, folders: ["/a/"], rejected: request.selection.rejected, diagnostics: [] });
+        events.push("settings"); return settings;
+    };
+    ports.createJob = (prepared, value) => { assert.equal(prepared, request); assert.equal(value, settings); events.push("job"); return {}; };
+    executeRun(ports);
+    assert.deepEqual(events, ["pause", "settings", "job", "close"]);
 });
 
-test("interactive consent precedes settings and cancellation creates no job",()=>{
-    const {UserCanceled}=require("../../../src/core/errors.js");const events=[];
-    const request={invocation:{headless:false},selection:{images:[{path:"a",folder:"/a/"}],rejected:[{name:"bad",reason:"refused"}]}};
-    const ports={progress:{pause:()=>events.push("pause"),diagnostics:[]},prepare:()=>request,
-        review:(context)=>{assert.equal(context.count,1);events.push("review");throw new UserCanceled();},settings:()=>events.push("settings"),createJob:()=>events.push("job")};
-    assert.throws(()=>executeRun(ports),/User canceled/u);assert.deepEqual(events,["pause","review"]);
+test("cancellation at the interaction boundary creates no job", () => {
+    const { ports, events } = fixture();
+    ports.interaction.settings = () => { events.push("settings"); throw new UserCanceled(); };
+    ports.createJob = () => assert.fail("no job after cancellation");
+    assert.throws(() => executeRun(ports), /User canceled/u);
+    assert.deepEqual(events, ["pause", "settings"]);
 });
 
-test("interactive settings and consent share the core selection facts",()=>{
-    const events=[];const settings={mode:"combined"};
-    const request={invocation:{headless:false},selection:{images:[{path:"a",folder:"/a/"}],rejected:[{name:"bad",reason:"refused"}]}};
-    executeRun({progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>request,
-        review:(context)=>events.push(["review",context.count,context.folders]),settings:(context)=>{events.push(["settings",context.count]);return settings;},
-        createJob:(prepared,value)=>{assert.equal(value,settings);events.push(["job"]);return {};},
-        convert:()=>({documents:[],issues:[]}),present:(value)=>value});
-    assert.deepEqual(events,[["review",1,["/a/"]],["settings",1],["job"]]);
-});
-
-test("even a primitive presentation fault retains the completed outcome",()=>{
-    const outcome={documents:[{state:"saved",sources:["a"],pages:1,output:"/saved.pdf",issues:[]}],issues:[]};
-    const ports={progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>({invocation:{headless:true,settings:{}},selection:{images:[{path:"a"}],rejected:[]}}),
-        createJob:()=>({}),convert:()=>outcome,present:()=>{
-            // Deliberately malformed exception at the presentation boundary.
-            // eslint-disable-next-line no-throw-literal
-            throw null;
-        }};
-    assert.throws(()=>executeRun(ports),(error)=>error.outcome===outcome&&error.message==="Unknown error");
-});
-
-test("interactive requests without refusals do not ask an unnecessary selection consent",()=>{
-    const events=[];
-    executeRun({progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>({invocation:{headless:false},selection:{images:[{path:"a",folder:"/a/"}],rejected:[]}}),
-        review:()=>events.push("review"),settings:()=>({mode:"combined"}),createJob:()=>({}),convert:()=>({documents:[],issues:[]}),present:(value)=>value});
-    assert.deepEqual(events,[]);
-});
-
-test("a late native cancellation during reporting carries its cause and all saved outputs",()=>{
-    const {UserCanceled,isUserCanceled}=require("../../../src/core/errors.js");
-    const {failedRun}=require("../../../src/core/outcomes.js");
-    const result={documents:[{state:"saved",sources:["a"],pages:1,output:"/saved.pdf",issues:[]}],issues:[]};
-    const ports={progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>({invocation:{headless:true,settings:{}},selection:{images:[{path:"a"}],rejected:[]}}),createJob:()=>({}),convert:()=>result,present:()=>{throw new UserCanceled();}};
-    assert.throws(()=>executeRun(ports),(error)=>isUserCanceled(error)&&failedRun(error,error.outcome)===result);
-});
-
-for(const thrown of [null,undefined,new TypeError("close fault")]) {
-    test(`progress teardown throwing ${String(thrown)} cannot erase a completed outcome`,()=>{
-        const {failedRun}=require("../../../src/core/outcomes.js");
-        const result={documents:[{state:"saved",sources:["a"],pages:1,output:"/saved.pdf",issues:[]}],issues:[]};
-        let presented=false;
-        const ports={progress:{pause:()=>undefined,close(){throw thrown;},diagnostics:[]},prepare:()=>({invocation:{headless:true,settings:{}},selection:{images:[{path:"a"}],rejected:[]}}),createJob:()=>({}),convert:()=>result,present(){presented=true;}};
-        assert.throws(()=>executeRun(ports),error=>{
-            const failed=failedRun(error,error.outcome);
-            assert.equal(failed.documents[0].output,"/saved.pdf");assert.equal(failed.issues[0].stage,"reporting");return true;
+for (const cause of [new TypeError("view failed"), new UserCanceled(), null, undefined]) {
+    test(`presentation failure ${String(cause)} retains the confirmed outcome`, () => {
+        const { ports, result } = fixture();
+        // The presentation boundary can throw even a malformed value.
+        ports.interaction.present = () => { throw cause; };
+        assert.throws(() => executeRun(ports), (error) => {
+            assert.equal(error.outcome, result);
+            assert.equal(error.outcome.documents[0].output, "/saved.pdf");
+            assert.equal(error.cause, cause);
+            if (isUserCanceled(cause)) { assert.equal(failedRun(error, error.outcome), result); }
+            else { assert.equal(failedRun(error, error.outcome).issues[0].stage, "reporting"); }
+            return true;
         });
-        assert.equal(presented,false);
     });
 }
 
-test("an unreadable presentation exception cannot erase the confirmed outcome",()=>{
-    const result={documents:[{state:"saved",sources:["a"],pages:1,output:"/saved.pdf",issues:[]}],issues:[]};
-    const failure=Object.defineProperty({},"message",{get(){throw new TypeError("error getter");}});
-    const ports={progress:{pause:()=>undefined,close:()=>undefined,diagnostics:[]},prepare:()=>({invocation:{headless:true,settings:{}},selection:{images:[{path:"a"}],rejected:[]}}),createJob:()=>({}),convert:()=>result,present(){throw failure;}};
-    assert.throws(()=>executeRun(ports),error=>error.outcome===result&&error.message==="The failure details could not be read.");
+for (const cause of [null, undefined, new TypeError("close fault")]) {
+    test(`progress teardown failure ${String(cause)} retains the outcome without presenting`, () => {
+        const { ports, result } = fixture();
+        ports.progress.close = () => { throw cause; };
+        ports.interaction.present = () => assert.fail("no presentation after failed teardown");
+        assert.throws(() => executeRun(ports), (error) => error.outcome === result && failedRun(error, result).issues[0].stage === "reporting");
+    });
+}
+
+test("unreadable presentation details cannot erase the confirmed outcome", () => {
+    const { ports, result } = fixture();
+    const failure = Object.defineProperty({}, "message", { get() { throw new TypeError("error getter"); } });
+    ports.interaction.present = () => { throw failure; };
+    assert.throws(() => executeRun(ports), (error) => error.outcome === result && error.message === "The failure details could not be read.");
+});
+
+test("presentation failure preserves diagnostic stack and reporting-fault classification", () => {
+    const { ports } = fixture();
+    const failure = new IssueError("transport", { issues: [{ code: "cleanup", stage: "cleanup", message: "transport", diagnostic: { stack: "native stack" } }] });
+    ports.interaction.present = () => { throw failure; };
+    assert.throws(() => executeRun(ports), (error) => {
+        const [issue] = failedRun(error, error.outcome).issues;
+        assert.equal(issue.code, "fault"); assert.equal(issue.stage, "reporting"); assert.equal(issue.diagnostic.stack, "native stack");
+        return true;
+    });
 });

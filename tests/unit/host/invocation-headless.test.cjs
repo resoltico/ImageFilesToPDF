@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { cliCommand, jsonConfiguration, configurationValues, usage } = require("../../../src/host/cli.js");
+const { cliCommand, jsonConfiguration, configurationValues, usage } = require("../../../src/host/command-line/cli.js");
 const settings = { paperSize: "A4", orientation: "Portrait", mode: "combined", resolutionLimit: 72, quality: 92, background: "#FFFFFF" };
 function io(configuration = settings) { return { absolute: (path) => path.startsWith("/") ? path : `/cwd/${path}`, read: () => configuration }; }
 
@@ -37,7 +37,7 @@ test("CLI request uses one settings read and resolves every operand through its 
     const command = cliCommand(["--", "--headless", "config.json", "image.png", "/a/2.png"], port);
     assert.deepEqual(reads, ["/cwd/config.json"]);
     assert.equal(command.kind, "run");
-    assert.equal(command.invocation.headless, true);
+    assert.equal(Object.hasOwn(command.invocation, "headless"), false);
     assert.deepEqual(command.invocation.settings, settings);
     assert.equal(command.invocation.timestamp, "20260904_010203");
     assert.deepEqual(command.invocation.inputItems, ["/cwd/image.png", "/a/2.png"]);

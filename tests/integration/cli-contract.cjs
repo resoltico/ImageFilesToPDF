@@ -144,10 +144,12 @@ function descriptionJpeg(original) {
 
 function embedding() {
     const pdf=saved(convert(0,["photo.jpg"]));
-    assert.equal(path.basename(pdf),"Images 2026-10-29 at 01.02.03.pdf");
+    assert.equal(path.basename(pdf),"photo.pdf");
+    const pair=saved(convert(0,["photo.jpg","photo.png"]));
+    assert.equal(path.basename(pair),"Images 2026-10-29 at 01.02.03.pdf");
     const original=fs.readFileSync(at("photo.jpg"));
     assert.deepEqual(extracted(pdf,"unchanged"),original,"eligible JPEG stream stays byte-identical");
-    const second=saved(convert(0,["photo.jpg"]));assert.equal(path.basename(second),"Images 2026-10-29 at 01.02.03 2.pdf");
+    const second=saved(convert(0,["photo.jpg"]));assert.equal(path.basename(second),"photo 2.pdf");
     assert.deepEqual(extracted(pdf,"still-original"),original,"collision preserved the first PDF");
     const described=descriptionJpeg(original);
     fs.writeFileSync(at("description.jpg"),described);
@@ -165,8 +167,9 @@ function placementAndNaming(pdf) {
     const separate=at("separate.json");fs.writeFileSync(separate,JSON.stringify({...settings,mode:"separate"}));
     const names=convert(0,["photo.jpg","photo.png"],separate).documents.map((document)=>path.basename(document.output)).sort();
     assert.deepEqual(names,["photo-jpg.pdf","photo-png.pdf"]);
-    assert.equal(path.basename(saved(convert(0,["photo.jpg"],separate))),"photo.pdf");
-    assert.equal(path.basename(saved(convert(0,["photo.jpg"],separate))),"photo 2.pdf");
+    fs.mkdirSync(at("single separate"));fs.copyFileSync(at("photo.jpg"),at("single separate/photo.jpg"));
+    assert.equal(path.basename(saved(convert(0,["single separate/photo.jpg"],separate))),"photo.pdf");
+    assert.equal(path.basename(saved(convert(0,["single separate/photo.jpg"],separate))),"photo 2.pdf");
     return separate;
 }
 
@@ -176,6 +179,9 @@ function refusals(pdf,separate) {
     fs.writeFileSync(at("empty.png"),"");fs.copyFileSync(at("source.svg"),at("vector.png"));
     fs.copyFileSync(pdf,at("document.png"));fs.writeFileSync(at("random.jpg"),"not an image");
     fs.copyFileSync(at("photo.jpg"),at("unreadable.jpg"));fs.chmodSync(at("unreadable.jpg"),0);
+    fs.mkdirSync(at("one-admitted"));fs.copyFileSync(at("photo.jpg"),at("one-admitted/photo.jpg"));
+    const single=convert(1,["one-admitted/photo.jpg","random.jpg"]);
+    assert.equal(single.documents.length,1);assert.equal(single.documents[0].output,at("one-admitted/photo.pdf"));
     const corpus=["empty.png","vector.png","document.png","random.jpg","multi.tif","animated.webp","cut.webp","unreadable.jpg","photo.jpg"];
     const refused=convert(1,corpus,separate);
     for(const [name,code] of [["empty.png","empty"],["vector.png","not-an-image"],["document.png","not-an-image"],["random.jpg","not-an-image"],["multi.tif","multiple-images"],["animated.webp","multiple-images"],["cut.webp","damaged"],["unreadable.jpg","unreadable"]]) {refusal(refused,name,code);}

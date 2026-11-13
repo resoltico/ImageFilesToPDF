@@ -12,9 +12,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    collectInvocation
-} = require("../../../src/host/input.js");
+const { collectInvocation } = require("../../../src/host/quick-action/input.js");
 const { collectImageFiles } = require("../ports/fake-selection.cjs");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
@@ -113,7 +111,7 @@ test("an invocation without files falls back to Finder's selection", () => {
     try {
         for (const input of [[[], PARAMETERS], {}, [[], { source: "Finder", ignoresInput: false }]]) {
             const { inputItems } = collectInvocation(app, input, false);
-            assert.deepEqual(inputItems, [], "the record is not an item");
+            assert.deepEqual(inputItems.map(String), ["/finder/chosen.png"], "the record is dropped before Finder fallback");
             assert.deepEqual(collectImageFiles(app, inputItems).images.map((record) => record.path), ["/finder/chosen.png"]);
         }
     } finally {

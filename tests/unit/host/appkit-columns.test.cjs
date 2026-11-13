@@ -2,10 +2,10 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { buildForm } = require("../../../src/host/appkit.js");
-const { FORM_WIDTH } = require("../../../src/host/appkit.js");
-const { WIDGETS } = require("../../../src/host/appkit.js");
-const { formSpec } = require("../../../src/host/settings-model.js");
+const { buildForm } = require("../../../src/host/quick-action/appkit.js");
+const { FORM_WIDTH } = require("../../../src/host/quick-action/appkit.js");
+const { WIDGETS } = require("../../../src/host/quick-action/appkit.js");
+const { formSpec } = require("../../../src/host/quick-action/settings-model.js");
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 function build(spec = formSpec()) {
@@ -79,7 +79,7 @@ test("no control runs off the edge of the form", () => {
 test("a row named in the problems is marked, and the others are not", () => {
     // Reading which field is wrong and seeing it should not be different jobs.
     const spec = formSpec(
-        { ...require("../../../src/host/settings-model.js").defaultAnswers(), resolutionLimit: "nope" },
+        { ...require("../../../src/host/quick-action/settings-model.js").defaultAnswers(), resolutionLimit: "nope" },
         [{ key: "resolutionLimit", message: "Resolution: enter a whole number from 72 to 1017." }]
     );
     const bridge = createFakeObjC();
@@ -103,7 +103,7 @@ test("a row named in the problems is marked, and the others are not", () => {
 
 test("the rule a value breaks is marked along with the value", () => {
     const spec = formSpec(
-        { ...require("../../../src/host/settings-model.js").defaultAnswers(), quality: "500" },
+        { ...require("../../../src/host/quick-action/settings-model.js").defaultAnswers(), quality: "500" },
         [{ key: "quality", message: "JPEG quality: enter a whole number from 1 to 100." }]
     );
     const bridge = createFakeObjC();
@@ -119,7 +119,7 @@ test("the rule a value breaks is marked along with the value", () => {
 
 test("a choice row can be marked too, not only a typed one", () => {
     // Rare, but reachable: an answer that is not one of the options at all.
-    const { defaultAnswers } = require("../../../src/host/settings-model.js");
+    const { defaultAnswers } = require("../../../src/host/quick-action/settings-model.js");
     const spec = formSpec(
         { ...defaultAnswers(), paperSize: "Legal" },
         [{ key: "paperSize", message: 'Paper size: "Legal" is not one of the choices.' }]

@@ -1,9 +1,9 @@
 "use strict";
-const { hostError } = require("./cancellation.js");
+const { hostError } = require("../cancellation.js");
 
 const { formSpec } = require("./settings-model.js");
 const { readAnswers } = require("./settings-model.js");
-const { UserCanceled } = require("../core/errors.js");
+const { UserCanceled } = require("../../core/errors.js");
 const { appkitBridge } = require("./objc-bridge.js");
 const { presentForm } = require("./appkit.js");
 const { collectDialogSettings } = require("./dialogs.js");

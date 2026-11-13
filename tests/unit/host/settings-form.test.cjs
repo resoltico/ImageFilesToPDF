@@ -2,8 +2,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { collectViaForm } = require("../../../src/host/settings-form.js");
-const { defaultAnswers } = require("../../../src/host/settings-model.js");
+const { collectViaForm } = require("../../../src/host/quick-action/settings-form.js");
+const { defaultAnswers } = require("../../../src/host/quick-action/settings-model.js");
 
 const BRIDGE = { objc: {}, ns: {} };
 
@@ -46,8 +46,8 @@ test("the form's answers become the settings", () => {
     // row has no selection to answer with and nothing to leave alone.
     assert.deepEqual(
         present.seen[0].rows.map((row) => [row.key, row.value, row.invalid]),
-        Object.entries(defaultAnswers())
-            .map(([key, value]) => [key, value, false])
+        [["mode", "combined", false], ["paperSize", "A4", false], ["orientation", "Portrait", false],
+            ["background", "#FFFFFF", false], ["resolutionLimit", "300", false], ["quality", "82", false]]
     );
 });
 
@@ -102,7 +102,7 @@ test("a remembered run is what the form opens on", () => {
 });
 
 test("optional preference diagnostics reach the run without changing valid settings",()=>{
-    const {chooseSettings}=require("../../../src/host/settings-form.js");
+    const {chooseSettings}=require("../../../src/host/quick-action/settings-form.js");
     const {createFakeApp}=require("../ports/fake-app.cjs");
     for(const diagnostics of [undefined,[{code:"preferences-write",message:"denied"}]]) {
         const context={diagnostics:[]};

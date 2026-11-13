@@ -83,7 +83,8 @@ content. A typed background color may use either case and an optional `#`.
 Supported formats are JPEG, PNG, HEIC/HEIF, TIFF, WebP and AVIF, with a matching
 filename extension. The content must be a single still image that the installed
 vips can decode. Animated and multi-image files, vectors, documents, camera RAW,
-empty files and damaged images are refused, with the reason.
+empty files and damaged images are refused, with the reason. HDR JPEG photos are
+converted as standard-range images, without their gain maps.
 
 Selected folders are searched recursively. The search skips hidden entries,
 packages, links and unsupported names, and reports entries it cannot read. A
@@ -94,14 +95,15 @@ converted once. Pages follow the full path in natural order, so `2` comes before
 
 A PDF made from images found in a selected folder is saved in that folder; one
 made from an image selected directly is saved beside it. A combined PDF goes where
-the first image's PDF would go. A combined PDF is named
-`Images YYYY-MM-DD at HH.MM.SS.pdf` in local time; a separate PDF takes the image's
-name, as in `photo.pdf`. Two images whose names would clash in the same folder add
-their extension, as in `photo-jpg.pdf` and `photo-png.pdf`. An existing name gets a
+the first image's PDF would go. When exactly one image can be included, either
+mode names the PDF after it, as in `photo.pdf`, with no date-time suffix. A combined
+PDF of two or more images is named `Images YYYY-MM-DD at HH.MM.SS.pdf` in local
+time. Separate PDFs take their images' names. Two images whose names would clash
+in the same folder add their extension, as in `photo-jpg.pdf` and `photo-png.pdf`. An existing name gets a
 number, as in `photo 2.pdf`; nothing is ever overwritten.
 
-An RGB JPEG without an embedded color profile, upright, and no larger than the
-maximum resolution allows is embedded unchanged. Other images are rotated upright,
+A standard-range RGB JPEG without an embedded color profile, upright, and no
+larger than the maximum resolution allows is embedded unchanged. Other images are rotated upright,
 converted from their color profile to sRGB (untagged grayscale stays grayscale),
 flattened onto the page background where transparent, and downsampled where
 needed. PNG and TIFF are then stored losslessly; JPEG, HEIC/HEIF, WebP and AVIF

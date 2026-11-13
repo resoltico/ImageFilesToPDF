@@ -101,8 +101,8 @@ grep -q '"rejected":\[\]' <<<"$HIDDEN" || fail "nothing should be refused: $HIDD
 
 SPELLINGS=$(run 20260907_060606 "$WORK/case" "$WORK/case/a.png")
 
-test "$(pages "$WORK/case/Images 2026-09-07 at 06.06.06.pdf")" = 1 ||
-    fail "one photograph became $(pages "$WORK/case/Images 2026-09-07 at 06.06.06.pdf") pages: $SPELLINGS"
+test "$(pages "$WORK/case/A.pdf")" = 1 ||
+    fail "one photograph became $(pages "$WORK/case/A.pdf") pages: $SPELLINGS"
 grep -q '"rejected":\[\]' <<<"$SPELLINGS" || fail "nothing should be refused: $SPELLINGS"
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 "use strict";
+const { SUPPORTED_FORMATS } = require("../core/formats.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { OperationError, isUserCanceled } = require("../core/errors.js");
 const { calculatePlacement, canPassThrough } = require("../core/geometry.js");
@@ -25,16 +26,14 @@ function normalizeImage(job, captured, source, page) {
 
 function damaged(error, path) {
     const issue = { ...sourceIssue("damaged", {}, { message: error.message, command: error.command ?? "" }), stage: "preparation", source: path };
-    const failure = new OperationError(`${path}: ${issue.message}`, { cause: error });
-    failure.issues = [issue];
+    const failure = new OperationError(`${path}: ${issue.message}`, { cause: error, issues: [issue] });
     return failure;
 }
 
 function requireAdmission(imageFile, captured) {
     if (!matchesAdmission(imageFile.admission, captured)) {
         const issue = changedSourceIssue(imageFile.path, { admitted: imageFile.admission, captured });
-        const failure = new OperationError(`${imageFile.path}: ${issue.message}`);
-        failure.issues = [issue];
+        const failure = new OperationError(`${imageFile.path}: ${issue.message}`, { issues: [issue] });
         throw failure;
     }
 }
@@ -50,7 +49,7 @@ function preparePage(job, imageFile, index) {
         requireAdmission(imageFile, source);
         const placement = calculatePlacement(job.geometry, source);
         const pass = canPassThrough(source, placement);
-        const extension = pass || ["JPEG", "HEIF", "WebP"].includes(source.format) ? "jpg" : "png";
+        const extension = SUPPORTED_FORMATS.find((format) => format.family === source.format).pageEncoding === "jpeg" ? "jpg" : "png";
         pagePath = `${job.workspace}/${index}-page.${extension}`;
         try {
             if (pass) {

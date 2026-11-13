@@ -1,7 +1,8 @@
 "use strict";
 const { ISSUE } = require("./outcomes.js");
-const { SUPPORTED_FORMATS, basename, supportedFormatList } = require("./paths.js");
-const RASTER_FAMILIES = new Set(SUPPORTED_FORMATS.map((format) => format.family ?? format.name));
+const { basename } = require("./paths.js");
+const { SUPPORTED_FORMATS, supportedFormatList } = require("./formats.js");
+const RASTER_FAMILIES = new Set(SUPPORTED_FORMATS.map((format) => format.family));
 const FIRST_TURNED = 5;
 const LAST_ORIENTATION = 8;
 
@@ -11,7 +12,7 @@ function sourceIssue(code, facts = {}, diagnostic = null) {
             : "This file cannot be read (permission denied).",
         empty: "This file is empty.",
         "not-an-image": "This file is not a supported still raster image.",
-        "unsupported-content": `This image uses unsupported content; use ${supportedFormatList()}.`,
+        "unsupported-content": `This file's content is not a supported still image; use ${supportedFormatList()}.`,
         "multiple-images": `This file contains ${facts.pages} images; only single images are supported.`,
         damaged: "This image is damaged or incomplete."
     };
@@ -28,8 +29,7 @@ function sourceFileIssue(facts) {
 function sourceIssues(descriptor) {
     if (descriptor.problem) { return [sourceIssue(descriptor.problem, descriptor, descriptor.diagnostic)]; }
     if (!RASTER_FAMILIES.has(descriptor.format)) {
-        const vector = !descriptor.loader || /^(?:svg|pdf)/u.test(descriptor.loader);
-        return [sourceIssue(vector ? "not-an-image" : "unsupported-content")];
+        return [sourceIssue("not-an-image")];
     }
     if (![descriptor.width, descriptor.height, descriptor.bands, descriptor.pages, descriptor.orientation]
         .every((value) => Number.isSafeInteger(value) && value > 0) || descriptor.orientation > LAST_ORIENTATION) {

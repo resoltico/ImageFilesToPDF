@@ -10,7 +10,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { chooseColor } = require("../../../src/host/dialogs.js");
+const { chooseColor } = require("../../../src/host/quick-action/dialogs.js");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
 test("the fallback offers the four presets and a color of your own", () => {

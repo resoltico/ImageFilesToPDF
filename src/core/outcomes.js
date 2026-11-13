@@ -30,12 +30,17 @@ function runOutcome(documents = [], rejected = [], issues = [], diagnostics = []
     let state = "complete";
     if (undone || documents.some((document) => document.issues.length > 0) || rejected.length > 0 || issues.length > 0 || documents.length === 0) { state = "incomplete"; }
     if (stopped && (undone || documents.length === 0)) { state = "canceled"; }
+    if (documents.length === 0 && issues.some((issue) => ["settings", "request"].includes(issue.stage))) { state = "invalid"; }
     return { state, documents, rejected, issues, diagnostics };
 }
+function noImagesOutcome(rejected) {
+    return runOutcome([], rejected, [{ code: "no-images", stage: "selection", message: "None of the selected items can be converted." }]);
+}
+
 function failedRun(error, outcome = null) {
     if (outcome && isUserCanceled(error)) { return outcome; }
     return runOutcome(outcome?.documents ?? [], outcome?.rejected ?? [],
         [...(outcome?.issues ?? []), ...issuesOf(error, outcome ? "reporting" : "setup")], outcome?.diagnostics ?? []);
 }
 
-module.exports = { ISSUE, issuesOf, runOutcome, failedRun };
+module.exports = { ISSUE, issuesOf, runOutcome, noImagesOutcome, failedRun };

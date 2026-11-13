@@ -12,7 +12,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { openPanel } = require("../../../src/host/panel.js");
+const { openPanel } = require("../../../src/host/quick-action/panel.js");
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 const POLICY_ACCESSORY = 1;

@@ -20,8 +20,7 @@ function sourceFacts(context, path) {
 }
 
 function captureFailure(path, issue, cause) {
-    const failure = new OperationError(`${path}: ${issue.message}`, { cause });
-    failure.issues = [issue];
+    const failure = new OperationError(`${path}: ${issue.message}`, { cause, issues: [issue] });
     return failure;
 }
 

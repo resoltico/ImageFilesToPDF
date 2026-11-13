@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { readMetadata, readMetadataBatch, rawMetadata, finishMetadata, optionalValue, scalarValues, fieldAbsent, headerFailureCode } = require("../../../src/backend/metadata.js");
 const base = "width: 400\nheight: 200\nbands: 3\nvips-loader: jpegload\ninterpretation: srgb\n";
-const expected = { loader: "jpegload", format: "JPEG", width: 400, height: 200, bands: 3, orientation: 1, pages: 1, icc: false, interpretation: "srgb" };
+const expected = { loader: "jpegload", format: "JPEG", gainMap: false, width: 400, height: 200, bands: 3, orientation: 1, pages: 1, icc: false, interpretation: "srgb" };
 
 function header(path, fields = base) {
     return `${path}: 400x200 uchar, 3 bands, srgb, jpegload\n${fields.split("\n").filter(Boolean).map((line) => `${path}: ${line}`).join("\n")}\n`;

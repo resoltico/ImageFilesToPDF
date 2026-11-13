@@ -5,7 +5,6 @@ const { basename, dirname } = require("../core/paths.js");
 const { sortImageRecords } = require("../core/ordering.js");
 const { imagesInFolder } = require("./expand.js");
 const { selectedItems } = require("./selection.js");
-const { finderSelection } = require("./input.js");
 const { rejectionReason } = require("./reasons.js");
 
 /*
@@ -106,10 +105,9 @@ function admit(app, tree, root, outcome) {
 /* Mandatory tree facts apply to directly selected files as well as folders. */
 function collectImageFiles(app, inputItems, tree = null) {
     if (!tree) { throw new Error("Required filesystem capabilities are unavailable."); }
-    const items = inputItems.length > 0 ? inputItems : finderSelection();
     const outcome = { images: [], rejected: [], taken: new Set() };
 
-    const roots = selectedItems(tree, items, outcome.rejected);
+    const roots = selectedItems(tree, inputItems, outcome.rejected);
 
     for (const root of roots) {
         admit(app, tree, root, outcome);

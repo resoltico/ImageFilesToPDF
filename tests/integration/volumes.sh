@@ -64,13 +64,13 @@ if attach_test_volume APFS "$VOLUME_NAME" "$VOLUME"; then
     cp "$WORK/photo.png" "$VOLUME/"
     run 20260907_020202 combined "$VOLUME/photo.png"
 
-    CROSS="$VOLUME/Images 2026-09-07 at 02.02.02.pdf"
+    CROSS="$VOLUME/photo.pdf"
     assert_valid_pdf "$CROSS"
     assert_nothing_left_behind "$VOLUME"
     test "$(stat -f%l "$CROSS")" = 1 ||
         fail "the published PDF still has a second name"
     run 20260907_020204 separate "$VOLUME/photo.png"
-    assert_valid_pdf "$VOLUME/photo.pdf"
+    assert_valid_pdf "$VOLUME/photo 2.pdf"
     assert_nothing_left_behind "$VOLUME"
     detach_test_volume "$VOLUME" "$WORK/$VOLUME_NAME.dmg"
 else
@@ -81,10 +81,10 @@ VOLUME="$WORK/mount-HFS"
 if attach_test_volume "HFS+" "$VOLUME_NAME" "$VOLUME"; then
     cp "$WORK/photo.png" "$VOLUME/"
     run 20260907_020203 combined "$VOLUME/photo.png"
-    assert_valid_pdf "$VOLUME/Images 2026-09-07 at 02.02.03.pdf"
+    assert_valid_pdf "$VOLUME/photo.pdf"
     assert_nothing_left_behind "$VOLUME"
     run 20260907_020204 separate "$VOLUME/photo.png"
-    assert_valid_pdf "$VOLUME/photo.pdf"
+    assert_valid_pdf "$VOLUME/photo 2.pdf"
     assert_nothing_left_behind "$VOLUME"
     detach_test_volume "$VOLUME" "$WORK/$VOLUME_NAME.dmg"
 else

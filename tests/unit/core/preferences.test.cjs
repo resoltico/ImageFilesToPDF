@@ -16,8 +16,8 @@ const {
     KEY,
     encode,
     rememberedAnswers
-} = require("../../../src/host/preferences.js");
-const { readAnswers } = require("../../../src/host/settings-model.js");
+} = require("../../../src/host/quick-action/preferences.js");
+const { readAnswers } = require("../../../src/host/quick-action/settings-model.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 const PAPERS = ["A4", "Letter"];

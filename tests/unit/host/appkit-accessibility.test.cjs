@@ -2,9 +2,9 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { formSpec, defaultAnswers } = require("../../../src/host/settings-model.js");
-const { buildForm } = require("../../../src/host/appkit.js");
-const { WIDGETS } = require("../../../src/host/appkit.js");
+const { formSpec, defaultAnswers } = require("../../../src/host/quick-action/settings-model.js");
+const { buildForm } = require("../../../src/host/quick-action/appkit.js");
+const { WIDGETS } = require("../../../src/host/quick-action/appkit.js");
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 test("every input has a meaningful accessible name and its applicable choices or rule", () => {

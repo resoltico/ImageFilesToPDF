@@ -1,12 +1,19 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { execute } = require("../../../src/host/main.js");
+const { execute: executeUseCase } = require("../../../src/host/main.js");
 const { createProgress } = require("../../../src/host/progress.js");
-const { reportHeadless } = require("../../../src/host/reporting.js");
-const { isCompleteSuccess } = require("../../../src/host/receipt.js");
+const { reportHeadless } = require("../../../src/host/command-line/reporting.js");
+const { isCompleteSuccess } = require("../../../src/host/command-line/receipt.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 const { treeOf } = require("../ports/fake-tree.cjs");
+const { commandLineInteraction } = require("../../../src/host/command-line/interaction.js");
+
+function execute(app, invocation, options) {
+    const interaction = commandLineInteraction(invocation);
+    interaction.progress = options.report;
+    return executeUseCase(app, invocation, { interaction, capabilities: options.capabilities });
+}
 const settings = {paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:85,background:"#FFFFFF"};
 
 function fixture(options = {}) {
@@ -17,7 +24,7 @@ function fixture(options = {}) {
 
 test("controller converts through real adapters and derives a complete receipt", () => {
     const {app,caps}=fixture();
-    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/source.png"]},{headless:true,report:createProgress([]),capabilities:caps});
+    const result=execute(app,{settings,timestamp:"",inputItems:["/source.png"]},{report:createProgress([]),capabilities:caps});
     assert.equal(result.state,"complete");
     assert.equal(result.documents[0].state,"saved");
     assert.equal(result.documents[0].pages,1);
@@ -28,7 +35,7 @@ test("controller converts through real adapters and derives a complete receipt",
 
 test("refused selection and conversion failures remain incomplete", () => {
     const {app,caps}=fixture({failures:[["'thumbnail'",new Error("damage")]]});
-    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/source.png","/notes.txt"]},{headless:true,report:createProgress([]),capabilities:caps});
+    const result=execute(app,{settings,timestamp:"",inputItems:["/source.png","/notes.txt"]},{report:createProgress([]),capabilities:caps});
     assert.equal(result.state,"incomplete");
     assert.equal(result.documents[0].state,"failed");
     assert.equal(result.rejected.length,1);
@@ -40,33 +47,34 @@ test("refused selection and conversion failures remain incomplete", () => {
 
 test("missing mandatory source capabilities refuse direct files at setup", () => {
     const {app,caps}=fixture();
-    assert.throws(()=>execute(app,{headless:true,settings,timestamp:"",inputItems:["/source.png"]},{headless:true,report:createProgress([]),capabilities:{...caps,sources:null}}),/Required filesystem/u);
+    assert.throws(()=>execute(app,{settings,timestamp:"",inputItems:["/source.png"]},{report:createProgress([]),capabilities:{...caps,sources:null}}),/Required filesystem/u);
     assert.ok(!app.commands.some((command)=>command.includes("'thumbnail'") && !command.includes("nonexistent-image")));
 });
 
 test("no-image outcomes retain rejection facts", () => {
     const {app,caps}=fixture();
-    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/notes.txt"]},{headless:true,report:createProgress([]),capabilities:caps});
+    const result=execute(app,{settings,timestamp:"",inputItems:["/notes.txt"]},{report:createProgress([]),capabilities:caps});
     assert.equal(result.state,"incomplete");
     assert.equal(result.documents.length,0);
     assert.equal(result.rejected.length,1);
 });
 
 test("interactive completion returns undefined and creates no text results", () => {
-    const { reportResult }=require("../../../src/host/reporting.js");
+    const { reportResult } = require("../../../src/host/quick-action/reporting.js");
     const app=createFakeHost();
-    assert.equal(reportResult(app,{state:"complete",documents:[],rejected:[],issues:[],diagnostics:[],elapsed:"0 seconds"},{headless:false}),undefined);
+    assert.equal(reportResult(app,{state:"complete",documents:[],rejected:[],issues:[],diagnostics:[],elapsed:"0 seconds"}),undefined);
 });
 
 test("empty selections explain how to select sources in both interfaces",()=>{
-    const {describeNoImages,reportNoImages}=require("../../../src/host/reporting.js");
+    const { reportNoImages } = require("../../../src/host/quick-action/reporting.js");
+const { describeNoImages } = require("../../../src/core/run-report.js");
     assert.match(describeNoImages([]),/No images selected/u);
     const app=createFakeHost();
-    assert.equal(reportNoImages(app,false,[]),undefined);
+    assert.equal(reportNoImages(app,[]),undefined);
     assert.match(app.dialogs[0].message,/Finder/u);
     assert.equal(app.dialogs[0].message.split("No images selected.").length,2);
     const refused=[{path:"/notes.txt",reason:"unsupported"}];
-    reportNoImages(app,false,refused);
+    reportNoImages(app,refused);
     assert.equal(app.dialogs[1].message.split("Nothing to convert.").length,2);
     assert.match(app.dialogs[1].message,/notes\.txt: unsupported/u);
 });
@@ -81,7 +89,7 @@ test("an unidentifiable selected source is refused before conversion",()=>{
 
 test("a combined pair exercises the backend command budget before import",()=>{
     const {app,caps}=fixture({files:["/source.png","/other.png"]});
-    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/source.png","/other.png"]},{headless:true,report:createProgress([]),capabilities:caps});
+    const result=execute(app,{settings,timestamp:"",inputItems:["/source.png","/other.png"]},{report:createProgress([]),capabilities:caps});
     assert.equal(result.documents[0].pages,2);
     assert.equal(result.state,"complete");
 });
@@ -90,7 +98,7 @@ test("unknown staged page size fails before import and retains source",()=>{
     const {app,caps}=fixture();
     const {facts} = app.publication;
     app.publication.facts=(path)=>path.endsWith("-page.png")?{identity:"",size:-1}:facts(path);
-    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/source.png"]},{headless:true,report:createProgress([]),capabilities:caps});
+    const result=execute(app,{settings,timestamp:"",inputItems:["/source.png"]},{report:createProgress([]),capabilities:caps});
     assert.equal(result.documents[0].state,"failed");
     assert.match(result.documents[0].issues[0].message,/Page size is unknown/u);
     assert.ok(app.files.has("/source.png"));
@@ -99,7 +107,7 @@ test("unknown staged page size fails before import and retains source",()=>{
 test("setup phases and the no-images branch close progress before a result can block",()=>{
     const {app,caps}=fixture();const events=[];
     const report={phase:(text)=>events.push(text),close:()=>events.push("closed"),diagnostics:[]};
-    const result=execute(app,{headless:true,settings,timestamp:"",inputItems:["/notes.txt"]},{headless:true,report,capabilities:caps});
+    const result=execute(app,{settings,timestamp:"",inputItems:["/notes.txt"]},{report,capabilities:caps});
     assert.equal(result.state,"incomplete");
     assert.deepEqual(events,["Checking required tools","Finding images","closed"]);
 });

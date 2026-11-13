@@ -31,12 +31,8 @@ function runCommand(app, command, label) {
 
         const failure = new OperationError(
             `Command failed${context}.\n\n${errorMessage(error)}`,
-            { cause: error }
+            { cause: error, command }
         );
-
-        // Carried alongside the message so the presenter can decide: shown in
-        // a log, withheld from a dialog.
-        failure.command = command;
 
         throw failure;
     }

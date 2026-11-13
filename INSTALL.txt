@@ -51,6 +51,11 @@ PDF with a page for each image, or one PDF per image. PDFs of images found in a
 selected folder are saved in that folder; PDFs of images selected directly are
 saved beside them. Originals are never modified.
 
+Exactly one admitted image produces a PDF named after the image in either mode,
+for example photo.pdf, then photo 2.pdf if occupied. A combined PDF of two or
+more images keeps the Images YYYY-MM-DD at HH.MM.SS.pdf name. HDR JPEG photos
+are converted as standard-range images without their gain maps.
+
 A JPEG that is embedded unchanged keeps its metadata, including any location,
 inside the PDF.
 

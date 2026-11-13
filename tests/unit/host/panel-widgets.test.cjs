@@ -22,8 +22,8 @@ const {
     makeHeadline,
     makeDetail,
     makeBar
-} = require("../../../src/host/panel.js");
-const { PANEL_RECT, TRACK_RECT } = require("../../../src/host/panel.js");
+} = require("../../../src/host/quick-action/panel.js");
+const { PANEL_RECT, TRACK_RECT } = require("../../../src/host/quick-action/panel.js");
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 const STYLE_TITLED = 1;

@@ -7,52 +7,6 @@
  * they stay pure and testable.
  */
 
-/*
- * The formats vips reads that behave like a photograph: one still image, of
- * known orientation, that belongs on a page.
- *
- * Deliberately excluded, though vips can read them: GIF and animated WebP
- * (only the first frame would be taken), SVG (vector, and --size=down would
- * leave an icon-sized file as a stamp on the page), PDF (rasterizing page one
- * of a PDF to make a PDF), and camera RAW (slow, huge, and users expect
- * processing rather than conversion).
- *
- * The pattern and the list shown to the user are both derived from this table,
- * so a dialog cannot promise a format the filter would reject.
- */
-const SUPPORTED_FORMATS = [
-    { name: "JPEG", extensions: ["jpg", "jpeg"] },
-    { name: "PNG", extensions: ["png"] },
-    { name: "HEIC", family: "HEIF", extensions: ["heic", "heif"] },
-    { name: "TIFF", extensions: ["tif", "tiff"] },
-    { name: "WebP", extensions: ["webp"] },
-    { name: "AVIF", family: "HEIF", extensions: ["avif"] }
-];
-
-const SUPPORTED_EXTENSIONS = SUPPORTED_FORMATS.flatMap(
-    (format) => format.extensions
-);
-
-const SUPPORTED_PATTERN = new RegExp(
-    `\\.(?:${SUPPORTED_EXTENSIONS.join("|")})$`,
-    "iu"
-);
-
-function isSupportedImage(path) {
-    return SUPPORTED_PATTERN.test(String(path));
-}
-
-/*
- * "JPEG, PNG, HEIC, TIFF, WebP or AVIF". Worth spelling out to the user,
- * because the action refuses things people reasonably try, such as GIF and
- * PDF, and "no images selected" alone would not explain why.
- */
-function supportedFormatList() {
-    const names = SUPPORTED_FORMATS.map((format) => format.name);
-
-    return `${names.slice(0, -1).join(", ")} or ${names.at(-1)}`;
-}
-
 function basename(path) {
     const normalized = String(path).replace(/\/+$/u, "");
     const index = normalized.lastIndexOf("/");
@@ -92,9 +46,6 @@ function sanitizeFilename(filename) {
 }
 
 module.exports = {
-    SUPPORTED_FORMATS,
-    supportedFormatList,
-    isSupportedImage,
     basename,
     dirname,
     fileStem,

@@ -2,9 +2,9 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { collectDialogSettings } = require("../../../src/host/dialogs.js");
-const { chooseRequired } = require("../../../src/host/prompts.js");
-const { PAPER_SIZE } = require("../../../src/host/settings-model.js");
+const { collectDialogSettings } = require("../../../src/host/quick-action/dialogs.js");
+const { chooseRequired } = require("../../../src/host/quick-action/prompts.js");
+const { PAPER_SIZE } = require("../../../src/host/quick-action/settings-model.js");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
 test("chooseRequired returns the value behind the chosen label", () => {

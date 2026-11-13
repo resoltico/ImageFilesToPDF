@@ -1,9 +1,9 @@
 "use strict";
 
-const { normalizeInvocationInput, decodeFileUrl } = require("./invocation-syntax.js");
+const { decodeFileUrl } = require("./invocation-syntax.js");
 
 /*
- * Resolving whatever Shortcuts, Finder, or a headless caller supplies into
+ * Resolving whatever Shortcuts, Finder, or a command-line caller supplies into
  * items this action can look at. Deciding which of them it will convert is
  * admission.js.
  */
@@ -59,32 +59,4 @@ function inputItemToPosixPath(item) {
     return "";
 }
 
-function finderSelection() {
-    return Application("Finder").selection();
-}
-
-/*
- * The record Shortcuts appends to its input, or the empty one an applet run
- * passes, is not a selected item. Counting it would leave the input never
- * empty, so an invocation without files would never fall back to Finder's
- * selection. Selected items stringify to their path; a bare record does not.
- */
-function isParametersRecord(item) {
-    try {
-        return item !== null && typeof item === "object" && String(item) === "[object Object]";
-    } catch {
-        return false;
-    }
-}
-
-function collectInvocation(app, input) {
-    return { headless: false, settings: null, timestamp: "",
-        inputItems: normalizeInvocationInput(input).filter((item) => !isParametersRecord(item)) };
-}
-
-module.exports = {
-    pathCandidates,
-    inputItemToPosixPath,
-    finderSelection,
-    collectInvocation
-};
+module.exports = { pathCandidates, inputItemToPosixPath };

@@ -1,9 +1,9 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { reportHeadless, reportNoImages } = require("../../../src/host/reporting.js");
-const { runOutcome } = require("../../../src/core/outcomes.js");
-const { completionMessage } = require("../../../src/host/completion.js");
+const { reportHeadless } = require("../../../src/host/command-line/reporting.js");
+const { runOutcome, noImagesOutcome } = require("../../../src/core/outcomes.js");
+const { completionMessage } = require("../../../src/host/quick-action/completion.js");
 
 const document = { state: "saved", sources: ["/ok.png"], pages: 1, output: "/saved.pdf", issues: [] };
 test("CLI writes one receipt and plain summary and returns the contract status", () => {
@@ -34,7 +34,7 @@ test("completion labels outputs, failures, recoveries and original refusals with
 
 test("nothing-to-convert retains refusals in the machine receipt", () => {
     const refused = [{ path: "/bad.gif", reason: "unsupported" }];
-    const result = reportNoImages({}, true, refused);
+    const result = noImagesOutcome(refused);
     assert.equal(result.state, "incomplete");
     assert.deepEqual(result.rejected, refused);
 });
@@ -64,7 +64,7 @@ test("a run with nothing to count has no counts line", () => {
 
 test("nothing admitted reports one issue sentence and lists the refusals once", () => {
     const refused = [{ path: "/a/bad.gif", name: "bad.gif", reason: "This file is not a supported format.", code: "unsupported-format", stage: "selection" }];
-    const result = reportNoImages({}, true, refused);
+    const result = noImagesOutcome(refused);
     assert.deepEqual(result.issues, [{ code: "no-images", stage: "selection", message: "None of the selected items can be converted." }]);
     const writes = [];
     reportHeadless(result, (...args) => writes.push(args), (status) => status);

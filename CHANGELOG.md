@@ -2,9 +2,12 @@
 
 ## [Unreleased]
 
-- Native test cleanup detaches the owned disk image by device and verifies its removal, avoiding false exFAT cleanup failures and retaining work on unresolved attachment errors.
-- Update ESLint, npm and locked development dependencies; override minimatch and glob together to remove denial-of-service vulnerabilities.
-- Use literal test assertions instead of partial regex escaping; application behavior is unchanged.
+- Single-image PDFs now use the image name in both modes, including after refusals. Update receipt consumers to read actual output/recovery paths; see [HEADLESS.md](HEADLESS.md).
+- Ultra HDR JPEG photos are accepted and converted as standard-range images; gain maps are never embedded in PDFs.
+- Unsupported-content refusals use clearer wording and include the vips loader in receipt diagnostics and completion Details.
+- `--help` lists settings in the documented order: mode, paper size, orientation, maximum resolution, JPEG quality, background.
+- Contributors must use Node 26.13.1 and npm 12.2.2; restore refreshed development dependencies with `npm ci --ignore-scripts`.
+- Native CI and release qualification run on macOS 26.
 
 ## [3.0.0] - 2026-11-05
 

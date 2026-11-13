@@ -1,7 +1,7 @@
 "use strict";
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { invitation, formSpec, defaultAnswers } = require("../../../src/host/settings-model.js");
+const { invitation, formSpec, defaultAnswers } = require("../../../src/host/quick-action/settings-model.js");
 test("summary follows grouping and retains complete save locations", () => {
     const context = { count: 2, folders: ["/Pictures/One/", "/Pictures/Two/"] };
     const first = formSpec(defaultAnswers(), [], context);

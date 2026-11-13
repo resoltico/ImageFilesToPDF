@@ -82,10 +82,10 @@ function installPlatform(app, options = {}) {
         NSFileManager: { defaultManager: managerFor(app, unbox) },
         NSWorkspace: { sharedWorkspace: { isFilePackageAtPath: () => false } },
         NSFileType: "kind", NSFileSystemNumber: "device", NSFileSystemFileNumber: "number", NSFileSize: "size", NSFileModificationDate: "modified", NSFileCreationDate: "created",
-        NSURLVolumeSupportsCaseSensitiveNamesKey:"caseSensitive", NSURLCanonicalPathKey:"canonicalPath",
+        NSURLIsPackageKey:"package", NSURLVolumeSupportsCaseSensitiveNamesKey:"caseSensitive", NSURLCanonicalPathKey:"canonicalPath",
         NSURL: {fileURLWithPath(path) {
             const name=unbox(path);
-            const url={path:name,resourceValuesForKeysError:()=>({isNil:()=>false,objectForKey:(key)=>({boxed:key==="caseSensitive"?true:name,isNil:()=>false})})};
+            const url={path:name,resourceValuesForKeysError:()=>({isNil:()=>false,objectForKey:(key)=>({boxed:({package:false,caseSensitive:true})[key]??name,isNil:()=>false})})};
             url.URLByResolvingSymlinksInPath=url;return url;
         }},
         CGImageSourceCreateWithURL: () => ({}), CGImageSourceGetCount: () => app.pages ?? 1,

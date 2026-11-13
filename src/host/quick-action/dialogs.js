@@ -1,7 +1,7 @@
 "use strict";
 
-const { normalizeSettings } = require("../core/settings.js");
-const { UserCanceled } = require("../core/errors.js");
+const { normalizeSettings, SETTINGS_SCHEMA, SETTINGS_FIELDS } = require("../../core/settings.js");
+const { UserCanceled } = require("../../core/errors.js");
 const { readColor } = require("./settings-model.js");
 const { chooseRequired, askUntil, promptInteger } = require("./prompts.js");
 
@@ -13,17 +13,8 @@ const { chooseRequired, askUntil, promptInteger } = require("./prompts.js");
  * are any. Remembering must not stop working because AppKit did.
  */
 
-const { APP_NAME } = require("../core/version.js");
-const {
-    PAPER_SIZE,
-    ORIENTATION,
-    OUTPUT_MODE,
-    BACKGROUND,
-    RESOLUTION,
-    QUALITY,
-    labelsOf,
-    valueOfLabel
-} = require("./settings-model.js");
+const { APP_NAME } = require("../../core/version.js");
+const { CONTROLS, BACKGROUND, labelsOf, valueOfLabel } = require("./settings-model.js");
 const { defaultAnswers } = require("./settings-model.js");
 const { selectionSummary, outputAlternatives } = require("./output-description.js");
 const { confirmSettings } = require("./settings-review.js");
@@ -75,19 +66,18 @@ function chooseColor(app, opening) {
         : valueOfLabel(BACKGROUND, choice[0]);
 }
 
-function collectDialogSettings(app, answers = defaultAnswers(), context = {}) {
-    const settings = {
-        mode: chooseRequired(app, {
-            ...OUTPUT_MODE,
-            prompt: [selectionSummary(context), outputAlternatives(context.count), OUTPUT_MODE.prompt].join("\n")
-        }, answers.mode),
-        paperSize: chooseRequired(app, PAPER_SIZE, answers.paperSize),
-        orientation: chooseRequired(app, ORIENTATION, answers.orientation),
-        resolutionLimit: promptInteger(app, RESOLUTION, answers.resolutionLimit),
-        quality: promptInteger(app, QUALITY, answers.quality),
-        background: chooseColor(app, answers.background)
-    };
+function dialogSetting(app, field, answers, context) {
+    const control = CONTROLS[field];
+    const { kind } = SETTINGS_SCHEMA[field];
+    if (kind === "color") { return chooseColor(app, answers[field]); }
+    if (kind === "integer") { return promptInteger(app, control, answers[field]); }
+    const prompt = field === "mode"
+        ? { ...control, prompt: [selectionSummary(context), outputAlternatives(context.count), control.prompt].join("\n") } : control;
+    return chooseRequired(app, prompt, answers[field]);
+}
 
+function collectDialogSettings(app, answers = defaultAnswers(), context = {}) {
+    const settings = Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, dialogSetting(app, field, answers, context)]));
     return confirmSettings(app, normalizeSettings(settings), context);
 }
 

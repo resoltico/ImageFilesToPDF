@@ -1,6 +1,6 @@
 "use strict";
 
-const { normalizeSettings } = require("../core/settings.js");
+const { normalizeSettings } = require("../../core/settings.js");
 const { answersFromSettings } = require("./settings-model.js");
 
 const DOMAIN = "com.resoltico.ImageFilesToPDF";

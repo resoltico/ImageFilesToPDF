@@ -1,4 +1,5 @@
 "use strict";
+const { OperationError } = require("../core/errors.js");
 const { attributesAt, identityOf, kindOf } = require("./native-file-attributes.js");
 
 /*
@@ -9,7 +10,7 @@ const { attributesAt, identityOf, kindOf } = require("./native-file-attributes.j
  * newline, which the integration suite already exercises elsewhere, and no
  * separator survives that. Measured: contentsOfDirectoryAtPath returns
  * "two\nlines.png" intact, attributesOfItemAtPath reports a symbolic link
- * without following it, and NSWorkspace tells a package from a folder.
+ * without following it, and NSURL package resource values tell a package from a folder.
  *
  * It is also the only way to ask about thousands of entries without paying
  * for a subprocess each time. A folder of three thousand photographs would be
@@ -35,7 +36,7 @@ const SYMBOLIC_LINK = "NSFileTypeSymbolicLink";
  * nothing, and it is "" when there are no attributes to read -- which is the
  * same thing as there being no file.
  */
-function kindFrom(attributes, workspace, path, ns) {
+function kindFrom(attributes, packageFor, path) {
     if (!attributes) {
         return "missing";
     }
@@ -45,7 +46,16 @@ function kindFrom(attributes, workspace, path, ns) {
         return attributes.NSFileType === SYMBOLIC_LINK ? "link" : "other";
     }
 
-    return workspace.isFilePackageAtPath(ns(path)) ? "package" : "directory";
+    return packageFor(path) ? "package" : "directory";
+}
+
+function packageAt({ objc, ns, ref }, path) {
+    const url = ns.NSURL.fileURLWithPath(ns(path));
+    const values = url.resourceValuesForKeysError(ns([ns.NSURLIsPackageKey]), ref());
+    if (!values || values.isNil()) { throw new OperationError("The folder's package status could not be read."); }
+    const value = objc.unwrap(values.objectForKey(ns.NSURLIsPackageKey));
+    if (typeof value !== "boolean") { throw new OperationError("The folder's package status could not be read."); }
+    return value;
 }
 
 function createTree(objc, ns, ref) {
@@ -55,13 +65,12 @@ function createTree(objc, ns, ref) {
 
     try {
         objc.import("Foundation");
-        objc.import("AppKit");
     } catch {
         return null;
     }
 
     const manager = ns.NSFileManager.defaultManager;
-    const workspace = ns.NSWorkspace.sharedWorkspace;
+    const packageFor = (path) => packageAt({ objc, ns, ref }, path);
 
     return {
         // What the path is, and which file it is, from one question.
@@ -69,7 +78,7 @@ function createTree(objc, ns, ref) {
             const attributes = attributesAt(manager, ns, path);
             const kind = kindOf(objc, ns, attributes);
             return {
-                kind: kindFrom(kind ? { NSFileType: kind } : null, workspace, path, ns),
+                kind: kindFrom(kind ? { NSFileType: kind } : null, packageFor, path),
                 identity: identityOf(objc, ns, attributes)
             };
         },

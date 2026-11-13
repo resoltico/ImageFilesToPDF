@@ -17,7 +17,7 @@ concurrency:
 jobs:
   qualify:
     name: Qualify the tagged source
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 40
     env:
       HOMEBREW_NO_AUTO_UPDATE: "1"
@@ -33,7 +33,7 @@ jobs:
           cache: npm
       # Runner images may contain stale Homebrew metadata.
       - run: brew update
-      - run: brew install vips pdfcpu qpdf poppler libtiff shellcheck actionlint
+      - run: brew install vips pdfcpu qpdf poppler libtiff exiftool shellcheck actionlint
       - run: node tools/check-pdfcpu.mjs
       - run: npm install --global "$(node --print 'require("./package.json").packageManager')"
       - run: npm ci --ignore-scripts

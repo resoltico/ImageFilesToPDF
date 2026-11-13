@@ -1,5 +1,5 @@
 "use strict";
-/* eslint max-classes-per-file: ["error", 2] -- The domain has two error kinds: expected operation failure and cancellation. */
+/* eslint max-classes-per-file: ["error", 3] -- Issue-carrying faults, expected operation failures and cancellation share constructor fields. */
 
 /*
  * Error classification. The runtime distinguishes a deliberate cancellation,
@@ -22,16 +22,26 @@ function errorMessage(error) {
     return String(error);
 }
 
-class OperationError extends Error {
+class IssueError extends Error {
+    constructor(message, options = {}) {
+        super(message, options);
+        for (const field of ["issues", "recovery", "command", "outcome"]) {
+            if (Object.hasOwn(options, field)) { this[field] = options[field]; }
+        }
+        this.stack = options.stack ?? this.stack;
+    }
+}
+
+class OperationError extends IssueError {
     constructor(message, options) {
         super(message, options);
         this.name = "OperationError";
     }
 }
 
-class UserCanceled extends Error {
-    constructor() {
-        super("User canceled.");
+class UserCanceled extends IssueError {
+    constructor(options) {
+        super("User canceled.", options);
         this.name = "UserCanceled";
     }
 }
@@ -73,6 +83,7 @@ function commandOf(error) {
 }
 
 module.exports = {
+    IssueError,
     OperationError,
     UserCanceled,
     errorMessage,

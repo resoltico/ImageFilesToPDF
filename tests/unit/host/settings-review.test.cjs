@@ -2,10 +2,10 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { reviewSelection, confirmSettings } = require("../../../src/host/settings-review.js");
+const { reviewSelection, confirmSettings } = require("../../../src/host/quick-action/settings-review.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
-const { readAnswers } = require("../../../src/host/settings-model.js");
-const { defaultAnswers } = require("../../../src/host/settings-model.js");
+const { readAnswers } = require("../../../src/host/quick-action/settings-model.js");
+const { defaultAnswers } = require("../../../src/host/quick-action/settings-model.js");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
 const SETTINGS = normalizeSettings(readAnswers(defaultAnswers()).settings);
@@ -81,6 +81,6 @@ test("each refusal names the item, its reason and the folder it is in", () => {
 });
 
 test("a refusal at the root is in the root folder", () => {
-    const { refusalLines } = require("../../../src/host/settings-review.js");
+    const { refusalLines } = require("../../../src/host/quick-action/settings-review.js");
     assert.equal(refusalLines({ path: "/a.png", reason: "Gone." }), "a.png: Gone.\nin /");
 });

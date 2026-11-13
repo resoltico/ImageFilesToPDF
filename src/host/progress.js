@@ -124,7 +124,7 @@ function lifecycle(state, each) {
 
 /*
  * A reporter with no surfaces reports nowhere and can never be stopped: what a
- * headless run wants, and what a job starts with. There is no second way of
+ * command-line run wants, and what a job starts with. There is no second way of
  * saying it.
  */
 function createProgress(sinks) {

@@ -3,8 +3,8 @@
 /* Paper dimensions are PostScript points. The conservative ppi ceiling keeps
  * a page-filling embedded image within pdfcpu's 100 megapixel default. */
 const PAGE_DEFINITIONS = {
-    A4: { widthPoints: 595.2756, heightPoints: 841.8898 },
-    Letter: { widthPoints: 612, heightPoints: 792 }
+    A4: { label: "A4", widthPoints: 595.2756, heightPoints: 841.8898 },
+    Letter: { label: "US Letter", widthPoints: 612, heightPoints: 792 }
 };
 
 const MINIMUM_RESOLUTION_LIMIT = 72;

@@ -2,7 +2,10 @@
 const { positiveIntegerFrom } = require("../core/numbers.js");
 const { OperationError } = require("../core/errors.js");
 const { sourceIssue, orientedSize } = require("../core/source-policy.js");
-const LOADERS = { jpegload: "JPEG", pngload: "PNG", tiffload: "TIFF", heifload: "HEIF", webpload: "WebP" };
+const LOADERS = {
+    jpegload: { format: "JPEG", gainMap: false }, uhdrload: { format: "JPEG", gainMap: true }, pngload: { format: "PNG", gainMap: false },
+    tiffload: { format: "TIFF", gainMap: false }, heifload: { format: "HEIF", gainMap: false }, webpload: { format: "WebP", gainMap: false }
+};
 const REQUIRED_FIELDS = ["width", "height", "bands", "vips-loader", "interpretation"];
 const OPTIONAL_FIELDS = ["orientation", "n-pages", "icc-profile-data"];
 const FIELD = /^(?<field>width|height|bands|vips-loader|n-pages|icc-profile-data|interpretation|orientation):[ \t]*(?<value>.*)$/u;
@@ -12,8 +15,7 @@ const HEADER = /^(?<path>.+):[ \t]+\d+x\d+[ \t]/u;
 function normalized(text) { return String(text).replace(/\r\n?/gu, "\n"); }
 
 function metadataError(message) {
-    const error = new OperationError(message);
-    error.issues = [sourceIssue("damaged", {}, { message })];
+    const error = new OperationError(message, { issues: [sourceIssue("damaged", {}, { message })] });
     return error;
 }
 
@@ -32,10 +34,16 @@ function interpretationFrom(value) {
     return match ? match.groups.name.toLowerCase().replace(/_/gu, "-") : text;
 }
 
+function unmappedLoader(loader) {
+    if (!loader || /^(?:svg|pdf)/u.test(loader)) { return { problem: "not-an-image" }; }
+    return { problem: "unsupported-content", diagnostic: { loader } };
+}
+
 function rawMetadata(fields) {
     const loader = (fields["vips-loader"] ?? "").replace(/_buffer$/u, "");
     const orientation = fields.orientation === undefined ? 1 : positiveIntegerFrom(fields.orientation);
-    return { loader, format: LOADERS[loader],
+    return { loader, format: LOADERS[loader]?.format, gainMap: LOADERS[loader]?.gainMap ?? false,
+        ...(LOADERS[loader] ? {} : unmappedLoader(loader)),
         width: positiveIntegerFrom(fields.width), height: positiveIntegerFrom(fields.height),
         bands: positiveIntegerFrom(fields.bands), orientation,
         pages: fields["n-pages"] === undefined ? 1 : positiveIntegerFrom(fields["n-pages"]),
@@ -105,4 +113,4 @@ function headerFailureCode(text) {
     return /(?:^|\n)(?:vipsheader:[ \t]*)?(?:VipsJpeg|VipsPng|VipsTiff|VipsHeif|VipsWebP|webp):/u.test(normalized(text))
         ? "damaged" : "not-an-image";
 }
-module.exports = { REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata, optionalValue, scalarValues, fieldAbsent, headerFailureCode };
+module.exports = { LOADERS, REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata, optionalValue, scalarValues, fieldAbsent, headerFailureCode };

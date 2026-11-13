@@ -1,6 +1,6 @@
 "use strict";
-const { APP_NAME, VERSION } = require("../core/version.js");
-const { summarizeRun } = require("../core/run-summary.js");
+const { summarizeRun } = require("./run-summary.js");
+const { supportedFormatList } = require("./formats.js");
 const { plural } = require("./formatting.js");
 
 function describeRejections(rejected, heading = "Not included from your selection:") {
@@ -57,44 +57,15 @@ function reportText(result, includeHeadline = true) {
     return [summaryText(summarizeRun(result), includeHeadline), result.elapsed ? `Elapsed: ${result.elapsed}` : ""].filter(Boolean).join("\n\n");
 }
 
-// The dialog adds the version after the elapsed time; the command line has --version for that.
-function completionMessage(result, includeHeadline = true) {
-    return [reportText(result, includeHeadline), `${APP_NAME} ${VERSION}`].join("\n\n");
+function noImagesHeadline(rejected) {
+    return rejected.length > 0 ? "Nothing to convert." : "No images selected.";
 }
 
-function revealOutputs(paths) {
-    ObjC.import("AppKit");
-    $.NSWorkspace.sharedWorkspace.activateFileViewerSelectingURLs($(paths.map((path) => $.NSURL.fileURLWithPath(path))));
+function describeNoImages(rejected, includeHeadline = true) {
+    const detail = rejected.length > 0 ? describeRejections(rejected)
+        : "Select image files or folders in Finder, then run the action again.\n\n" +
+            `Supported: ${supportedFormatList()}.`;
+    return includeHeadline ? `${noImagesHeadline(rejected)}\n\n${detail}` : detail;
 }
 
-function diagnosticLines(value, label = "") {
-    if (value === null || value === undefined) { return []; }
-    if (typeof value !== "object") { return [`${label}${String(value).replace(/\r\n?/gu, "\n")}`]; }
-    return Object.entries(value).filter(([key]) => key !== "stack").flatMap(([key, entry]) => diagnosticLines(entry, `${label}${key}: `));
-}
-
-function technicalDetails(result) {
-    const issues = [...result.issues, ...result.rejected, ...result.documents.flatMap((document) => [...document.issues, ...(document.diagnostics ?? [])])];
-    return [...result.diagnostics, ...issues.flatMap((issue) => issue.diagnostic ? [{ code: issue.code, stage: issue.stage, ...issue.diagnostic }] : [])]
-        .flatMap((entry) => diagnosticLines(entry)).join("\n");
-}
-
-function showCompletion(app, result, reveal = revealOutputs) {
-    const { showDetails } = require("./details-dialog.js");
-    const summary = summarizeRun(result);
-    const diagnostics = technicalDetails(result);
-    const paths = [...summary.saved.flatMap((group) => group.outputs.map((output) => output.path)), ...summary.recoveries.map((entry) => entry.location)];
-    const buttons = ["OK", ...paths.length > 0 ? ["Show in Finder"] : [], ...diagnostics ? ["Details"] : []];
-    // Details is a detour, not an ending: reading it must not take away Show
-    // in Finder, so the summary returns until it is dismissed another way.
-    for (;;) {
-        const response = showDetails(app, { title: APP_NAME, summary: headline(summary), detail: completionMessage(result, false), fallbackDetail: completionMessage(result), buttons });
-        if (buttons[response] !== "Details") {
-            if (buttons[response] === "Show in Finder") { reveal(paths); }
-            return;
-        }
-        showDetails(app, { title: APP_NAME, summary: "Technical details (selectable and copyable)", detail: diagnostics, buttons: ["Back"] });
-    }
-}
-
-module.exports = { describeRejections, headline, summaryText, reportText, completionMessage, showCompletion };
+module.exports = { describeRejections, headline, summaryText, reportText, noImagesHeadline, describeNoImages };

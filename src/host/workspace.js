@@ -64,8 +64,8 @@ function clearRetention(job) {
     if (job.storage.entries(job.workspace).includes(RETAIN)) {
         try { job.storage.remove(`${job.workspace}/${RETAIN}`); }
         catch (error) {
-            const failure = new OperationError("The workspace retention marker could not be cleared.", { cause: error });
-            failure.issues = [{ code: ISSUE.cleanup, stage: "cleanup", message: failure.message, diagnostic: { path: job.workspace } }];
+            const message = "The workspace retention marker could not be cleared.";
+            const failure = new OperationError(message, { cause: error, issues: [{ code: ISSUE.cleanup, stage: "cleanup", message, diagnostic: { path: job.workspace } }] });
             throw failure;
         }
     }

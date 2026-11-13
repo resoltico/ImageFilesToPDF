@@ -1,7 +1,8 @@
 "use strict";
+const { PDF_MODE } = require("../../core/settings.js");
 
-const { basename } = require("../core/paths.js");
-const { plural } = require("./formatting.js");
+const { basename } = require("../../core/paths.js");
+const { plural } = require("../../core/formatting.js");
 
 /*
  * What will be created, said before anything is.
@@ -32,7 +33,7 @@ function selectionSummary({ count = 0, selectedFolders = 0 } = {}) {
 }
 
 function outputSummary(mode, count) {
-    return mode === "combined"
+    return mode === PDF_MODE.combined
         ? `1 PDF with ${plural(count, "page")}`
         : plural(count, "single-page PDF");
 }
@@ -44,11 +45,11 @@ function outputAlternatives(count = 0) {
     }
 
     if (count === 1) {
-        return "Either option creates 1 PDF with 1 page; only the filename differs.";
+        return "Either option creates the same PDF with 1 page, named after the image.";
     }
 
-    return `For this selection: ${outputSummary("combined", count)}, or ` +
-        `${outputSummary("separate", count)}.`;
+    return `For this selection: ${outputSummary(PDF_MODE.combined, count)}, or ` +
+        `${outputSummary(PDF_MODE.separate, count)}.`;
 }
 
 const PAGE_LAYOUT_NOTE = "Each image gets its own page, centered without " +
@@ -66,22 +67,22 @@ function destinationSummary({ folders = [] } = {}, mode = "both") {
         return "";
     }
 
-    if (folders.length === 1 || mode === "combined") {
+    if (folders.length === 1 || mode === PDF_MODE.combined) {
         return `Save to: ${folders[0]}`;
     }
 
     const separate = "Separate PDFs save in each folder you selected, or " +
         `beside each image you selected: ${plural(folders.length, "folder")}.`;
 
-    return mode === "separate"
+    return mode === PDF_MODE.separate
         ? separate
         : `One PDF saves to: ${folders[0]}\n${separate}`;
 }
 
-function formSummary({ count = 0, folders = [] } = {}, mode = "combined") {
+function formSummary({ count = 0, folders = [] } = {}, mode = PDF_MODE.combined) {
     if (count === 0) { return "Choose the PDF settings."; }
     let destination = "the source folder";
-    if (folders.length > 1 && mode === "separate") { destination = plural(folders.length, "folder"); }
+    if (folders.length > 1 && mode === PDF_MODE.separate) { destination = plural(folders.length, "folder"); }
     else if (folders.length > 0) { const name = basename(folders[0]); destination = name ? `${name}/` : "/"; }
     return `${plural(count, "image")} → ${outputSummary(mode, count)}, saved in ${destination}`;
 }

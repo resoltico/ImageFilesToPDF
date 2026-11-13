@@ -11,7 +11,7 @@
   "homepage": "https://github.com/resoltico/ImageFilesToPDF",
   "author": "Ervins Strauhmanis",
   "engines": {
-    "node": ">=26.13.0",
+    "node": ">=26.13.1",
     "npm": ">=12.2.2"
   },
   "scripts": {
@@ -23,7 +23,7 @@
     "check-dist": "node tools/check-dist.mjs",
     "quality": "npm run lint && npm run lint:js && npm run test:coverage && npm run test:mutation && npm run check-dist",
     "release": "npm run build && npm run quality",
-    "test:integration:macos": "bash tests/integration/macos.sh && bash tests/integration/background.sh && bash tests/integration/selection.sh && bash tests/integration/publication.sh && bash tests/integration/volumes.sh && bash tests/integration/cards.sh && bash tests/integration/damaged.sh && bash tests/integration/form.sh && bash tests/integration/cli.sh && bash tests/integration/naming.sh",
+    "test:integration:macos": "bash tests/integration/macos.sh && bash tests/integration/background.sh && bash tests/integration/selection.sh && bash tests/integration/publication.sh && bash tests/integration/volumes.sh && bash tests/integration/cards.sh && bash tests/integration/damaged.sh && bash tests/integration/form.sh && bash tests/integration/cli.sh && bash tests/integration/hdr.sh && bash tests/integration/naming.sh",
     "test:mutation": "stryker run",
     "test:unit": "node --test \"tests/unit/**/*.test.cjs\""
   },
@@ -38,8 +38,8 @@
   },
   "overrides": {
     "qs": "6.17.1",
-    "minimatch": "11.0.5",
-    "glob": "14.0.4"
+    "minimatch": "11.0.8",
+    "glob": "14.0.6"
   },
   "copyright": "2026 Ervins Strauhmanis",
   "packageManager": "npm@12.2.2"

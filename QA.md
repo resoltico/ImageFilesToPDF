@@ -6,7 +6,7 @@ The target is macOS 12.3 or later, using JavaScriptCore through osascript or
 Shortcuts. Source syntax is ES2022; esbuild targets Safari 15.4. A separate
 built-in check rejects features unavailable at that floor. These checks do not
 establish native interaction on every supported macOS release. Automated native CI
-runs on macOS 15.
+runs on macOS 26.
 
 Unit tests establish portable rules, application sequencing and adapter calls.
 Native suites establish behavior for the actual generated artifact and host used.
@@ -53,7 +53,10 @@ sequence:
 | `damaged.sh` | Damaged-source refusal and combined/separate behavior |
 | `form.sh` | Production-renderer probe, native geometry and accessibility, PNG previews |
 | `cli.sh` | CLI grammar and statuses, settings reader, refusal corpus, names, JPEG streams, placement, TERM, reclaim and retention |
+| `hdr.sh` | Synthetic Ultra HDR in both modes, SDR JPEG streams, ICC conversion, orientations 6/8, damage and unmapped-loader diagnostics |
 | `naming.sh` | Case and normalization namespaces, folder aliases, hard links and occupied-name protection on local, APFS, APFSX, HFS+, HFSX, FAT32 and exFAT volumes |
+
+ExifTool edits only synthetic HDR fixture metadata; the action does not use it.
 
 Install the native tools listed in [CONTRIBUTING.md](CONTRIBUTING.md). Volume tests
 need permission to create and attach disk images; inability to attach one is a

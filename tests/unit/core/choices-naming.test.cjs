@@ -9,7 +9,7 @@ const {
     BACKGROUND,
     RESOLUTION,
     QUALITY
-} = require("../../../src/host/settings-model.js");
+} = require("../../../src/host/quick-action/settings-model.js");
 
 /*
  * What each control is called, in each of the two places it appears.

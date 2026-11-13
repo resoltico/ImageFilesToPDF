@@ -98,7 +98,7 @@ test -s "$WORK/alpha image 2.pdf"
 write_config "$WORK/color.json" A4 Portrait "combined" "#FFFFFF" 20260904_030405
 run_headless "$WORK/color.json" "$WORK/wide gamut.png"
 
-COLOR="$WORK/Images 2026-09-04 at 03.04.05.pdf"
+COLOR="$WORK/wide gamut.pdf"
 test -s "$COLOR"
 pdftoppm -f 1 -singlefile -r 72 -png "$COLOR" "$WORK/color" >/dev/null 2>&1
 assert_pixel "$WORK/color.png" 297 421 224 16 16 18 \
@@ -111,7 +111,7 @@ assert_pixel "$WORK/color.png" 297 421 224 16 16 18 \
 write_config "$WORK/tiny.json" A4 Portrait "combined" "#FFFFFF" 20260904_040506
 run_headless "$WORK/tiny.json" "$WORK/tiny.png"
 
-TINY="$WORK/Images 2026-09-04 at 04.05.06.pdf"
+TINY="$WORK/tiny.pdf"
 test -s "$TINY"
 pdftoppm -f 1 -singlefile -r 72 -png "$TINY" "$WORK/tiny-page" >/dev/null 2>&1
 assert_pixel "$WORK/tiny-page.png" 397 421 255 255 255 10 \
@@ -123,7 +123,7 @@ assert_pixel "$WORK/tiny-page.png" 397 421 255 255 255 10 \
 
 write_config "$WORK/heic.json" A4 Portrait "combined" "#FFFFFF" 20260904_070809
 run_headless "$WORK/heic.json" "$WORK/from iphone.heic"
-assert_valid_pdf "$WORK/Images 2026-09-04 at 07.08.09.pdf"
+assert_valid_pdf "$WORK/from iphone.pdf"
 
 if osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/heic.json" \
     "$WORK/two page scan.tif" >"$WORK/multipage.receipt" 2>"$WORK/multipage.err"
@@ -147,7 +147,7 @@ NODE
 write_config "$WORK/plain.json" A4 Portrait "combined" "#FFFFFF" 20260904_050607
 osascript -l JavaScript "$SCRIPT" \
     --headless "$WORK/plain.json" "$WORK/page 2.png" >/dev/null
-test -s "$WORK/Images 2026-09-04 at 05.06.07.pdf"
+test -s "$WORK/page 2.pdf"
 
 # The source images must be untouched.
 test "$(vipsheader -f width "$WORK/tiny.png")" = 64

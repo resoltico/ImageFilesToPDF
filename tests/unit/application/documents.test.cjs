@@ -17,16 +17,19 @@ test("plan groups ordered sources and chooses per-source destinations", () => {
     assert.deepEqual(documentPlan({ mode: "combined" }, [], "stamp"), []);
 });
 
-for (const [count, size, argv, expected] of [
-    [1, 1, 100, [1]], [32, 1, 100, [32]], [33, 1, 100, [32, 1]],
-    [3, 32 * 1024 * 1024, 100, [2, 1]], [2, 65 * 1024 * 1024, 100, [1, 1]],
-    [5, 1, 2, [2, 2, 1]]
+for (const [count, size, argv, expected, output] of [
+    [1, 1, 100, [1], "/out/0.pdf.actual"],
+    [32, 1, 100, [32], "/out/Images 2026-10-29 at 12.34.56.pdf.actual"],
+    [33, 1, 100, [32, 1], "/out/Images 2026-10-29 at 12.34.56.pdf.actual"],
+    [3, 32 * 1024 * 1024, 100, [2, 1], "/out/Images 2026-10-29 at 12.34.56.pdf.actual"],
+    [2, 65 * 1024 * 1024, 100, [1, 1], "/out/Images 2026-10-29 at 12.34.56.pdf.actual"],
+    [5, 1, 2, [2, 2, 1], "/out/Images 2026-10-29 at 12.34.56.pdf.actual"]
 ]) {
     test(`bounded import: ${count} pages of ${size} bytes, argv ${argv}`, () => {
         const sample = fixture(count, { size, argv });
         const result = executeDocuments(sample.ports, sample.plans);
         assert.equal(result[0].state, "saved");
-        assert.equal(result[0].output, "/out/Images 2026-10-29 at 12.34.56.pdf.actual");
+        assert.equal(result[0].output, output);
         assert.equal(result[0].pages, count);
         assert.deepEqual(sample.events.filter(([kind]) => kind === "import").map(([, pages]) => pages.length), expected);
         assert.equal(sample.owned.size, 0);

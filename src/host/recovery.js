@@ -2,7 +2,7 @@
 
 const { releaseOwnedArtifact } = require("./workspace.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
-const { OperationError, errorMessage } = require("../core/errors.js");
+const { OperationError, IssueError, errorMessage } = require("../core/errors.js");
 const { basename } = require("../core/paths.js");
 const { isPublished } = require("../core/artifacts.js");
 const { claimAvailable } = require("./destination.js");
@@ -80,12 +80,10 @@ function keep(job, paths, outcome) {
 
     releaseRecoveredArtifact(job, paths.staged, recovered, cleanup);
 
-    const failure = new Error(describeFailure(
+    const failure = new IssueError(describeFailure(
         outcome.reasons,
         `The finished PDF has been kept here:\n\n${recovered}`
-    ));
-    failure.recovery = recovered;
-    failure.issues = [{ code: ISSUE.publication, stage: "publication", message: "The PDF could not be saved to its requested destination.", diagnostic: outcome.reasons }, ...cleanup, ...rescue.issues, ...(downloads.state === "recovered" ? [] : downloads.issues)];
+    ), { recovery: recovered, issues: [{ code: ISSUE.publication, stage: "publication", message: "The PDF could not be saved to its requested destination.", diagnostic: outcome.reasons }, ...cleanup, ...rescue.issues, ...(downloads.state === "recovered" ? [] : downloads.issues)] });
     return failure;
 }
 

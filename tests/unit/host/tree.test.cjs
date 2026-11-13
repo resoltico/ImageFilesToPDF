@@ -28,11 +28,9 @@ function bridgeOf(world = {}, imports = []) {
             contentsOfDirectoryAtPathError: (path) => world.entries?.[path.boxed]
         }
     };
-    ns.NSWorkspace = {
-        sharedWorkspace: {
-            isFilePackageAtPath: (path) => Boolean(world.packages?.[path.boxed])
-        }
-    };
+    ns.NSURLIsPackageKey = "package";
+    ns.NSURL = { fileURLWithPath: (path) => ({ resourceValuesForKeysError: () => Object.hasOwn(world, "packageValues") ? world.packageValues : ({ isNil: () => false,
+        objectForKey: () => ({ boxed: Boolean(world.packages?.[path.boxed]) }) }) }) };
 
     const objc = {
         import: (name) => imports.push(name),
@@ -43,12 +41,12 @@ function bridgeOf(world = {}, imports = []) {
     return { objc, ns, ref: () => ({}) };
 }
 
-test("Foundation and AppKit are both asked for", () => {
-    // The file questions come from one and the package question the other.
+test("the filesystem tree asks only for Foundation", () => {
+    // Package resource values and filesystem facts both belong to Foundation.
     const imports = [];
 
     createTree(...Object.values(bridgeOf({}, imports)));
-    assert.deepEqual(imports, ["Foundation", "AppKit"]);
+    assert.deepEqual(imports, ["Foundation"]);
 });
 
 test("a folder, a file, a package and a link are told apart", () => {
@@ -96,18 +94,10 @@ test("which file a path names comes back with what it is", () => {
 test("a package is only asked about once it is known to be a folder", () => {
     // Asking of every file would be an AppKit call per entry in the tree.
     const asked = [];
-    const workspace = {
-        isFilePackageAtPath: (path) => {
-            asked.push(path.boxed);
-
-            return false;
-        }
-    };
-
-    kindFrom({ NSFileType: "NSFileTypeRegular" }, workspace, "/t/a.png", (path) => ({ boxed: path }));
+    const packageFor = (path) => { asked.push(path); return false; };
+    kindFrom({ NSFileType: "NSFileTypeRegular" }, packageFor, "/t/a.png");
     assert.deepEqual(asked, []);
-
-    kindFrom({ NSFileType: "NSFileTypeDirectory" }, workspace, "/t", (path) => ({ boxed: path }));
+    kindFrom({ NSFileType: "NSFileTypeDirectory" }, packageFor, "/t");
     assert.deepEqual(asked, ["/t"]);
 });
 
@@ -144,4 +134,12 @@ test("without a bridge there is no tree, and no folder to walk", () => {
         } }, ns, ref),
         null
     );
+});
+
+
+test("unavailable or unreadable package facts fail closed", () => {
+    for (const packageValues of [null, { isNil: () => true }, { isNil: () => false, objectForKey: () => undefined }]) {
+        const { objc, ns, ref } = bridgeOf({ attributes: { "/t": { NSFileType: "NSFileTypeDirectory" } }, packageValues });
+        assert.throws(() => createTree(objc, ns, ref).inspect("/t"), /package status could not be read/u);
+    }
 });

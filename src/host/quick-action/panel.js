@@ -211,8 +211,8 @@ function setHidden(view, hidden) {
     view.hidden = hidden;
 }
 
-const { UserCanceled } = require("../core/errors.js");
-const { APP_NAME } = require("../core/version.js");
+const { UserCanceled } = require("../../core/errors.js");
+const { APP_NAME } = require("../../core/version.js");
 const { appkitBridge } = require("./objc-bridge.js");
 
 const APPEARANCE_DELAY = 500;

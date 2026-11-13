@@ -68,12 +68,12 @@ test("a paused report is a report, and a closed one is over", () => {
 });
 
 test("a broken surface factory is diagnosed without suppressing a working sink",()=>{
-    const {openProgress}=require("../../../src/host/surfaces.js");
-    const seen=[];const report=openProgress(false,[()=>{throw new TypeError("broken factory");},()=>null,()=>({report:(...values)=>seen.push(values)})]);
+    const {openProgress}=require("../../../src/host/quick-action/surfaces.js");
+    const seen=[];const report=openProgress([()=>{throw new TypeError("broken factory");},()=>null,()=>({report:(...values)=>seen.push(values)})]);
     report.phase("Checking");
     assert.deepEqual([report.diagnostics[0].code,report.diagnostics[0].message,report.diagnostics[0].stack.includes("broken factory")],["observer-fault","TypeError: broken factory",true]);
     assert.deepEqual(seen,[[0,"Checking",""]]);
-    const quiet=openProgress(true);quiet.phase("Checking");assert.deepEqual(quiet.diagnostics,[]);
+    const quiet=createProgress([]);quiet.phase("Checking");assert.deepEqual(quiet.diagnostics,[]);
 });
 
 test("faulted sinks are quarantined while healthy reporting and teardown remain bounded",()=>{
@@ -89,8 +89,8 @@ test("faulted sinks are quarantined while healthy reporting and teardown remain 
 function primitiveFault(value) { throw value; }
 
 test("primitive sink and factory faults remain bounded diagnostics, preserving the healthy surface",()=>{
-    const {openProgress}=require("../../../src/host/surfaces.js");const events=[];
-    const report=openProgress(false,[()=>primitiveFault(null),()=>({report:()=>primitiveFault(null),close:()=>events.push("close failed sink")}),()=>({report:()=>events.push("healthy"),close:()=>events.push("close healthy")})]);
+    const {openProgress}=require("../../../src/host/quick-action/surfaces.js");const events=[];
+    const report=openProgress([()=>primitiveFault(null),()=>({report:()=>primitiveFault(null),close:()=>events.push("close failed sink")}),()=>({report:()=>events.push("healthy"),close:()=>events.push("close healthy")})]);
     report.phase("Preparing");report.phase("Importing");report.close();
     assert.deepEqual(events,["healthy","healthy","close failed sink","close healthy"]);
     assert.deepEqual(report.diagnostics,[{code:"observer-fault",message:"null",stack:""},{code:"observer-fault",message:"null",stack:""}]);

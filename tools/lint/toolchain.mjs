@@ -33,7 +33,8 @@ const PROVIDED_BY = {
     qpdf: "qpdf",
     pdfinfo: "poppler",
     pdftoppm: "poppler",
-    tiffcp: "libtiff"
+    tiffcp: "libtiff",
+    exiftool: "exiftool"
 };
 
 // Ships with macOS, so no formula installs it.

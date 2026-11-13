@@ -22,7 +22,7 @@ function calculatePlacement(geometry, source) {
 const RGB_BANDS = 3;
 
 function canPassThrough(source, placement) {
-    return source.loader === "jpegload" && source.bands === RGB_BANDS && !source.icc && source.orientation === 1 &&
+    return source.format === "JPEG" && source.gainMap === false && source.bands === RGB_BANDS && !source.icc && source.orientation === 1 &&
         ["", "srgb"].includes(source.interpretation) && source.width <= placement.widthPixels && source.height <= placement.heightPixels;
 }
 module.exports = { calculatePlacement, calculatePageGeometry, canPassThrough };

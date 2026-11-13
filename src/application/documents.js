@@ -1,5 +1,5 @@
 "use strict";
-const { isUserCanceled } = require("../core/errors.js");
+const { IssueError, isUserCanceled } = require("../core/errors.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 
 const MAX_QUEUED_PAGES = 32;
@@ -26,7 +26,7 @@ function pageQueue(ports, context) {
     const clear = () => {
         const issues = removePages(ports, pages);
         pages = []; bytes = 0;
-        if (issues.length > 0) { const error = new Error("Page cleanup failed."); error.issues = issues; throw error; }
+        if (issues.length > 0) { const error = new IssueError("Page cleanup failed.", { issues }); throw error; }
     };
     const flush = () => {
         if (pages.length > 0) {

@@ -58,7 +58,13 @@ assert_page_size() {
 # silently, which is also why the pixel assertions say nothing about structure.
 assert_valid_pdf() {
     local report
-    test -s "$1"
+    if [ ! -s "$1" ]; then
+        printf 'Expected a nonempty PDF: %s\n' "$1" >&2
+        for report in "$WORK/receipt.json" "$WORK/error.txt"; do
+            if [ -f "$report" ]; then cat "$report" >&2; fi
+        done
+        return 1
+    fi
     pdfcpu validate --conf disable --mode=strict "$1"
 
     # Kept rather than discarded: a bare non-zero exit aborts the run with

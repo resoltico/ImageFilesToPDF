@@ -2,8 +2,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { promptInteger } = require("../../../src/host/prompts.js");
-const { RESOLUTION } = require("../../../src/host/settings-model.js");
+const { promptInteger } = require("../../../src/host/quick-action/prompts.js");
+const { RESOLUTION } = require("../../../src/host/quick-action/settings-model.js");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
 test("promptInteger accepts a value inside the range", () => {

@@ -6,7 +6,7 @@ const test = require("node:test");
 const {
     selectionSummary, outputSummary,
     outputAlternatives, destinationSummary
-} = require("../../../src/host/output-description.js");
+} = require("../../../src/host/quick-action/output-description.js");
 
 test("selection context preserves provenance and deduplicates ordered destinations", () => {
     assert.deepEqual(selectionContext({ images: [] }), {
@@ -41,7 +41,7 @@ test("page and file cardinalities are separate, including one image", () => {
     assert.equal(outputAlternatives(),
         "Save one PDF with a page for each image, or a single-page PDF per image.");
     assert.equal(outputAlternatives(1),
-        "Either option creates 1 PDF with 1 page; only the filename differs.");
+        "Either option creates the same PDF with 1 page, named after the image.");
     assert.equal(outputAlternatives(12),
         "For this selection: 1 PDF with 12 pages, or 12 single-page PDFs.");
 });

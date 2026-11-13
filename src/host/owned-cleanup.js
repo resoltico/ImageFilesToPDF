@@ -11,8 +11,7 @@ function removeOwned(job, path) {
 function requireReleasedResources(job) {
     if (job.cleanupIssues.length > 0) {
         const error = job.cleanupIssues.some((issue) => issue.code === ISSUE.canceled)
-            ? new UserCanceled() : new OperationError("Owned temporary work could not be released; conversion stopped to preserve the resource bound.");
-        error.issues = job.cleanupIssues.slice();
+            ? new UserCanceled({ issues: job.cleanupIssues.slice() }) : new OperationError("Owned temporary work could not be released; conversion stopped to preserve the resource bound.", { issues: job.cleanupIssues.slice() });
         throw error;
     }
 }

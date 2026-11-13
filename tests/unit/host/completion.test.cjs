@@ -3,7 +3,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { runOutcome } = require("../../../src/core/outcomes.js");
 const { summarizeRun } = require("../../../src/core/run-summary.js");
-const { headline, showCompletion } = require("../../../src/host/completion.js");
+const { showCompletion } = require("../../../src/host/quick-action/completion.js");
+const { headline } = require("../../../src/core/run-report.js");
 
 const saved = { state: "saved", sources: ["/a/one.png"], pages: 1, output: "/a/one.pdf", issues: [] };
 const recovered = { state: "recovered", sources: ["/b/two.png"], pages: 1, recovery: "/Downloads/two.pdf", issues: [] };
@@ -66,4 +67,14 @@ test("OK on the summary after Details ends the run without revealing", () => {
     const app = scriptedApp(["Details", "Back", "OK"]);
     showCompletion(app, runOutcome([saved, failed]), () => assert.fail("OK must not reveal"));
     assert.equal(app.seen.length, 3);
+});
+
+
+test("unsupported-content loader evidence appears in completion Details", () => {
+    const app = scriptedApp(["Details", "Back", "OK"]);
+    const rejected = [{ path: "/a/misnamed.png", code: "unsupported-content", stage: "inspection",
+        reason: "This file's content is not a supported still image; use JPEG, PNG, HEIC, TIFF, WebP or AVIF.", diagnostic: { loader: "gifload" } }];
+    showCompletion(app, runOutcome([], rejected));
+    assert.match(app.seen[1].message, /loader: gifload/u);
+    assert.doesNotMatch(app.seen[0].message, /gifload/u);
 });

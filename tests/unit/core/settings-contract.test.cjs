@@ -2,8 +2,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { DEFAULT_SETTINGS, validateSettings, normalizeSettings } = require("../../../src/core/settings.js");
-const { configurationValues } = require("../../../src/host/cli.js");
-const { PAPER_SIZE, defaultValueOf, defaultLabelOf } = require("../../../src/host/settings-model.js");
+const { configurationValues } = require("../../../src/host/command-line/cli.js");
+const { PAPER_SIZE, defaultValueOf, defaultLabelOf } = require("../../../src/host/quick-action/settings-model.js");
 
 for (const field of ["resolutionLimit","quality","paperSize","orientation","mode","background"]) {
     for (const value of [null,true,false,[],{},[300]]) {

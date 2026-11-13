@@ -1,21 +1,22 @@
 "use strict";
-const { SETTINGS_SCHEMA, validateSettings, settingIssue } = require("../core/settings.js");
-const { normalizeColor } = require("../core/color.js");
-const { APP_NAME } = require("../core/version.js");
+const { SETTINGS_SCHEMA, SETTINGS_FIELDS, PDF_MODE, validateSettings, settingIssue } = require("../../core/settings.js");
+const { normalizeColor } = require("../../core/color.js");
+const { APP_NAME } = require("../../core/version.js");
 const { formSummary } = require("./output-description.js");
 
 function controlFor(field) {
     const rule = SETTINGS_SCHEMA[field];
-    return { field, label: `${rule.name}:`, prompt: rule.minimum ? `${rule.name} (${rule.minimum}–${rule.maximum}${rule.unit ? ` ${rule.unit}` : ""}):` : `${rule.name}:`, defaultValue: rule.default,
+    return { field, label: `${rule.name}:`, prompt: rule.kind === "integer" ? `${rule.name} (${rule.minimum}–${rule.maximum}${rule.unit ? ` ${rule.unit}` : ""}):` : `${rule.name}:`, defaultValue: rule.default,
         defaultAnswer: String(rule.default), minimum: rule.minimum, maximum: rule.maximum, hint: rule.hint,
         choices: (rule.choices ?? []).map((choice) => ({ value: choice.value, label: choice.label ?? `${choice.name} (${choice.value})` })) };
 }
-const PAPER_SIZE = controlFor("paperSize");
-const ORIENTATION = controlFor("orientation");
-const OUTPUT_MODE = controlFor("mode");
-const BACKGROUND = controlFor("background");
-const RESOLUTION = controlFor("resolutionLimit");
-const QUALITY = controlFor("quality");
+const CONTROLS = Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, controlFor(field)]));
+const PAPER_SIZE = CONTROLS.paperSize;
+const ORIENTATION = CONTROLS.orientation;
+const OUTPUT_MODE = CONTROLS.mode;
+const BACKGROUND = CONTROLS.background;
+const RESOLUTION = CONTROLS.resolutionLimit;
+const QUALITY = CONTROLS.quality;
 
 function labelsOf(control) {
     return control.choices.map((choice) => choice.label);
@@ -49,36 +50,22 @@ function valueOfLabel(control, label) {
     return chosen.value;
 }
 
-const CHOICE_ROWS = [
-    { key: "mode", control: OUTPUT_MODE },
-    { key: "paperSize", control: PAPER_SIZE },
-    { key: "orientation", control: ORIENTATION }
-];
+function rowsFor(kind) {
+    return SETTINGS_FIELDS.filter((field) => SETTINGS_SCHEMA[field].kind === kind)
+        .map((key) => ({ key, control: CONTROLS[key] }));
+}
+const CHOICE_ROWS = rowsFor("choice");
+const [COLOR_ROW] = rowsFor("color");
+const COLOR_HINT = COLOR_ROW.control.hint;
+const NUMBER_ROWS = rowsFor("integer");
 
-const COLOR_ROW = { key: "background", control: BACKGROUND };
-
-// State the custom hex input format beside the editable preset control.
-const COLOR_HINT = SETTINGS_SCHEMA.background.hint;
-
-const NUMBER_ROWS = [
-    { key: "resolutionLimit", control: RESOLUTION },
-    { key: "quality", control: QUALITY }
-];
+function answersFromSettings(settings) {
+    return Object.fromEntries(SETTINGS_FIELDS.map((field) => [field,
+        SETTINGS_SCHEMA[field].kind === "integer" ? String(settings[field]) : settings[field]]));
+}
 
 function defaultAnswers() {
-    const answers = {};
-
-    for (const { key, control } of CHOICE_ROWS) {
-        answers[key] = defaultValueOf(control);
-    }
-
-    answers[COLOR_ROW.key] = defaultValueOf(COLOR_ROW.control);
-
-    for (const { key, control } of NUMBER_ROWS) {
-        answers[key] = control.defaultAnswer;
-    }
-
-    return answers;
+    return answersFromSettings(Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, SETTINGS_SCHEMA[field].default])));
 }
 
 function formRows(answers, invalid) {
@@ -143,23 +130,12 @@ function readAnswers(answers) {
     };
 }
 
-function answersFromSettings(settings) {
-    const answers = {};
-    for (const { key } of CHOICE_ROWS) { answers[key] = settings[key]; }
-    answers[COLOR_ROW.key] = settings[COLOR_ROW.key];
-    for (const { key } of NUMBER_ROWS) { answers[key] = String(settings[key]); }
-    return answers;
-}
-
-
-
-
 
 const CREATE_BUTTON = "Create";
 const CANCEL_BUTTON = "Cancel";
 
-function invitation(context = {}, mode = "combined") {
-    const folders = mode === "combined" ? (context.folders ?? []).slice(0, 1) : context.folders ?? [];
+function invitation(context = {}, mode = PDF_MODE.combined) {
+    const folders = mode === PDF_MODE.combined ? (context.folders ?? []).slice(0, 1) : context.folders ?? [];
     return [formSummary(context, mode), folders.length > 0 ? `Save locations:\n${folders.join("\n")}` : ""].filter(Boolean).join("\n\n");
 }
 
@@ -176,10 +152,10 @@ function formSpec(answers = defaultAnswers(), problems = [], context = {}) {
         title: APP_NAME,
         detail: correctionLine(problems),
         fullDetail: note(answers.mode),
-        summaryDetails: { combined: note("combined"), separate: note("separate") },
+        summaryDetails: { combined: note(PDF_MODE.combined), separate: note(PDF_MODE.separate) },
         rows: formRows(answers, new Set(problems.map((problem) => problem.key))),
         buttons: [CREATE_BUTTON, CANCEL_BUTTON]
     };
 }
 
-module.exports = { PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND, RESOLUTION, QUALITY, labelsOf, defaultLabelOf, defaultValueOf, valueOfLabel, labelOfValue, CHOICE_ROWS, COLOR_ROW, NUMBER_ROWS, defaultAnswers, formRows, readAnswers, answersFromSettings, readNumber, readColor, invitation, CREATE_BUTTON, CANCEL_BUTTON, formSpec };
+module.exports = { CONTROLS, PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND, RESOLUTION, QUALITY, labelsOf, defaultLabelOf, defaultValueOf, valueOfLabel, labelOfValue, CHOICE_ROWS, COLOR_ROW, NUMBER_ROWS, defaultAnswers, formRows, readAnswers, answersFromSettings, readNumber, readColor, invitation, CREATE_BUTTON, CANCEL_BUTTON, formSpec };

@@ -8,8 +8,8 @@
  * argument. Dropping leading separators makes both of these equivalent, which
  * is what lets the integration suite run unattended:
  *
- *     osascript -l JavaScript script.jxa -- --headless config.json image
- *     osascript -l JavaScript script.jxa    --headless config.json image
+ *     osascript -l JavaScript script.jxa -- --command-line config.json image
+ *     osascript -l JavaScript script.jxa    --command-line config.json image
  */
 
 const ARGUMENT_SEPARATOR = "--";

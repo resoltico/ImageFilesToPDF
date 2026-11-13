@@ -4,7 +4,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { openProgress } = require("../../../src/host/surfaces.js");
+const { commandLineInteraction } = require("../../../src/host/command-line/interaction.js");
+const { openProgress } = require("../../../src/host/quick-action/surfaces.js");
 
 function reportsNowhere(progress) {
     // A reporter with no surfaces: every verb is accepted and nothing can
@@ -23,15 +24,7 @@ function reportsNowhere(progress) {
 test("a headless run builds nothing and reports nothing", () => {
     // No AppKit, no activation policy, nothing to tear down: a caller reading
     // a receipt is not looking at a window.
-    let built = 0;
-
-    const progress = openProgress(true, [() => {
-        built += 1;
-
-        return {};
-    }]);
-
-    assert.equal(built, 0);
+    const { progress } = commandLineInteraction({ settings: {} });
     assert.ok(reportsNowhere(progress));
 });
 
@@ -43,7 +36,7 @@ test("the surfaces that can be established are the ones written to", () => {
         pause: () => undefined,
         close: () => undefined
     });
-    const progress = openProgress(false, [
+    const progress = openProgress( [
         surface("panel"),
         () => null,
         surface("host")
@@ -62,13 +55,13 @@ test("the surfaces that can be established are the ones written to", () => {
 
 test("with no surface at all there is nothing to report to", () => {
     // Injected factories can all report that their observers are unavailable.
-    assert.ok(reportsNowhere(openProgress(false, [() => null, () => null])));
+    assert.ok(reportsNowhere(openProgress( [() => null, () => null])));
 });
 
 test("a surface that throws on the way up is a run with no progress, not a failure", () => {
     // openProgress is called before the try that turns an error into a
     // dialog, so it is the one thing here that cannot throw at all.
-    assert.ok(reportsNowhere(openProgress(false, [() => {
+    assert.ok(reportsNowhere(openProgress( [() => {
         throw new Error("no window server");
     }])));
 });
@@ -76,14 +69,14 @@ test("a surface that throws on the way up is a run with no progress, not a failu
 test("the custom panel is the only default surface and host Progress is untouched", () => {
     // Without an ObjC bridge the custom panel is unavailable. A supplied
     // host Progress object still receives no writes.
-    assert.ok(reportsNowhere(openProgress(false)));
+    assert.ok(reportsNowhere(openProgress()));
 
     const reported = {};
 
     globalThis.Progress = reported;
 
     try {
-        openProgress(false).phase("Preparing");
+        openProgress().phase("Preparing");
         assert.deepEqual(reported, {}, "host Progress is never written");
     } finally {
         delete globalThis.Progress;

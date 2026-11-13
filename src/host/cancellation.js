@@ -6,8 +6,7 @@ function hostError(error) {
     const maximumDepth = 8;
     for (let depth = 0; current && depth < maximumDepth; depth += 1) {
         if (current.errorNumber === CANCEL_ERROR_NUMBER) {
-            const canceled = new UserCanceled();
-            canceled.cause = error;
+            const canceled = new UserCanceled({ cause: error });
             return canceled;
         }
         current = current.cause;

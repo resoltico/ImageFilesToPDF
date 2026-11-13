@@ -58,7 +58,7 @@ mkdir -p "$WORK/same-volume"
 cp "$WORK/photo.png" "$WORK/same-volume/"
 run 20260907_010101 "$WORK/same-volume/photo.png"
 
-SAME="$WORK/same-volume/Images 2026-09-07 at 01.01.01.pdf"
+SAME="$WORK/same-volume/photo.pdf"
 assert_valid_pdf "$SAME"
 assert_nothing_left_behind "$WORK/same-volume"
 test "$(stat -f%l "$SAME")" = 1 ||
@@ -74,12 +74,12 @@ test "$(stat -f%l "$SAME")" = 1 ||
 
 mkdir -p "$WORK/link"
 cp "$WORK/photo.png" "$WORK/link/"
-ln -s /nowhere/gone.pdf "$WORK/link/Images 2026-09-07 at 04.04.04.pdf"
+ln -s /nowhere/gone.pdf "$WORK/link/photo.pdf"
 run 20260907_040404 "$WORK/link/photo.png"
 
-test -L "$WORK/link/Images 2026-09-07 at 04.04.04.pdf" ||
+test -L "$WORK/link/photo.pdf" ||
     fail "the link was replaced instead of stepped around"
-assert_valid_pdf "$WORK/link/Images 2026-09-07 at 04.04.04 2.pdf"
+assert_valid_pdf "$WORK/link/photo 2.pdf"
 assert_nothing_left_behind "$WORK/link"
 
 # Existing entry kinds must be left untouched by the actual product, in both modes.
@@ -88,8 +88,7 @@ for mode in combined separate; do
         CASE="$WORK/occupied-$mode-$kind"
         mkdir "$CASE"
         cp "$WORK/photo.png" "$CASE/photo.png"
-        BASE="$CASE/Images 2026-09-07 at 04.14.14.pdf"
-        if [[ "$mode" == separate ]]; then BASE="$CASE/photo.pdf"; fi
+        BASE="$CASE/photo.pdf"
         case "$kind" in
             file) printf 'untouched' > "$BASE" ;;
             directory) mkdir "$BASE"; printf 'untouched' > "$BASE/child" ;;

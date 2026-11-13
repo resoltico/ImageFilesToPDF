@@ -7,7 +7,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { appkitBridge } = require("../../../src/host/objc-bridge.js");
+const { appkitBridge } = require("../../../src/host/quick-action/objc-bridge.js");
 
 test("a bridge needs both halves of the ObjC namespace", () => {
     assert.equal(appkitBridge(null, {}), null);

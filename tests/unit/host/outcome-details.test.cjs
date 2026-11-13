@@ -3,9 +3,9 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const { runOutcome, issuesOf }=require("../../../src/core/outcomes.js");
 const { sourceIssues }=require("../../../src/core/source-policy.js");
-const { completionMessage }=require("../../../src/host/completion.js");
-const { showDetails,detailPages }=require("../../../src/host/details-dialog.js");
-const { writeReceipt,foundation }=require("../../../src/host/receipt.js");
+const { completionMessage }=require("../../../src/host/quick-action/completion.js");
+const { showDetails,detailPages }=require("../../../src/host/quick-action/details-dialog.js");
+const { writeReceipt,foundation }=require("../../../src/host/command-line/receipt.js");
 const { createFakeObjC }=require("../ports/fake-objc.cjs");
 const { createFakeApp }=require("../ports/fake-app.cjs");
 

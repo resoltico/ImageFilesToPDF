@@ -2,10 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    finderSelection,
-    collectInvocation
-} = require("../../../src/host/input.js");
+const { finderSelection, collectInvocation } = require("../../../src/host/quick-action/input.js");
 const { collectImageFiles } = require("../ports/fake-selection.cjs");
 const { createFakeApp, failing } = require("../ports/fake-app.cjs");
 
@@ -64,12 +61,12 @@ test("collectImageFiles returns them in natural order", () => {
     );
 });
 
-test("collectImageFiles falls back to the Finder selection", () => {
+test("Quick Action input falls back to the Finder selection", () => {
     const app = createFakeApp();
 
     globalThis.finderItems = ["/a/fromfinder.png"];
     assert.deepEqual(
-        collectImageFiles(app, []).images.map((record) => record.path),
+        collectImageFiles(app, collectInvocation(app, []).inputItems).images.map((record) => record.path),
         ["/a/fromfinder.png"]
     );
     globalThis.finderItems = [];
@@ -93,7 +90,7 @@ test("an interactive invocation defers its settings", () => {
     const app = createFakeApp();
     const invocation = collectInvocation(app, ["/a/1.png"], false);
 
-    assert.equal(invocation.settings, null);
+    assert.equal(Object.hasOwn(invocation, "settings"), false);
     assert.equal(invocation.timestamp, "");
     assert.deepEqual(invocation.inputItems, ["/a/1.png"]);
     assert.equal(app.listPrompts.length, 0, "no dialog before the checks");
@@ -102,7 +99,7 @@ test("an interactive invocation defers its settings", () => {
 test("every rejection is retained for the bounded detail surface", () => {
     // A selection can be large, and a dialog listing forty reasons is not a
     // dialog anyone reads.
-    const { describeRejections } = require("../../../src/host/completion.js");
+    const { describeRejections } = require("../../../src/core/run-report.js");
     const many = Array.from({ length: 15 }, (ignored, index) => ({
         name: `file${index}.gif`,
         reason: "not a supported format"

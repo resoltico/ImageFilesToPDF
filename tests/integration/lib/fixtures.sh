@@ -37,7 +37,7 @@ gray_alpha_png() {
 
 require_tools() {
     local tool
-    for tool in osascript vips vipsheader pdfcpu pdfinfo pdftoppm qpdf tiffcp; do
+    for tool in osascript vips vipsheader pdfcpu pdfinfo pdftoppm qpdf tiffcp exiftool; do
         command -v "$tool" >/dev/null
     done
     test -f "$P3_PROFILE"
@@ -120,7 +120,17 @@ create_selection_fixtures() {
     ln -s "$work/names/extra.png" "$work/names/alias.png"
 }
 
-# Expected output names use the platform date formatter, independently of JXA.
-combined_name() {
-    /bin/date -j -f '%Y%m%d_%H%M%S' "$1" '+Images %Y-%m-%d at %H.%M.%S.pdf'
+# ultra_hdr_jpeg <path>: scRGB input is required by uhdrsave.
+ultra_hdr_jpeg() {
+    local work
+    work=$(mktemp -d)
+    vips black "$work/base.v" 64 48 --bands 3
+    vips linear "$work/base.v" "$work/sdr.v" 1 '200 80 40' --uchar
+    vips black "$work/patch.v" 24 16 --bands 3
+    vips linear "$work/patch.v" "$work/corner.v" 1 '40 160 80' --uchar
+    vips insert "$work/sdr.v" "$work/corner.v" "$work/asymmetric.v" 0 0
+    vips colourspace "$work/asymmetric.v" "$work/hdr.v" scrgb
+    vips uhdrsave "$work/hdr.v" "$1"
+    rm -rf "$work"
+    test "$(vipsheader -f vips-loader "$1")" = uhdrload
 }

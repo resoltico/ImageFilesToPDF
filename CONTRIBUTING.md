@@ -14,10 +14,13 @@ npm ci --ignore-scripts
 Keep optional platform packages enabled: the pinned esbuild installation uses
 them. No development package is a runtime dependency of the generated JXA.
 
-The minimatch and glob overrides keep development tools on patched releases.
+The minimatch and glob overrides keep development tools off releases affected by
+GHSA-g3hv-75wg-m249 and GHSA-3g3m-2fjr-6pw4.
 They move together: glob 13 expects RegExp pattern parts, while minimatch 11
 returns Matcher objects supported by glob 14. Remove these overrides when the
-upstream ESLint and Stryker dependency ranges accept the patched versions.
+all upstream ESLint and Stryker dependency ranges exclude every affected version.
+The qs override fixes GHSA-6pq8-jhm2-2vcw in typed-rest-client, whose
+pinned qs 6.15.1 is affected; remove it when that range excludes affected versions.
 
 | Command | Purpose |
 | --- | --- |
@@ -30,7 +33,7 @@ For native integration, install the same tools required by CI:
 
 ```sh
 brew update
-brew install vips pdfcpu qpdf poppler libtiff shellcheck actionlint
+brew install vips pdfcpu qpdf poppler libtiff exiftool shellcheck actionlint
 ```
 
 See [QA.md](QA.md) for verification requirements and live-host checks.
@@ -43,9 +46,10 @@ Commit generated JXA and checksums alongside source changes that affect them.
 - `src/application/` owns controller decisions and document/resource sequencing
   through explicit ports. Core and application import no native/UI adapters.
 - `src/backend/` owns pure backend argv builders, parsers and command budgeting.
-- `src/host/` owns composition, native/platform operations, transport
-  parsing and presentation. Host globals and Apple Event cancellation translation
-  belong here.
+- `src/host/` owns shared setup and native/platform operations. Its
+  `quick-action/` and `command-line/` front ends supply interaction ports to one
+  use case; neither imports the other, and shared host imports neither.
+  Host globals and Apple Event cancellation translation belong here.
 - `src/entry.js` exports the production `run` capability.
 
 `tools/lint/boundaries.mjs` enforces import direction and host-global boundaries.
@@ -54,7 +58,8 @@ Optional UI, progress and preferences can be unavailable; programming faults mus
 remain diagnosable rather than silently triggering fallback.
 
 `src/core/settings.js` owns canonical settings, defaults, names, captions, hints
-and legal choice IDs. `src/host/settings-model.js` derives the offered form and
+and legal choice IDs. The schema declares field kinds and the documented order;
+validation, help, form rows and stepwise dialogs derive from it. `src/host/quick-action/settings-model.js` derives the offered form and
 stepwise records from that schema. Text fields are parsed at adapter boundaries
 and use the common all-issues validator. `documentPlan` requires complete native
 name-equivalence group facts for separate mode. `src/host/destination-names.js` obtains them from
@@ -76,8 +81,9 @@ fail closed. Do not insert fallible owner registration after validation, infer
 ownership from filenames, or discard a confirmed destination after a reporting fault.
 
 The document/run outcomes own source mappings, counts and actual saved/recovery
-locations. Progress counters do not establish publication. Keep issue meaning
-separate from interface wording and technical diagnostics.
+locations. Progress counters do not establish publication. Shared report text belongs to the pure core run-report module; completion
+dialog controls, Details and CLI transport stay in their front ends. Keep issue
+meaning separate from interface wording and technical diagnostics.
 
 ## Interface wording
 

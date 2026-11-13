@@ -1,9 +1,9 @@
 "use strict";
 
-const { summarizeRun } = require("../core/run-summary.js");
-const { APP_NAME } = require("../core/version.js");
-const { plural } = require("./formatting.js");
-const { UserCanceled } = require("../core/errors.js");
+const { summarizeRun } = require("../../core/run-summary.js");
+const { APP_NAME } = require("../../core/version.js");
+const { plural } = require("../../core/formatting.js");
+const { UserCanceled } = require("../../core/errors.js");
 const { CREATE_BUTTON, CANCEL_BUTTON } = require("./settings-model.js");
 const { PAPER_SIZE, labelOfValue } = require("./settings-model.js");
 const {
@@ -11,14 +11,14 @@ const {
     destinationSummary,
     PAGE_LAYOUT_NOTE
 } = require("./output-description.js");
-const { basename, dirname } = require("../core/paths.js");
+const { basename, dirname } = require("../../core/paths.js");
 
 /*
  * The two questions an interactive run asks besides its settings.
  *
  * Both are consent, so both answer only with the button that goes on: the
  * Cancel button is the dialog's cancel button, and anything else that comes
- * back is taken as a cancellation rather than as agreement. A headless run
+ * back is taken as a cancellation rather than as agreement. A command-line run
  * never reaches either -- its configuration is the whole of what it is told.
  */
 

@@ -117,9 +117,9 @@ test("a failed completion surface retains the saved outcome in its error report"
 test("no-image native dialogs show one headline and retain actionable details",()=>{
     for(const files of [[],["/notes.txt"]]) {
         const context=fixture();
-        const {reportNoImages}=require("../../../src/host/reporting.js");
+        const { reportNoImages } = require("../../../src/host/quick-action/reporting.js");
         const rejected=files.map((path)=>({path,reason:"unsupported"}));
-        assert.equal(reportNoImages(context.app,false,rejected),undefined);
+        assert.equal(reportNoImages(context.app,rejected),undefined);
         const [alert]=context.state.alerts;
         const headline=files.length>0 ? "Nothing to convert." : "No images selected.";
         assert.equal(alert.informativeText,headline);
@@ -127,4 +127,20 @@ test("no-image native dialogs show one headline and retain actionable details",(
         assert.ok(!detail.includes(headline));
         assert.match(detail,files.length>0 ? /notes\.txt/u : /Select image files or folders in Finder/u);
     }
+});
+
+
+test("Quick Action consent precedes settings and cancellation starts no conversion", () => {
+    const accepted = fixture();
+    assert.equal(run([["/source.png", "/notes.txt"], {}]), undefined);
+    assert.equal(accepted.state.alerts.length, 3);
+    assert.equal(accepted.state.alerts[0].informativeText, "1 item in your selection cannot be included.");
+    assert.equal(accepted.state.alerts[1].informativeText, "Choose the page settings, then Create.");
+    assert.equal(accepted.state.alerts[2].informativeText, "Created 1 PDF.");
+    const canceled = fixture();
+    canceled.state.responses.push(1001);
+    assert.equal(run([["/source.png", "/notes.txt"], {}]), undefined);
+    assert.equal(canceled.state.alerts.length, 1);
+    assert.equal([...canceled.app.files].some((file) => file.endsWith(".pdf")), false);
+    assert.equal(canceled.app.commands.some((command) => command.includes("'thumbnail'") && !command.includes("nonexistent-image")), false);
 });

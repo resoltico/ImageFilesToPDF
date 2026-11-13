@@ -3,7 +3,7 @@ const { requireValidatedArtifact, isPublished } = require("../core/artifacts.js"
 const { keep } = require("./recovery.js");
 const { confirm } = require("./settling.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
-const { errorMessage, isUserCanceled } = require("../core/errors.js");
+const { IssueError, errorMessage, isUserCanceled } = require("../core/errors.js");
 const { claimAvailable } = require("./destination.js");
 
 function confirmed(context) {
@@ -36,9 +36,9 @@ function failedPublication(context, error) {
     }
     if (error?.recovery) { throw error; }
     const failure = keep(job, paths, { reasons: [errorMessage(error)], staging: area });
-    failure.issues = [{ code: publicationCode(error), stage: "publication",
+    const issues = [{ code: publicationCode(error), stage: "publication",
         message: "The PDF could not be saved to its requested destination.", diagnostic: context.diagnostic ?? issuesOf(error, "publication")[0].diagnostic }, ...failure.issues.slice(1)];
-    throw failure;
+    throw new IssueError(failure.message, { cause: failure, recovery: failure.recovery, issues });
 }
 
 /** Exact native claims retry positively classified collisions using the same validated PDF. */
