@@ -177,3 +177,47 @@ test("a malformed post-commit issue result cannot reclassify a confirmed saved d
     assert.deepEqual(records.map(record=>record.state),["saved","not-started"]);
     assert.equal(records[0].output,"/out/0.pdf.actual");assert.equal(records[0].issues[0].message,"issue getter fault");
 });
+
+test("a validation failure mixing a fault with an operation issue keeps the candidate and says where it is", () => {
+    const sample = fixture(1);
+    const {IssueError} = require("../../../src/core/errors.js");
+    sample.ports.validate = () => { throw new IssueError("mixed", { issues: [
+        { code: "operation", stage: "validation", message: "pdfcpu refused the file." },
+        { code: "fault", stage: "validation", message: "Validator crashed." }] }); };
+    const [record] = executeDocuments(sample.ports, sample.plans);
+    assert.equal(record.state, "failed");
+    assert.equal(sample.artifacts.get("/work/0.pdf").state, "validating");
+    assert.equal(record.issues.at(-1).message, "Validation was not confirmed; the candidate PDF remains here:\n/work/0.pdf");
+    assert.ok(!sample.events.some(([kind, path]) => kind === "remove" && path === "/work/0.pdf"));
+});
+
+test("a cleanup issue reported by a successful save stops later documents", () => {
+    const sample = fixture(2, {mode: "separate"});
+    const {publish} = sample.ports;
+    sample.ports.publish = (staged, destination) => ({ ...publish(staged, destination),
+        issues: [{ code: "cleanup", stage: "cleanup", message: "Staging could not be removed." }] });
+    const records = executeDocuments(sample.ports, sample.plans);
+    assert.deepEqual(records.map((record) => record.state), ["saved", "not-started"]);
+    assert.equal(records[0].fatal, true);
+});
+
+test("an ordinary allocation failure is reported once, without a reporting fault", () => {
+    const sample = fixture(2, {mode: "separate"});
+    sample.ports.allocate = () => { throw new OperationError("No space for the working PDF."); };
+    const records = executeDocuments(sample.ports, sample.plans);
+    assert.deepEqual(records.map((record) => record.state), ["failed", "failed"]);
+    assert.deepEqual(records[0].issues.map((issue) => [issue.code, issue.stage]), [["operation", "allocation"]]);
+    assert.equal(records[0].fatal, undefined);
+});
+
+test("observer and disposal faults are attributed to their own stages", () => {
+    const sample = fixture(1);
+    sample.ports.completed = () => { throw new TypeError("observer bug"); };
+    sample.ports.validate = () => { throw new OperationError("invalid PDF"); };
+    const {remove} = sample.ports;
+    sample.ports.remove = (path) => { if (path === "/work/0.pdf") { throw new OperationError("busy"); } return remove(path); };
+    const [record] = executeDocuments(sample.ports, sample.plans);
+    assert.deepEqual(record.diagnostics.map((issue) => issue.stage), ["observer"]);
+    assert.deepEqual(record.issues.map((issue) => issue.stage), ["validation", "cleanup"]);
+    assert.equal(record.fatal, true);
+});

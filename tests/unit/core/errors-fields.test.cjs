@@ -22,3 +22,9 @@ test("typed constructor fields retain issues, command, recovery and confirmed ou
     assert.equal(stopped.cause, cause);
     assert.equal(stopped.issues, issues);
 });
+
+test("operation errors are named and carry only the fields they were given", () => {
+    const error = new OperationError("failed", { issues: [] });
+    assert.equal(error.name, "OperationError");
+    assert.deepEqual(["issues", "recovery", "command", "outcome"].filter((field) => Object.hasOwn(error, field)), ["issues"]);
+});

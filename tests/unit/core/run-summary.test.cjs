@@ -48,3 +48,9 @@ test("run-level failures remain errors even without documents or after every sav
     assert.equal(summarizeRun(runOutcome([saved()], [], [fault])).kind, "some-saved");
     assert.equal(summarizeRun({ ...runOutcome(), state: "canceled" }).kind, "stopped");
 });
+
+test("one saved PDF with an issue makes the run some-saved, not all-saved", () => {
+    const issue = { code: "cleanup", stage: "cleanup", message: "Temporary files could not be removed." };
+    const run = runOutcome([saved("/out/a.pdf"), { ...saved("/out/b.pdf"), issues: [issue] }]);
+    assert.equal(summarizeRun(run).kind, "some-saved");
+});

@@ -120,3 +120,38 @@ test("enum and absence parsing trim framing but reject trailing interpretation d
     assert.equal(rawMetadata({ interpretation: invalid }).interpretation, invalid);
     assert.equal(fieldAbsent(' \tvipsheader: vips_image_get: field "n-pages" not found  ', "n-pages"), true);
 });
+
+test("every mapped loader states whether it carries an HDR gain map", () => {
+    for (const [loader, format, gainMap] of [["jpegload", "JPEG", false], ["uhdrload", "JPEG", true], ["uhdrload_buffer", "JPEG", true],
+        ["pngload", "PNG", false], ["tiffload", "TIFF", false], ["heifload", "HEIF", false], ["webpload", "WebP", false]]) {
+        const { raw } = readMetadata(base.replace("jpegload", loader));
+        assert.deepEqual([raw.format, raw.gainMap, raw.problem], [format, gainMap, undefined], loader);
+    }
+});
+
+test("an unmapped loader is refused with its name, while a vector or missing loader is not an image", () => {
+    const gif = readMetadata(base.replace("jpegload", "gifload")).raw;
+    assert.deepEqual([gif.format, gif.gainMap, gif.problem, gif.diagnostic], [undefined, false, "unsupported-content", { loader: "gifload" }]);
+    for (const loader of ["svgload", "pdfload", "pdfload_source"]) {
+        const { raw } = readMetadata(base.replace("jpegload", loader));
+        assert.deepEqual([raw.problem, raw.diagnostic], ["not-an-image", undefined], loader);
+    }
+    const missing = readMetadata("width: 1\n").raw;
+    assert.deepEqual([missing.problem, missing.diagnostic], ["not-an-image", undefined]);
+});
+
+test("a damaged-metadata refusal carries the parser's own words", () => {
+    assert.throws(() => readMetadata(`${base}bands: 4\n`), (error) =>
+        error.issues.length === 1 && error.issues[0].code === "damaged" &&
+        error.issues[0].diagnostic.message === "Duplicate image metadata field: bands");
+});
+
+test("a header line with no newline after it leaves no body, even when the name reads like a field", () => {
+    assert.equal(readMetadata("width: 5", "width").raw.width, 0);
+});
+
+test("batch headers accept single-digit dimensions and wider separators", () => {
+    const paths = ["/a.png", "/b.png"];
+    const block = (path, gap) => `${path}:${gap}4x2 uchar, 3 bands, srgb, jpegload\n${base.split("\n").filter(Boolean).map((line) => `${path}: ${line}`).join("\n")}\n`;
+    assert.deepEqual(readMetadataBatch(`${block(paths[0], " ")}${block(paths[1], "  ")}`, paths).map((entry) => entry.raw.width), [400, 400]);
+});

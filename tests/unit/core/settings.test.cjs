@@ -105,3 +105,8 @@ test("the vips vector is the hex it was made from", () => {
         );
     }
 });
+
+test("invalid settings are refused with every issue attached", () => {
+    assert.throws(() => normalizeSettings({}), (error) => Array.isArray(error.issues) && error.issues.length === 6 &&
+        error.issues.every((issue) => issue.stage === "settings"));
+});

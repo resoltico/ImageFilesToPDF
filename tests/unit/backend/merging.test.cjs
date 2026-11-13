@@ -21,3 +21,12 @@ test("argv byte budget is enforced independently of the page bound", () => {
     const groups = mergeGroups("pdfcpu", "/out.pdf", ["/a.pdf", "/b.pdf"], 81);
     assert.deepEqual(groups, [["/a.pdf"], ["/b.pdf"]]);
 });
+
+test("the per-path budget check includes the path itself, and an exact fit is not split", () => {
+    const { commandLengthOf } = require("../../../src/backend/batching.js");
+    const empty = commandLengthOf(buildPdfcpuMergeArgv("pdfcpu", "/out.pdf", []));
+    assert.throws(() => mergeGroups("pdfcpu", "/out.pdf", ["/a.pdf"], empty), /argument exceeds/u);
+    const both = commandLengthOf(buildPdfcpuMergeArgv("pdfcpu", "/out.pdf", ["/a.pdf", "/b.pdf"]));
+    assert.deepEqual(mergeGroups("pdfcpu", "/out.pdf", ["/a.pdf", "/b.pdf"], both), [["/a.pdf", "/b.pdf"]]);
+    assert.deepEqual(mergeGroups("pdfcpu", "/out.pdf", ["/a.pdf", "/b.pdf"], both - 1), [["/a.pdf"], ["/b.pdf"]]);
+});

@@ -63,3 +63,14 @@ test("saved documents with recorded failures preserve output paths but make the 
     const result=runOutcome([saved,record]);
     assert.equal(result.state,"incomplete");assert.equal(result.documents[1].output,"/a.pdf");
 });
+
+test("a stop that arrives after every PDF was saved does not make the run canceled", () => {
+    const stop = { code: "canceled", stage: "execution", message: "User canceled." };
+    assert.equal(runOutcome([saved], [], [stop]).state, "incomplete");
+    assert.equal(runOutcome([saved, failed], [], [stop]).state, "canceled");
+});
+
+test("a failure before any outcome is a setup issue", () => {
+    const { failedRun } = require("../../../src/core/outcomes.js");
+    assert.deepEqual(failedRun(new OperationError("no vips")).issues.map((issue) => [issue.code, issue.stage]), [["operation", "setup"]]);
+});

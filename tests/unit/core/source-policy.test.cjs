@@ -56,3 +56,8 @@ test("EXIF orientation ownership is shared by source validation and backend pars
     assert.deepEqual(orientedSize(400, 200, 8), { width: 200, height: 400 });
     assert.deepEqual(orientedSize(400, 200, 9), { width: 400, height: 200 });
 });
+
+test("an admission without inspected image facts never matches", () => {
+    assert.equal(matchesAdmission({ identity: "1:2", version: "v" }, { identity: "1:2", version: "v" }), false);
+    assert.equal(matchesAdmission(undefined, { identity: "1:2", version: "v" }), false);
+});
