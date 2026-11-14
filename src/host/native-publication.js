@@ -1,5 +1,6 @@
 "use strict";
 const { OperationError } = require("../core/errors.js");
+const { nativeEntryNames } = require("./directory-entry-names.js");
 const { basename, dirname } = require("../core/paths.js");
 const { attributesAt, attributeText, identityOf, kindOf } = require("./native-file-attributes.js");
 
@@ -31,19 +32,12 @@ function sameArtifact(facts, expected) {
     return Boolean(expected.identity) && facts.identity === expected.identity && facts.size === expected.size;
 }
 
-function storedPath({ objc, ns, manager }, path, expected) {
+function storedPath({ objc, ns, ref, manager }, path, expected) {
     if (!sameArtifact(nativeFacts(objc, ns, manager, path), expected)) {
         throw new OperationError("The published PDF identity could not be confirmed before reading its name.");
     }
     const directory = dirname(path);
-    const listed = manager.contentsOfDirectoryAtPathError(ns(directory), ns());
-    if (!listed || listed.isNil()) {
-        throw new OperationError("The output directory could not be read to verify the PDF's stored filename (read/search access is required).");
-    }
-    const entries = objc.deepUnwrap(listed);
-    if (!Array.isArray(entries) || entries.some((name) => typeof name !== "string")) {
-        throw new OperationError("The output directory's entry names could not be read reliably.");
-    }
+    const entries = nativeEntryNames(objc, ns, ref)(directory);
     const requested = basename(path);
     const exact = entries.filter((name) => name === requested);
     // Normalization selects candidates only. Return the literal directory entry.
@@ -60,7 +54,7 @@ function storedPath({ objc, ns, manager }, path, expected) {
     return actual;
 }
 
-function nativePublication(objc, ns) {
+function nativePublication(objc, ns, ref = globalThis.Ref) {
     if (!objc || !ns) { return null; }
     objc.import("Foundation");
     objc.import("stdio");
@@ -70,7 +64,7 @@ function nativePublication(objc, ns) {
     const manager = ns.NSFileManager.defaultManager;
     return {
         facts: (path) => nativeFacts(objc, ns, manager, path),
-        actualPath: (path, expected) => storedPath({ objc, ns, manager }, path, expected),
+        actualPath: (path, expected) => storedPath({ objc, ns, ref, manager }, path, expected),
         // link(2) rather than NSFileManager: measured, linkItemAtPath writes
         // the name decomposed, so a photograph named "rīga.jpg" in NFC came
         // back as a copy whose name no longer matched its original's bytes.

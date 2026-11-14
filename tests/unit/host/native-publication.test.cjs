@@ -2,6 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { nativePublication, classify } = require("../../../src/host/native-publication.js");
+const { fakeDirectory } = require("../ports/fake-directory.cjs");
 const { nativeAttributes } = require("../ports/fake-attributes.cjs");
 
 for (const [code, state] of [[17,"exists"],[18,"cross-device"],[45,"unsupported"],[78,"unsupported"],[1,"denied"],[13,"denied"],[30,"denied"],[999,"unknown"]]) {
@@ -39,12 +40,12 @@ function namedFixture() {
     const actual = "/chosen/rīga.pdf", intended = "/chosen/rīga.pdf";
     const attributes = new Map([intended, actual, "/chosen/another-link.pdf"].map((path) => [path, { kind: "NSFileTypeRegular", device: "1", file: "2", size: 4096 }]));
     const entries = ["rīga.pdf", "another-link.pdf"];
-    const listing = { isNil: () => false, entries };
-    const manager = { attributesOfItemAtPathError: (path) => nativeAttributes(attributes.get(path)), contentsOfDirectoryAtPathError: () => listing };
+    const directory = fakeDirectory(entries);
+    const manager = { attributesOfItemAtPathError: (path) => nativeAttributes(attributes.get(path)) };
     const ns = (value) => value ?? {};
-    Object.assign(ns, { NSFileType: "kind", NSFileSystemNumber: "device", NSFileSystemFileNumber: "file", NSFileSize: "size", NSFileManager: { defaultManager: manager } });
-    const port = nativePublication({ import: () => true, bindFunction: () => true, unwrap: (value) => value?.boxed ?? value, deepUnwrap: (value) => value.entries }, ns);
-    return { port, attributes, intended, actual, entries, manager, expected: { identity: "1:2", size: 4096 } };
+    Object.assign(ns, directory.ns, { NSFileType: "kind", NSFileSystemNumber: "device", NSFileSystemFileNumber: "file", NSFileSize: "size", NSFileManager: { defaultManager: manager } });
+    const port = nativePublication({ import: () => true, bindFunction: () => true, unwrap: (value) => value?.boxed ?? value, deepUnwrap: (value) => value.entries }, ns, directory.ref);
+    return { port, ns, attributes, intended, actual, entries, directory, manager, expected: { identity: "1:2", size: 4096 } };
 }
 
 test("literal directory-entry basename retains chosen parent and never chooses another hardlink by inode alone", () => {
@@ -59,10 +60,8 @@ test("literal directory-entry basename retains chosen parent and never chooses a
 });
 
 test("listing refusal, missing and ambiguous names preserve name uncertainty rather than canonical fallback", () => {
-    for (const listed of [null, { isNil: () => true }]) {
-        const sample = namedFixture(); sample.manager.contentsOfDirectoryAtPathError = () => listed;
-        assert.throws(() => sample.port.actualPath(sample.intended, sample.expected), /read.*stored filename/u);
-    }
+    const refused = namedFixture(); refused.directory.control.openCode = 13;
+    assert.throws(() => refused.port.actualPath(refused.intended, refused.expected), /directory|opendir/iu);
     const missing = namedFixture(); missing.entries.splice(0);
     assert.throws(() => missing.port.actualPath(missing.intended, missing.expected), /uniquely verified/u);
     const ambiguous = namedFixture();
@@ -72,9 +71,9 @@ test("listing refusal, missing and ambiguous names preserve name uncertainty rat
 });
 
 test("replacement during enumeration cannot become a confirmed stored name", () => {
-    const sample = namedFixture(); const list = sample.manager.contentsOfDirectoryAtPathError;
-    sample.manager.contentsOfDirectoryAtPathError = (...args) => {
-        sample.attributes.set(sample.actual, { kind: "NSFileTypeRegular", device: "1", file: "9", size: 4096 }); return list(...args);
+    const sample = namedFixture(); const read = sample.ns.readdir$INODE64;
+    sample.ns.readdir$INODE64 = (...args) => {
+        sample.attributes.set(sample.actual, { kind: "NSFileTypeRegular", device: "1", file: "9", size: 4096 }); return read(...args);
     };
     assert.throws(() => sample.port.actualPath(sample.intended, sample.expected), /uniquely verified/u);
 });

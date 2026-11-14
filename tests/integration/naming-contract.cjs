@@ -15,6 +15,25 @@ const settings=path.join(root,"settings.json");
 fs.writeFileSync(settings,JSON.stringify({mode:"separate",paperSize:"A4",orientation:"Portrait",resolutionLimit:300,quality:92,background:"#FFFFFF",timestamp:"20261030_010203"}));
 const hash=(file)=>crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 
+// POSIX-created names can differ from Foundation-created names on FAT32.
+// Exercise the source-backed readback separately from exclusive-claim capability.
+function storedNames() {
+    const folder=path.join(root,"stored-names");fs.mkdirSync(folder);
+    for(const [index,name] of ["café-jpg 2.pdf","café-png.pdf"].entries()) {
+        const destination=path.join(folder,name),source=path.join(folder,`source-${index}`);
+        const bytes=Buffer.from(`owned filename readback ${index}`);fs.writeFileSync(source,bytes,{flag:"wx"});
+        const original=fs.statSync(source,{bigint:true});
+        const result=spawnSync("/usr/bin/osascript",["-l","JavaScript",path.join(work,"stored-name.jxa"),source,destination],{encoding:"utf8",timeout:10000});
+        assert.ifError(result.error);assert.equal(result.status,0,result.stderr);
+        const observed=JSON.parse(result.stdout),raw=fs.readdirSync(folder,{encoding:"buffer"});
+        assert.ok(raw.some(entry=>entry.equals(Buffer.from(path.basename(observed.actual)))),JSON.stringify({requirement:"POSIX-created stored name equals a raw entry",volume:label,...observed,entries:raw.map(entry=>entry.toString("hex"))}));
+        assert.deepEqual(observed.observed,observed.expected);assert.deepEqual(observed.expected,{identity:`${original.dev}:${original.ino}`,size:bytes.length});
+        const actual=fs.statSync(observed.actual,{bigint:true});assert.equal(actual.dev,original.dev);assert.equal(actual.ino,original.ino);
+        assert.equal(fs.existsSync(source),false);assert.deepEqual(fs.readFileSync(observed.actual),bytes);
+    }
+}
+storedNames();
+
 function alias(folder,left,right) {
     const first=path.join(folder,left),second=path.join(folder,right);
     fs.writeFileSync(first,"owned naming oracle",{flag:"wx"});
