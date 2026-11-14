@@ -9,6 +9,7 @@
 - Command-line `SIGINT` and `SIGTERM` request a safe Stop and a canceled receipt with exit 1, including during setup. `SIGKILL` remains abrupt.
 - Tool setup refusals now use receipt state `invalid` with exit 3 and identify unusable overrides by variable and value.
 - Single-image PDFs now use the image name in both modes, including after refusals. Update receipt consumers to read actual output/recovery paths; see [HEADLESS.md](HEADLESS.md).
+- Name verification needs read/search access to destination folders; unavailable or ambiguous listings preserve files and report uncertainty.
 - Prefix relative filenames that look like URI schemes, such as `photo:one.jpg`, with `./` when selecting a local file.
 - Under supported filename extensions, recognized excluded content uses `unsupported-content` and `diagnostic.loader`; truncated HEIC is `damaged`.
 - Visible special files in selected folders are `special-file` refusals; such runs are incomplete.

@@ -96,7 +96,7 @@ abrupt process end, `SIGKILL` or a failed stdout cannot guarantee a receipt.
 `SIGINT` and `SIGTERM` request cooperative Stop. A running native command finishes before the next safe checkpoint observes the request; publication and recovery protections remain in force. Signal monitoring stays active through receipt transport. Normal process exit lets the OS reclaim its resources.
 
 The stderr report is the headline, then sections separated by one blank line.
-Output and recovery basenames are read back from the actual stored entry after identity and size confirmation; chosen parent-folder spelling is preserved. If a claim's name cannot be verified, a verified private original stays in place and the issue reports that uncertainty rather than guessing a public output path. If the original cannot be verified either, the PDF is failed with a fatal issue and no recovery path; existing files remain untouched.
+Output and recovery basenames are read back as literal directory-entry names after identity and size confirmation; chosen parent-folder spelling is preserved. If a claim's name cannot be verified, a verified private original stays in place and the issue reports that uncertainty rather than guessing a public output path. If the original cannot be verified either, the PDF is failed with a fatal issue and no recovery path; existing files remain untouched. The destination folder needs read/search access for this verification. An unavailable or ambiguous directory listing reports the same claim uncertainty and preserves existing files; a canonicalized path is not used as a guessed stored name.
 
 `Could not convert:` lists failed PDFs only. `Saved elsewhere:` lists each actual
 recovery path with a one-line cause. `Other issues:` keeps run-level or cleanup

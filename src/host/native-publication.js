@@ -35,14 +35,26 @@ function storedPath({ objc, ns, manager }, path, expected) {
     if (!sameArtifact(nativeFacts(objc, ns, manager, path), expected)) {
         throw new OperationError("The published PDF identity could not be confirmed before reading its name.");
     }
-    const error = ns();
-    const values = ns.NSURL.fileURLWithPath(ns(path)).resourceValuesForKeysError(ns([ns.NSURLCanonicalPathKey]), error);
-    if (!values || values.isNil()) { throw new OperationError("The published PDF's stored filename could not be read."); }
-    const value = values.objectForKey(ns.NSURLCanonicalPathKey);
-    if (!value || value.isNil()) { throw new OperationError("The published PDF's stored filename is unavailable."); }
-    const canonical = String(objc.unwrap(value));
-    const actual = dirname(path) + basename(canonical);
-    if (!sameArtifact(nativeFacts(objc, ns, manager, canonical), expected) || !sameArtifact(nativeFacts(objc, ns, manager, actual), expected)) {
+    const directory = dirname(path);
+    const listed = manager.contentsOfDirectoryAtPathError(ns(directory), ns());
+    if (!listed || listed.isNil()) {
+        throw new OperationError("The output directory could not be read to verify the PDF's stored filename (read/search access is required).");
+    }
+    const entries = objc.deepUnwrap(listed);
+    if (!Array.isArray(entries) || entries.some((name) => typeof name !== "string")) {
+        throw new OperationError("The output directory's entry names could not be read reliably.");
+    }
+    const requested = basename(path);
+    const exact = entries.filter((name) => name === requested);
+    // Normalization selects candidates only. Return the literal directory entry.
+    const candidates = exact.length > 0 ? exact : entries.filter((name) => name.normalize("NFC") === requested.normalize("NFC"));
+    const verified = candidates.map((name) => directory + name)
+        .filter((candidate) => sameArtifact(nativeFacts(objc, ns, manager, candidate), expected));
+    if (verified.length !== 1) {
+        throw new OperationError("The published PDF's stored filename could not be uniquely verified from its directory entries.");
+    }
+    const [actual] = verified;
+    if (!sameArtifact(nativeFacts(objc, ns, manager, path), expected) || !sameArtifact(nativeFacts(objc, ns, manager, actual), expected)) {
         throw new OperationError("The published PDF identity changed while reading its stored filename.");
     }
     return actual;

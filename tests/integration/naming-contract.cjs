@@ -40,7 +40,7 @@ function groups(records) {
 function assertSavedPdf(document,wanted) {
     assert.equal(document.state,"saved");assert.equal(document.pages,1);
     const raw = fs.readdirSync(path.dirname(document.output), { encoding: "buffer" });
-    assert.ok(raw.some((name) => name.equals(Buffer.from(path.basename(document.output)))), "receipt basename equals a raw directory entry without normalization");
+    assert.ok(raw.some((name) => name.equals(Buffer.from(path.basename(document.output)))), JSON.stringify({ requirement: "receipt basename equals a raw directory entry without normalization", volume: label, output: document.output, reportedHex: Buffer.from(path.basename(document.output)).toString("hex"), entries: raw.map((name) => ({ name: name.toString("utf8"), hex: name.toString("hex") })) }));
     assert.equal(path.basename(document.output).normalize("NFC"),wanted.normalize("NFC"));
     execFileSync("qpdf",["--check",document.output],{stdio:"pipe"});
 }

@@ -36,8 +36,11 @@ the destination is on another volume, an owned copy is first made beside the
 destination and linked from there; on a volume that cannot link, it is published
 by exclusive rename. Only a classified name collision is retried, with the next
 ` 2`, ` 3` name. Existing files, folders, pipes and links are never replaced or
-written inside. Native identity, size and stored basename confirm the actual output before the
-workspace copy is released. The original private identity is checked again before
+written inside. Native identity, size and the literal directory-entry basename confirm the actual output before the
+workspace copy is released. Exact names require read/search access to the output
+folder. An unavailable or ambiguous listing preserves the already-created entry
+and verified original without guessing a canonical spelling or making a duplicate
+recovery. The original private identity is checked again before
 release; if it no longer matches, the confirmed output remains saved with a fatal
 cleanup issue, the original is not removed, and its workspace stays retained. A volume that supports neither exclusive route fails
 over to recovery instead of exposing a partial file.

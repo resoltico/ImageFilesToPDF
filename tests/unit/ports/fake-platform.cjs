@@ -25,7 +25,7 @@ function attributesFor(app, path) {
 function managerFor(app, unbox) {
     return {
         contentsOfDirectoryAtPathError(path) {
-            const prefix=`${unbox(path)}/`;
+            const prefix=`${unbox(path).replace(/\/$/u, "")}/`;
             const names=[...new Set([...app.files].filter((name)=>name.startsWith(prefix)).map((name)=>name.slice(prefix.length).split("/")[0]))];
             names.isNil=()=>false;return names;
         },
