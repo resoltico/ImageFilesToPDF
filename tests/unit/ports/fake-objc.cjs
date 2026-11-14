@@ -34,11 +34,7 @@ function colorClass() {
         systemRedColor: {
             kind: "color",
             name: "systemRed",
-            colorWithAlphaComponent: (alpha) => ({
-                kind: "color",
-                name: "systemRed",
-                alpha
-            })
+            colorWithAlphaComponent: (alpha) => ({ kind: "color", name: "systemRed", alpha, CGColor: { name: "systemRed", alpha } })
         }
     };
 }
@@ -52,6 +48,7 @@ function installClasses(ns, state, application) {
         NSModalPanelRunLoopMode: "NSModalPanelRunLoopMode",
         NSButton: { alloc: { initWithFrame: (rect) => ({...makeView(rect), state: 0, setButtonType(type) {this.buttonType=type;}}) } },
         NSView: { alloc: { initWithFrame: makeView } },
+        CALayer: { get layer() { return {}; } },
         NSScrollView: { alloc: { initWithFrame: (rect) => {
             const scroll = { ...makeView(rect), contentSize: { width: rect.width - 15, height: rect.height }, reflected: 0 };
             scroll.contentView = { scrollToPoint(point) { scroll.scrolledTo = point; } };

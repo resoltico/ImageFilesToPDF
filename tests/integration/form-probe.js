@@ -3,6 +3,7 @@ const { formSpec, defaultAnswers } = require("../../src/host/quick-action/settin
 const { readAnswers } = require("../../src/host/quick-action/settings-model.js");
 const { buildForm } = require("../../src/host/quick-action/appkit.js");
 const { WIDGETS } = require("../../src/host/quick-action/appkit.js");
+const { appkitBridge } = require("../../src/host/quick-action/objc-bridge.js");
 const { build: buildProgressPanel } = require("../../src/host/quick-action/panel.js");
 const { detailsAlert, layoutDetails } = require("../../src/host/quick-action/details-dialog.js");
 const SMALLEST_VISIBLE_HEIGHT = 744;
@@ -49,7 +50,7 @@ function nativeForm(scenario) {
     }
     built.controls.mode.selectItemAtIndex(scenario.answers.mode === "combined" ? 0 : 1);
     $.NSApplication.sharedApplication.sendActionToFrom(built.controls.mode.action, built.controls.mode.target, built.controls.mode);
-    return { alert, details: built.details };
+    return { alert, details: built.details, controls: built.controls, rows: spec.rows };
 }
 
 function checkDetailWidths(view) {
@@ -66,6 +67,30 @@ function checkDetailWidths(view) {
     }
     const children = view.subviews;
     for (let index = 0; index < Number(children.count); index += 1) { checkDetailWidths(children.objectAtIndex(index)); }
+}
+
+const MINIMUM_TINT_DIFFERENCE = 0.005;
+
+function redExcess(control) {
+    const bitmap = control.bitmapImageRepForCachingDisplayInRect(control.bounds);
+    control.cacheDisplayInRectToBitmapImageRep(control.bounds, bitmap);
+    const color = bitmap.colorAtXY(Math.floor(Number(bitmap.pixelsWide) * 0.75), Math.floor(Number(bitmap.pixelsHigh) * 0.5))
+        .colorUsingColorSpace($.NSColorSpace.deviceRGBColorSpace);
+    return Number(color.redComponent) - Number(color.blueComponent);
+}
+
+function checkInvalidTint(control, key) {
+    const layers = control.layer.sublayers;
+    const fill = Array.from({ length: Number(layers.count) }, (ignored, index) => layers.objectAtIndex(index))
+        .find((layer) => String(ObjC.unwrap(layer.name)) === "InvalidSettingFill");
+    requireNative(Boolean(fill), `${key}: missing invalid fill layer`);
+    const marked = redExcess(control);
+    // The same native control without only its error fill is the negative control.
+    // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+    fill.removeFromSuperlayer;
+    const plain = redExcess(control);
+    control.layer.addSublayer(fill);
+    requireNative(marked - plain > MINIMUM_TINT_DIFFERENCE, `${key}: invalid tint is hidden by the native control (${marked}, ${plain})`);
 }
 
 function writePreview(alert, path) {
@@ -85,6 +110,7 @@ function snapshot(folder, scenario, appearance) {
     const { alert } = built;
     alert.window.appearance = $.NSAppearance.appearanceNamed(appearance);
     layoutDetails($, alert, built.details ?? alert.accessoryView);
+    for (const row of built.rows ?? []) { if (row.invalid) { checkInvalidTint(built.controls[row.key], row.key); } }
     const height = Number(alert.window.frame.size.height);
     requireNative(height <= SMALLEST_VISIBLE_HEIGHT, `${scenario.name}: ${height} points exceeds ${SMALLEST_VISIBLE_HEIGHT}`);
     const path = `${folder}/${scenario.name}-${appearance}.png`;
@@ -104,6 +130,7 @@ function scenariosFor(longPath) {
     return [
         { ...common, name: "one-image", context: { count: 1, folders: ["/Pictures/"] } },
         { ...common, name: "combined" },
+        { ...common, name: "all-invalid-controls", problems: Object.keys(answers).map((key) => ({ key, message: `Correct ${key}.` })) },
         { ...common, name: "separate", answers: { ...answers, mode: "separate", paperSize: "Letter" } },
         { ...common, name: "corrections", answers: invalid, problems },
         { ...common, name: "deep-path-errors", answers: invalid, problems, context: { count: 12, folders: [longPath] } },
@@ -129,7 +156,7 @@ function checkStopControl(appearance) {
 }
 
 function run(input) {
-    ObjC.import("AppKit");
+    requireNative(Boolean(appkitBridge(ObjC, $)), "Native UI frameworks are unavailable.");
     // eslint-disable-next-line no-unused-expressions
     $.NSApplication.sharedApplication;
     const scenarios = scenariosFor(String(input[1]));

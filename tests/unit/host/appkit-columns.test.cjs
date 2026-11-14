@@ -85,16 +85,16 @@ test("a row named in the problems is marked, and the others are not", () => {
     const bridge = createFakeObjC();
     const { controls } = buildForm(bridge, spec, WIDGETS);
 
-    assert.equal(controls.resolutionLimit.drawsBackground, true);
-    assert.equal(controls.resolutionLimit.backgroundColor.name, "systemRed");
+    assert.equal(controls.resolutionLimit.wantsLayer, true);
+    assert.equal(controls.resolutionLimit.layer.sublayers[0].backgroundColor.name, "systemRed");
     assert.ok(
-        controls.resolutionLimit.backgroundColor.alpha < 0.5,
+        controls.resolutionLimit.layer.sublayers[0].backgroundColor.alpha < 0.5,
         "a tint, not a fill: the value must stay readable"
     );
 
     for (const key of ["quality", "paperSize", "background"]) {
         assert.notEqual(
-            controls[key].drawsBackground,
+            controls[key].wantsLayer,
             true,
             `${key} is not in the problem list and must not be marked`
         );
@@ -126,8 +126,8 @@ test("a choice row can be marked too, not only a typed one", () => {
     );
     const { controls } = buildForm(createFakeObjC(), spec, WIDGETS);
 
-    assert.equal(controls.paperSize.drawsBackground, true);
-    assert.equal(controls.paperSize.backgroundColor.name, "systemRed");
+    assert.equal(controls.paperSize.wantsLayer, true);
+    assert.equal(controls.paperSize.layer.sublayers[0].backgroundColor.name, "systemRed");
 });
 
 test("a hint is centered against the field it describes", () => {

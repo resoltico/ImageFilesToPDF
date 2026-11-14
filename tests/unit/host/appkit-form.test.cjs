@@ -134,6 +134,6 @@ test("a color that could not be read is marked, keeping what was typed", () => {
     const { controls } = build(spec);
 
     assert.equal(controls.background.stringValue, "c7dae", "what was typed");
-    assert.equal(controls.background.drawsBackground, true);
-    assert.equal(controls.background.backgroundColor.name, "systemRed");
+    assert.equal(controls.background.wantsLayer, true);
+    assert.equal(controls.background.layer.sublayers[0].backgroundColor.name, "systemRed");
 });

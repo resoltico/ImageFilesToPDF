@@ -20,6 +20,8 @@ function makeView(rect) {
  * typed out of the field editor before reading it.
  */
 function commitCounter(control) {
+    control.bounds = { left: 0, bottom: 0, width: control.rect.width, height: control.rect.height };
+    control.layer = { sublayers: [], addSublayer(layer) { this.sublayers.push(layer); } };
     control.setAccessibilityLabel = (label) => {
         control.accessibilityLabel = label;
     };

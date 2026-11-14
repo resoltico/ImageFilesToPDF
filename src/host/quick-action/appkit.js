@@ -63,6 +63,7 @@ const HINT_FONT_SIZE = 11;
 // follows the appearance the alert is rendered in. A fixed pink would be
 // wrong the moment the form appears in dark mode.
 const INVALID_TINT_ALPHA = 0.18;
+const INVALID_CORNER_RADIUS = 4;
 
 // NSTextAlignmentRight. On macOS right is 1 and center is 2, which is the
 // reverse of UIKit, so the constant is named rather than written inline.
@@ -126,9 +127,16 @@ function addPopupItem(popup, option) {
 }
 
 function markInvalid(ns, control) {
-    control.drawsBackground = true;
-    control.backgroundColor = ns.NSColor.systemRedColor
-        .colorWithAlphaComponent(INVALID_TINT_ALPHA);
+    // A native cell can hide its own background color. A noninteractive layer
+    // gives every control the same error tint without changing its behavior.
+    control.wantsLayer = true;
+    const fill = ns.CALayer.layer;
+    fill.name = "InvalidSettingFill";
+    fill.frame = control.bounds;
+    fill.backgroundColor = ns.NSColor.systemRedColor.colorWithAlphaComponent(INVALID_TINT_ALPHA).CGColor;
+    fill.cornerRadius = INVALID_CORNER_RADIUS;
+    fill.zPosition = 1;
+    control.layer.addSublayer(fill);
 }
 
 function markHintInvalid(ns, hint) {

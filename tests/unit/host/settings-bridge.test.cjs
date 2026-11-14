@@ -31,7 +31,7 @@ test("a working bridge carries both halves through", () => {
     const ns = { marker: true };
 
     assert.deepEqual(appkitBridge(objc, ns), { objc, ns });
-    assert.deepEqual(imported, ["AppKit"]);
+    assert.deepEqual(imported, ["AppKit", "QuartzCore"]);
 });
 
 for (const error of [new TypeError("bridge bug"),new TypeError("nothing found to import"),new ReferenceError("missing symbol"),new Error("unexpected native failure"),null]) {
@@ -39,3 +39,16 @@ for (const error of [new TypeError("bridge bug"),new TypeError("nothing found to
         assert.throws(()=>appkitBridge({import(){throw error;}},{}),caught=>caught===error);
     });
 }
+
+test("the invalid-style layer framework is part of native UI availability", () => {
+    const imported = [];
+    const objc = { import(name) { imported.push(name); if (name === "QuartzCore") { throw new Error("nothing found to import"); } } };
+    assert.equal(appkitBridge(objc, {}), null);
+    assert.deepEqual(imported, ["AppKit", "QuartzCore"]);
+});
+
+test("a layer framework programming fault cannot silently choose fallback dialogs", () => {
+    const failure = new TypeError("bad layer bridge");
+    const objc = { import(name) { if (name === "QuartzCore") { throw failure; } } };
+    assert.throws(() => appkitBridge(objc, {}), (error) => error === failure);
+});
