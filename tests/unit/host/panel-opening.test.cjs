@@ -25,7 +25,7 @@ test("a bridge that cannot be had is no panel", () => {
 test("a host that refuses an object is no panel, and no policy left changed", () => {
     // Built before the policy is touched, so a process that cannot make a
     // window is left exactly as it was found.
-    const { ns, state } = createFakeObjC({ policy: POLICY_PROHIBITED });
+    const { ns, objc, state } = createFakeObjC({ policy: POLICY_PROHIBITED });
 
     ns.NSPanel = {
         alloc: {
@@ -35,13 +35,13 @@ test("a host that refuses an object is no panel, and no policy left changed", ()
         }
     };
 
-    assert.throws(() => openPanel({ objc: {}, ns }), /no window server/u);
+    assert.throws(() => openPanel({ objc, ns }), /no window server/u);
     assert.deepEqual(state.policies, []);
 });
 
 test("a host that can be reached is a panel, and may show a window", () => {
-    const { ns, state } = createFakeObjC({ policy: POLICY_PROHIBITED });
-    const sink = openPanel({ objc: {}, ns }, () => 0);
+    const { ns, objc, state } = createFakeObjC({ policy: POLICY_PROHIBITED });
+    const sink = openPanel({ objc, ns }, () => 0);
 
     assert.deepEqual(
         Object.keys(sink).sort(),

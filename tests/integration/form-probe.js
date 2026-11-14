@@ -3,6 +3,7 @@ const { formSpec, defaultAnswers } = require("../../src/host/quick-action/settin
 const { readAnswers } = require("../../src/host/quick-action/settings-model.js");
 const { buildForm } = require("../../src/host/quick-action/appkit.js");
 const { WIDGETS } = require("../../src/host/quick-action/appkit.js");
+const { build: buildProgressPanel } = require("../../src/host/quick-action/panel.js");
 const { detailsAlert, layoutDetails } = require("../../src/host/quick-action/details-dialog.js");
 const SMALLEST_VISIBLE_HEIGHT = 744;
 const PNG_TYPE = 4;
@@ -112,6 +113,21 @@ function scenariosFor(longPath) {
     ];
 }
 
+function checkStopControl(appearance) {
+    const view = buildProgressPanel($, ObjC);
+    view.panel.appearance = $.NSAppearance.appearanceNamed(appearance);
+    const accessible = $.NSAccessibilityUnignoredDescendant(view.stop);
+    requireNative(String(ObjC.unwrap(accessible.accessibilityRole)) === "AXButton", "Stop is not an accessibility button.");
+    view.stop.setButtonType(1);
+    requireNative(String(ObjC.unwrap(accessible.accessibilityRole)) === "AXCheckBox", "The legacy toggle negative control did not expose a checkbox.");
+    view.stop.setButtonType(7);
+    requireNative($.NSApplication.sharedApplication.sendActionToFrom(view.stop.action, view.stop.target, view.stop), "Stop action was not handled.");
+    requireNative(!view.stop.enabled && String(ObjC.unwrap(view.stop.title)) === "Stopping…", "Stop request feedback is missing.");
+    requireNative(Number(view.stop.cell.cellSize.width) <= Number(view.stop.frame.size.width), "Stopping feedback is clipped.");
+    // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+    view.panel.close;
+}
+
 function run(input) {
     ObjC.import("AppKit");
     // eslint-disable-next-line no-unused-expressions
@@ -119,6 +135,7 @@ function run(input) {
     const scenarios = scenariosFor(String(input[1]));
     for (const appearance of ["NSAppearanceNameAqua", "NSAppearanceNameDarkAqua"]) {
         const name = ObjC.unwrap($[appearance]);
+        checkStopControl(name);
         for (const scenario of scenarios) { snapshot(String(input[0]), scenario, name); }
     }
     return "macOS form integration passed";

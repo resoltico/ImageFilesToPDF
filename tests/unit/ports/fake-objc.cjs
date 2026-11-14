@@ -139,7 +139,7 @@ function createFakeObjC(settings = {}) {
     const ns = boxed;
     ns.NSClassFromString = (name) => classes.get(name) ?? {isNil:()=>true};
     const registerSubclass = (definition) => {
-        classes.set(definition.name, {isNil:()=>false,alloc:{get init(){return {modeChanged:definition.methods["modeChanged:"].implementation};}}});
+        classes.set(definition.name, {isNil:()=>false,alloc:{get init(){return Object.fromEntries(Object.entries(definition.methods).map(([selector, method]) => [selector.replace(/:$/u, ""), method.implementation]));}}});
     };
 
     installClasses(ns, state, application);

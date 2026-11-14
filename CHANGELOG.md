@@ -6,6 +6,7 @@
 - Contributions are accepted under the [contribution terms](CONTRIBUTING.md#contribution-terms), which also let Ervins Strauhmanis license them commercially.
 - Tool setup refusals now use receipt state `invalid` with exit 3 and identify unusable overrides by variable and value.
 - Single-image PDFs now use the image name in both modes, including after refusals. Update receipt consumers to read actual output/recovery paths; see [HEADLESS.md](HEADLESS.md).
+- Progress Stop is an accessible push button; after activation it says “Stopping…” and is disabled until the run ends.
 - Stops that made nothing use one headline. Plain stops no longer offer empty Details, and technical details omit empty values.
 - Scrollable form notes, selection reviews and completion details open at their first line in both light and dark appearances.
 - Backend commands use a fixed C locale, so conversion works independently of the caller's language settings.
