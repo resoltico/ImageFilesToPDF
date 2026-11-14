@@ -26,7 +26,11 @@ function headline(summary) {
     if (summary.kind === "setup") { return "A required tool is missing or unusable."; }
     if (summary.kind === "invalid") { return "The request is invalid."; }
     if (summary.kind === "nothing-to-convert") { return "Nothing to convert."; }
-    if (summary.kind === "stopped") { return `Stopped. ${plural(summary.notStarted + summary.counts.canceled, "PDF")} not created.\n${made}`; }
+    if (summary.kind === "stopped") {
+        if (summary.counts.saved === 0 && summary.counts.recovered === 0) { return `Stopped. ${made}`; }
+        const unfinished = summary.notStarted + summary.counts.canceled;
+        return `Stopped.${unfinished > 0 ? ` ${plural(unfinished, "PDF")} not created.` : ""}\n${made}`;
+    }
     return summary.kind === "all-saved" ? made : `Finished with issues.\n${made}`;
 }
 

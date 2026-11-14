@@ -121,6 +121,7 @@ selection review, all six settings, keyboard navigation, Maximum resolution `101
 JPEG quality `101` and background `purple` reported together with other choices
 kept, the form note opening at its first line, Create/Cancel, remembered settings,
 visible progress/Stop, one headline above selectable details, Details then Back,
+no Details for a plain Stop,
 and Show in Finder revealing every saved and recovered PDF. Repeat with no images,
 only refused items and a mixed selection. Confirm no text-result files are returned
 to Shortcuts.

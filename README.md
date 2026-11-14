@@ -52,7 +52,8 @@ installing and removing the action.
    safe point and keeps every PDF already saved.
 5. Completion lists what was saved, where, and anything that failed.
    **Show in Finder** reveals every saved or recovered PDF; **Details** shows
-   technical diagnostics and **Back** returns to the summary.
+   technical diagnostics when available, and **Back** returns to the summary.
+   A plain Stop does not offer empty Details.
 
 Confirmed settings are remembered for the next run in the preferences domain
 `com.resoltico.ImageFilesToPDF`, shared by every installed copy of the action. To

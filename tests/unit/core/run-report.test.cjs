@@ -53,3 +53,11 @@ test("expected setup refusal has its own literal headline and no conversion head
     assert.equal(reportText(result), "A required tool is missing or unusable.\n\nvipsheader could not read the built-in PNG image.");
     assert.equal(reportText(result, false), "vipsheader could not read the built-in PNG image.");
 });
+
+test("a stop with no output has one headline and no duplicate not-created sentence", () => {
+    const stopped = { state: "canceled", sources: ["/stop.jpg"], pages: 0, issues: [] };
+    const result = runOutcome([stopped, { ...stopped, state: "not-started" }]);
+    assert.equal(reportText(result), "Stopped. No PDF was created.\n\n1 canceled; 1 not started.\n\nNot started: 1");
+    const kept = runOutcome([recovered], [], [{ code: "canceled", stage: "publication" }]);
+    assert.equal(reportText(kept), "Stopped.\n1 PDF could not be saved where it was meant to go and was kept elsewhere; the location is below.\n\n1 recovered.\n\nRecovered PDFs:\n/Downloads/b.pdf");
+});

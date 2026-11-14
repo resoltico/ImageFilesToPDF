@@ -78,3 +78,23 @@ test("unsupported-content loader evidence appears in completion Details", () => 
     assert.match(app.seen[1].message, /loader: gifload/u);
     assert.doesNotMatch(app.seen[0].message, /gifload/u);
 });
+
+test("a plain stop offers no empty technical Details", () => {
+    const app = scriptedApp(["OK"]);
+    const stopped = { state: "canceled", sources: ["/a.jpg"], pages: 0,
+        issues: [{ code: "canceled", stage: "preparation", diagnostic: { command: "", stack: "private stack" } }] };
+    showCompletion(app, runOutcome([stopped]));
+    assert.deepEqual(app.seen[0].options.buttons, ["OK"]);
+    assert.match(app.seen[0].message, /^Stopped\. No PDF was created\./u);
+});
+
+test("Details omits empty values and keeps meaningful zero and false values", () => {
+    const app = scriptedApp(["Details", "Back", "OK"]);
+    const issue = { code: "damaged", stage: "preparation", message: "Damaged.", diagnostic: {
+        command: "", empty: null, spacing: " \r\n", stack: "private stack", attempt: 0, retriable: false, nested: { empty: "", value: "useful" }
+    } };
+    showCompletion(app, runOutcome([{ ...failed, issues: [issue] }]));
+    const detail = app.seen[1].message;
+    assert.match(detail, /attempt: 0/u); assert.match(detail, /retriable: false/u); assert.match(detail, /nested: value: useful/u);
+    assert.doesNotMatch(detail, /command:|empty:|spacing:|private stack/u);
+});
