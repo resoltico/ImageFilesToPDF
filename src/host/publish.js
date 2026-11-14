@@ -34,6 +34,7 @@ function publicationDiagnostic(context, error) {
 
 function failedPublication(context, error) {
     const { job, paths, claimed, area } = context;
+    if (error && Object.hasOwn(error, "recovery")) { throw error; }
     if (isUserCanceled(error) && isPublished(job.publication.facts(paths.final), {
         claimedIdentity: claimed.identity, claimedSize: claimed.size
     })) {
@@ -41,7 +42,6 @@ function failedPublication(context, error) {
         job.progress.requestStop();
         return saved;
     }
-    if (error && Object.hasOwn(error, "recovery")) { throw error; }
     requireOriginal(job.publication, { staged: paths.staged, expected: context.facts, cause: error, candidate: area ? { folder: area.directory } : null });
     const failure = keep(job, paths, { reasons: [errorMessage(error)], staging: area });
     const issues = [{ code: publicationCode(error), stage: "publication",

@@ -36,16 +36,21 @@ the destination is on another volume, an owned copy is first made beside the
 destination and linked from there; on a volume that cannot link, it is published
 by exclusive rename. Only a classified name collision is retried, with the next
 ` 2`, ` 3` name. Existing files, folders, pipes and links are never replaced or
-written inside. Native identity and size confirm the actual output before the
-workspace copy is released. A volume that supports neither exclusive route fails
+written inside. Native identity, size and stored basename confirm the actual output before the
+workspace copy is released. The original private identity is checked again before
+release; if it no longer matches, the confirmed output remains saved with a fatal
+cleanup issue, the original is not removed, and its workspace stays retained. A volume that supports neither exclusive route fails
 over to recovery instead of exposing a partial file.
 
 If a PDF cannot be published, it is recovered to `~/Downloads` under its intended
 name with the same exclusive rules, or failing that to a confirmed copy in the system
-temporary directory. Only a confirmed recovery releases the workspace copy; otherwise
-the workspace is retained and its location reported. A candidate whose validation
+temporary directory. Only a confirmed recovery releases the workspace copy. An unverifiable stored
+name leaves any already-created entry untouched and retains a verified private
+original, with explicit uncertainty rather than a guessed output path. If the
+original cannot be verified either, the run reports a fatal issue without claiming
+a recovery; raw ownership observations remain in diagnostics. A candidate whose validation
 faulted is reported as unconfirmed, never as a validated recovery. Stop keeps saved
-PDFs and retains validated, unpublished work in its workspace. Temporary storage is
+PDFs and preserves validated unpublished work in recovery or its workspace. Temporary storage is
 not permanent: move needed recovered or retained work promptly.
 
 Each workspace records `owner.json` (process ID and start time) before any image

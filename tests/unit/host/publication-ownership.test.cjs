@@ -2,7 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { publishPdf } = require("../../../src/host/publish.js");
-const { OperationError } = require("../../../src/core/errors.js");
+const { OperationError, UserCanceled } = require("../../../src/core/errors.js");
 const { fixture, staged, target } = require("../ports/publication-fixture.cjs");
 
 test("a claimed PDF with an unverifiable name preserves the validated original without another recovery", () => {
@@ -182,4 +182,49 @@ test("the human recovery report keeps creation/name uncertainty and the native l
         assert.ok(reportText(outcome).includes(`Saved elsewhere:\n${staged}\nA finished copy was created, but its stored filename could not be verified. The validated original was retained. Canonical name lookup failed.`));
         assert.ok(error.cause); return true;
     });
+});
+
+
+test("name-readback programming faults retain the original exactly once and stay fatal through application", () => {
+    const { executeDocuments } = require("../../../src/application/documents.js");
+    const { fixture: documentFixture } = require("../application/document-fixture.cjs");
+    for (const Failure of [TypeError, ReferenceError]) {
+        for (const location of ["public", "downloads", "private"]) {
+            const { app, job } = fixture();
+            const { link } = job.publication;
+            const cause = new Failure("Name readback implementation failed.");
+            let lookups = 0;
+            job.publication.link = (from, to) => location === "public" || (location === "downloads" && to.startsWith("/Downloads/")) ? link(from, to) : { state: "denied" };
+            job.publication.actualPath = () => { lookups += 1; throw cause; };
+            const sample = documentFixture(2, { mode: "separate", ports: { publish: () => publishPdf(job, staged, target) } });
+            const records = executeDocuments(sample.ports, sample.plans);
+            assert.equal(records[0].state, "recovered"); assert.equal(records[0].recovery, staged); assert.equal(records[0].fatal, true);
+            assert.equal(records[0].issues[0].code, "fault"); assert.equal(records[1].state, "not-started");
+            assert.equal(lookups, 1, "no reconfirmation or duplicate fallback lookup");
+            assert.equal(app.commands.filter((command) => command.includes("/bin/cp")).length, location === "private" ? 1 : 0);
+            assert.ok(app.files.has(staged)); assert.equal(job.artifacts.get(staged).state, "validated");
+        }
+    }
+});
+
+test("typed cancellation during name readback keeps its meaning and explicit recovery without reconfirmation", () => {
+    const { executeDocuments } = require("../../../src/application/documents.js");
+    const { runOutcome } = require("../../../src/core/outcomes.js");
+    const { fixture: documentFixture } = require("../application/document-fixture.cjs");
+    const { job } = fixture();
+    const cause = new UserCanceled();
+    let lookups = 0;
+    job.publication.actualPath = () => { lookups += 1; throw cause; };
+    const sample = documentFixture(2, { mode: "separate", ports: { publish: () => publishPdf(job, staged, target) } });
+    const records = executeDocuments(sample.ports, sample.plans);
+    assert.equal(records[0].state, "recovered"); assert.equal(records[0].recovery, staged);
+    assert.equal(records[0].issues[0].code, "canceled"); assert.equal(records[1].state, "not-started");
+    assert.equal(runOutcome(records).state, "canceled"); assert.equal(lookups, 1);
+});
+
+test("a name-readback preservation wrapper keeps the original programming cause and stack", () => {
+    const { job } = fixture();
+    const cause = new TypeError("Native name bridge bug.");
+    job.publication.actualPath = () => { throw cause; };
+    assert.throws(() => publishPdf(job, staged, target), (error) => error.cause === cause && error.stack === cause.stack && error.recovery === staged && error.issues[0].code === "fault");
 });

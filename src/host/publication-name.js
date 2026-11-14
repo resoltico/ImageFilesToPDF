@@ -1,5 +1,6 @@
 "use strict";
-const { IssueError, OperationError, errorMessage } = require("../core/errors.js");
+const { IssueError, errorMessage } = require("../core/errors.js");
+const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { dirname } = require("../core/paths.js");
 
 function originalObservation(publication, staged) {
@@ -19,13 +20,14 @@ function requireOriginal(publication, { staged, expected, cause, candidate = nul
 function actualPublicationPath(publication, { staged, original, path, claimed }) {
     try { return publication.actualPath(path, claimed); }
     catch (error) {
-        if (!(error instanceof OperationError)) { throw error; }
         let originalFailure = null;
         try { requireOriginal(publication, { staged, expected: original, cause: error }); }
         catch (failure) { originalFailure = failure; }
+        const nativeCode = issuesOf(error, "publication")[0].code;
+        const code = originalFailure ? ISSUE.fault : nativeCode;
         const message = `A finished copy was created, but its stored filename could not be verified. ${originalFailure ? "The original PDF could not be verified either; no trustworthy recovery path is available." : "The validated original was retained."}`;
-        throw new IssueError(message, { cause: originalFailure ?? error, recovery: originalFailure ? null : staged,
-            issues: [{ code: originalFailure ? "fault" : "publication", stage: "publication", message,
+        throw new IssueError(message, { cause: originalFailure ?? error, recovery: originalFailure ? null : staged, stack: error?.stack,
+            issues: [{ code: code === ISSUE.operation ? ISSUE.publication : code, stage: "publication", message,
                 diagnostic: { message: `${message} ${errorMessage(error)}`, folder: dirname(path), claimedIdentity: claimed.identity, claimedSize: claimed.size,
                     ...(originalFailure ? originalFailure.issues[0].diagnostic : {}) } }] });
     }
