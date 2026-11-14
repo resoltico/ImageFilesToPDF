@@ -297,7 +297,7 @@ function buildForm(bridge, spec, widgets) {
 }
 
 const { MODAL_UNAVAILABLE } = require("./objc-bridge.js");
-const { makeDetails } = require("./details-dialog.js");
+const { makeDetails, layoutDetails } = require("./details-dialog.js");
 
 // Gathered into one object so a test can substitute the whole widget layer.
 const WIDGETS = {
@@ -346,13 +346,7 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
     alert.accessoryView = view;
     const focus = spec.rows.find((row) => row.invalid) ?? spec.rows.find((row) => row.kind === "number");
     alert.window.initialFirstResponder = controls[focus.key];
-    // Measured in Stamp Images: laid out inside a running alert, a note that
-    // overflows opened two lines down, hiding its first line. It is laid out
-    // first and put back at its start.
-    // eslint-disable-next-line no-unused-expressions -- zero-argument ObjC method, invoked on property access
-    alert.layout;
-    built.details.contentView.scrollToPoint(bridge.ns.NSMakePoint(0, 0));
-    built.details.reflectScrolledClipView(built.details.contentView);
+    layoutDetails(bridge.ns, alert, built.details);
 
     const response = Number(alert.runModal);
 

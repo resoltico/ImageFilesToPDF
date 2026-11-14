@@ -47,6 +47,7 @@ function installClasses(ns, state, application) {
     Object.assign(ns, {
         NSMakeRect: (left, bottom, width, height) => ({ left, bottom, width, height }),
         NSMakeSize: (width, height) => ({ width, height }),
+        NSMakeRange: (location, length) => ({ location, length }),
         NSSelectorFromString: (name) => `sel:${name}`,
         NSModalPanelRunLoopMode: "NSModalPanelRunLoopMode",
         NSButton: { alloc: { initWithFrame: (rect) => ({...makeView(rect), state: 0, setButtonType(type) {this.buttonType=type;}}) } },
@@ -58,7 +59,11 @@ function installClasses(ns, state, application) {
             return scroll;
         } } },
         NSMakePoint: (left, top) => ({ left, top }),
-        NSTextView: { alloc: { initWithFrame: (rect) => ({ ...makeField(rect), textContainer: {} }) } },
+        NSTextView: { alloc: { initWithFrame(rect) {
+            const field = { ...makeField(rect), textContainer: {} };
+            field.scrollRangeToVisible = (range) => { field.scrolledRange = range; };
+            return field;
+        } } },
         NSTextField: { alloc: { initWithFrame: makeField } },
         NSPopUpButton: { alloc: { initWithFramePullsDown: makePopup } },
         NSComboBox: { alloc: { initWithFrame: makeCombo } },

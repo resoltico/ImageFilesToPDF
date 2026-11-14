@@ -51,7 +51,7 @@ sequence:
 | `volumes.sh` | Cross-volume APFS and HFS+ publication in both modes |
 | `cards.sh` | FAT32 independent rename probe, publication/collisions or validated recovery, and exFAT recovery, in both modes |
 | `damaged.sh` | Damaged-source refusal, JPEG entropy warnings in pass-through/re-encode, and combined/separate behavior |
-| `form.sh` | Production-renderer probe, native geometry and accessibility, PNG previews |
+| `form.sh` | Production-renderer probe, native geometry/accessibility, scrollers at zero in both appearances, PNG previews |
 | `cli.sh` | CLI grammar/statuses, settings reader, refusal corpus, unusable header overrides, German caller locale, names, JPEG streams, placement, TERM, reclaim and retention |
 | `hdr.sh` | Synthetic Ultra HDR in both modes, SDR JPEG streams, ICC conversion, orientations 6/8, damage and unmapped-loader diagnostics |
 | `naming.sh` | Case and normalization namespaces, folder aliases, hard links and occupied-name protection on local, APFS, APFSX, HFS+, HFSX, FAT32 and exFAT volumes |

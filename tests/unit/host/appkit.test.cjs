@@ -105,6 +105,8 @@ test("the alert carries the form's own title, detail and buttons", () => {
 
     assert.deepEqual(note.scrolledTo, { left: 0, top: 0 }, "the note opens at its start");
     assert.equal(note.reflected, 1);
+    assert.deepEqual(note.documentView.scrolledRange, { location: 0, length: 0 });
+    assert.equal(alert.layoutPasses, 1);
 });
 
 test("the current answers are preselected rather than left at the top", () => {

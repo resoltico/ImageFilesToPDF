@@ -3,7 +3,7 @@ const { formSpec, defaultAnswers } = require("../../src/host/quick-action/settin
 const { readAnswers } = require("../../src/host/quick-action/settings-model.js");
 const { buildForm } = require("../../src/host/quick-action/appkit.js");
 const { WIDGETS } = require("../../src/host/quick-action/appkit.js");
-const { detailsAlert } = require("../../src/host/quick-action/details-dialog.js");
+const { detailsAlert, layoutDetails } = require("../../src/host/quick-action/details-dialog.js");
 const SMALLEST_VISIBLE_HEIGHT = 744;
 const PNG_TYPE = 4;
 
@@ -48,7 +48,7 @@ function nativeForm(scenario) {
     }
     built.controls.mode.selectItemAtIndex(scenario.answers.mode === "combined" ? 0 : 1);
     $.NSApplication.sharedApplication.sendActionToFrom(built.controls.mode.action, built.controls.mode.target, built.controls.mode);
-    return alert;
+    return { alert, details: built.details };
 }
 
 function checkDetailWidths(view) {
@@ -60,6 +60,8 @@ function checkDetailWidths(view) {
         const document = view.documentView;
         requireNative(Math.abs(document.frame.size.width - view.contentSize.width) < 1, "Details do not track the clip width; leading characters can be clipped.");
         requireNative(Number(document.visibleRect.origin.x) === 0, "Details are horizontally scrolled.");
+        requireNative(Number(document.visibleRect.origin.y) === 0, "Details do not start at the first line.");
+        requireNative(Number(view.verticalScroller.doubleValue) === 0, "Details scroller does not start at zero.");
     }
     const children = view.subviews;
     for (let index = 0; index < Number(children.count); index += 1) { checkDetailWidths(children.objectAtIndex(index)); }
@@ -78,10 +80,10 @@ function writePreview(alert, path) {
 }
 
 function snapshot(folder, scenario, appearance) {
-    const alert = scenario.detail ? detailsAlert($, scenario) : nativeForm(scenario);
+    const built = scenario.detail ? { alert: detailsAlert($, scenario) } : nativeForm(scenario);
+    const { alert } = built;
     alert.window.appearance = $.NSAppearance.appearanceNamed(appearance);
-    // eslint-disable-next-line no-unused-expressions
-    alert.layout;
+    layoutDetails($, alert, built.details ?? alert.accessoryView);
     const height = Number(alert.window.frame.size.height);
     requireNative(height <= SMALLEST_VISIBLE_HEIGHT, `${scenario.name}: ${height} points exceeds ${SMALLEST_VISIBLE_HEIGHT}`);
     const path = `${folder}/${scenario.name}-${appearance}.png`;

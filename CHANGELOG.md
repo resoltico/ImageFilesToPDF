@@ -6,6 +6,7 @@
 - Contributions are accepted under the [contribution terms](CONTRIBUTING.md#contribution-terms), which also let Ervins Strauhmanis license them commercially.
 - Tool setup refusals now use receipt state `invalid` with exit 3 and identify unusable overrides by variable and value.
 - Single-image PDFs now use the image name in both modes, including after refusals. Update receipt consumers to read actual output/recovery paths; see [HEADLESS.md](HEADLESS.md).
+- Scrollable form notes, selection reviews and completion details open at their first line in both light and dark appearances.
 - Backend commands use a fixed C locale, so conversion works independently of the caller's language settings.
 - JPEG decoder warnings now refuse corrupt images as damaged, including byte-preserving and re-encoded JPEG paths.
 - Ultra HDR JPEG photos are accepted and converted as standard-range images; gain maps are never embedded in PDFs.

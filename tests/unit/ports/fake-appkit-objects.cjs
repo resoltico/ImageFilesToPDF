@@ -96,7 +96,8 @@ function makePopup(rect, pullsDown) {
 function makeAlert(state) {
     const alert = {
         kind: "alert",
-        window: {},
+        window: { contentView: {} },
+        layoutPasses: 0,
         buttons: [],
         accessoryView: null,
         messageText: "",
@@ -104,6 +105,7 @@ function makeAlert(state) {
     };
 
     alert.addButtonWithTitle = (title) => alert.buttons.push(title);
+    Object.defineProperty(alert, "layout", { get: () => { alert.layoutPasses += 1; return undefined; } });
     Object.defineProperty(alert, "runModal", {
         get: () => {
             state.alerts.push(alert);
