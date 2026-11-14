@@ -149,3 +149,17 @@ test("override-only failures ask to fix overrides without automatic installation
     assert.match(mixed, /brew install vips pdfcpu/u);
     assert.doesNotMatch(mixed, /brew upgrade/u, "the unusable override must not request upgrading automatic tools");
 });
+
+
+test("explicit unusable overrides retain each tool's capability requirement", () => {
+    for (const [tool, flags, required] of [
+        ["pdfcpu", undefined, "Version 0.16.4 or later is required."],
+        ["vipsheader", undefined, "vipsheader could not read the built-in PNG image."],
+        ["vips", "--size=down, --export-profile and --fail-on", "it does not accept --size=down, --export-profile and --fail-on."]
+    ]) {
+        const override = { name: `IMAGE_FILES_TO_PDF_${tool.toUpperCase()}`, value: "/my tools/old tool" };
+        const text = describeSetupProblems([{ tool, flags, kind: "unusable", override }], true);
+        assert.ok(text.includes(`${override.name}="/my tools/old tool" is not usable as ${tool}.`));
+        assert.ok(text.includes(required)); assert.doesNotMatch(text, /brew|Homebrew/u);
+    }
+});
