@@ -44,6 +44,43 @@ truncate_file "$WORK/whole.jpg" "$WORK/cut.jpg" 55
 # the header, or this proves nothing about the decoding policy.
 test "$(vipsheader -f width "$WORK/cut.jpg")" = 900
 
+# This corruption produces only a libjpeg warning at the old threshold. Keep
+# that negative control so the case cannot silently regress to a hard error.
+corrupt_jpeg_entropy "$WORK/whole.jpg" "$WORK/entropy.jpg"
+test "$(vipsheader -f width "$WORK/entropy.jpg")" = 900
+vips avg "$WORK/entropy.jpg[fail-on=error]" >"$WORK/old-threshold" 2>&1
+if vips avg "$WORK/entropy.jpg[fail-on=warning]" >"$WORK/warning-threshold" 2>&1; then
+    fail "the generated entropy corruption did not trigger the warning threshold"
+fi
+
+# At 300 ppi this JPEG is eligible for pass-through; 72 ppi requires a resize.
+for resolution in 300 72; do
+    config="$WORK/entropy-$resolution.json"
+    write_config "$config" A4 Portrait separate "#FFFFFF" 20260912_030303
+    node - "$config" "$resolution" <<'JS'
+const fs = require('node:fs');
+const path = process.argv[2];
+const settings = JSON.parse(fs.readFileSync(path, 'utf8'));
+settings.resolutionLimit = Number(process.argv[3]);
+fs.writeFileSync(path, JSON.stringify(settings));
+JS
+    if run_headless "$config" "$WORK/entropy.jpg"; then
+        fail "entropy corruption was accepted at $resolution ppi"
+    fi
+    node - "$WORK/receipt" "$WORK/entropy.jpg" "$resolution" <<'JS'
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const receipt = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const failed = receipt.documents.find((document) => document.sources.includes(process.argv[3]));
+assert.equal(failed?.state, 'failed');
+assert.equal(failed.issues[0].code, 'damaged');
+assert.equal(failed.issues[0].stage, 'preparation');
+const operation = process.argv[4] === '300' ? "'avg'" : "'thumbnail'";
+assert.ok(failed.issues[0].diagnostic.command.includes(operation));
+JS
+    test ! -e "$WORK/entropy.pdf" || fail "a damaged entropy scan was published"
+done
+
 # ---------------------------------------------------------------------------
 # Combined: one damaged image fails the run, and no PDF is published
 # ---------------------------------------------------------------------------

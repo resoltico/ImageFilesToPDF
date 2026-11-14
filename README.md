@@ -83,7 +83,8 @@ content. A typed background color may use either case and an optional `#`.
 Supported formats are JPEG, PNG, HEIC/HEIF, TIFF, WebP and AVIF, with a matching
 filename extension. The content must be a single still image that the installed
 vips can decode. Animated and multi-image files, vectors, documents, camera RAW,
-empty files and damaged images are refused, with the reason. HDR JPEG photos are
+empty files and damaged images are refused, with the reason. JPEG decoder
+warnings count as damage. HDR JPEG photos are
 converted as standard-range images, without their gain maps.
 
 Selected folders are searched recursively. The search skips hidden entries,

@@ -50,7 +50,7 @@ sequence:
 | `publication.sh` | Occupied entries, permissions, ownership and recoverable failures |
 | `volumes.sh` | Cross-volume APFS and HFS+ publication in both modes |
 | `cards.sh` | FAT32 independent rename probe, publication/collisions or validated recovery, and exFAT recovery, in both modes |
-| `damaged.sh` | Damaged-source refusal and combined/separate behavior |
+| `damaged.sh` | Damaged-source refusal, JPEG entropy warnings in pass-through/re-encode, and combined/separate behavior |
 | `form.sh` | Production-renderer probe, native geometry and accessibility, PNG previews |
 | `cli.sh` | CLI grammar and statuses, settings reader, refusal corpus, names, JPEG streams, placement, TERM, reclaim and retention |
 | `hdr.sh` | Synthetic Ultra HDR in both modes, SDR JPEG streams, ICC conversion, orientations 6/8, damage and unmapped-loader diagnostics |

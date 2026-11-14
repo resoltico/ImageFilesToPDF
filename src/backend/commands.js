@@ -1,6 +1,7 @@
 "use strict";
 const { rgbOf } = require("../core/color.js");
-const FAIL_ON_DAMAGE = "--fail-on=error";
+const DAMAGE_THRESHOLD = "warning";
+const FAIL_ON_DAMAGE = `--fail-on=${DAMAGE_THRESHOLD}`;
 const GRAY_ALPHA_BANDS = 2;
 const RGB_ALPHA_BANDS = 4;
 
@@ -25,5 +26,5 @@ function buildThumbnailArgv(vipsPath, inputPath, outputPath, options) {
 function buildFlattenArgv(vipsPath, inputPath, outputPath, background) {
     return [vipsPath, "flatten", inputPath, `${outputPath}[keep=none]`, `--background=${backgroundVector(background)}`];
 }
-function buildDecodeArgv(vipsPath, inputPath) { return [vipsPath, "avg", `${inputPath}[fail-on=error]`]; }
+function buildDecodeArgv(vipsPath, inputPath) { return [vipsPath, "avg", `${inputPath}[fail-on=${DAMAGE_THRESHOLD}]`]; }
 module.exports = { backgroundVector, FAIL_ON_DAMAGE, buildThumbnailArgv, buildFlattenArgv, buildDecodeArgv, hasAlphaBand };

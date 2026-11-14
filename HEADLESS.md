@@ -126,7 +126,8 @@ refusal includes `diagnostic.loader`, the vips loader that recognized its conten
 
 When nothing is admitted, the run issue `no-images` says
 `None of the selected items can be converted.` and the refused items are in
-`rejected`. Damage found only by a full decode is `damaged` at the `preparation`
+`rejected`. JPEG decoder warnings count as damage. Damage found only by a full
+decode is `damaged` at the `preparation`
 stage; a combined PDF with such an image is not saved, while separate mode saves
 the others. Software faults (`fault`), cleanup failures and a stop end the run;
 remaining PDFs are `not-started`. Confirmed PDFs are kept in every case.

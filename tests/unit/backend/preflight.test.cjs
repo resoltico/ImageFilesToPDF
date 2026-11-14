@@ -14,6 +14,7 @@ test("the vips probe uses the flags the pipeline depends on", () => {
     const argv = buildVipsProbeArgv("/opt/homebrew/bin/vips");
 
     assert.ok(argv.includes("--size=down"));
+    assert.ok(argv.includes("--fail-on=warning"));
     assert.ok(argv.includes("--export-profile"));
     assert.ok(argv.includes("srgb"));
     // Against a path that cannot exist, so nothing is written anywhere.
