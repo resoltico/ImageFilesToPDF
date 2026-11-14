@@ -124,11 +124,14 @@ the sibling repository.
 ## Tests and build
 
 Tests that inject ports/fixtures belong in `tests/unit/`; tests that inspect the
-real checkout belong in `tests/repo/`. Mutation testing runs unit files. All
+real checkout belong in `tests/repo/`. Unit test directories follow the outermost
+production layer they import (`core`, `backend`, `application`, then `host`); inner
+layer values may serve as fixtures. A repository test enforces placement for
+`require()`, `require.resolve()` and dynamic `import()`. Mutation testing runs unit files. All
 production sources and applicable build rules must remain discoverable by their
-gates. Coverage is 100% for core, application and backend; mutation is at least
-96 for those same layers. Host adapters require the native suites. Keep behavioral
-expectations independent of implementation calculations.
+gates. Coverage is 100% for core, application, backend and the pure host invocation
+parser (`src/host/invocation-syntax.js`); mutation is at least 96 for that same scope.
+Host adapters require the native suites. Keep behavioral expectations independent of implementation calculations.
 
 ESLint uses `js.configs.all`; exceptions and tuned rules are justified in
 `tools/eslint/rules.mjs`. Group modules by responsibility and lifetime, respecting

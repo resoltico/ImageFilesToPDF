@@ -59,6 +59,7 @@ test("JSON diagnostics name the settings path and distinguish root type from syn
 
 test("help renders canonical names, choice captions, defaults and bounds", () => {
     const text = usage();
+    assert.match(text, /Settings \(all 6 required\):/u);
     for (const expected of ["PDF files", "combined", "One PDF — one image per page", "Paper size", "US Letter", "Maximum resolution", "72–1017", "Page background", "JPEG quality", "default 82", "White"]) { assert.ok(text.includes(expected), expected); }
 });
 

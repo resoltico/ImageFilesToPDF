@@ -29,9 +29,9 @@ when available, ESLint, unit/repository tests, coverage, mutation and distributi
 bytes. It never rebuilds first: stale committed output must fail. Use
 `npm run build` to regenerate intentionally. Inspect discovered tests and all skips.
 
-Core, application and pure backend contracts require 100% line, branch and function
-coverage and a mutation score of at least 96. Host adapters are checked through
-focused unit tests and native production-artifact scenarios; a mocked bridge is
+Core, application, pure backend contracts and `src/host/invocation-syntax.js` require
+100% line, branch and function coverage and a mutation score of at least 96. Host
+adapters are checked through focused unit tests and native production-artifact scenarios; a mocked bridge is
 not evidence that macOS rendered or published anything. ESLint rules and deliberate
 exceptions are recorded in `tools/eslint/rules.mjs`. Dependency and toolchain pins
 live in package.json, package-lock.json, .node-version and mise.toml; clean restores
