@@ -25,7 +25,7 @@ function settingsHelp() {
 function usage() {
     return `${APP_NAME} ${VERSION}\n\nUsage:\n  osascript -l JavaScript Image-Files-to-PDF.jxa -- --help\n` +
         "  osascript -l JavaScript Image-Files-to-PDF.jxa -- --version\n" +
-        `  ${RUN_LINE}\n\nSettings (all six required):\n` +
+        `  ${RUN_LINE}\n\nSettings (all ${Object.keys(SETTINGS_SCHEMA).length} required):\n` +
         `${settingsHelp()}\n\nOptional run option:\n  timestamp — ${TIMESTAMP_FORM} in local time; default now\n\nPaths may be absolute or relative to the working directory. Settings must be UTF-8 JSON without a BOM.\n`;
 }
 

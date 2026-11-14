@@ -46,18 +46,20 @@ class UserCanceled extends IssueError {
     }
 }
 
-function isUserCanceled(error) {
+// Each layer adds context through cause; inspect outermost first and keep the
+// traversal bounded even when a malformed chain refers back to itself.
+function causes(error) {
+    const chain = [];
     let current = error;
-
     for (let depth = 0; current && depth < MAXIMUM_CAUSE_DEPTH; depth += 1) {
-        if (current instanceof UserCanceled) {
-            return true;
-        }
-
+        chain.push(current);
         current = current.cause;
     }
+    return chain;
+}
 
-    return false;
+function isUserCanceled(error) {
+    return causes(error).some((each) => each instanceof UserCanceled);
 }
 
 /*
@@ -69,17 +71,8 @@ function isUserCanceled(error) {
  * disappears.
  */
 function commandOf(error) {
-    let current = error;
-
-    for (let depth = 0; current && depth < MAXIMUM_CAUSE_DEPTH; depth += 1) {
-        if (current.command) {
-            return String(current.command);
-        }
-
-        current = current.cause;
-    }
-
-    return "";
+    const carried = causes(error).find((each) => each.command);
+    return carried ? String(carried.command) : "";
 }
 
 module.exports = {
@@ -87,6 +80,7 @@ module.exports = {
     OperationError,
     UserCanceled,
     errorMessage,
+    causes,
     commandOf,
     isUserCanceled
 };

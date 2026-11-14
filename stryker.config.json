@@ -4,11 +4,12 @@
   "testRunner_comment": "The tap runner executes each test file directly (node <file>), which keeps it in the same process as Stryker coverage hook. Running them via `node --test` forks a child per file, the hook records nothing, and every mutant reports NoCoverage.",
   "testRunner": "tap",
   "coverageAnalysis": "perTest",
-  "mutate_comment": "Domain, use cases and pure backend contracts are measured by port-level unit tests. Host adapters require native verification.",
+  "mutate_comment": "Domain, use cases and pure backend contracts are measured by port-level unit tests. The pure host invocation parser is gated explicitly; native adapters require native verification.",
   "mutate": [
     "src/core/**/*.js",
     "src/application/**/*.js",
-    "src/backend/**/*.js"
+    "src/backend/**/*.js",
+    "src/host/invocation-syntax.js"
   ],
   "reporters": [
     "html",

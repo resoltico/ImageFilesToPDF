@@ -10,6 +10,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     UserCanceled,
+    causes,
     commandOf
 } = require("../../../src/core/errors.js");
 
@@ -58,4 +59,14 @@ test("a cancellation says what it is in a log", () => {
 
     assert.equal(canceled.name, "UserCanceled");
     assert.equal(String(canceled), "UserCanceled: User canceled.");
+});
+
+test("causes preserves the outermost-first chain and bounds cycles at eight errors", () => {
+    const inner = new Error("inner");
+    const outer = new Error("outer", { cause: inner });
+    assert.deepEqual(causes(outer), [outer, inner]);
+    assert.deepEqual(causes(null), []);
+    assert.deepEqual(causes(undefined), []);
+    inner.cause = outer;
+    assert.deepEqual(causes(outer), [outer, inner, outer, inner, outer, inner, outer, inner]);
 });
