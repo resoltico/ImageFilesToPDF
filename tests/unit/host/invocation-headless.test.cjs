@@ -78,3 +78,17 @@ test("required settings help contains a ready-to-copy complete JSON example", ()
     assert.deepEqual(JSON.parse(example.groups.json), { mode: "combined", paperSize: "A4", orientation: "Portrait", resolutionLimit: 300, quality: 82, background: "#FFFFFF" });
     assert.doesNotMatch(text, /(?:resolutionLimit|quality|background) — [^\n]*default/u);
 });
+
+
+test("settings URLs decode before the path port and invalid URLs never reach IO", () => {
+    for (const url of ["file:///tmp/caf%C3%A9%20%25.json", "file://localhost/tmp/caf%C3%A9%20%25.json"]) {
+        const calls = [];
+        const port = { absolute: (path) => { calls.push(path); return path; }, read: (path) => { assert.equal(path, "/tmp/café %.json"); return settings; } };
+        cliCommand(["--headless", url, "photo.jpg"], port);
+        assert.deepEqual(calls, ["/tmp/café %.json", "photo.jpg"]);
+    }
+    for (const url of ["https://example.com/a.json", "file://remote/a.json", "file:/a.json", "file:///a%00.json", "file:///bad%.json"]) {
+        assert.throws(() => cliCommand(["--headless", url, "photo.jpg"], { absolute() { throw new Error("must not resolve"); } }),
+            (error) => error.issues[0].code === "settings-file" && error.issues[0].stage === "request" && error.message === `Settings file is not a valid local file URL: ${url}`);
+    }
+});

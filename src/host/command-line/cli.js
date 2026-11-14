@@ -3,7 +3,7 @@ const { APP_NAME, VERSION } = require("../../core/version.js");
 const { SETTINGS_SCHEMA, DEFAULT_SETTINGS, validateSettings } = require("../../core/settings.js");
 const { readTimestamp, TIMESTAMP_FORM } = require("../../core/timestamps.js");
 const { OperationError } = require("../../core/errors.js");
-const { normalizeInvocationInput, hasUrlScheme } = require("../invocation-syntax.js");
+const { normalizeInvocationInput, hasUrlScheme, decodeFileUrl } = require("../invocation-syntax.js");
 const { writeReceipt, exitCli } = require("./receipt.js");
 
 const JSON_INDENT = 2;
@@ -27,7 +27,7 @@ function usage() {
     return `${APP_NAME} ${VERSION}\n\nUsage:\n  osascript -l JavaScript Image-Files-to-PDF.jxa -- --help\n` +
         "  osascript -l JavaScript Image-Files-to-PDF.jxa -- --version\n" +
         `  ${RUN_LINE}\n\nSettings (all ${Object.keys(SETTINGS_SCHEMA).length} required):\n` +
-        `${settingsHelp()}\n\nExample settings JSON (all required fields):\n${JSON.stringify(DEFAULT_SETTINGS, null, JSON_INDENT)}\n\nOptional run option:\n  timestamp — ${TIMESTAMP_FORM} in local time; default now\n\nPaths may be absolute or relative to the working directory. Settings must be UTF-8 JSON without a BOM.\n`;
+        `${settingsHelp()}\n\nExample settings JSON (all required fields):\n${JSON.stringify(DEFAULT_SETTINGS, null, JSON_INDENT)}\n\nOptional run option:\n  timestamp — ${TIMESTAMP_FORM} in local time; default now\n\nPaths may be absolute or relative to the working directory. Settings accept a local file URL or path and must be UTF-8 JSON without a BOM.\n`;
 }
 
 // One sentence on what was wrong and the run line; the settings stay in --help.
@@ -118,6 +118,13 @@ function nativeCliIO() {
     return { absolute: (path) => absolutePath(path, context), read: (path) => readSettingsFile(context, path) };
 }
 
+function settingsPath(value) {
+    if (!hasUrlScheme(value)) { return value; }
+    const decoded = decodeFileUrl(value);
+    if (!decoded) { throw settingsFileError(value, "is not a valid local file URL"); }
+    return decoded;
+}
+
 function cliCommand(input, injected = null) {
     const args = normalizeInvocationInput(input);
     if (args.length === 1 && args[0] === "--help") { return { kind: "help" }; }
@@ -126,8 +133,9 @@ function cliCommand(input, injected = null) {
     if (args[0] !== "--headless" || args.length < minimumArguments || args.some((argument) => argument === "")) {
         throw requestError("usage", usageMessage(usageProblem(args)));
     }
+    const configurationPath = settingsPath(args[1]);
     const io = injected ?? nativeCliIO();
-    const configuration = io.read(io.absolute(args[1]));
+    const configuration = io.read(io.absolute(configurationPath));
     const firstImageIndex = 2;
     return { kind: "run", invocation: { ...configurationValues(configuration),
         inputItems: args.slice(firstImageIndex).map((path) => io.absolute(path)) } };

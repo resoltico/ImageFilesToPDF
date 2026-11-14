@@ -22,6 +22,8 @@ validation, saving and recovery follow the same rules as the Quick Action.
 
 ## Settings file
 
+The settings operand accepts a local `file://` URL (empty or `localhost` authority), including percent-encoded spaces and Unicode. Remote or malformed settings URLs are refused before reading the file.
+
 The settings file is UTF-8 JSON without a byte-order mark, and its root is an
 object. All six page settings are required; unknown fields, display captions in
 place of values, numeric strings, fractional numbers, `null` and wrong types are

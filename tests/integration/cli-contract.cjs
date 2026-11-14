@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const {pathToFileURL} = require("node:url");
 const {spawnSync, execFileSync, spawn} = require("node:child_process");
 const {once} = require("node:events");
 const [script, work] = process.argv.slice(2);
@@ -75,6 +76,29 @@ function pathDiagnostics() {
     fs.mkdirSync(at("blocked-parent"));fs.copyFileSync(at("photo.jpg"), at("blocked-parent/photo.jpg"));fs.chmodSync(at("blocked-parent"), 0);
     try { assert.equal(convert(1, ["blocked-parent/photo.jpg"]).rejected[0].code, "unreadable"); }
     finally { fs.chmodSync(at("blocked-parent"), 0o700); }
+}
+
+function assertValidOutput(receipt) {
+    const output = saved(receipt);
+    execFileSync("pdfcpu", ["validate", "--conf", "disable", "--mode=strict", output]);
+    execFileSync("qpdf", ["--check", output]);
+}
+
+function settingsUrls() {
+    fs.mkdirSync(at("settings URL"));
+    fs.copyFileSync(at("photo.jpg"), at("settings URL/photo.jpg"));
+    const file = at("settings URL/café %.json");
+    fs.writeFileSync(file, JSON.stringify(settings));
+    const url = pathToFileURL(file).href;
+    for (const local of [url, url.replace("file:///", "file://localhost/")]) {
+        const receipt = convert(0, ["settings URL/photo.jpg"], local);
+        assertValidOutput(receipt);
+    }
+    for (const invalid of ["file://remote/settings.json", "file:///bad%00.json", "file:///bad%.json"]) {
+        const receipt = convert(2, ["photo.jpg"], invalid);
+        assert.equal(receipt.issues[0].code, "settings-file");
+        assert.ok(receipt.issues[0].message.includes(invalid));
+    }
 }
 
 function settingsDiagnostics() {
@@ -234,7 +258,7 @@ function refusals(pdf,separate) {
 }
 
 async function run() {
-    grammar();readerErrors();settingsDiagnostics();pathDiagnostics();
+    grammar();readerErrors();settingsDiagnostics();pathDiagnostics();settingsUrls();
     const {pdf,original}=embedding();
     const separate=placementAndNaming(pdf);refusals(pdf,separate);
     await ownership();
