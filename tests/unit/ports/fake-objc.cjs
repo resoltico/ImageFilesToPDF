@@ -56,7 +56,7 @@ function installClasses(ns, state, application) {
         } },
         NSButton: { alloc: { initWithFrame: (rect) => ({...makeView(rect), state: 0, setButtonType(type) {this.buttonType=type;}}) } },
         NSView: { alloc: { initWithFrame: makeView } },
-        CALayer: { get layer() { return {}; } },
+        NSBoxCustom: 4, NSNoBorder: 0, NSNoTitle: 0, NSWindowAbove: 1,
         NSScrollView: { alloc: { initWithFrame: (rect) => {
             const scroll = { ...makeView(rect), contentSize: { width: rect.width - 15, height: rect.height }, reflected: 0 };
             scroll.contentView = { scrollToPoint(point) { scroll.scrolledTo = point; } };
@@ -137,7 +137,7 @@ function createFakeObjC(settings = {}) {
     });
 
     function boxed(value) {
-        return { boxed: value, objectForKey: (key) => {
+        return { boxed: value, isNil: () => value === undefined || value === null, objectForKey: (key) => {
             const found = value[key?.boxed ?? key];
             return found && typeof found === "object" && !found.kind ? boxed(found) : found;
         } };
@@ -146,7 +146,18 @@ function createFakeObjC(settings = {}) {
     const ns = boxed;
     ns.NSClassFromString = (name) => classes.get(name) ?? {isNil:()=>true};
     const registerSubclass = (definition) => {
-        classes.set(definition.name, {isNil:()=>false,alloc:{get init(){return Object.fromEntries(Object.entries(definition.methods).map(([selector, method]) => [selector.replace(/:$/u, ""), method.implementation]));}}});
+        const instance = (base) => {
+            for (const [selector, method] of Object.entries(definition.methods)) {
+                const implementation = typeof method === "function" ? method : method.implementation;
+                if (selector.includes(":")) { base[selector.replace(/:$/u, "")] = implementation; }
+                else { Object.defineProperty(base, selector, { get: implementation }); }
+            }
+            return base;
+        };
+        classes.set(definition.name, { isNil: () => false, alloc: {
+            get init() { return instance({}); },
+            initWithFrame: (rect) => instance(Object.assign(makeView(rect), { kind: "box", frame: rect }))
+        } });
     };
 
     installClasses(ns, state, application);

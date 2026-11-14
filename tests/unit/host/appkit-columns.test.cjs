@@ -83,12 +83,13 @@ test("a row named in the problems is marked, and the others are not", () => {
         [{ key: "resolutionLimit", message: "Resolution: enter a whole number from 72 to 1017." }]
     );
     const bridge = createFakeObjC();
-    const { controls } = buildForm(bridge, spec, WIDGETS);
+    const { controls, view } = buildForm(bridge, spec, WIDGETS);
 
-    assert.equal(controls.resolutionLimit.wantsLayer, true);
-    assert.equal(controls.resolutionLimit.layer.sublayers[0].backgroundColor.name, "systemRed");
+    const tint = view.subviews.find((child) => child.identifier === "InvalidSettingFill");
+    assert.equal(tint.relativeTo, controls.resolutionLimit);
+    assert.equal(tint.fillColor.name, "systemRed");
     assert.ok(
-        controls.resolutionLimit.layer.sublayers[0].backgroundColor.alpha < 0.5,
+        tint.fillColor.alpha < 0.5,
         "a tint, not a fill: the value must stay readable"
     );
 
@@ -124,10 +125,11 @@ test("a choice row can be marked too, not only a typed one", () => {
         { ...defaultAnswers(), paperSize: "Legal" },
         [{ key: "paperSize", message: 'Paper size: "Legal" is not one of the choices.' }]
     );
-    const { controls } = buildForm(createFakeObjC(), spec, WIDGETS);
+    const { controls, view } = buildForm(createFakeObjC(), spec, WIDGETS);
 
-    assert.equal(controls.paperSize.wantsLayer, true);
-    assert.equal(controls.paperSize.layer.sublayers[0].backgroundColor.name, "systemRed");
+    const tint = view.subviews.find((child) => child.identifier === "InvalidSettingFill");
+    assert.equal(tint.relativeTo, controls.paperSize);
+    assert.equal(tint.fillColor.name, "systemRed");
 });
 
 test("a hint is centered against the field it describes", () => {

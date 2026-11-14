@@ -10,7 +10,12 @@
 function makeView(rect) {
     const view = { kind: "view", rect, subviews: [] };
 
-    view.addSubview = (child) => view.subviews.push(child);
+    view.addSubview = (child) => { child.superview = view; return view.subviews.push(child); };
+    view.addSubviewPositionedRelativeTo = (child, order, sibling) => {
+        child.superview = view; child.order = order; child.relativeTo = sibling;
+        view.subviews.splice(view.subviews.indexOf(sibling) + 1, 0, child);
+    };
+    view.setAccessibilityElement = (value) => { view.accessibilityElement = value; };
 
     return view;
 }
@@ -20,6 +25,7 @@ function makeView(rect) {
  * typed out of the field editor before reading it.
  */
 function commitCounter(control) {
+    Object.defineProperty(control, "frame", { get: () => control.rect, set: (frame) => { control.rect = frame; } });
     control.bounds = { left: 0, bottom: 0, width: control.rect.width, height: control.rect.height };
     control.layer = { sublayers: [], addSublayer(layer) { this.sublayers.push(layer); } };
     control.setAccessibilityLabel = (label) => {

@@ -22,7 +22,6 @@ function appkitBridge(objc, ns) {
 
     try {
         objc.import("AppKit");
-        objc.import("QuartzCore");
 
         return { objc, ns };
     } catch (error) {

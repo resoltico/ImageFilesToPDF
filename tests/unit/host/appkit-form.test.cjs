@@ -134,6 +134,7 @@ test("a color that could not be read is marked, keeping what was typed", () => {
     const { controls } = build(spec);
 
     assert.equal(controls.background.stringValue, "c7dae", "what was typed");
-    assert.equal(controls.background.wantsLayer, true);
-    assert.equal(controls.background.layer.sublayers[0].backgroundColor.name, "systemRed");
+    const tint = controls.background.superview.subviews.find((child) => child.identifier === "InvalidSettingFill");
+    assert.equal(tint.relativeTo, controls.background);
+    assert.equal(tint.fillColor.name, "systemRed");
 });
