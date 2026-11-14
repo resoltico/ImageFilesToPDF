@@ -69,6 +69,8 @@ function decodedText(data) {
 }
 
 function installPlatform(app, options = {}) {
+    const signalController = require("../../../src/host/command-line/signal-controller.js");
+    signalController.createSignalController = () => ({ poll: () => false, close: () => undefined });
     const bridge = createFakeObjC(options);
     app.nativeDirectories=new Set();app.nativeDirectoryIds=new Map();
     const output = [];

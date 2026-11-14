@@ -127,30 +127,65 @@ function workspaceOf(pid, existing) {
     return null;
 }
 
+async function registeredWorkspace(existing) {
+    for (let attempt = 0; attempt < 1000; attempt += 1) {
+        const workspace = workspaceOf(activeChild.pid, existing);
+        if (workspace) { owned.add(workspace); return workspace; }
+        // Wait for this child's ownership registration before delivering any signal.
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
+    return assert.fail("actual child registered no workspace");
+}
+
+async function signalRun(delivered, input) {
+    const existing = new Set(fs.readdirSync(os.tmpdir()));
+    activeChild = spawn("/usr/bin/osascript", ["-l", "JavaScript", script, "--headless", config, input]);
+    let stderr = "", stdout = "";
+    activeChild.stdout.setEncoding("utf8"); activeChild.stderr.setEncoding("utf8");
+    activeChild.stdout.on("data", (text) => { stdout += text; }); activeChild.stderr.on("data", (text) => { stderr += text; });
+    await registeredWorkspace(existing);
+    const ended = once(activeChild, "exit");
+    for (const signal of delivered) { activeChild.kill(signal); }
+    const [code, signal] = await ended;
+    assert.equal(signal, null, stderr); assert.equal(code, 1, stderr);
+    const receipt = JSON.parse(stdout);
+    assert.equal(receipt.state, "canceled");
+    assert.ok(receipt.issues.some((issue) => issue.code === "canceled") || receipt.documents.some((document) => document.state === "canceled"));
+    assert.doesNotMatch(stderr, /execution error|\(-2700\)|\n\s+at \w/u);
+    assert.equal(fs.readdirSync(input).some((name) => name.endsWith(".pdf")), false, "Stop cannot publish a partial combined PDF");
+}
+
+async function signals() {
+    const input = at("signal-input"); fs.mkdirSync(input);
+    for (let index = 0; index < 40; index += 1) { fs.copyFileSync(at("photo.jpg"), path.join(input, `${index}.jpg`)); }
+    for (const delivered of [["SIGINT"], ["SIGTERM"], ["SIGINT", "SIGTERM", "SIGINT"]]) {
+        // Each owned child exercises the production artifact and normal receipt/exit transport.
+        // eslint-disable-next-line no-await-in-loop
+        await signalRun(delivered, input);
+    }
+}
+
 async function ownership() {
     const input=at("many");fs.mkdirSync(input);
     for(let index=0;index<200;index+=1) {fs.copyFileSync(at("photo.jpg"),path.join(input,`${index}.jpg`));}
     const existing=new Set(fs.readdirSync(os.tmpdir()));
     activeChild=spawn("/usr/bin/osascript",["-l","JavaScript",script,"--headless",config,input],{stdio:"ignore"});
-    let orphan=null;
-    for(let attempt=0;attempt<200&&!orphan;attempt+=1) {
-        orphan=workspaceOf(activeChild.pid,existing);
-        if(!orphan) {
-            // Poll this process's owner registration before delivering TERM.
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise((resolve)=>{setTimeout(resolve,50);});
-        }
-    }
-    assert.ok(orphan,"actual run registered its owner before TERM");owned.add(orphan);
-    const ended=once(activeChild,"exit");activeChild.kill("SIGTERM");await ended;
-    assert.ok(fs.existsSync(orphan),"TERM left an observable orphan");
+    const orphan = await registeredWorkspace(existing);
+    const ended=once(activeChild,"exit");activeChild.kill("SIGKILL");await ended;
+    assert.ok(fs.existsSync(orphan),"KILL left an observable orphan");
     const retained=execFileSync("mktemp",["-d","-t","ImageFilesToPDF"],{encoding:"utf8"}).trim();owned.add(retained);
     fs.writeFileSync(path.join(retained,"owner.json"),JSON.stringify({pid:2147483647,started:"not a live process"}));
     fs.writeFileSync(path.join(retained,"retain"),"");
-    const receipt=convert(0,["photo.jpg"]);
+    const checked = command(0, ["--headless", config, "photo.jpg"]);
+    const receipt = JSON.parse(checked.stdout);
+    assert.ok(checked.stderr.includes(`Temporary work:\n`));
+    assert.ok(checked.stderr.includes(orphan)); assert.ok(checked.stderr.includes(retained));
+    assert.ok(checked.stderr.includes("A stale workspace was reclaimed."));
     assert.ok(!fs.existsSync(orphan),"next startup reclaims the child-owned orphan");
     assert.ok(fs.existsSync(retained),"dead retained workspace survives");
     assert.ok(receipt.diagnostics.some((entry)=>entry.code==="workspace-retained"&&entry.diagnostic.path===retained));
+    assert.ok(receipt.diagnostics.some((entry)=>entry.code==="workspace-reclaimed"&&entry.diagnostic.path===orphan));
 }
 
 function grammar() {
@@ -261,6 +296,7 @@ async function run() {
     grammar();readerErrors();settingsDiagnostics();pathDiagnostics();settingsUrls();
     const {pdf,original}=embedding();
     const separate=placementAndNaming(pdf);refusals(pdf,separate);
+    await signals();
     await ownership();
     assert.deepEqual(fs.readFileSync(at("photo.jpg")),original,"source bytes untouched");
     // eslint-disable-next-line no-console

@@ -4,10 +4,12 @@
 
 - Licensed under AGPL-3.0-only instead of MPL-2.0: distributing the script or a modified version requires offering its corresponding source; see [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md).
 - Contributions are accepted under the [contribution terms](CONTRIBUTING.md#contribution-terms), which also let Ervins Strauhmanis license them commercially.
+- Command-line `SIGINT` and `SIGTERM` request a safe Stop and a canceled receipt with exit 1, including during setup. `SIGKILL` remains abrupt.
 - Tool setup refusals now use receipt state `invalid` with exit 3 and identify unusable overrides by variable and value.
 - Single-image PDFs now use the image name in both modes, including after refusals. Update receipt consumers to read actual output/recovery paths; see [HEADLESS.md](HEADLESS.md).
 - Prefix relative filenames that look like URI schemes, such as `photo:one.jpg`, with `./` when selecting a local file.
 - The command-line settings file accepts local `file://` URLs with percent-encoded spaces and Unicode; remote or malformed settings URLs are refused.
+- Reports name retained, unreadable or safely reclaimed stale workspaces, so unfinished temporary work remains visible.
 - Recovered PDFs have a `Saved elsewhere` section with a one-line cause; `Could not convert` lists failures only and other issues remain visible.
 - Missing input paths are reported before format filtering; non-local URI schemes and remote file URLs are classified as remote URLs.
 - Command-line settings errors name the JSON key and distinguish missing fields from wrong JSON types.

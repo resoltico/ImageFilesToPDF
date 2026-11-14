@@ -84,14 +84,16 @@ plain-language report to stderr. Read both the receipt and the exit status.
 `complete` requires every PDF saved, nothing rejected and no issues. A request
 refused before any work is `invalid`. Invalid usage/settings exit 2; an expected
 tool-setup refusal is also `invalid` and exits 3 with the headline
-"A required tool is missing or unusable." A stop that leaves work undone is `canceled`;
+"A required tool is missing or unusable." A canceled run exits 1, including a stop during setup. A stop that leaves work undone is `canceled`;
 a stop that arrives after everything was saved does not erase the saved PDFs. An
-abrupt process end, an external kill or a failed stdout cannot guarantee a receipt.
+abrupt process end, `SIGKILL` or a failed stdout cannot guarantee a receipt.
+
+`SIGINT` and `SIGTERM` request cooperative Stop. A running native command finishes before the next safe checkpoint observes the request; publication and recovery protections remain in force. Signal monitoring stays active through receipt transport. Normal process exit lets the OS reclaim its resources.
 
 The stderr report is the headline, then sections separated by one blank line.
 `Could not convert:` lists failed PDFs only. `Saved elsewhere:` lists each actual
 recovery path with a one-line cause. `Other issues:` keeps run-level or cleanup
-problems separate from failed conversions. Its
+problems separate from failed conversions. `Temporary work:` names actual retained, unreadable or reclaimed workspaces when startup finds them; ordinary runs omit it. Its
 counts line lists only non-zero counts, as in `1 saved; 1 not included.`, and is
 left out when all are zero. `Elapsed: …` is the last section when known. An
 invalid request reports `The request is invalid.` and each problem.

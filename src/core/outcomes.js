@@ -32,7 +32,7 @@ function runOutcome(documents = [], rejected = [], issues = [], diagnostics = []
     let state = "complete";
     if (undone || documents.some((document) => document.issues.length > 0) || rejected.length > 0 || issues.length > 0 || documents.length === 0) { state = "incomplete"; }
     if (stopped && (undone || documents.length === 0)) { state = "canceled"; }
-    if (documents.length === 0 && issues.some((issue) => ["settings", "request"].includes(issue.stage) || isSetupRefusal(issue))) { state = "invalid"; }
+    if (documents.length === 0 && issues.some((issue) => ["settings", "request"].includes(issue.stage) || (!stopped && isSetupRefusal(issue)))) { state = "invalid"; }
     return { state, documents, rejected, issues, diagnostics };
 }
 function noImagesOutcome(rejected) {

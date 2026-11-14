@@ -86,3 +86,10 @@ test("only pre-work expected setup failures are refused requests", () => {
     assert.equal(runOutcome([saved], [], [issue]).state, "incomplete");
     assert.equal(runOutcome([], [], [{ ...issue, code: "fault" }]).state, "incomplete");
 });
+
+
+test("a setup refusal does not overwrite an already requested stop", () => {
+    const stopped = [{ code: "operation", stage: "setup", message: "Missing tool." }, { code: "canceled", stage: "setup", message: "User canceled." }];
+    assert.equal(runOutcome([], [], stopped).state, "canceled");
+    assert.equal(runOutcome([], [], [...stopped, { code: "invalid", stage: "settings" }]).state, "invalid");
+});

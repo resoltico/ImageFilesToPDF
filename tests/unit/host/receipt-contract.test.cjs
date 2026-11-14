@@ -10,7 +10,8 @@ test("CLI writes one receipt and plain summary and returns the contract status",
     for (const [result, code] of [
         [runOutcome([document]), 0], [runOutcome([document], [{ path: "/bad.gif", reason: "unsupported" }]), 1],
         [{ ...runOutcome(), state: "invalid" }, 2], [runOutcome([], [], [{ stage: "setup", message: "brew install vips pdfcpu" }]), 3],
-        [{ ...runOutcome(), state: "canceled" }, 1]
+        [{ ...runOutcome(), state: "canceled" }, 1],
+        [runOutcome([], [], [{ code: "operation", stage: "setup", message: "Unavailable." }, { code: "canceled", stage: "setup", message: "User canceled." }]), 1]
     ]) {
         const writes = [];
         assert.equal(reportHeadless(result, (...args) => writes.push(args), (status) => status), code);

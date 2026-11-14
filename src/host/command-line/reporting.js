@@ -5,6 +5,7 @@ const { writeReceipt, exitCli } = require("./receipt.js");
 const INVALID_EXIT = 2;
 const SETUP_EXIT = 3;
 function exitCode(result) {
+    if (result.state === "canceled") { return 1; }
     if (result.issues.some((issue) => issue.stage === "setup")) { return SETUP_EXIT; }
     if (result.state === "invalid") { return INVALID_EXIT; }
     return result.state === "complete" ? 0 : 1;

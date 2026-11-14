@@ -156,3 +156,32 @@ test("an unusable header probe is invalid setup with exit 3 before admission", (
     assert.equal(receipt.issues[0].stage, "setup");
     assert.match(stderr.join(""), /^A required tool is missing or unusable\./u);
 });
+
+
+test("CLI signal stop uses existing canceled state and monitor outlives receipt transport", () => {
+    const signalController = require("../../../src/host/command-line/signal-controller.js");
+    const context = fixture();
+    let closed = false, polled = 0;
+    signalController.createSignalController = () => ({ poll: () => { polled += 1; return true; }, close: () => { closed = true; } });
+    context.ns.NSFileHandle.fileHandleWithStandardOutput.writeData = (text) => {
+        assert.equal(closed, false);
+        context.output.push(text);
+    };
+    assert.equal(run(["--headless", "/config", "/source.png"]), 1);
+    const receipt = JSON.parse(context.output[0]);
+    assert.equal(receipt.state, "canceled");
+    assert.equal(receipt.issues[0].code, "canceled");
+    assert.ok(polled > 0); assert.equal(closed, true);
+    assert.equal([...context.app.files].some((path) => path.endsWith(".pdf")), false);
+});
+
+test("an exit failure remains primary if monitor cleanup also fails", () => {
+    const signalController = require("../../../src/host/command-line/signal-controller.js");
+    const context = fixture();
+    const primary = new Error("exit stub failed");
+    let closed = false;
+    signalController.createSignalController = () => ({ poll: () => false, close() { closed = true; throw new Error("cleanup also failed"); } });
+    context.ns.exit = () => { throw primary; };
+    assert.throws(() => run(["--headless", "/config", "/source.png"]), (error) => error === primary);
+    assert.equal(closed, true); assert.equal(context.output.length, 1);
+});

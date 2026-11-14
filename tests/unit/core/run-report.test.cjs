@@ -94,3 +94,17 @@ test("recovery prefers the actual publication failure and keeps every other issu
     assert.equal(summarizeRun(stopped).recoveries[0].cause, canceled);
     assert.ok(reportText(stopped).includes("Saved elsewhere:\n/Downloads/b.pdf\nStopped before publication."));
 });
+
+
+test("only meaningful diagnostics for actual retained, reclaimed or unreadable workspaces are human-visible", () => {
+    const path = "/tmp/ImageFilesToPDF.A123456789";
+    for (const code of ["workspace-retained", "workspace-reclaimed", "workspace-unreadable"]) {
+        const note = { code, stage: "workspace", message: "Workspace note.", diagnostic: { path } };
+        assert.equal(reportText({ ...runOutcome([saved], [], [], [note]), elapsed: "1 second" }),
+            `Created 1 PDF.\n\n1 saved.\n\nSaved to:\n/photos/\na.pdf\n\nTemporary work:\nWorkspace note.\n${path}\n\nElapsed: 1 second`);
+        for (const invalid of [{ ...note, stage: "execution" }, { ...note, code: "observer-fault" }, { ...note, message: " " }, { ...note, message: null },
+            { ...note, diagnostic: { path: "/tmp" } }, { ...note, diagnostic: { path: null } }, { ...note, diagnostic: null }]) {
+            assert.doesNotMatch(reportText(runOutcome([saved], [], [], [invalid])), /Temporary work:/u);
+        }
+    }
+});

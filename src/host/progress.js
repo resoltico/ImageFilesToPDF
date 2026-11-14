@@ -123,8 +123,7 @@ function lifecycle(state, each) {
 }
 
 /*
- * A reporter with no surfaces reports nowhere and can never be stopped: what a
- * command-line run wants, and what a job starts with. There is no second way of
+ * A reporter with no surfaces reports nowhere and can never be stopped: what a job starts with. Command-line signal polling uses a silent sink. There is no second way of
  * saying it.
  */
 function createProgress(sinks) {
