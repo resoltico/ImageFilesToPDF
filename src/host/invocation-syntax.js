@@ -71,6 +71,17 @@ function isLocalAuthority(authority) {
     return authority === "" || authority.toLowerCase() === LOCAL_HOST;
 }
 
+function hasUrlScheme(value) { return /^[A-Za-z][A-Za-z\d+.-]*:/u.test(String(value)); }
+
+function isRemoteUrl(value) {
+    const text = String(value);
+    if (!hasUrlScheme(text)) { return false; }
+    if (!/^file:/iu.test(text)) { return true; }
+    if (!/^file:\/\//iu.test(text)) { return false; }
+    const [authority] = text.slice("file://".length).split("/");
+    return !isLocalAuthority(authority);
+}
+
 const NUL = "\u0000";
 
 function decodePath(path) {
@@ -93,4 +104,4 @@ function decodeFileUrl(value) {
     return decodePath(match.groups.path);
 }
 
-module.exports = { normalizeInvocationInput, isCliInput, decodeFileUrl };
+module.exports = { normalizeInvocationInput, isCliInput, decodeFileUrl, hasUrlScheme, isRemoteUrl };

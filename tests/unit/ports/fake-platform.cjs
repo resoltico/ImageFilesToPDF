@@ -43,7 +43,11 @@ function managerFor(app, unbox) {
         isReadableFileAtPath: (path) => app.files.has(unbox(path)) || app.fileTexts.has(unbox(path)),
         currentDirectoryPath: "/cwd",
         fileExistsAtPathIsDirectory(path, directory) { const name = unbox(path); directory[0] = false; return app.files.has(name) || app.fileTexts.has(name); },
-        attributesOfItemAtPathError: (path) => attributesFor(app, unbox(path)),
+        attributesOfItemAtPathError(path, failure) {
+            const attributes = attributesFor(app, unbox(path));
+            if (!attributes) { Object.assign(failure, { code: 260, domain: "NSCocoaErrorDomain" }); }
+            return attributes;
+        },
         copyItemAtPathToPathError(from, to) { app.sources.capture(unbox(from), unbox(to)); return true; },
         linkItemAtPathToPathError(from, to, error) {
             const outcome = app.publication.link(unbox(from), unbox(to));
@@ -70,7 +74,7 @@ function installPlatform(app, options = {}) {
     const output = [];
     const stderr = [];
     const unbox = (value) => value?.boxed ?? value;
-    const ns = (value) => ({ boxed: value, objectForKey: (key) => value[unbox(key)], stringByStandardizingPath: value, dataUsingEncoding: () => value,
+    const ns = (value) => ({ boxed: value, isNil() { return (this.boxed === undefined || this.boxed === null) && !Object.hasOwn(this, "code"); }, objectForKey: (key) => value[unbox(key)], stringByStandardizingPath: value, dataUsingEncoding: () => value,
         writeToFileAtomicallyEncodingError(path) {app.fileTexts.set(unbox(path),value);app.files.add(unbox(path));return true;} });
     Object.assign(ns, bridge.ns, {
         NSMakeRange: (location, length) => ({ location, length }),

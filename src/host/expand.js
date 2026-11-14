@@ -51,8 +51,8 @@ function childrenOf(tree, folder, names) {
  * something nobody asked for.
  */
 function consider(path, entry, taken, outcome) {
-    if (entry.kind === "missing" || (entry.kind === "file" && !entry.identity)) {
-        outcome.problems.push({ path, code: "unexaminable" });
+    if (["missing", "unreadable", "unexaminable"].includes(entry.kind) || (entry.kind === "file" && !entry.identity)) {
+        outcome.problems.push({ path, code: entry.kind === "unreadable" ? "unreadable" : "unexaminable" });
 
         return;
     }

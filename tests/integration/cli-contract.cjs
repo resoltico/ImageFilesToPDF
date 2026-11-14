@@ -61,6 +61,22 @@ function settingsError(filename, contents, cause) {
     assert.ok(receipt.issues.some((issue)=>issue.message.includes(at(filename))&&cause.test(issue.message)),JSON.stringify(receipt.issues));
 }
 
+function pathDiagnostics() {
+    for (const name of ["missing.jpg", "Phtos", "--headless"]) {
+        const receipt = convert(1, [name]);
+        assert.equal(receipt.rejected[0].code, "not-a-path");
+        assert.equal(receipt.rejected[0].reason, "No file or folder exists at this path.");
+        assert.equal(receipt.rejected[0].stage, "selection");
+    }
+    for (const url of ["data:image/png;base64,x", "mailto:a@example.com", "file://example.com/photo.jpg"]) {
+        const receipt = convert(1, [url]);
+        assert.equal(receipt.rejected[0].code, "remote-url");
+    }
+    fs.mkdirSync(at("blocked-parent"));fs.copyFileSync(at("photo.jpg"), at("blocked-parent/photo.jpg"));fs.chmodSync(at("blocked-parent"), 0);
+    try { assert.equal(convert(1, ["blocked-parent/photo.jpg"]).rejected[0].code, "unreadable"); }
+    finally { fs.chmodSync(at("blocked-parent"), 0o700); }
+}
+
 function settingsDiagnostics() {
     for (const [key, values, expected] of [
         ["mode", {}, "`mode` is missing."],
@@ -218,7 +234,7 @@ function refusals(pdf,separate) {
 }
 
 async function run() {
-    grammar();readerErrors();settingsDiagnostics();
+    grammar();readerErrors();settingsDiagnostics();pathDiagnostics();
     const {pdf,original}=embedding();
     const separate=placementAndNaming(pdf);refusals(pdf,separate);
     await ownership();

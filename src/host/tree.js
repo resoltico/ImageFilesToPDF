@@ -1,6 +1,6 @@
 "use strict";
 const { OperationError } = require("../core/errors.js");
-const { attributesAt, identityOf, kindOf } = require("./native-file-attributes.js");
+const { attributesAt, identityOf, kindOf, attributeFailureKind } = require("./native-file-attributes.js");
 
 /*
  * What the filesystem says about a path, for walking a selected folder.
@@ -33,12 +33,11 @@ const SYMBOLIC_LINK = "NSFileTypeSymbolicLink";
  * how a Mac is formatted by default.
  *
  * It comes out of the attributes this walk already reads, so knowing it costs
- * nothing, and it is "" when there are no attributes to read -- which is the
- * same thing as there being no file.
+ * nothing, and it is "" when there are no attributes to read -- which does not itself establish whether a file exists.
  */
 function kindFrom(attributes, packageFor, path) {
     if (!attributes) {
-        return "missing";
+        return "unexaminable";
     }
 
     if (attributes.NSFileType !== DIRECTORY) {
@@ -75,10 +74,11 @@ function createTree(objc, ns, ref) {
     return {
         // What the path is, and which file it is, from one question.
         inspect(path) {
-            const attributes = attributesAt(manager, ns, path);
+            const failure = ns();
+            const attributes = attributesAt(manager, ns, path, failure);
             const kind = kindOf(objc, ns, attributes);
             return {
-                kind: kindFrom(kind ? { NSFileType: kind } : null, packageFor, path),
+                kind: attributes ? kindFrom({ NSFileType: kind }, packageFor, path) : attributeFailureKind(objc, ns, failure),
                 identity: identityOf(objc, ns, attributes)
             };
         },

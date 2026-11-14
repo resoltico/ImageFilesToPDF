@@ -34,3 +34,11 @@ test("source inspection issues retain their domain code, stage and explanation",
     assert.deepEqual(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages:0}),[{code:"damaged",stage:"inspection",message:"This image is damaged or incomplete."}]);
     assert.deepEqual(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages:2}),[{code:"multiple-images",stage:"inspection",message:"This file contains 2 images; only single images are supported."}]);
 });
+
+test("proven absent and inaccessible paths are classified before extensions", () => {
+    assert.equal(selectionReason("missing", "/missing-anything", false), "not-a-path");
+    assert.equal(selectionReason("missing", "/missing.jpg", false), "not-a-path");
+    assert.equal(selectionReason("unreadable", "/blocked.txt", false), "unreadable");
+    assert.equal(selectionReason("unexaminable", "/unknown", false), "unexaminable");
+    assert.equal(selectionRefusal("/missing", "not-a-path").reason, "No file or folder exists at this path.");
+});

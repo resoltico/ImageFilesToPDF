@@ -111,6 +111,11 @@ faulted is identified in `issues` and is not a validated recovery.
 
 ## Issue codes
 
+A missing file or folder is `not-a-path` before format filtering; permission
+failures remain `unreadable` or `unexaminable`. Non-local URI schemes and remote
+`file://` authorities are `remote-url`; download those items first. For a relative
+filename that looks like a URI scheme, such as `photo:one.jpg`, use `./photo:one.jpg`.
+
 Every issue and every `rejected` entry carries a `code`, a `stage` and a message:
 `message` for issues, `reason` for rejected entries, which also carry `path` and
 `name`. An issue may also carry `field`, `source` and `diagnostic`; commands,
