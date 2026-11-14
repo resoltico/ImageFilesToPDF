@@ -16,6 +16,7 @@ function destinationCopy(context) {
 
 function claim(context) {
     const { job, paths } = context;
+    context.diagnostic = null;
     let outcome = job.publication.link(context.from, paths.final);
     if (needsStaging(outcome.state)) {
         if (!context.area) { destinationCopy(context); outcome = job.publication.link(context.from, paths.final); }

@@ -25,6 +25,12 @@ function publicationCode(error) {
     return issue.code === ISSUE.operation ? ISSUE.publication : issue.code;
 }
 
+function publicationDiagnostic(context, error) {
+    const diagnostic = context.diagnostic ?? issuesOf(error, "publication")[0].diagnostic;
+    const message = typeof diagnostic?.message === "string" && diagnostic.message.trim() ? diagnostic.message : errorMessage(error);
+    return { ...diagnostic, message };
+}
+
 function failedPublication(context, error) {
     const { job, paths, claimed, area } = context;
     if (isUserCanceled(error) && isPublished(job.publication.facts(paths.final), {
@@ -37,7 +43,7 @@ function failedPublication(context, error) {
     if (error?.recovery) { throw error; }
     const failure = keep(job, paths, { reasons: [errorMessage(error)], staging: area });
     const issues = [{ code: publicationCode(error), stage: "publication",
-        message: "The PDF could not be saved to its requested destination.", diagnostic: context.diagnostic ?? issuesOf(error, "publication")[0].diagnostic }, ...failure.issues.slice(1)];
+        message: "The PDF could not be saved to its requested destination.", diagnostic: publicationDiagnostic(context, error) }, ...failure.issues.slice(1)];
     throw new IssueError(failure.message, { cause: failure, recovery: failure.recovery, issues });
 }
 

@@ -7,9 +7,11 @@
 - Tool setup refusals now use receipt state `invalid` with exit 3 and identify unusable overrides by variable and value.
 - Single-image PDFs now use the image name in both modes, including after refusals. Update receipt consumers to read actual output/recovery paths; see [HEADLESS.md](HEADLESS.md).
 - Prefix relative filenames that look like URI schemes, such as `photo:one.jpg`, with `./` when selecting a local file.
+- Recovered PDFs have a `Saved elsewhere` section with a one-line cause; `Could not convert` lists failures only and other issues remain visible.
 - Missing input paths are reported before format filtering; non-local URI schemes and remote file URLs are classified as remote URLs.
 - Command-line settings errors name the JSON key and distinguish missing fields from wrong JSON types.
 - Every invalid setting control receives the same visible error tint, including numeric fields previously marked only by a red hint.
+- `elapsed` describes processing time and excludes time spent in dialogs.
 - Progress Stop is an accessible push button; after activation it says “Stopping…” and is disabled until the run ends.
 - Stops that made nothing use one headline. Plain stops no longer offer empty Details, and technical details omit empty values.
 - Scrollable form notes, selection reviews and completion details open at their first line in both light and dark appearances.

@@ -86,7 +86,10 @@ tool-setup refusal is also `invalid` and exits 3 with the headline
 a stop that arrives after everything was saved does not erase the saved PDFs. An
 abrupt process end, an external kill or a failed stdout cannot guarantee a receipt.
 
-The stderr report is the headline, then sections separated by one blank line. Its
+The stderr report is the headline, then sections separated by one blank line.
+`Could not convert:` lists failed PDFs only. `Saved elsewhere:` lists each actual
+recovery path with a one-line cause. `Other issues:` keeps run-level or cleanup
+problems separate from failed conversions. Its
 counts line lists only non-zero counts, as in `1 saved; 1 not included.`, and is
 left out when all are zero. `Elapsed: …` is the last section when known. An
 invalid request reports `The request is invalid.` and each problem.

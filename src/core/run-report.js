@@ -42,16 +42,24 @@ function countsLine(summary) {
     return parts.length > 0 ? `${parts.join("; ")}.` : "";
 }
 
+function recoveryReason(cause) {
+    const diagnostic = cause?.diagnostic;
+    const reason = [diagnostic?.message, ...(Array.isArray(diagnostic) ? diagnostic : []), cause?.message]
+        .find((value) => typeof value === "string" && value.trim());
+    return reason ? reason.replace(/\s+/gu, " ").trim() : "The requested destination was not used.";
+}
+
 function summaryText(summary, includeHeadline = true) {
     // An invalid request converted nothing, so it states its problems without counts or a conversion heading.
     if (summary.kind === "invalid" || summary.kind === "setup") {
-        return [includeHeadline ? headline(summary) : "", ...summary.failures.map((entry) => entry.message)].filter(Boolean).join("\n\n");
+        return [includeHeadline ? headline(summary) : "", ...summary.problems.map((entry) => entry.message)].filter(Boolean).join("\n\n");
     }
     const saved = summary.saved.map((group) => `${group.folder}\n${group.outputs.map((output) => output.name).join("\n")}`);
-    const recovered = summary.recoveries.map((entry) => entry.location);
+    const recovered = summary.recoveries.map((entry) => `${entry.location}\n${recoveryReason(entry.cause)}`);
     return [includeHeadline ? headline(summary) : "", countsLine(summary), saved.length > 0 ? `Saved to:\n${saved.join("\n\n")}` : "",
-        summary.failures.length > 0 ? `Could not convert:\n${summary.failures.map((entry) => `${entry.source ? `${entry.source}: ` : ""}${entry.message}`).join("\n")}` : "",
-        recovered.length > 0 ? `Recovered PDFs:\n${recovered.join("\n")}` : "",
+        summary.failures.length > 0 ? `Could not convert:\n${summary.failures.map((entry) => `${entry.source}: ${entry.message}`).join("\n")}` : "",
+        recovered.length > 0 ? `Saved elsewhere:\n${recovered.join("\n\n")}` : "",
+        summary.problems.length > 0 ? `Other issues:\n${summary.problems.map((entry) => `${entry.source ? `${entry.source}: ` : ""}${entry.message}`).join("\n")}` : "",
         summary.notStarted > 0 ? `Not started: ${summary.notStarted}` : "",
         summary.refusals.length > 0 ? describeRejections(summary.refusals) : ""
     ].filter(Boolean).join("\n\n");

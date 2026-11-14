@@ -147,7 +147,7 @@ test("recovery releases ownership only after confirmation and retains classified
     assert.throws(()=>publishPdf(job,staged,target),(error)=>{
         assert.match(error.message,/The PDF could not be saved where it was meant to go\.\n\n/u);
         assert.match(error.message,/The finished PDF has been kept here:\n\n/u);
-        assert.deepEqual(error.issues[0],{code:"publication",stage:"publication",message:"The PDF could not be saved to its requested destination.",diagnostic:{code:13,domain:"NSPOSIXErrorDomain",state:"denied"}});
+        assert.deepEqual(error.issues[0],{code:"publication",stage:"publication",message:"The PDF could not be saved to its requested destination.",diagnostic:{code:13,domain:"NSPOSIXErrorDomain",state:"denied",message:"The PDF destination could not be claimed (denied)."}});
         return true;
     });
     assert.ok([...job.artifacts.values()].every(artifact=>artifact.state==="released"));
@@ -227,4 +227,22 @@ test("diagnostic assembly faults after confirmation preserve the actual publishe
     const result=publishPdf(job,staged,target);
     assert.equal(result.path,target);assert.equal(result.state,"saved");assert.ok(app.files.has(target));
     assert.equal(result.issues[0].message,"post-confirmation diagnostics fault");assert.ok(!app.files.has(staged));
+});
+
+test("a later staging failure reports its current cause instead of an earlier collision", () => {
+    const { job, app } = fixture({ files: [staged, target], failures: [["'/bin/mkdir'", new Error("Current destination copy is denied.")]] });
+    const { link } = job.publication;
+    let attempts = 0;
+    job.publication.link = (from, to) => {
+        if (!to.startsWith("/out/")) { return link(from, to); }
+        attempts += 1;
+        return attempts === 1 ? { state: "exists", diagnostic: { message: "Old collision." } } : { state: "cross-device" };
+    };
+    assert.throws(() => publishPdf(job, staged, target), (error) => {
+        assert.match(error.issues[0].diagnostic.message, /Current destination copy is denied/u);
+        assert.doesNotMatch(error.issues[0].diagnostic.message, /Old collision/u);
+        assert.ok(error.recovery);
+        return true;
+    });
+    assert.ok(app.files.has(target), "the earlier occupied output remains untouched");
 });

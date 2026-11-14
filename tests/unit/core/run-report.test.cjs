@@ -11,9 +11,9 @@ test("saved, recovered and failed report sections are literal shared text", () =
     assert.equal(reportText({ ...runOutcome([saved]), elapsed: "1 second" }),
         "Created 1 PDF.\n\n1 saved.\n\nSaved to:\n/photos/\na.pdf\n\nElapsed: 1 second");
     assert.equal(reportText(runOutcome([recovered])),
-        "Finished with issues.\n1 PDF could not be saved where it was meant to go and was kept elsewhere; the location is below.\n\n1 recovered.\n\nRecovered PDFs:\n/Downloads/b.pdf");
+        "Finished with issues.\n1 PDF could not be saved where it was meant to go and was kept elsewhere; the location is below.\n\n1 recovered.\n\nSaved elsewhere:\n/Downloads/b.pdf\nThe requested destination was not used.");
     assert.equal(reportText(runOutcome([recovered, { ...recovered, recovery: "/Downloads/c.pdf" }])),
-        "Finished with issues.\n2 PDFs could not be saved where they were meant to go and were kept elsewhere; the location is below.\n\n2 recovered.\n\nRecovered PDFs:\n/Downloads/b.pdf\n/Downloads/c.pdf");
+        "Finished with issues.\n2 PDFs could not be saved where they were meant to go and were kept elsewhere; the location is below.\n\n2 recovered.\n\nSaved elsewhere:\n/Downloads/b.pdf\nThe requested destination was not used.\n\n/Downloads/c.pdf\nThe requested destination was not used.");
     assert.equal(reportText(runOutcome([{ state: "failed", sources: ["/bad.jpg"], pages: 0, issues: [{ code: "damaged", message: "This image is damaged or incomplete." }] }])),
         "Finished with issues.\nNo PDF was created.\n\n1 failed.\n\nCould not convert:\n/bad.jpg: This image is damaged or incomplete.");
 });
@@ -59,5 +59,38 @@ test("a stop with no output has one headline and no duplicate not-created senten
     const result = runOutcome([stopped, { ...stopped, state: "not-started" }]);
     assert.equal(reportText(result), "Stopped. No PDF was created.\n\n1 canceled; 1 not started.\n\nNot started: 1");
     const kept = runOutcome([recovered], [], [{ code: "canceled", stage: "publication" }]);
-    assert.equal(reportText(kept), "Stopped.\n1 PDF could not be saved where it was meant to go and was kept elsewhere; the location is below.\n\n1 recovered.\n\nRecovered PDFs:\n/Downloads/b.pdf");
+    assert.equal(reportText(kept), "Stopped.\n1 PDF could not be saved where it was meant to go and was kept elsewhere; the location is below.\n\n1 recovered.\n\nSaved elsewhere:\n/Downloads/b.pdf\nThe requested destination was not used.");
+});
+
+test("recovered paths have one plain cause and failed-only headings preserve other issues", () => {
+    const primary = { code: "publication", stage: "publication", message: "Could not use the target.", diagnostic: { message: "  Permission  denied.\nRead only.  " } };
+    const cleanup = { code: "cleanup", stage: "cleanup", message: "Temporary work was retained." };
+    const kept = { ...recovered, recovery: "/Downloads/a  b.pdf", issues: [primary, cleanup] };
+    const fault = { code: "fault", stage: "execution", message: "Run cleanup failed." };
+    const text = reportText(runOutcome([kept, { ...saved, issues: [cleanup] }], [], [fault]));
+    assert.ok(text.includes("Saved elsewhere:\n/Downloads/a  b.pdf\nPermission denied. Read only."));
+    assert.doesNotMatch(text, /Could not convert:/u);
+    assert.match(text, /Other issues:/u);
+    assert.match(text, /Temporary work was retained/u); assert.match(text, /Run cleanup failed/u);
+    const reasons = { ...recovered, issues: [{ code: "publication", stage: "publication", message: "Generic.", diagnostic: [" ", "Cross-device\nrename is unavailable."] }] };
+    assert.match(reportText(runOutcome([reasons])), /Cross-device rename is unavailable\./u);
+    const stopped = { ...recovered, issues: [{ code: "canceled", stage: "publication", message: "Stopped before saving." }, cleanup] };
+    assert.match(reportText(runOutcome([stopped])), /Saved elsewhere:[\s\S]*Stopped before saving\./u);
+    assert.match(reportText(runOutcome([stopped])), /Other issues:[\s\S]*Temporary work was retained/u);
+});
+
+test("recovery prefers the actual publication failure and keeps every other issue", () => {
+    const { summarizeRun } = require("../../../src/core/run-summary.js");
+    const cleanup = { code: "cleanup", stage: "cleanup", source: "/cleanup/owned.v", message: "Earlier cleanup failed." };
+    const canceled = { code: "canceled", stage: "publication", message: "Stopped before publication." };
+    const publication = { code: "publication", stage: "publication", message: "Generic publication failure.", diagnostic: { message: "Permission denied.\nCannot create output." } };
+    const trailing = { code: "cleanup", stage: "cleanup", message: "Later cleanup failed." };
+    const result = runOutcome([{ ...recovered, issues: [cleanup, canceled, publication, trailing] }], [], [{ code: "fault", stage: "cleanup", message: "Run-level problem." }]);
+    assert.equal(summarizeRun(result).recoveries[0].cause, publication);
+    assert.deepEqual(summarizeRun(result).failures, []);
+    assert.equal(reportText({ ...result, elapsed: "2 seconds" }),
+        "Stopped.\n1 PDF could not be saved where it was meant to go and was kept elsewhere; the location is below.\n\n1 recovered.\n\nSaved elsewhere:\n/Downloads/b.pdf\nPermission denied. Cannot create output.\n\nOther issues:\n/cleanup/owned.v: Earlier cleanup failed.\n/photos/b.jpg: Later cleanup failed.\nRun-level problem.\n\nElapsed: 2 seconds");
+    const stopped = runOutcome([{ ...recovered, issues: [cleanup, canceled, trailing] }]);
+    assert.equal(summarizeRun(stopped).recoveries[0].cause, canceled);
+    assert.ok(reportText(stopped).includes("Saved elsewhere:\n/Downloads/b.pdf\nStopped before publication."));
 });

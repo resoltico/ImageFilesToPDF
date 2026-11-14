@@ -59,7 +59,7 @@ test("the command-line report lists only non-zero counts and ends with the elaps
 test("a run with nothing to count has no counts line", () => {
     const writes = [];
     reportHeadless({ ...runOutcome([], [], [{ code: "setup", stage: "setup", message: "Install vips." }]) }, (...args) => writes.push(args), (status) => status);
-    assert.equal(writes[1][0], "Finished with issues.\nNo PDF was created.\n\nCould not convert:\nInstall vips.\n");
+    assert.equal(writes[1][0], "Finished with issues.\nNo PDF was created.\n\nOther issues:\nInstall vips.\n");
 });
 
 test("nothing admitted reports one issue sentence and lists the refusals once", () => {
