@@ -13,7 +13,7 @@ test("runArgv quotes every argument before running it", () => {
 
     runArgv(app, ["/bin/echo", "two words", "a'b"], "testing");
 
-    assert.equal(app.commands[0], "'/bin/echo' 'two words' 'a'\\''b'");
+    assert.equal(app.commands[0], "export LC_ALL=C; '/bin/echo' 'two words' 'a'\\''b'");
 });
 
 test("runArgv returns the host's output", () => {
@@ -75,14 +75,14 @@ test("removeFile ignores an absent path and a failing removal", () => {
     const app = createFakeApp();
 
     removeFile(app, "/tmp/x");
-    assert.deepEqual(app.commands, ["'/bin/rm' '-f' '/tmp/x'"]);
+    assert.deepEqual(app.commands, ["export LC_ALL=C; '/bin/rm' '-f' '/tmp/x'"]);
 });
 
 
 test("technical diagnostics retain a full long argv outside the main explanation",()=>{
     const input="x".repeat(6000);const app=createFakeApp([["/bin/tool",new Error("failed")]]);
     assert.throws(()=>runArgv(app,["/bin/tool",input],"reading source"),(error)=>{
-        assert.equal(error.command,`'/bin/tool' '${input}'`);assert.ok(!error.message.includes(input));return true;
+        assert.equal(error.command,`export LC_ALL=C; '/bin/tool' '${input}'`);assert.ok(!error.message.includes(input));return true;
     });
 });
 
@@ -90,7 +90,14 @@ test("header commands fix diagnostic language and retain argv quoting and budget
     const { runHeaderArgv, HEADER_ARGV_BUDGET } = require("../../../src/host/shell.js");
     const app = createFakeApp();
     runHeaderArgv(app, ["/v/vipsheader", "-a", "/a quote' and space.png"], "checking images");
-    assert.equal(app.commands[0], "LC_ALL=C '/v/vipsheader' '-a' '/a quote'\\'' and space.png'");
-    assert.equal(HEADER_ARGV_BUDGET, 131063);
+    assert.equal(app.commands[0], "export LC_ALL=C; '/v/vipsheader' '-a' '/a quote'\\'' and space.png'");
+    assert.equal(HEADER_ARGV_BUDGET, 131055);
     assert.throws(() => runHeaderArgv(app, ["vipsheader", "x".repeat(131072)], "checking"), /exceeds the argument budget/u);
+});
+
+test("capability probes use the same fixed locale and preserve quoted argv", () => {
+    const { probeArgv } = require("../../../src/host/shell.js");
+    const app = createFakeApp();
+    probeArgv(app, ["/v/vips", "a'b"]);
+    assert.equal(app.commands[0], "export LC_ALL=C; '/v/vips' 'a'\\''b' 2>&1 || true");
 });

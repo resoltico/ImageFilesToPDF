@@ -1,7 +1,7 @@
 "use strict";
 const { OperationError } = require("../core/errors.js");
 
-const { shellJoin, shellQuote } = require("../backend/shell.js");
+const { shellQuote } = require("../backend/shell.js");
 const {
     buildVipsProbeArgv,
     buildPdfcpuProbeArgv,
@@ -9,6 +9,7 @@ const {
     isPdfcpuUsable,
     describeSetupProblems
 } = require("../backend/preflight.js");
+const { probeArgv } = require("./shell.js");
 const { findTool, TOOL_NAMES, TOOL_SEARCH_PATH } = require("./tools.js");
 
 /*
@@ -26,7 +27,7 @@ const { findTool, TOOL_NAMES, TOOL_SEARCH_PATH } = require("./tools.js");
  */
 function probe(app, argv) {
     try {
-        return app.doShellScript(`${shellJoin(argv)} 2>&1 || true`);
+        return probeArgv(app, argv);
     } catch {
         return "";
     }

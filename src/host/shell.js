@@ -11,27 +11,28 @@ const { OperationError, errorMessage } = require("../core/errors.js");
 /*
  * Running a command and taking what it printed.
  *
- * Every argument is quoted here. Header inspection additionally fixes only
- * the C locale so optional-field errors have a stable language.
+ * Every argument is quoted here. External commands use the C locale so
+ * machine-readable output and diagnostics have one stable language.
  *
  * Asking the filesystem a question is a different thing and lives in
  * asking.js: a question that comes back "no" has answered, and must not be
  * dressed up as a command that failed.
  */
 
-const HEADER_LOCALE_PREFIX = "LC_ALL=C ";
-const HEADER_ARGV_BUDGET = COMMAND_BUDGET_BYTES - utf8Length(HEADER_LOCALE_PREFIX);
+const LOCALE_PREFIX = "export LC_ALL=C; ";
+const HEADER_ARGV_BUDGET = COMMAND_BUDGET_BYTES - utf8Length(LOCALE_PREFIX);
 
 function runCommand(app, command, label) {
+    const executing = `${LOCALE_PREFIX}${command}`;
     try {
-        return app.doShellScript(command);
+        return app.doShellScript(executing);
     } catch (caught) {
         const error = hostError(caught);
         const context = label ? ` while ${label}` : "";
 
         const failure = new OperationError(
             `Command failed${context}.\n\n${errorMessage(error)}`,
-            { cause: error, command }
+            { cause: error, command: executing }
         );
 
         throw failure;
@@ -40,9 +41,13 @@ function runCommand(app, command, label) {
 
 function runArgv(app, argumentsList, label) { return runCommand(app, shellJoin(argumentsList), label); }
 
+function probeArgv(app, argumentsList) {
+    return runCommand(app, `${shellJoin(argumentsList)} 2>&1 || true`);
+}
+
 function runHeaderArgv(app, argumentsList, label) {
     if (commandLengthOf(argumentsList) > HEADER_ARGV_BUDGET) { throw new OperationError("The image header command exceeds the argument budget."); }
-    return runCommand(app, `${HEADER_LOCALE_PREFIX}${shellJoin(argumentsList)}`, label);
+    return runArgv(app, argumentsList, label);
 }
 
 /*
@@ -66,4 +71,4 @@ function removeFile(app, path) {
     return path ? cleanupArgv(app, [RM, "-f", path]) : { state: "removed" };
 }
 
-module.exports = { HEADER_ARGV_BUDGET, runHeaderArgv, runArgv, removeFile, cleanupArgv };
+module.exports = { HEADER_ARGV_BUDGET, runHeaderArgv, runArgv, probeArgv, removeFile, cleanupArgv };

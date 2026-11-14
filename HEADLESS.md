@@ -151,6 +151,8 @@ and unreadable workspaces are left in place and listed in `diagnostics`.
 
 ## Tool overrides
 
+External tools run with `LC_ALL=C`, independently of the caller's locale.
+
 `IMAGE_FILES_TO_PDF_VIPS`, `IMAGE_FILES_TO_PDF_VIPSHEADER` and
 `IMAGE_FILES_TO_PDF_PDFCPU` may name explicit executables. An override that is
 missing, relative or unusable fails setup with exit status 3; another executable is

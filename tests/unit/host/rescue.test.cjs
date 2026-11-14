@@ -65,7 +65,7 @@ test("the prefix is passed as a prefix, not as a template", () => {
 
     assert.equal(
         host.commands.find((command) => command.includes("mktemp")),
-        "'/usr/bin/mktemp' '-d' '-t' 'ImageFilesToPDF-recovered'"
+        "export LC_ALL=C; '/usr/bin/mktemp' '-d' '-t' 'ImageFilesToPDF-recovered'"
     );
 });
 

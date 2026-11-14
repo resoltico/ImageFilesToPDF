@@ -22,4 +22,19 @@ vips gaussnoise "$WORK/noise.v" 400 200
 vips copy "$WORK/noise.v" "$WORK/whole.webp"
 head -c "$(( $(wc -c <"$WORK/whole.webp") * 6 / 10 ))" "$WORK/whole.webp" >"$WORK/cut.webp"
 vips icc_transform "$WORK/photo.jpg" "$WORK/tagged.jpg" "$P3_PROFILE" --input-profile "$SRGB_PROFILE"
+# The caller's locale must not change any backend parser or capability probe.
+mkdir "$WORK/german"
+cp "$WORK/photo.jpg" "$WORK/german/photo.jpg"
+write_config "$WORK/german/settings.json" A4 Portrait separate "#FFFFFF" 20261029_010203
+LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 osascript -l JavaScript \
+    "$ROOT/dist/Image-Files-to-PDF.jxa" -- --headless "$WORK/german/settings.json" \
+    "$WORK/german/photo.jpg" >"$WORK/german/receipt" 2>"$WORK/german/stderr"
+node - "$WORK/german/receipt" <<'JS'
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const receipt = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+assert.equal(receipt.state, 'complete');
+assert.equal(receipt.documents[0].state, 'saved');
+JS
+assert_valid_pdf "$WORK/german/photo.pdf"
 node "$ROOT/tests/integration/cli-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.jxa" "$WORK"

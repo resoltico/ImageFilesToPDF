@@ -62,7 +62,7 @@ test("ordinary candidates are inspected in bounded batches before producing admi
     assert.equal(result.images.length, 2);
     assert.equal(result.images[0].admission.identity, "/a.png");
     assert.ok(host.commands.some((command) => command.includes("'-a' '/a.png' '/b.png'")));
-    assert.ok(host.commands.every((command) => command.startsWith("LC_ALL=C ")));
+    assert.ok(host.commands.every((command) => command.startsWith("export LC_ALL=C; ")));
 });
 
 test("exact final page count is independently required before strict validation", () => {
