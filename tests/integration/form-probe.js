@@ -109,7 +109,7 @@ function snapshot(folder, scenario, appearance) {
     const built = scenario.detail ? { alert: detailsAlert($, scenario) } : nativeForm(scenario);
     const { alert } = built;
     alert.window.appearance = $.NSAppearance.appearanceNamed(appearance);
-    layoutDetails($, alert, built.details ?? alert.accessoryView);
+    layoutDetails($, alert, [built.details ?? alert.accessoryView]);
     for (const row of built.rows ?? []) { if (row.invalid) { checkInvalidTint(built.controls[row.key], row.key); } }
     const height = Number(alert.window.frame.size.height);
     requireNative(height <= SMALLEST_VISIBLE_HEIGHT, `${scenario.name}: ${height} points exceeds ${SMALLEST_VISIBLE_HEIGHT}`);

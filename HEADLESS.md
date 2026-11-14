@@ -116,6 +116,9 @@ Every issue and every `rejected` entry carries a `code`, a `stage` and a message
 `name`. An issue may also carry `field`, `source` and `diagnostic`; commands,
 native errors and stacks appear only in `diagnostic`. An `unsupported-content`
 refusal includes `diagnostic.loader`, the vips loader that recognized its content.
+Settings diagnostics distinguish `missing: true` from `expectedType`/`actualType`
+for wrong JSON types. CLI settings messages name the JSON key; form corrections
+keep the setting's display name.
 
 | Stage | Codes |
 | --- | --- |

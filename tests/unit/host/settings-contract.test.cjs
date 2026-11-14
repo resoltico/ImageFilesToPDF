@@ -45,7 +45,7 @@ test("settings issue records keep stable fields, codes, stages and bounded expla
     assert.deepEqual(validateSettings(bad).issues,[
         {field:"typo",code:"unknown",stage:"settings",message:"Unknown setting: typo."},
         {field:"paperSize",code:"choice",stage:"settings",message:"Paper size must be one of: A4, Letter."},
-        {field:"resolutionLimit",code:"integer",stage:"settings",message:"Maximum resolution must be a whole number from 72 to 1017."},
+        {field:"resolutionLimit",code:"integer",stage:"settings",message:"Maximum resolution must be a whole number from 72 to 1017.",diagnostic:{expectedType:"number",actualType:"boolean"}},
         {field:"background",code:"color",stage:"settings",message:"Page background must be six hexadecimal digits, for example #C7DAE8. The # is optional, and transparency is not supported."}
     ]);
     assert.throws(()=>normalizeSettings(bad),(error)=>error.message===validateSettings(bad).issues.map((issue)=>issue.message).join("\n"));

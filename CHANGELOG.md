@@ -6,6 +6,7 @@
 - Contributions are accepted under the [contribution terms](CONTRIBUTING.md#contribution-terms), which also let Ervins Strauhmanis license them commercially.
 - Tool setup refusals now use receipt state `invalid` with exit 3 and identify unusable overrides by variable and value.
 - Single-image PDFs now use the image name in both modes, including after refusals. Update receipt consumers to read actual output/recovery paths; see [HEADLESS.md](HEADLESS.md).
+- Command-line settings errors name the JSON key and distinguish missing fields from wrong JSON types.
 - Every invalid setting control receives the same visible error tint, including numeric fields previously marked only by a red hint.
 - Progress Stop is an accessible push button; after activation it says “Stopping…” and is disabled until the run ends.
 - Stops that made nothing use one headline. Plain stops no longer offer empty Details, and technical details omit empty values.
@@ -14,7 +15,7 @@
 - JPEG decoder warnings now refuse corrupt images as damaged, including byte-preserving and re-encoded JPEG paths.
 - Ultra HDR JPEG photos are accepted and converted as standard-range images; gain maps are never embedded in PDFs.
 - Unsupported-content refusals use clearer wording and include the vips loader in receipt diagnostics and completion Details.
-- `--help` lists settings in the documented order: mode, paper size, orientation, maximum resolution, JPEG quality, background.
+- `--help` lists required settings in documented order and includes a complete JSON example instead of suggesting omitted fields receive defaults.
 - Contributors must use Node 26.13.1 and npm 12.2.2; restore refreshed development dependencies with `npm ci --ignore-scripts`.
 
 ## [3.0.0] - 2026-11-05

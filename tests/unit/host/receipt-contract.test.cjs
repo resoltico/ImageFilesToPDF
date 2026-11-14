@@ -70,3 +70,25 @@ test("nothing admitted reports one issue sentence and lists the refusals once", 
     reportHeadless(result, (...args) => writes.push(args), (status) => status);
     assert.equal(writes[1][0], "Nothing to convert.\n\n1 not included.\n\nNot included from your selection:\n/a/bad.gif: This file is not a supported format.\n");
 });
+
+test("CLI settings messages use JSON keys and missing/type facts without mutating core results", () => {
+    const { validateSettings, DEFAULT_SETTINGS } = require("../../../src/core/settings.js");
+    const input = { ...DEFAULT_SETTINGS, mode: null, resolutionLimit: "300", background: [] };
+    delete input.quality;
+    const result = runOutcome([], [], validateSettings(input).issues);
+    const original = JSON.stringify(result);
+    const writes = [];
+    assert.equal(reportHeadless(result, (text) => writes.push(text), (code) => code), 2);
+    const reported = JSON.parse(writes[0]);
+    assert.deepEqual(reported.issues.map((issue) => issue.message), [
+        "`mode` must be a JSON string, not null.", "`resolutionLimit` must be a JSON number, not a string.",
+        "`quality` is missing.", "`background` must be a JSON string, not an array."
+    ]);
+    assert.ok(writes[1].includes("`quality` is missing."));
+    assert.equal(JSON.stringify(result), original);
+    const other = runOutcome([], [], validateSettings({ ...DEFAULT_SETTINGS, background: {}, quality: 101, "extra\nkey": true }).issues);
+    const lines = [];
+    reportHeadless(other, (text) => lines.push(text), (code) => code);
+    const messages = JSON.parse(lines[0]).issues.map((issue) => issue.message);
+    assert.deepEqual(messages, ['"extra\\nkey" is not a recognized setting.', "`quality` must be a whole number from 1 to 100.", "`background` must be a JSON string, not an object."]);
+});

@@ -1,11 +1,12 @@
 "use strict";
 const { APP_NAME, VERSION } = require("../../core/version.js");
-const { SETTINGS_SCHEMA, validateSettings } = require("../../core/settings.js");
+const { SETTINGS_SCHEMA, DEFAULT_SETTINGS, validateSettings } = require("../../core/settings.js");
 const { readTimestamp, TIMESTAMP_FORM } = require("../../core/timestamps.js");
 const { OperationError } = require("../../core/errors.js");
 const { normalizeInvocationInput } = require("../invocation-syntax.js");
 const { writeReceipt, exitCli } = require("./receipt.js");
 
+const JSON_INDENT = 2;
 const RUN_LINE = "osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless <settings.json> <path…>";
 
 function choiceCaption(choice) {
@@ -16,9 +17,9 @@ function choiceCaption(choice) {
 function settingsHelp() {
     return Object.entries(SETTINGS_SCHEMA).map(([field, rule]) => {
         if (rule.kind === "integer") {
-            return `  ${field} — ${rule.name}: ${rule.minimum}–${rule.maximum}${rule.unit ? ` ${rule.unit}` : ""}; default ${rule.default}${rule.note ? `; ${rule.note}` : ""}`;
+            return `  ${field} — ${rule.name}: ${rule.minimum}–${rule.maximum}${rule.unit ? ` ${rule.unit}` : ""}${rule.note ? `; ${rule.note}` : ""}`;
         }
-        return `  ${field} — ${rule.name}: ${rule.choices.map(choiceCaption).join(" | ")}; default ${rule.default}${rule.hint ? `; ${rule.hint}` : ""}`;
+        return `  ${field} — ${rule.name}: ${rule.choices.map(choiceCaption).join(" | ")}${rule.hint ? `; ${rule.hint}` : ""}`;
     }).join("\n");
 }
 
@@ -26,7 +27,7 @@ function usage() {
     return `${APP_NAME} ${VERSION}\n\nUsage:\n  osascript -l JavaScript Image-Files-to-PDF.jxa -- --help\n` +
         "  osascript -l JavaScript Image-Files-to-PDF.jxa -- --version\n" +
         `  ${RUN_LINE}\n\nSettings (all ${Object.keys(SETTINGS_SCHEMA).length} required):\n` +
-        `${settingsHelp()}\n\nOptional run option:\n  timestamp — ${TIMESTAMP_FORM} in local time; default now\n\nPaths may be absolute or relative to the working directory. Settings must be UTF-8 JSON without a BOM.\n`;
+        `${settingsHelp()}\n\nExample settings JSON (all required fields):\n${JSON.stringify(DEFAULT_SETTINGS, null, JSON_INDENT)}\n\nOptional run option:\n  timestamp — ${TIMESTAMP_FORM} in local time; default now\n\nPaths may be absolute or relative to the working directory. Settings must be UTF-8 JSON without a BOM.\n`;
 }
 
 // One sentence on what was wrong and the run line; the settings stay in --help.

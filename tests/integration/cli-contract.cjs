@@ -61,6 +61,21 @@ function settingsError(filename, contents, cause) {
     assert.ok(receipt.issues.some((issue)=>issue.message.includes(at(filename))&&cause.test(issue.message)),JSON.stringify(receipt.issues));
 }
 
+function settingsDiagnostics() {
+    for (const [key, values, expected] of [
+        ["mode", {}, "`mode` is missing."],
+        ["resolutionLimit", { ...settings, resolutionLimit: "300" }, "`resolutionLimit` must be a JSON number, not a string."],
+        ["background", { ...settings, background: null }, "`background` must be a JSON string, not null."]
+    ]) {
+        const file = at(`diagnostic-${key}.json`);
+        fs.writeFileSync(file, JSON.stringify(values));
+        const result = command(2, ["--headless", file, "photo.jpg"]);
+        const receipt = JSON.parse(result.stdout);
+        assert.equal(receipt.issues.find((issue) => issue.field === key).message, expected);
+        assert.ok(result.stderr.includes(expected));
+    }
+}
+
 function workspaceOf(pid, existing) {
     for(const name of fs.readdirSync(os.tmpdir()).filter((item)=>/^ImageFilesToPDF\.[A-Za-z0-9]{10}$/u.test(item)&&!existing.has(item))) {
         const candidate=path.join(os.tmpdir(),name);
@@ -120,7 +135,7 @@ function readerErrors() {
     settingsError("bytes.json",Buffer.from([255,254,255]),/UTF-8/u);
     settingsError("syntax.json","{",/not valid JSON/u);
     settingsError("array.json","[]",/not an object/u);
-    for(const [filename,changes,cause] of [["invalid.json",{resolutionLimit:1018},/Maximum resolution/u],["calendar.json",{timestamp:"20260230_010203"},/timestamp/u]]) {
+    for(const [filename,changes,cause] of [["invalid.json",{resolutionLimit:1018},/resolutionLimit/u],["calendar.json",{timestamp:"20260230_010203"},/timestamp/u]]) {
         fs.writeFileSync(at(filename),JSON.stringify({...settings,...changes}));
         const receipt=convert(2,["photo.jpg"],filename);
         assert.equal(receipt.state,"invalid");assert.ok(receipt.issues.some((issue)=>cause.test(issue.message)));
@@ -203,7 +218,7 @@ function refusals(pdf,separate) {
 }
 
 async function run() {
-    grammar();readerErrors();
+    grammar();readerErrors();settingsDiagnostics();
     const {pdf,original}=embedding();
     const separate=placementAndNaming(pdf);refusals(pdf,separate);
     await ownership();

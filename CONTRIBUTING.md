@@ -113,7 +113,7 @@ the sibling repository.
   version. `Show in Finder` reveals every saved or recovered PDF; `Details` shows
   `key: value` lines and `Back` returns to the summary.
 - Command line: the same commands and exit statuses; usage errors name the problem
-  and print only the run line; `--help` lists `field — Name: values; default X`;
+  and print only the run line; `--help` lists the required fields and a complete, ready-to-copy JSON example;
   stderr sections are separated by one blank line; receipts share the state and
   issue-code vocabulary in [HEADLESS.md](HEADLESS.md).
 - Documents: README (users), INSTALL.txt (release asset), HEADLESS.md (command

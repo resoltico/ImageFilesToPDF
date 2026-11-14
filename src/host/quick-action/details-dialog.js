@@ -65,22 +65,24 @@ function detailsAlert(ns, spec) {
     return alert;
 }
 
-function layoutDetails(ns, alert, details) {
+function layoutDetails(ns, alert, scrolls) {
     // AppKit may change the accessory's clip geometry during alert layout.
     // Reset both selection visibility and clip position after that layout.
     // eslint-disable-next-line no-unused-expressions -- zero-argument ObjC methods
     alert.layout;
     // eslint-disable-next-line no-unused-expressions -- zero-argument ObjC method
     alert.window.contentView.layoutSubtreeIfNeeded;
-    details.documentView.scrollRangeToVisible(ns.NSMakeRange(0, 0));
-    details.contentView.scrollToPoint(ns.NSMakePoint(0, 0));
-    details.reflectScrolledClipView(details.contentView);
+    for (const details of scrolls) {
+        details.documentView.scrollRangeToVisible(ns.NSMakeRange(0, 0));
+        details.contentView.scrollToPoint(ns.NSMakePoint(0, 0));
+        details.reflectScrolledClipView(details.contentView);
+    }
 }
 
 function showDetails(app, spec, bridge = appkitBridge(globalThis.ObjC, globalThis.$)) {
     if (!bridge) { return showDetailPages(app, spec); }
     const alert = detailsAlert(bridge.ns, spec);
-    layoutDetails(bridge.ns, alert, alert.accessoryView);
+    layoutDetails(bridge.ns, alert, [alert.accessoryView]);
     const response = Number(alert.runModal);
     return response === MODAL_UNAVAILABLE ? showDetailPages(app, spec) : response - FIRST_BUTTON;
 }

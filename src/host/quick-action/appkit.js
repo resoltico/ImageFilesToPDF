@@ -354,7 +354,7 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
     alert.accessoryView = view;
     const focus = spec.rows.find((row) => row.invalid) ?? spec.rows.find((row) => row.kind === "number");
     alert.window.initialFirstResponder = controls[focus.key];
-    layoutDetails(bridge.ns, alert, built.details);
+    layoutDetails(bridge.ns, alert, [built.details]);
 
     const response = Number(alert.runModal);
 
