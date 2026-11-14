@@ -111,3 +111,18 @@ test("name-planning faults release the owned workspace before any PDF bytes",()=
     assert.ok(app.commands.some(command=>command.includes("'/bin/rm' '-rf'")));
     assert.ok(!app.commands.some(command=>command.includes("'thumbnail'")));
 });
+
+
+test("actual PDF import, assembly, validation and publication clear image detail and new images restore their name", () => {
+    const phases = ["Creating PDF", "Assembling PDF", "Validating PDF", "Saving PDF"];
+    for (const mode of ["combined", "separate"]) {
+        const { job, events } = jobFixture(mode);
+        assert.equal(runJob(job, [imageOf("/a/1.png"), imageOf("/a/2.png")]).state, "complete");
+        const documents = events.filter((event) => phases.includes(event[1]));
+        assert.deepEqual(new Set(documents.map((event) => event[1])), new Set(phases));
+        assert.ok(documents.every((event) => event[2] === ""), JSON.stringify(documents));
+        for (const name of ["1.png", "2.png"]) {
+            assert.ok(events.some((event) => event[1] === "Preparing" && event[2].endsWith(`— ${name}`)), name);
+        }
+    }
+});

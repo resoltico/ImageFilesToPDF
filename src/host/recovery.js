@@ -1,5 +1,6 @@
 "use strict";
 
+const { actualPublicationPath, requireOriginal } = require("./publication-name.js");
 const { releaseOwnedArtifact } = require("./workspace.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { OperationError, IssueError, errorMessage } = require("../core/errors.js");
@@ -49,7 +50,10 @@ function confirmedDownloads(context) {
     if (!isPublished(job.publication.facts(paths.final), { claimedIdentity: claimed.identity, claimedSize: claimed.size })) {
         throw new OperationError("The Downloads recovery could not be confirmed.");
     }
+    paths.final = actualPublicationPath(job.publication, { staged: paths.staged, original: context.facts, path: paths.final, claimed });
     const cleanup = area ? closeStaging(job.app, area) : [];
+    requireOriginal(job.publication, { staged: paths.staged, expected: context.facts, cause: null,
+        candidate: { path: paths.final, identity: claimed.identity, size: claimed.size } });
     const removed = removeFile(job.app, paths.staged);
     return { state: "recovered", path: paths.final, issues: [...cleanup, ...(removed.state === "failed" ? [removed.issue] : [])] };
 }
@@ -57,12 +61,14 @@ function confirmedDownloads(context) {
 function downloadsRecovery(job, paths) {
     let context = null;
     try {
-        const facts = job.publication.facts(paths.staged);
-        if (!facts.identity || facts.size <= 0) { throw new OperationError("Validated PDF identity is unavailable for recovery."); }
+        requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: null });
+        const facts = paths.original;
         const destination = job.storage.downloads + basename(paths.intended);
-        context = { job, paths: { staged: paths.staged, final: destination }, facts, from: paths.staged, claimed: facts, area: null, diagnostic: null };
+        context = { job, paths: { staged: paths.staged, final: destination, original: paths.original }, facts, from: paths.staged, claimed: facts, area: null, diagnostic: null };
         return claimAvailable(context, destination, confirmedDownloads, () => undefined);
     } catch (error) {
+        if (error && Object.hasOwn(error, "recovery")) { throw error; }
+        requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: error, candidate: context?.area ? { folder: context.area.directory } : null });
         const cleanup = context?.area ? closeStaging(job.app, context.area) : [];
         const [issue] = issuesOf(error, "recovery");
         return { state: "retained", path: paths.staged, issues: [{ code: issue.code === ISSUE.operation ? ISSUE.recovery : issue.code, stage: "recovery",
@@ -72,10 +78,11 @@ function downloadsRecovery(job, paths) {
 
 function keep(job, paths, outcome) {
     if (typeof paths.intended !== "string") { throw new Error("Publication intent is required for recovery."); }
+    requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: null });
     const cleanup = clearAway(job.app, outcome);
 
     const downloads = downloadsRecovery(job, paths);
-    const rescue = downloads.state === "recovered" ? downloads : setAside(job.app, paths.staged, job.publication.facts, basename(paths.intended));
+    const rescue = downloads.state === "recovered" ? downloads : setAside(job.app, paths.staged, job.publication, { intendedName: basename(paths.intended), original: paths.original });
     const recovered = rescue.path;
 
     releaseRecoveredArtifact(job, paths.staged, recovered, cleanup);

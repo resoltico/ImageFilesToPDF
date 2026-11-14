@@ -4,6 +4,8 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     buildVipsProbeArgv,
+    buildVipsheaderProbeArgv,
+    isVipsheaderUsable,
     buildPdfcpuProbeArgv,
     isVipsUsable,
     isPdfcpuUsable,
@@ -14,6 +16,7 @@ test("the vips probe uses the flags the pipeline depends on", () => {
     const argv = buildVipsProbeArgv("/opt/homebrew/bin/vips");
 
     assert.ok(argv.includes("--size=down"));
+    assert.ok(argv.includes("--fail-on=warning"));
     assert.ok(argv.includes("--export-profile"));
     assert.ok(argv.includes("srgb"));
     // Against a path that cannot exist, so nothing is written anywhere.
@@ -122,5 +125,41 @@ test("the probes name a file that cannot exist", () => {
         for (const argument of argv) {
             assert.notEqual(argument, "", "an empty argument is not a probe");
         }
+    }
+});
+
+test("vipsheader must read the built-in one-pixel PNG, not merely be executable", () => {
+    assert.deepEqual(buildVipsheaderProbeArgv("/opt/vipsheader"), ["/opt/vipsheader", "-f", "width"]);
+    assert.equal(isVipsheaderUsable("1\n"), true);
+    for (const output of ["", "0", "01", "600", "1 warning", "1\nwarning", null]) {
+        assert.equal(isVipsheaderUsable(output), false);
+    }
+    assert.match(describeSetupProblems([{ tool: "vipsheader", kind: "unusable" }], true), /vipsheader could not read the built-in PNG image/u);
+    assert.match(describeSetupProblems([{ tool: "vipsheader", kind: "unusable", override: { name: "IMAGE_FILES_TO_PDF_VIPSHEADER", value: "/usr/bin/false" } }], true),
+        /IMAGE_FILES_TO_PDF_VIPSHEADER="\/usr\/bin\/false" is not usable as vipsheader/u);
+});
+
+test("override-only failures ask to fix overrides without automatic installation advice", () => {
+    const explicit = { tool: "vipsheader", kind: "unusable", override: { name: "IMAGE_FILES_TO_PDF_VIPSHEADER", value: "/usr/bin/false" } };
+    const message = describeSetupProblems([explicit], true);
+    assert.match(message, /Fix or unset the named tool overrides, then try again\./u);
+    assert.doesNotMatch(message, /brew|Homebrew/u);
+    const mixed = describeSetupProblems([explicit, { tool: "pdfcpu", kind: "missing" }], true);
+    assert.match(mixed, /Fix or unset/u);
+    assert.match(mixed, /brew install vips pdfcpu/u);
+    assert.doesNotMatch(mixed, /brew upgrade/u, "the unusable override must not request upgrading automatic tools");
+});
+
+
+test("explicit unusable overrides retain each tool's capability requirement", () => {
+    for (const [tool, flags, required] of [
+        ["pdfcpu", undefined, "Version 0.16.4 or later is required."],
+        ["vipsheader", undefined, "vipsheader could not read the built-in PNG image."],
+        ["vips", "--size=down, --export-profile and --fail-on", "it does not accept --size=down, --export-profile and --fail-on."]
+    ]) {
+        const override = { name: `IMAGE_FILES_TO_PDF_${tool.toUpperCase()}`, value: "/my tools/old tool" };
+        const text = describeSetupProblems([{ tool, flags, kind: "unusable", override }], true);
+        assert.ok(text.includes(`${override.name}="/my tools/old tool" is not usable as ${tool}.`));
+        assert.ok(text.includes(required)); assert.doesNotMatch(text, /brew|Homebrew/u);
     }
 });

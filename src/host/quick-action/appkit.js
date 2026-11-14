@@ -59,11 +59,6 @@ function controlRect(index, rowCount) {
 
 const HINT_FONT_SIZE = 11;
 
-// A tint rather than a solid fill, and drawn from the system red so it
-// follows the appearance the alert is rendered in. A fixed pink would be
-// wrong the moment the form appears in dark mode.
-const INVALID_TINT_ALPHA = 0.18;
-
 // NSTextAlignmentRight. On macOS right is 1 and center is 2, which is the
 // reverse of UIKit, so the constant is named rather than written inline.
 const ALIGN_RIGHT = 1;
@@ -125,12 +120,6 @@ function addPopupItem(popup, option) {
     return popup.lastItem;
 }
 
-function markInvalid(ns, control) {
-    control.drawsBackground = true;
-    control.backgroundColor = ns.NSColor.systemRedColor
-        .colorWithAlphaComponent(INVALID_TINT_ALPHA);
-}
-
 function markHintInvalid(ns, hint) {
     hint.textColor = ns.NSColor.systemRedColor;
 }
@@ -176,6 +165,7 @@ function makeColorCombo(ns, row, rect) {
     return combo;
 }
 
+const { markInvalid } = require("./invalid-fill.js");
 const { DETAIL_HEIGHT } = require("./details-dialog.js");
 
 function addChoice(context, row, rect) {
@@ -190,7 +180,7 @@ function addChoice(context, row, rect) {
     view.addSubview(popup);
 
     if (row.invalid) {
-        widgets.markInvalid(ns, popup);
+        widgets.markInvalid(ns, popup, context.objc);
     }
 
     return popup;
@@ -207,7 +197,7 @@ function addTyped(context, row, rect, control) {
 
     if (row.invalid) {
         // The value and the rule it breaks, marked together.
-        widgets.markInvalid(ns, field);
+        widgets.markInvalid(ns, field, context.objc);
         widgets.markHintInvalid(ns, hint);
     }
 
@@ -267,7 +257,7 @@ function buildForm(bridge, spec, widgets) {
         left: 0, bottom: height + DETAIL_GAP, width, height: DETAIL_HEIGHT
     });
     view.addSubview(details);
-    const context = { ns: bridge.ns, widgets, view };
+    const context = { ns: bridge.ns, objc: bridge.objc, widgets, view };
     const controls = {};
 
     spec.rows.forEach((row, index) => {
@@ -297,7 +287,7 @@ function buildForm(bridge, spec, widgets) {
 }
 
 const { MODAL_UNAVAILABLE } = require("./objc-bridge.js");
-const { makeDetails } = require("./details-dialog.js");
+const { makeDetails, runDetailsModal } = require("./details-dialog.js");
 
 // Gathered into one object so a test can substitute the whole widget layer.
 const WIDGETS = {
@@ -346,15 +336,7 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
     alert.accessoryView = view;
     const focus = spec.rows.find((row) => row.invalid) ?? spec.rows.find((row) => row.kind === "number");
     alert.window.initialFirstResponder = controls[focus.key];
-    // Measured in Stamp Images: laid out inside a running alert, a note that
-    // overflows opened two lines down, hiding its first line. It is laid out
-    // first and put back at its start.
-    // eslint-disable-next-line no-unused-expressions -- zero-argument ObjC method, invoked on property access
-    alert.layout;
-    built.details.contentView.scrollToPoint(bridge.ns.NSMakePoint(0, 0));
-    built.details.reflectScrolledClipView(built.details.contentView);
-
-    const response = Number(alert.runModal);
+    const response = runDetailsModal(bridge, alert, [built.details]);
 
     if (response === MODAL_UNAVAILABLE) {
         return null;

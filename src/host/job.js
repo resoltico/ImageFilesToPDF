@@ -78,10 +78,11 @@ function documentPorts(job) {
         },
         fits: (staged, pages, placement) => commandLengthOf(buildPdfcpuImportArgv(job.tools.pdfcpu, partPdfPath(staged, job.parts.get(staged).length), pages, { geometry: job.geometry, placement, background: job.settings.background })) <= COMMAND_BUDGET_BYTES,
         import(staged, pages, placement) {
+            job.progress.about("");
             job.progress.phase("Creating PDF");
             importBatch(job, staged, pages, placement);
         },
-        assemble: (staged) => assemblePdf(job, staged),
+        assemble(staged) { job.progress.about(""); assemblePdf(job, staged); },
         beforeValidation: () => retainCandidate(job),
         validate(staged, expected) {
             requireReleasedResources(job);

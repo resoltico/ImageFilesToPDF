@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Image Files to PDF receipt (HEADLESS.md)",
+  "type": "object",
+  "required": ["state", "documents", "rejected", "issues", "diagnostics"],
+  "additionalProperties": false,
+  "properties": {
+    "state": { "enum": ["complete", "incomplete", "canceled", "invalid"] },
+    "documents": { "type": "array", "items": { "$ref": "#/definitions/document" } },
+    "rejected": { "type": "array", "items": { "$ref": "#/definitions/rejection" } },
+    "issues": { "type": "array", "items": { "$ref": "#/definitions/issue" } },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/definitions/diagnostic" } },
+    "elapsed": { "type": "string" }
+  },
+  "definitions": {
+    "value": {
+      "anyOf": [
+        { "type": "object", "propertyNames": { "not": { "const": "stack" } }, "additionalProperties": { "$ref": "#/definitions/value" } },
+        { "type": "array", "items": { "$ref": "#/definitions/value" } },
+        { "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }
+      ]
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["code", "message"],
+      "propertyNames": { "not": { "const": "stack" } },
+      "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "stage": { "type": "string" } },
+      "additionalProperties": { "$ref": "#/definitions/value" }
+    },
+    "issue": {
+      "type": "object",
+      "required": ["code", "stage", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string" }, "stage": { "type": "string" }, "message": { "type": "string" },
+        "field": { "type": "string" }, "source": { "type": "string" }, "diagnostic": { "$ref": "#/definitions/value" }
+      }
+    },
+    "rejection": {
+      "type": "object",
+      "required": ["path", "name", "reason", "code", "stage"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" }, "name": { "type": "string" }, "reason": { "type": "string" },
+        "code": { "type": "string" }, "stage": { "type": "string" }, "diagnostic": { "$ref": "#/definitions/value" }
+      }
+    },
+    "document": {
+      "type": "object",
+      "required": ["state", "sources", "pages", "issues"],
+      "additionalProperties": false,
+      "properties": {
+        "state": { "enum": ["saved", "recovered", "failed", "canceled", "not-started"] },
+        "sources": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^/" } },
+        "pages": { "type": "integer", "minimum": 0 },
+        "issues": { "type": "array", "items": { "$ref": "#/definitions/issue" } },
+        "output": { "type": "string", "pattern": "^/" }, "recovery": { "type": "string", "pattern": "^/" },
+        "fatal": { "type": "boolean" }, "diagnostics": { "type": "array", "items": { "$ref": "#/definitions/diagnostic" } }
+      },
+      "allOf": [
+        { "if": { "properties": { "state": { "const": "saved" } } }, "then": { "required": ["output"] }, "else": { "not": { "required": ["output"] } } },
+        { "if": { "properties": { "state": { "const": "recovered" } } }, "then": { "required": ["recovery"] }, "else": { "not": { "required": ["recovery"] } } }
+      ]
+    }
+  }
+}

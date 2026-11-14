@@ -1,9 +1,11 @@
 "use strict";
+const { Buffer } = require("node:buffer");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const process = require("node:process");
+const { parseReceipt } = require("./receipt.cjs");
 const { execFileSync } = require("node:child_process");
 
 function entries(folder) {
@@ -53,6 +55,8 @@ function assertRecoveredPdf(document, source, capability, inventory) {
     assert.equal(issue.diagnostic.state, "unsupported");
     assert.equal(issue.diagnostic.code, capability.code);
     const owned = newRecovery(document.recovery, inventory);
+    assert.ok(fs.readdirSync(path.dirname(owned.file), { encoding: "buffer" }).some((name) => name.equals(Buffer.from(path.basename(owned.file)))),
+        "recovery basename equals its raw directory entry without normalization");
     execFileSync("pdfcpu", ["validate", "--conf", "disable", "--mode=strict", owned.file], { stdio: "pipe" });
     execFileSync("qpdf", ["--check", owned.file], { stdio: "pipe" });
     assert.match(execFileSync("pdfinfo", [owned.file], { encoding: "utf8" }), /^Pages:\s+1\s*$/mu);
@@ -73,7 +77,7 @@ if (require.main === module) {
     const [receipt, source, capability, inventoryFile] = process.argv.slice(2);
     const saved = JSON.parse(fs.readFileSync(inventoryFile, "utf8"));
     const inventory = { ...saved, downloadIdentities: new Set(saved.downloadIdentities), temporaryIdentities: new Set(saved.temporaryIdentities) };
-    const result = JSON.parse(fs.readFileSync(receipt, "utf8"));
+    const result = parseReceipt(fs.readFileSync(receipt, "utf8"));
     assert.equal(result.state, "incomplete");
     assert.deepEqual(result.rejected, []);
     assert.deepEqual(result.issues, []);

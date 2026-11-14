@@ -4,11 +4,32 @@
 
 - Licensed under AGPL-3.0-only instead of MPL-2.0: distributing the script or a modified version requires offering its corresponding source; see [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md).
 - Contributions are accepted under the [contribution terms](CONTRIBUTING.md#contribution-terms), which also let Ervins Strauhmanis license them commercially.
-- Single-image PDFs now use the image name in both modes, including after refusals. Update receipt consumers to read actual output/recovery paths; see [HEADLESS.md](HEADLESS.md).
-- Ultra HDR JPEG photos are accepted and converted as standard-range images; gain maps are never embedded in PDFs.
-- Unsupported-content refusals use clearer wording and include the vips loader in receipt diagnostics and completion Details.
-- `--help` lists settings in the documented order: mode, paper size, orientation, maximum resolution, JPEG quality, background.
 - Contributors must use Node 26.13.1 and npm 12.2.2; restore refreshed development dependencies with `npm ci --ignore-scripts`.
+- Receipts omit `stack` fields at every depth; read issue messages, rejection reasons and other diagnostic details instead.
+- Command-line `SIGINT` and `SIGTERM` request a safe Stop and a canceled receipt with exit 1, including during setup. `SIGKILL` remains abrupt.
+- Tool setup refusals now use receipt state `invalid` with exit 3 and identify unusable overrides by variable and value.
+- Single-image PDFs now use the image name in both modes, including after refusals. Update receipt consumers to read actual output/recovery paths; see [HEADLESS.md](HEADLESS.md).
+- Name verification needs read/search access to destination folders; unavailable or ambiguous listings preserve files and report uncertainty.
+- Prefix relative filenames that look like URI schemes, such as `photo:one.jpg`, with `./` when selecting a local file.
+- Under supported filename extensions, recognized excluded content uses `unsupported-content` and `diagnostic.loader`; truncated HEIC is `damaged`.
+- Visible special files in selected folders are `special-file` refusals; such runs are incomplete.
+- The command-line settings file accepts local `file://` URLs with percent-encoded spaces and Unicode; remote or malformed settings URLs are refused.
+- The stderr report precedes its receipt. Failed stdout completion gets a plain error when stderr is available; transport failures keep created PDFs and exit nonzero.
+- Reports name retained, unreadable or safely reclaimed stale workspaces, so unfinished temporary work remains visible.
+- Receipts and reports use the actual stored output and recovery basenames, including Unicode normalization changes made by the filesystem.
+- Recovered PDFs have a `Saved elsewhere` section with a one-line cause; `Could not convert` lists failures only and other issues remain visible.
+- Missing input paths are reported before format filtering; non-local URI schemes and remote file URLs are classified as remote URLs.
+- Command-line settings errors name the JSON key and distinguish missing fields from wrong JSON types.
+- Every invalid setting control receives the same visible error tint, including numeric fields previously marked only by a red hint.
+- PDF creation, assembly, validation and saving progress no longer names the last image; `elapsed` describes processing time and excludes dialogs.
+- Progress Stop is an accessible push button; after activation it says “Stopping…” and is disabled until the run ends.
+- Stops that made nothing use one headline. Plain stops no longer offer empty Details, and technical details omit empty values.
+- Scrollable form notes, selection reviews and completion details open at their first line in both light and dark appearances.
+- Backend commands use a fixed C locale, so conversion works independently of the caller's language settings.
+- JPEG decoder warnings now refuse corrupt images as damaged, including byte-preserving and re-encoded JPEG paths.
+- Ultra HDR JPEG photos are accepted and converted as standard-range images; gain maps are never embedded in PDFs.
+- Documentation explains long-name shortening and that supported content can differ from its filename extension.
+- `--help` lists required settings in documented order and includes a complete JSON example instead of suggesting omitted fields receive defaults.
 
 ## [3.0.0] - 2026-11-05
 

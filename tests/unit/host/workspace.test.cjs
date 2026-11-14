@@ -47,7 +47,7 @@ test("removeWorkspace removes a genuine workspace", () => {
     const app = createFakeApp();
 
     removeWorkspace(app, GOOD);
-    assert.equal(app.commands[0], `'/bin/rm' '-rf' '${GOOD}'`);
+    assert.equal(app.commands[0], `export LC_ALL=C; '/bin/rm' '-rf' '${GOOD}'`);
 });
 
 test("removeWorkspace does not mask an earlier failure", () => {

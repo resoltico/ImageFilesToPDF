@@ -21,7 +21,7 @@ test("the file predicates report true when test succeeds", () => {
     assert.equal(isExecutable(app, "/bin/vips"), true);
     assert.deepEqual(
         app.commands.map((command) => command.split(" ")[1]),
-        ["'-f'", "'-x'"]
+        ["'-f'", "'-f'", "'-x'"]
     );
 });
 
@@ -68,4 +68,15 @@ test("a directory at the output path is not a written file", () => {
     assert.deepEqual(asked, [
         "'/bin/test' '-f' '/a/out.pdf' '-a' '-s' '/a/out.pdf'"
     ]);
+});
+
+test("backend executables must be absolute regular executable files", () => {
+    const relative = createFakeApp();
+    assert.equal(isExecutable(relative, "bin/vips"), false);
+    assert.deepEqual(relative.commands, []);
+    const directory = createFakeApp([["'-f' '/folder'", failing("not a regular file")]]);
+    assert.equal(isExecutable(directory, "/folder"), false);
+    assert.ok(!directory.commands.some((command) => command.includes("'-x'")));
+    const nonExecutable = createFakeApp([["'-x'", failing("not executable")]]);
+    assert.equal(isExecutable(nonExecutable, "/file"), false);
 });

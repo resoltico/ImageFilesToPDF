@@ -99,7 +99,8 @@ function documentFailure(context, error) {
     record.issues.push(...issuesOf(error, stage).map((issue) => stage === "preparation"
         ? { ...issue, source: issue.source ?? context.source } : issue));
     if (record.state === "validated") {
-        Object.assign(record, { state: "recovered", recovery: error?.recovery ?? artifact.path });
+        if (error && Object.hasOwn(error, "recovery") && error.recovery === null) { record.state = "failed"; record.fatal = true; }
+        else { Object.assign(record, { state: "recovered", recovery: error?.recovery ?? artifact.path }); }
     } else if (record.state !== "saved") {
         record.state = isUserCanceled(error) ? "canceled" : "failed";
         resolveValidationFailure(context);

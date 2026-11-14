@@ -26,8 +26,9 @@ test("summary distinguishes invalid, empty, stopped, failed and partially saved 
     const recovered = { state: "recovered", sources: ["/kept.png"], recovery: "/Downloads/kept.pdf", issues: [{ message: "destination unavailable" }] };
     const summary = summarizeRun(runOutcome([saved(), failed, recovered], [], [{ message: "run fault" }, { source: "/run.png", message: "named fault" }]));
     assert.equal(summary.kind, "some-saved");
-    assert.deepEqual(summary.failures, [{ source: "/bad.png", message: "damaged" }, { source: "/kept.png", message: "destination unavailable" }, { source: "", message: "run fault" }, { source: "/run.png", message: "named fault" }]);
-    assert.deepEqual(summary.recoveries, [{ location: "/Downloads/kept.pdf", sources: ["/kept.png"] }]);
+    assert.deepEqual(summary.failures, [{ source: "/bad.png", message: "damaged" }]);
+    assert.deepEqual(summary.problems, [{ source: "", message: "run fault" }, { source: "/run.png", message: "named fault" }]);
+    assert.deepEqual(summary.recoveries, [{ location: "/Downloads/kept.pdf", sources: ["/kept.png"], cause: { message: "destination unavailable" } }]);
     assert.equal(summarizeRun(runOutcome([failed])).kind, "none-saved");
     assert.equal(summarizeRun(runOutcome([{ ...saved(), issues: [{ message: "saved reporting fault" }] }])).kind, "some-saved");
     const stopped = summarizeRun(runOutcome([saved(), { state: "canceled", sources: ["/stop.png"], issues: [{ code: "canceled" }] }, { state: "not-started", sources: ["/later.png"], issues: [] }], [], [{ code: "canceled" }, { code: "no-images" }]));

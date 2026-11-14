@@ -33,7 +33,7 @@ const PARAMETERS = { toString: () => "[object Object]" };
 
 function quickAction(app, paths) {
     const selection = paths.map(selectedFile);
-    const { inputItems } = collectInvocation(app, [selection, PARAMETERS], false);
+    const { inputItems } = collectInvocation(app, [selection, PARAMETERS]);
 
     return collectImageFiles(app, inputItems).images;
 }
@@ -109,8 +109,8 @@ test("an invocation without files falls back to Finder's selection", () => {
     const previous = globalThis.Application;
     globalThis.Application = () => ({ selection: () => [selectedFile("/finder/chosen.png")] });
     try {
-        for (const input of [[[], PARAMETERS], {}, [[], { source: "Finder", ignoresInput: false }]]) {
-            const { inputItems } = collectInvocation(app, input, false);
+        for (const input of [[[], PARAMETERS], {}, [[], { source: "Finder", ignoresInput: false, "temporary items path": "/tmp/shortcuts-items" }]]) {
+            const { inputItems } = collectInvocation(app, input);
             assert.deepEqual(inputItems.map(String), ["/finder/chosen.png"], "the record is dropped before Finder fallback");
             assert.deepEqual(collectImageFiles(app, inputItems).images.map((record) => record.path), ["/finder/chosen.png"]);
         }

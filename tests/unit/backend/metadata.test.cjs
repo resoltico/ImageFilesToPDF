@@ -89,6 +89,12 @@ test("only the actual absent-field diagnostic establishes an optional default", 
     assert.equal(headerFailureCode("vipsheader: VipsForeignLoad: unknown format"), "not-an-image");
     assert.equal(headerFailureCode("vipsheader: glib: PDF document is damaged"), "not-an-image");
     assert.equal(headerFailureCode("vipsheader: webp: unable to parse image"), "damaged", "a truncated WebP is damaged, not foreign");
+    for (const message of ["heif: Invalid input: No meta box", "vipsheader: heif: Insufficient data", "Command failed.\r\nheif: bad seek"]) {
+        assert.equal(headerFailureCode(message), "damaged");
+    }
+    for (const message of ["a file named heif: image.heic", "heifload: unknown", "vipsheader: VipsForeignLoad: text.heic is not known"]) {
+        assert.equal(headerFailureCode(message), "not-an-image");
+    }
     assert.equal(headerFailureCode("vipsheader: webpload: unable to parse image"), "not-an-image");
 });
 
@@ -129,12 +135,12 @@ test("every mapped loader states whether it carries an HDR gain map", () => {
     }
 });
 
-test("an unmapped loader is refused with its name, while a vector or missing loader is not an image", () => {
+test("every nonempty unmapped loader is refused with its name; a missing loader is not an image", () => {
     const gif = readMetadata(base.replace("jpegload", "gifload")).raw;
     assert.deepEqual([gif.format, gif.gainMap, gif.problem, gif.diagnostic], [undefined, false, "unsupported-content", { loader: "gifload" }]);
     for (const loader of ["svgload", "pdfload", "pdfload_source"]) {
         const { raw } = readMetadata(base.replace("jpegload", loader));
-        assert.deepEqual([raw.problem, raw.diagnostic], ["not-an-image", undefined], loader);
+        assert.deepEqual([raw.problem, raw.diagnostic], ["unsupported-content", { loader }], loader);
     }
     const missing = readMetadata("width: 1\n").raw;
     assert.deepEqual([missing.problem, missing.diagnostic], ["not-an-image", undefined]);

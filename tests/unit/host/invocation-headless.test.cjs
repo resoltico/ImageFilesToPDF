@@ -57,16 +57,38 @@ test("JSON diagnostics name the settings path and distinguish root type from syn
     assert.deepEqual(jsonConfiguration('{"value":1,"value":2}', "/config.json"), { value: 2 });
 });
 
-test("help renders canonical names, choice captions, defaults and bounds", () => {
+test("help renders canonical names, choice captions, bounds and complete JSON", () => {
     const text = usage();
     assert.match(text, /Settings \(all 6 required\):/u);
-    for (const expected of ["PDF files", "combined", "One PDF — one image per page", "Paper size", "US Letter", "Maximum resolution", "72–1017", "Page background", "JPEG quality", "default 82", "White"]) { assert.ok(text.includes(expected), expected); }
+    for (const expected of ["PDF files", "combined", "One PDF — one image per page", "Paper size", "US Letter", "Maximum resolution", "72–1017", "Page background", "JPEG quality", "White"]) { assert.ok(text.includes(expected), expected); }
 });
 
 test("help states each numeric range once and documents the optional timestamp", () => {
     const text = usage();
-    assert.match(text, /resolutionLimit — Maximum resolution: 72–1017 ppi; default 300\n/u);
-    assert.match(text, /quality — JPEG quality: 1–100; default 82; JPEG re-encoding only\n/u);
+    assert.match(text, /resolutionLimit — Maximum resolution: 72–1017 ppi\n/u);
+    assert.match(text, /quality — JPEG quality: 1–100; JPEG re-encoding only\n/u);
     assert.equal(text.split("72–1017").length, 2, "the resolution range appears once");
     assert.match(text, /timestamp — YYYYMMDD_HHMMSS in local time; default now/u);
+});
+
+test("required settings help contains a ready-to-copy complete JSON example", () => {
+    const text = usage();
+    const example = /Example settings JSON \(all required fields\):\n(?<json>\{[\s\S]*?\n\})/u.exec(text);
+    assert.ok(example);
+    assert.deepEqual(JSON.parse(example.groups.json), { mode: "combined", paperSize: "A4", orientation: "Portrait", resolutionLimit: 300, quality: 82, background: "#FFFFFF" });
+    assert.doesNotMatch(text, /(?:resolutionLimit|quality|background) — [^\n]*default/u);
+});
+
+
+test("settings URLs decode before the path port and invalid URLs never reach IO", () => {
+    for (const url of ["file:///tmp/caf%C3%A9%20%25.json", "file://localhost/tmp/caf%C3%A9%20%25.json"]) {
+        const calls = [];
+        const port = { absolute: (path) => { calls.push(path); return path; }, read: (path) => { assert.equal(path, "/tmp/café %.json"); return settings; } };
+        cliCommand(["--headless", url, "photo.jpg"], port);
+        assert.deepEqual(calls, ["/tmp/café %.json", "photo.jpg"]);
+    }
+    for (const url of ["https://example.com/a.json", "file://remote/a.json", "file:/a.json", "file:///a%00.json", "file:///bad%.json"]) {
+        assert.throws(() => cliCommand(["--headless", url, "photo.jpg"], { absolute() { throw new Error("must not resolve"); } }),
+            (error) => error.issues[0].code === "settings-file" && error.issues[0].stage === "request" && error.message === `Settings file is not a valid local file URL: ${url}`);
+    }
 });

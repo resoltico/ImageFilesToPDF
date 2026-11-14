@@ -17,7 +17,7 @@ const EDGES = 2;
 const BAR_RADIUS = BAR_HEIGHT / EDGES;
 
 const CONTENT_WIDTH = PANEL_WIDTH - PADDING_X * EDGES;
-const STOP_WIDTH = 72;
+const STOP_WIDTH = 96;
 const FOOTER_HEIGHT = 24;
 const BAR_WIDTH = CONTENT_WIDTH - STOP_WIDTH - BAR_GAP;
 
@@ -217,20 +217,42 @@ const { appkitBridge } = require("./objc-bridge.js");
 
 const APPEARANCE_DELAY = 500;
 
-function makeStop(ns) {
-    const button = ns.NSButton.alloc.initWithFrame(rectOf(ns, { left: PANEL_WIDTH - PADDING_X - STOP_WIDTH, bottom: PADDING_Y, width: STOP_WIDTH, height: FOOTER_HEIGHT }));
-    button.title = "Stop";
-    button.bezelStyle = 1;
-    // Push-on/push-off retains a request until the next safe checkpoint.
-    button.setButtonType(1);
-    return button;
+const MOMENTARY_PUSH_IN_BUTTON = 7;
+const STOP_ACTIONS_CLASS = "ImageFilesToPDFProgressActions";
+
+function stopController(ns, objc) {
+    let type = ns.NSClassFromString(STOP_ACTIONS_CLASS);
+    if (!type || type.isNil()) {
+        objc.registerSubclass({ name: STOP_ACTIONS_CLASS, superclass: "NSViewController", methods: {
+            "requestStop:": { types: ["void", ["id"]], implementation(sender) {
+                sender.title = "Stopping…";
+                sender.enabled = false;
+            } }
+        } });
+        type = ns.NSClassFromString(STOP_ACTIONS_CLASS);
+    }
+    return type.alloc.init;
 }
 
-function build(ns) {
+function makeStop(ns, objc) {
+    const button = ns.NSButton.alloc.initWithFrame(rectOf(ns, { left: PANEL_WIDTH - PADDING_X - STOP_WIDTH, bottom: PADDING_Y, width: STOP_WIDTH, height: FOOTER_HEIGHT }));
+    const controller = stopController(ns, objc);
+    button.title = "Stop";
+    button.enabled = true;
+    button.bezelStyle = 1;
+    button.setButtonType(MOMENTARY_PUSH_IN_BUTTON);
+    button.target = controller;
+    button.action = ns.NSSelectorFromString("requestStop:");
+    return { button, controller };
+}
+
+function build(ns, objc) {
+    const stopping = makeStop(ns, objc);
     const content = makeContent(ns, PANEL_RECT);
     const view = {
         panel: makePanel(ns, PANEL_RECT, APP_NAME),
-        stop: makeStop(ns),
+        stop: stopping.button,
+        stopController: stopping.controller,
         headline: makeHeadline(ns, HEADLINE_RECT),
         detail: makeDetail(ns, DETAIL_RECT),
         track: makeBar(ns, TRACK_RECT, ns.NSColor.separatorColor),
@@ -273,7 +295,7 @@ function panelSink(view, ns, now, restore) {
 
             show(view.panel);
             paint(ns, view.panel);
-            if (Number(view.stop.state) !== 0) { throw new UserCanceled(); }
+            if (!view.stop.enabled) { throw new UserCanceled(); }
         },
 
         // Out of the way of a question, and armed again: whatever happens
@@ -296,7 +318,7 @@ function openPanel(bridge = appkitBridge(globalThis.ObjC, globalThis.$), now = D
         return null;
     }
 
-    const view = build(bridge.ns);
+    const view = build(bridge.ns, bridge.objc);
     return panelSink(view, bridge.ns, now, allowWindows(bridge.ns));
 }
 

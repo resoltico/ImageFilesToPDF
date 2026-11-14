@@ -9,7 +9,7 @@ osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless settings.json photo
 ```
 
 `--help` lists every setting in the table order below with its values and default; `--version` prints
-`Image Files to PDF <version>`. Both print to stdout and exit 0. Anything else that
+`Image Files to PDF <version>`. Both print to stdout and exit 0 when transport succeeds. Anything else that
 is not a complete `--headless` request is a usage error: it names the problem in one
 sentence (`No arguments were given.`, `Unknown option: <arg>.`,
 `--headless needs a settings file and at least one path.`, `An argument is empty.`
@@ -21,6 +21,8 @@ settings. Paths may be absolute or relative to the working directory. Local
 validation, saving and recovery follow the same rules as the Quick Action.
 
 ## Settings file
+
+The settings operand accepts a local `file://` URL (empty or `localhost` authority), including percent-encoded spaces and Unicode. Remote or malformed settings URLs are refused before reading the file.
 
 The settings file is UTF-8 JSON without a byte-order mark, and its root is an
 object. All six page settings are required; unknown fields, display captions in
@@ -56,15 +58,20 @@ When present it must be a real local date and time in exactly that shape; `null`
 
 ## Receipt and exit status
 
-Every handled request writes one JSON object, ending in a newline, to stdout, and a
-plain-language report to stderr. Read both the receipt and the exit status.
+A handled request attempts its plain-language stderr report before one JSON
+receipt on stdout, ending in a newline. Read both the receipt and the exit status.
+A transport failure exits nonzero even when a complete processing receipt was
+delivered; it does not remove confirmed PDFs or change their processing state.
+With working stderr, failed stdout completion adds one plain line:
+`Standard output could not be completed.` If stderr fails, the JSON receipt is
+still attempted; if both streams fail, neither readable output is guaranteed.
 
 | Exit | Meaning |
 | --- | --- |
 | `0` | Complete |
-| `1` | Incomplete or stopped; confirmed PDFs are kept |
+| `1` | Incomplete, stopped or stdout transport failed; confirmed PDFs are kept |
 | `2` | Usage error or invalid settings |
-| `3` | A required tool is missing or unusable |
+| `3` | Setup failed: a required tool/capability is unusable, or an unexpected setup fault occurred |
 
 ```json
 {"state":"complete","documents":[{"state":"saved","sources":["/Users/me/Pictures/photo.png"],"pages":1,"issues":[],"output":"/Users/me/Pictures/photo.pdf"}],"rejected":[],"issues":[],"diagnostics":[],"elapsed":"1 second"}
@@ -77,22 +84,32 @@ plain-language report to stderr. Read both the receipt and the exit status.
 | `rejected` | Selected items that were not admitted |
 | `issues` | Problems affecting the request as a whole |
 | `diagnostics` | Optional-surface and cleanup diagnostics, such as retained workspaces |
-| `elapsed` | Human-readable run time; absent when the run ends before conversion |
+| `elapsed` | Human-readable processing time, from the first image's preparation to completion; excludes dialogs and is absent before processing |
 
 `complete` requires every PDF saved, nothing rejected and no issues. A request
-refused before any work is `invalid`. A stop that leaves work undone is `canceled`;
+refused before any work is `invalid`. Invalid usage/settings exit 2; an expected
+tool-setup refusal is also `invalid` and exits 3 with the headline
+"A required tool is missing or unusable." A canceled run exits 1, including a stop during setup. A stop that leaves work undone is `canceled`;
 a stop that arrives after everything was saved does not erase the saved PDFs. An
-abrupt process end, an external kill or a failed stdout cannot guarantee a receipt.
+abrupt process end, `SIGKILL` or a failed stdout cannot guarantee a receipt.
 
-The stderr report is the headline, then sections separated by one blank line. Its
+`SIGINT` and `SIGTERM` request cooperative Stop. A running native command finishes before the next safe checkpoint observes the request; publication and recovery protections remain in force. Signal monitoring stays active through receipt transport. Normal process exit lets the OS reclaim its resources.
+
+The stderr report is the headline, then sections separated by one blank line.
+Output and recovery basenames are read back as literal directory-entry names after identity and size confirmation; chosen parent-folder spelling is preserved. If a claim's name cannot be verified, a verified private original stays in place and the issue reports that uncertainty rather than guessing a public output path. If the original cannot be verified either, the PDF is failed with a fatal issue and no recovery path; existing files remain untouched. The destination folder needs read/search access for this verification. An unavailable or ambiguous directory listing reports the same claim uncertainty and preserves existing files; a canonicalized path is not used as a guessed stored name.
+
+`Could not convert:` lists failed PDFs only. `Saved elsewhere:` lists each actual
+recovery path with a one-line cause. `Other issues:` keeps run-level or cleanup
+problems separate from failed conversions. `Temporary work:` names actual retained, unreadable or reclaimed workspaces when startup finds them; ordinary runs omit it. Its
 counts line lists only non-zero counts, as in `1 saved; 1 not included.`, and is
-left out when all are zero. `Elapsed: …` is the last section when known. An
+left out when all are zero. `Elapsed: …` ends the processing report when known; a transport-failure line can follow. An
 invalid request reports `The request is invalid.` and each problem.
 
 ## Document records
 
 Each record has `state`, `sources` (the full paths of its images, in page order),
-`pages` and `issues`.
+`pages` and `issues`. Optional `fatal: true` means a fault ended further documents;
+optional `diagnostics` holds technical observer diagnostics.
 
 | State | Meaning |
 | --- | --- |
@@ -109,24 +126,40 @@ faulted is identified in `issues` and is not a validated recovery.
 
 ## Issue codes
 
+A missing file or folder is `not-a-path` before format filtering; permission
+failures remain `unreadable` or `unexaminable`. Non-local URI schemes and remote
+`file://` authorities are `remote-url`; download those items first. For a relative
+filename that looks like a URI scheme, such as `photo:one.jpg`, use `./photo:one.jpg`.
+
 Every issue and every `rejected` entry carries a `code`, a `stage` and a message:
 `message` for issues, `reason` for rejected entries, which also carry `path` and
 `name`. An issue may also carry `field`, `source` and `diagnostic`; commands,
-native errors and stacks appear only in `diagnostic`. An `unsupported-content`
-refusal includes `diagnostic.loader`, the vips loader that recognized its content.
+native errors appear in `diagnostic`. Receipts omit every structured `stack` key,
+including nested diagnostic objects; user text containing the word “stack” is
+unchanged. Technical diagnostic records carry `code` and `message`, with optional
+`stage` and varying JSON details. An `unsupported-content`
+refusal includes `diagnostic.loader`, the vips loader that recognized its content, including excluded SVG and PDF content. Truncated HEIC recognized by its decoder is `damaged`; unrecognized bytes remain `not-an-image`. Visible pipes, sockets and devices inside selected folders are `special-file`; hidden entries and links remain skipped.
+Settings diagnostics distinguish `missing: true` from `expectedType`/`actualType`
+for wrong JSON types. CLI settings messages name the JSON key; form corrections
+keep the setting's display name.
 
 | Stage | Codes |
 | --- | --- |
 | `request` | `usage`, `settings-file`, `timestamp` |
-| `settings` | `unknown`, `choice`, `integer`, `color`, `object` |
+| `settings` | `unknown`, `choice`, `integer`, `color`; `object` belongs to the core validator, not the CLI root check |
 | `setup` | `operation` when a required tool or capability is missing or unusable |
 | `selection` | `folder`, `unsupported-format`, `not-a-file`, `not-a-path`, `remote-url`, `not-a-folder`, `package`, `link`, `special-file`, `unreadable`, `unexaminable`, `empty-folder`, and the run issue `no-images` |
 | `inspection` | `unreadable`, `empty`, `not-an-image`, `unsupported-content`, `multiple-images`, `damaged` |
 | `allocation`, `planning`, `capture`, `preparation`, `execution`, `validation`, `publication`, `recovery`, `cleanup`, `workspace`, `reporting` | `operation`, `fault`, `canceled`, `damaged`, `publication`, `recovery`, `cleanup` |
 
+A CLI settings root that is an array, `null` or another non-object is
+`settings-file` at `request`, with exit 2. The core `object` validation code is
+reserved for callers of the core settings validator.
+
 When nothing is admitted, the run issue `no-images` says
 `None of the selected items can be converted.` and the refused items are in
-`rejected`. Damage found only by a full decode is `damaged` at the `preparation`
+`rejected`. JPEG decoder warnings count as damage. Damage found only by a full
+decode is `damaged` at the `preparation`
 stage; a combined PDF with such an image is not saved, while separate mode saves
 the others. Software faults (`fault`), cleanup failures and a stop end the run;
 remaining PDFs are `not-started`. Confirmed PDFs are kept in every case.
@@ -143,14 +176,27 @@ rules for case and Unicode normalization, and folder aliases are matched by nati
 identity. An existing name gets ` 2`, ` 3` and so on. If those facts cannot be
 established, planning stops before any PDF is made rather than guessing.
 
+For an image-derived PDF name, the sanitized stem is shortened on a UTF-8 code
+point boundary as needed. The requested basename, including `.pdf` and any
+disambiguating source-extension suffix, uses at most 250 UTF-8 bytes before a
+collision number: five of the 255-byte budget are reserved for ` 9999`. Stored
+spelling can reflect filesystem normalization; use the actual receipt path.
+
 A PDF that cannot be saved at its destination is saved to `~/Downloads` under its
 intended name, or failing that to a confirmed copy in the system temporary
 directory. Always use the receipt's actual `output` or `recovery` path. Retained
-and unreadable workspaces are left in place and listed in `diagnostics`.
+and unreadable workspaces are left in place and listed in `diagnostics` and the
+human report. Successful safe startup reclamation uses diagnostic code
+`workspace-reclaimed`, stage `workspace`, and the exact workspace path in
+`diagnostic.path`; these notes do not change run state.
 
 ## Tool overrides
+
+External tools run with `LC_ALL=C`, independently of the caller's locale.
 
 `IMAGE_FILES_TO_PDF_VIPS`, `IMAGE_FILES_TO_PDF_VIPSHEADER` and
 `IMAGE_FILES_TO_PDF_PDFCPU` may name explicit executables. An override that is
 missing, relative or unusable fails setup with exit status 3; another executable is
-never substituted.
+never substituted. Override errors identify the variable and its value; fix or
+unset that override rather than installing a different automatic tool. Setup checks
+all three commands, including a real width read by `vipsheader` from a built-in PNG.

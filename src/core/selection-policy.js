@@ -7,7 +7,7 @@ const SELECTION_REASONS = Object.freeze({
     folder: "This is a folder; select the images inside it.",
     "unsupported-format": `This file is not a supported format; use ${supportedFormatList()}.`,
     "not-a-file": "This file cannot be read; check that it still exists and that you have access.",
-    "not-a-path": "This is not an absolute path to a file.",
+    "not-a-path": "No file or folder exists at this path.",
     "remote-url": "Remote URLs are not supported; download the file first.",
     "not-a-folder": "This is not a folder; the path ends with a slash.",
     package: "This is a package, not a folder of images.",
@@ -18,7 +18,7 @@ const SELECTION_REASONS = Object.freeze({
     "empty-folder": "This folder contains no supported images."
 });
 
-const KIND_CODES = Object.freeze({ package: "package", link: "link", other: "special-file", directory: "folder" });
+const KIND_CODES = Object.freeze({ package: "package", link: "link", other: "special-file", directory: "folder", missing: "not-a-path", unreadable: "unreadable", unexaminable: "unexaminable" });
 
 /* The refusal code for a selected path, or "" when it can be converted. */
 function selectionReason(kind, path, regular) {

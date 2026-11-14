@@ -20,7 +20,7 @@ const { isSupportedImage } = require("../core/formats.js");
  * succeed while inspecting what it listed fails: a folder with read but not
  * execute permission does exactly that.
  *
- * Dot-prefixed entries, packages and links are passed over. A link is not
+ * Visible special files are reported; dot-prefixed entries, packages and links are passed over. A link is not
  * followed because following one is how a walk leaves the folder it was given
  * and how it finds the same file twice.
  *
@@ -51,8 +51,12 @@ function childrenOf(tree, folder, names) {
  * something nobody asked for.
  */
 function consider(path, entry, taken, outcome) {
-    if (entry.kind === "missing" || (entry.kind === "file" && !entry.identity)) {
-        outcome.problems.push({ path, code: "unexaminable" });
+    if (entry.kind === "other") {
+        outcome.problems.push({ path, code: "special-file" });
+        return;
+    }
+    if (["missing", "unreadable", "unexaminable"].includes(entry.kind) || (entry.kind === "file" && !entry.identity)) {
+        outcome.problems.push({ path, code: entry.kind === "unreadable" ? "unreadable" : "unexaminable" });
 
         return;
     }

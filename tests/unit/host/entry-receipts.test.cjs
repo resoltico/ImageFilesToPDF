@@ -85,7 +85,7 @@ test("setup failure closes every progress surface before presenting its structur
     const closed=[];globalThis.Progress={get totalUnitCount(){return closed.at(-1);},set totalUnitCount(value){closed.push(value);}};
     assert.equal(run([["/source.png"],{}]),undefined);
     const [alert]=state.alerts;
-    assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","Finished with issues.\nNo PDF was created."]);
+    assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","A required tool is missing or unusable."]);
     assert.deepEqual(alert.buttons,["OK", "Details"]);
     assert.match(alert.accessoryView.documentView.string,/brew install vips pdfcpu/u);
     assert.doesNotMatch(alert.accessoryView.documentView.string,/diagnostic|stack/u);
@@ -143,4 +143,73 @@ test("Quick Action consent precedes settings and cancellation starts no conversi
     assert.equal(canceled.state.alerts.length, 1);
     assert.equal([...canceled.app.files].some((file) => file.endsWith(".pdf")), false);
     assert.equal(canceled.app.commands.some((command) => command.includes("'thumbnail'") && !command.includes("nonexistent-image")), false);
+});
+
+test("an unusable header probe is invalid setup with exit 3 before admission", () => {
+    const { app, output, stderr } = fixture();
+    app.headerProbe = "";
+    assert.equal(run(["--headless", "/config", "/source.png"]), 3);
+    const receipt = JSON.parse(output[0]);
+    assert.equal(receipt.state, "invalid");
+    assert.deepEqual(receipt.documents, []);
+    assert.deepEqual(receipt.rejected, []);
+    assert.equal(receipt.issues[0].stage, "setup");
+    assert.match(stderr.join(""), /^A required tool is missing or unusable\./u);
+});
+
+
+test("CLI signal stop uses existing canceled state and monitor outlives receipt transport", () => {
+    const signalController = require("../../../src/host/command-line/signal-controller.js");
+    const context = fixture();
+    let closed = false, polled = 0;
+    signalController.createSignalController = () => ({ poll: () => { polled += 1; return true; }, close: () => { closed = true; } });
+    context.ns.NSFileHandle.fileHandleWithStandardOutput.writeData = (text) => {
+        assert.equal(closed, false);
+        context.output.push(text);
+    };
+    assert.equal(run(["--headless", "/config", "/source.png"]), 1);
+    const receipt = JSON.parse(context.output[0]);
+    assert.equal(receipt.state, "canceled");
+    assert.equal(receipt.issues[0].code, "canceled");
+    assert.ok(polled > 0); assert.equal(closed, true);
+    assert.equal([...context.app.files].some((path) => path.endsWith(".pdf")), false);
+});
+
+test("an exit failure remains primary if monitor cleanup also fails", () => {
+    const signalController = require("../../../src/host/command-line/signal-controller.js");
+    const context = fixture();
+    const primary = new Error("exit stub failed");
+    let closed = false;
+    signalController.createSignalController = () => ({ poll: () => false, close() { closed = true; throw new Error("cleanup also failed"); } });
+    context.ns.exit = () => { throw primary; };
+    assert.throws(() => run(["--headless", "/config", "/source.png"]), (error) => error === primary);
+    assert.equal(closed, true); assert.equal(context.output.length, 1);
+});
+
+
+test("a required monitor poll fault fails the run instead of disabling an optional observer", () => {
+    const context = fixture();
+    const signalController = require("../../../src/host/command-line/signal-controller.js");
+    signalController.createSignalController = () => ({ poll: () => { throw new TypeError("required monitor failed"); }, close: () => undefined });
+    assert.equal(run(["--headless", "/config", "/source.png"]), 3);
+    const receipt = JSON.parse(context.output[0]);
+    assert.equal(receipt.state, "incomplete"); assert.equal(receipt.issues[0].code, "fault");
+    assert.equal(receipt.issues[0].message, "required monitor failed");
+    assert.deepEqual(receipt.diagnostics, []);
+});
+
+
+test("failed native stdout preserves the human report and published PDF with one plain failure line", () => {
+    const context = fixture();
+    context.ns.NSFileHandle.fileHandleWithStandardOutput.writeData = () => { throw new Error("Bad file descriptor"); };
+    assert.equal(run(["--headless", "/config", "/source.png"]), 1);
+    assert.equal(context.output.length, 0);
+    assert.match(context.stderr[0], /^Created 1 PDF/u);
+    assert.equal(context.stderr[1], "Standard output could not be completed.\n");
+    assert.ok([...context.app.files].some((path) => path.endsWith(".pdf")));
+    for (const option of ["--help", "--version"]) {
+        const help = fixture();
+        help.ns.NSFileHandle.fileHandleWithStandardOutput.writeData = () => { throw new Error("Closed stdout"); };
+        assert.equal(run([option]), 1); assert.deepEqual(help.stderr, ["Standard output could not be completed.\n"]);
+    }
 });

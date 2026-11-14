@@ -1,15 +1,22 @@
 "use strict";
+const { OperationError } = require("../core/errors.js");
+const { basename, dirname } = require("../core/paths.js");
 const { attributesAt, attributeText, identityOf, kindOf } = require("./native-file-attributes.js");
 
 const RENAME_EXCL = 4;
 const POSIX = { 17: "exists", 18: "cross-device", 45: "unsupported", 78: "unsupported", 1: "denied", 13: "denied", 30: "denied" };
 
 function classify(code, domain) {
-    if (domain === "NSPOSIXErrorDomain") { return POSIX[code] ?? "unknown"; }
-    if (domain === "NSCocoaErrorDomain") {
-        return { 516: "exists", 513: "denied", 642: "denied" }[code] ?? "unknown";
-    }
-    return "unknown";
+    return domain === "NSPOSIXErrorDomain" ? POSIX[code] ?? "unknown" : "unknown";
+}
+
+// What a C call answered: created, or what errno says went wrong, read at once.
+function posixOutcome(ns, status) {
+    if (status === 0) { return { state: "created" }; }
+    // __error is the native thread-local errno function, whose spelling is fixed.
+    // eslint-disable-next-line no-underscore-dangle
+    const code = Number(ns.__error()[0]);
+    return { state: classify(code, "NSPOSIXErrorDomain"), diagnostic: { code, domain: "NSPOSIXErrorDomain", message: String(ns.strerror(code)) } };
 }
 
 function nativeFacts(objc, ns, manager, path) {
@@ -20,37 +27,56 @@ function nativeFacts(objc, ns, manager, path) {
     return identity && Number.isSafeInteger(size) && size >= 0 ? { identity, size } : { identity: "", size: -1 };
 }
 
+function sameArtifact(facts, expected) {
+    return Boolean(expected.identity) && facts.identity === expected.identity && facts.size === expected.size;
+}
+
+function storedPath({ objc, ns, manager }, path, expected) {
+    if (!sameArtifact(nativeFacts(objc, ns, manager, path), expected)) {
+        throw new OperationError("The published PDF identity could not be confirmed before reading its name.");
+    }
+    const directory = dirname(path);
+    const listed = manager.contentsOfDirectoryAtPathError(ns(directory), ns());
+    if (!listed || listed.isNil()) {
+        throw new OperationError("The output directory could not be read to verify the PDF's stored filename (read/search access is required).");
+    }
+    const entries = objc.deepUnwrap(listed);
+    if (!Array.isArray(entries) || entries.some((name) => typeof name !== "string")) {
+        throw new OperationError("The output directory's entry names could not be read reliably.");
+    }
+    const requested = basename(path);
+    const exact = entries.filter((name) => name === requested);
+    // Normalization selects candidates only. Return the literal directory entry.
+    const candidates = exact.length > 0 ? exact : entries.filter((name) => name.normalize("NFC") === requested.normalize("NFC"));
+    const verified = candidates.map((name) => directory + name)
+        .filter((candidate) => sameArtifact(nativeFacts(objc, ns, manager, candidate), expected));
+    if (verified.length !== 1) {
+        throw new OperationError("The published PDF's stored filename could not be uniquely verified from its directory entries.");
+    }
+    const [actual] = verified;
+    if (!sameArtifact(nativeFacts(objc, ns, manager, path), expected) || !sameArtifact(nativeFacts(objc, ns, manager, actual), expected)) {
+        throw new OperationError("The published PDF identity changed while reading its stored filename.");
+    }
+    return actual;
+}
+
 function nativePublication(objc, ns) {
     if (!objc || !ns) { return null; }
     objc.import("Foundation");
     objc.import("stdio");
     objc.bindFunction("__error", ["int *", []]);
     objc.bindFunction("strerror", ["char *", ["int"]]);
+    objc.bindFunction("link", ["int", ["char *", "char *"]]);
     const manager = ns.NSFileManager.defaultManager;
     return {
         facts: (path) => nativeFacts(objc, ns, manager, path),
-        link(from, to) {
-            const error = ns();
-            if (manager.linkItemAtPathToPathError(ns(from), ns(to), error)) { return { state: "created" }; }
-            const code = Number(error.code);
-            const domain = String(objc.unwrap(error.domain));
-            let state = classify(code, domain);
-            const underlying = error.userInfo.objectForKey(ns.NSUnderlyingErrorKey);
-            if (state === "unknown" && underlying && !underlying.isNil()) {
-                state = classify(Number(underlying.code), String(objc.unwrap(underlying.domain)));
-            }
-            return { state, diagnostic: { code, domain,
-                message: String(objc.unwrap(error.localizedDescription)) } };
-        },
-        rename(from, to) {
-            const status = ns.renamex_np(from, to, RENAME_EXCL);
-            // __error is the native thread-local errno function, whose spelling is fixed.
-            // eslint-disable-next-line no-underscore-dangle
-            const code = status === 0 ? 0 : Number(ns.__error()[0]);
-            return status === 0 ? { state: "created" } : {
-                state: classify(code, "NSPOSIXErrorDomain"), diagnostic: { code, domain: "NSPOSIXErrorDomain", message: String(ns.strerror(code)) }
-            };
-        }
+        actualPath: (path, expected) => storedPath({ objc, ns, manager }, path, expected),
+        // link(2) rather than NSFileManager: measured, linkItemAtPath writes
+        // the name decomposed, so a photograph named "rīga.jpg" in NFC came
+        // back as a copy whose name no longer matched its original's bytes.
+        // The C call keeps the bytes it is given and fails with EEXIST alike.
+        link: (from, to) => posixOutcome(ns, ns.link(from, to)),
+        rename: (from, to) => posixOutcome(ns, ns.renamex_np(from, to, RENAME_EXCL))
     };
 }
 module.exports = { nativePublication, classify };
