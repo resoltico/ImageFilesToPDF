@@ -1,15 +1,11 @@
 "use strict";
 
 /*
- * Invocation parsing.
+ * osascript may forward its own "--" argument separator into run(). Leading
+ * separators are removed before either front end reads the remaining input:
  *
- * osascript forwards its own "--" argument separator into run(), so the
- * script's first argument is "--" rather than the caller's first real
- * argument. Dropping leading separators makes both of these equivalent, which
- * is what lets the integration suite run unattended:
- *
- *     osascript -l JavaScript script.jxa -- --command-line config.json image
- *     osascript -l JavaScript script.jxa    --command-line config.json image
+ *     osascript -l JavaScript script.jxa -- <args…>
+ *     osascript -l JavaScript script.jxa    <args…>
  */
 
 const ARGUMENT_SEPARATOR = "--";
