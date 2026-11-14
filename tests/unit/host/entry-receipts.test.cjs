@@ -185,3 +185,15 @@ test("an exit failure remains primary if monitor cleanup also fails", () => {
     assert.throws(() => run(["--headless", "/config", "/source.png"]), (error) => error === primary);
     assert.equal(closed, true); assert.equal(context.output.length, 1);
 });
+
+
+test("a required monitor poll fault fails the run instead of disabling an optional observer", () => {
+    const context = fixture();
+    const signalController = require("../../../src/host/command-line/signal-controller.js");
+    signalController.createSignalController = () => ({ poll: () => { throw new TypeError("required monitor failed"); }, close: () => undefined });
+    assert.equal(run(["--headless", "/config", "/source.png"]), 3);
+    const receipt = JSON.parse(context.output[0]);
+    assert.equal(receipt.state, "incomplete"); assert.equal(receipt.issues[0].code, "fault");
+    assert.equal(receipt.issues[0].message, "required monitor failed");
+    assert.deepEqual(receipt.diagnostics, []);
+});

@@ -34,10 +34,7 @@ function closeMonitor(monitor, failed) {
 
 function monitoredRun(invocation) {
     let monitor = null;
-    const progress = createProgress([{
-        start: () => undefined, pause: () => undefined, close: () => undefined,
-        report() { if (monitor?.poll()) { progress.requestStop(); } }
-    }]);
+    const progress = createProgress([], () => monitor?.poll() ?? false);
     let failed = false;
     try {
         return reportHeadless(cliOutcome(invocation, progress, () => { monitor = signalController.createSignalController(); }));

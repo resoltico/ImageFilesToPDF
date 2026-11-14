@@ -47,18 +47,19 @@ function broadcast(sinks, state) {
  * A sink can register Stop while processing a report. Check after notifying
  * it so that the same safe checkpoint observes that request.
  */
-function announce(state, say) {
+function announce(state, say, requiredStop) {
     say();
+    state.stopped ||= requiredStop();
 
     if (state.stopped) {
         throw new UserCanceled();
     }
 }
 
-function reporting(state, say) {
+function reporting(state, say, requiredStop) {
     const headline = (text) => {
         state.description = text;
-        announce(state, say);
+        announce(state, say, requiredStop);
     };
 
     return {
@@ -79,7 +80,7 @@ function reporting(state, say) {
         // last stages of a combined run are about the PDF.
         about(summary) {
             state.detail = summary;
-            announce(state, say);
+            announce(state, say, requiredStop);
         },
 
         phase: headline,
@@ -123,10 +124,11 @@ function lifecycle(state, each) {
 }
 
 /*
- * A reporter with no surfaces reports nowhere and can never be stopped: what a job starts with. Command-line signal polling uses a silent sink. There is no second way of
- * saying it.
+ * Sinks observe progress; failed optional observers are detached.
+ * Required Stop polling runs outside that broadcast at safe announcements.
+ * Command-line progress can therefore stop without a visible surface.
  */
-function createProgress(sinks) {
+function createProgress(sinks, requiredStop = () => false) {
     const state =
         { images: 0, done: 0, description: "", detail: "", stopped: false, closed: false, diagnostics: [] };
     const each = broadcast(sinks, state);
@@ -134,7 +136,7 @@ function createProgress(sinks) {
         (sink) => sink.report(state.done, state.description, state.detail)
     );
 
-    return { ...reporting(state, say), ...lifecycle(state, each), diagnostics: state.diagnostics, requestStop() { state.stopped = true; } };
+    return { ...reporting(state, say, requiredStop), ...lifecycle(state, each), diagnostics: state.diagnostics, requestStop() { state.stopped = true; } };
 }
 
 module.exports = { createProgress };

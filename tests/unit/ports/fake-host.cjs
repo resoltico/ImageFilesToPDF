@@ -92,6 +92,7 @@ function dialogSurface(host) {
 function nativePorts(fs, host) {
     const publication = {
         facts: fs.facts,
+        actualPath: (path) => path,
         link(from, to) {
             try { fs.test(["-e", to, "-o", "-L", to]); return { state: "exists" }; } catch {
                 // This fixture positively classified the path as unoccupied.

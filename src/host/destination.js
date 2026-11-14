@@ -1,4 +1,5 @@
 "use strict";
+const { requireOriginal } = require("./publication-name.js");
 const { OperationError } = require("../core/errors.js");
 const { collisionPath, MAXIMUM_SUFFIX } = require("../core/naming.js");
 const { stagingArea } = require("./staging-area.js");
@@ -7,9 +8,12 @@ const needsStaging = (state) => ["cross-device", "unsupported"].includes(state);
 
 function destinationCopy(context) {
     const { job, paths, facts } = context;
+    requireOriginal(job.publication, { staged: paths.staged, expected: context.facts, cause: null });
     const area = stagingArea(paths.final);
     const copied = copyBeside(job, paths.staged, area, facts.size);
     context.area = copied.area;
+    requireOriginal(job.publication, { staged: paths.staged, expected: context.facts, cause: copied.error ?? null,
+        candidate: copied.area ? { folder: copied.area.directory, ...(copied.state === "copied" ? { identity: copied.identity, size: copied.size } : {}) } : null });
     if (copied.state !== "copied") { throw copied.error; }
     Object.assign(context, { from: area.file, claimed: { identity: copied.identity, size: facts.size } });
 }

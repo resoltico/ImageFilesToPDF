@@ -141,3 +141,23 @@ test("nothing to report to is nothing to be stopped by", () => {
         silent.beginning(1, "x.png");
     });
 });
+
+
+test("required Stop control runs after announcement and is never treated as an optional observer", () => {
+    const events = [];
+    let stopped = false;
+    const progress = createProgress([{ report: () => events.push("report") }], () => { events.push("poll"); return stopped; });
+    progress.phase("Checking");
+    assert.deepEqual(events, ["report", "poll"]);
+    stopped = true;
+    assert.doesNotThrow(() => progress.finished("Finished safely"));
+    assert.deepEqual(events, ["report", "poll", "report"]);
+    assert.throws(() => progress.phase("Before more work"), UserCanceled);
+    stopped = false;
+    assert.throws(() => progress.phase("Stop stays latched"), UserCanceled);
+    for (const fault of [new TypeError("required controller bug"), new Error("required controller unavailable")]) {
+        const broken = createProgress([], () => { throw fault; });
+        assert.throws(() => broken.phase("Before work"), (error) => error === fault);
+        assert.deepEqual(broken.diagnostics, []);
+    }
+});

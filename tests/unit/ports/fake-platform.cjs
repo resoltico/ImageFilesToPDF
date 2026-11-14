@@ -95,6 +95,8 @@ function installPlatform(app, options = {}) {
             url.URLByResolvingSymlinksInPath=url;return url;
         }},
         CGImageSourceCreateWithURL: () => ({}), CGImageSourceGetCount: () => app.pages ?? 1,
+        link: (from, to) => app.publication.link(from, to).state === "created" ? 0 : -1,
+        "__error": () => [17], strerror: () => "File exists",
         CFRelease: () => undefined,
         exit: (code) => code,
         NSFileHandle: { fileHandleWithStandardOutput: { writeData: (text) => output.push(text) }, fileHandleWithStandardError: { writeData: (text) => stderr.push(text) } }

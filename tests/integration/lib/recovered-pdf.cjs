@@ -1,4 +1,5 @@
 "use strict";
+const { Buffer } = require("node:buffer");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -53,6 +54,8 @@ function assertRecoveredPdf(document, source, capability, inventory) {
     assert.equal(issue.diagnostic.state, "unsupported");
     assert.equal(issue.diagnostic.code, capability.code);
     const owned = newRecovery(document.recovery, inventory);
+    assert.ok(fs.readdirSync(path.dirname(owned.file), { encoding: "buffer" }).some((name) => name.equals(Buffer.from(path.basename(owned.file)))),
+        "recovery basename equals its raw directory entry without normalization");
     execFileSync("pdfcpu", ["validate", "--conf", "disable", "--mode=strict", owned.file], { stdio: "pipe" });
     execFileSync("qpdf", ["--check", owned.file], { stdio: "pipe" });
     assert.match(execFileSync("pdfinfo", [owned.file], { encoding: "utf8" }), /^Pages:\s+1\s*$/mu);

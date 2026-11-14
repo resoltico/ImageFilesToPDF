@@ -1,6 +1,6 @@
 "use strict";
 const {Buffer} = require("node:buffer");
-const {setTimeout} = require("node:timers");
+const {clearTimeout, setTimeout} = require("node:timers");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -138,6 +138,12 @@ async function registeredWorkspace(existing) {
     return assert.fail("actual child registered no workspace");
 }
 
+async function childEnded(child) {
+    const deadline = setTimeout(() => { child.kill("SIGKILL"); }, 30000);
+    try { return await once(child, "exit"); }
+    finally { clearTimeout(deadline); }
+}
+
 async function signalRun(delivered, input) {
     const existing = new Set(fs.readdirSync(os.tmpdir()));
     activeChild = spawn("/usr/bin/osascript", ["-l", "JavaScript", script, "--headless", config, input]);
@@ -145,7 +151,7 @@ async function signalRun(delivered, input) {
     activeChild.stdout.setEncoding("utf8"); activeChild.stderr.setEncoding("utf8");
     activeChild.stdout.on("data", (text) => { stdout += text; }); activeChild.stderr.on("data", (text) => { stderr += text; });
     await registeredWorkspace(existing);
-    const ended = once(activeChild, "exit");
+    const ended = childEnded(activeChild);
     for (const signal of delivered) { activeChild.kill(signal); }
     const [code, signal] = await ended;
     assert.equal(signal, null, stderr); assert.equal(code, 1, stderr);
@@ -172,7 +178,7 @@ async function ownership() {
     const existing=new Set(fs.readdirSync(os.tmpdir()));
     activeChild=spawn("/usr/bin/osascript",["-l","JavaScript",script,"--headless",config,input],{stdio:"ignore"});
     const orphan = await registeredWorkspace(existing);
-    const ended=once(activeChild,"exit");activeChild.kill("SIGKILL");await ended;
+    const ended=childEnded(activeChild);activeChild.kill("SIGKILL");await ended;
     assert.ok(fs.existsSync(orphan),"KILL left an observable orphan");
     const retained=execFileSync("mktemp",["-d","-t","ImageFilesToPDF"],{encoding:"utf8"}).trim();owned.add(retained);
     fs.writeFileSync(path.join(retained,"owner.json"),JSON.stringify({pid:2147483647,started:"not a live process"}));
@@ -305,7 +311,7 @@ async function run() {
 // eslint-disable-next-line no-console
 run().catch((error)=>{console.error(error);process.exitCode=1;}).finally(async()=>{
     if(activeChild&&activeChild.exitCode===null&&activeChild.signalCode===null) {
-        const ended=once(activeChild,"exit");activeChild.kill("SIGKILL");await ended;
+        const ended=childEnded(activeChild);activeChild.kill("SIGKILL");await ended;
     }
     for(const directory of owned) {fs.rmSync(directory,{recursive:true,force:true});}
 });

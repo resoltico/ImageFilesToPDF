@@ -108,3 +108,15 @@ test("only meaningful diagnostics for actual retained, reclaimed or unreadable w
         }
     }
 });
+
+
+test("multiple failed documents and workspace notes retain separate copyable path lines", () => {
+    const failed = ["/first.jpg", "/second.png"].map((path) => ({ state: "failed", sources: [path], pages: 0,
+        issues: [{ code: "damaged", stage: "preparation", message: "This image is damaged." }] }));
+    const diagnostics = [
+        { code: "workspace-retained", stage: "workspace", message: "Retained work.", diagnostic: { path: "/tmp/ImageFilesToPDF.A123456789" } },
+        { code: "workspace-reclaimed", stage: "workspace", message: "Reclaimed work.", diagnostic: { path: "/tmp/ImageFilesToPDF.B123456789" } }
+    ];
+    assert.equal(reportText(runOutcome(failed, [], [], diagnostics)),
+        "Finished with issues.\nNo PDF was created.\n\n2 failed.\n\nCould not convert:\n/first.jpg: This image is damaged.\n/second.png: This image is damaged.\n\nTemporary work:\nRetained work.\n/tmp/ImageFilesToPDF.A123456789\n\nReclaimed work.\n/tmp/ImageFilesToPDF.B123456789");
+});
