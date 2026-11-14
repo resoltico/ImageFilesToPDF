@@ -4,8 +4,8 @@ const { readAnswers } = require("../../src/host/quick-action/settings-model.js")
 const { buildForm } = require("../../src/host/quick-action/appkit.js");
 const { WIDGETS } = require("../../src/host/quick-action/appkit.js");
 const { appkitBridge } = require("../../src/host/quick-action/objc-bridge.js");
-const { build: buildProgressPanel } = require("../../src/host/quick-action/panel.js");
-const { detailsAlert, layoutDetails } = require("../../src/host/quick-action/details-dialog.js");
+const { build: buildProgressPanel, allowWindows } = require("../../src/host/quick-action/panel.js");
+const { detailsAlert, layoutDetails, runDetailsModal } = require("../../src/host/quick-action/details-dialog.js");
 const SMALLEST_VISIBLE_HEIGHT = 744;
 const PNG_TYPE = 4;
 
@@ -155,6 +155,65 @@ function checkStopControl(appearance) {
     view.panel.close;
 }
 
+const MODAL_SCROLL_DELAY = 0.1;
+const SCROLL_TOLERANCE = 0.001;
+
+function checkModalScroll(appearance, initialize) {
+    const restore = allowWindows($);
+    const alert = detailsAlert($, { title: "Native modal scroll check", summary: "Read full details.",
+        detail: Array.from({ length: 40 }, (ignored, index) => `${index}: Generated native modal details.`).join("\n"), buttons: ["OK"] });
+    alert.window.appearance = $.NSAppearance.appearanceNamed(appearance);
+    const scroll = alert.accessoryView;
+    const state = { phase: 0, desired: 0, initial: null, failure: null, callback: null };
+    let timer = null;
+    state.callback = ObjC.block(["void", ["id"]], () => {
+        try {
+            if (state.phase === 0) {
+                state.initial = Number(scroll.verticalScroller.doubleValue);
+                if (initialize) { requireNative(state.initial === 0, "Shown modal details did not start at zero."); }
+                else { requireNative(state.initial >= 0 && state.initial <= 1, "The pre-modal-only control did not show a real scroller."); }
+                state.phase = 1;
+                const middle = (Number(scroll.documentView.frame.size.height) - Number(scroll.contentSize.height)) / 2;
+                scroll.contentView.scrollToPoint($.NSMakePoint(0, middle));
+                scroll.reflectScrolledClipView(scroll.contentView);
+                state.desired = Number(scroll.verticalScroller.doubleValue);
+                requireNative(state.desired > 0, "The user-scroll negative control did not move.");
+            } else {
+                requireNative(Math.abs(Number(scroll.verticalScroller.doubleValue) - state.desired) < SCROLL_TOLERANCE, "Initialization fought later user scrolling.");
+                state.phase = 2;
+                // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+                $.NSApplication.sharedApplication.abortModal;
+            }
+        } catch (error) {
+            state.failure = { error };
+            // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+            $.NSApplication.sharedApplication.abortModal;
+        }
+    });
+    try {
+        timer = $.NSTimer.timerWithTimeIntervalRepeatsBlock(MODAL_SCROLL_DELAY, true, state.callback);
+        $.NSRunLoop.currentRunLoop.addTimerForMode(timer, $.NSModalPanelRunLoopMode);
+        if (initialize) { runDetailsModal({ objc: ObjC, ns: $ }, alert, [scroll]); }
+        else {
+            // Retired pre-modal reset is a measured control, not a requirement
+            // that future AppKit versions must preserve the old defect.
+            layoutDetails($, alert, [scroll]);
+            Number(alert.runModal);
+        }
+        if (state.failure) { throw state.failure.error; }
+        requireNative(state.phase === 2, "The actual modal lifecycle was not exercised.");
+        // eslint-disable-next-line no-console -- native gate evidence
+        console.log(JSON.stringify({ modalInitialization: initialize ? "visible-update" : "pre-modal-only", appearance, initialScroller: state.initial, laterUserScrollRetained: true }));
+    } finally {
+        // eslint-disable-next-line no-unused-expressions -- native zero-argument methods
+        if (timer) { timer.invalidate; }
+        // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+        alert.window.close;
+        state.callback = null;
+        restore();
+    }
+}
+
 function run(input) {
     requireNative(Boolean(appkitBridge(ObjC, $)), "Native UI frameworks are unavailable.");
     // eslint-disable-next-line no-unused-expressions
@@ -163,6 +222,8 @@ function run(input) {
     for (const appearance of ["NSAppearanceNameAqua", "NSAppearanceNameDarkAqua"]) {
         const name = ObjC.unwrap($[appearance]);
         checkStopControl(name);
+        checkModalScroll(name, false);
+        checkModalScroll(name, true);
         for (const scenario of scenarios) { snapshot(String(input[0]), scenario, name); }
     }
     return "macOS form integration passed";

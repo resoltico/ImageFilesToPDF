@@ -305,7 +305,7 @@ function buildForm(bridge, spec, widgets) {
 }
 
 const { MODAL_UNAVAILABLE } = require("./objc-bridge.js");
-const { makeDetails, layoutDetails } = require("./details-dialog.js");
+const { makeDetails, runDetailsModal } = require("./details-dialog.js");
 
 // Gathered into one object so a test can substitute the whole widget layer.
 const WIDGETS = {
@@ -354,9 +354,7 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
     alert.accessoryView = view;
     const focus = spec.rows.find((row) => row.invalid) ?? spec.rows.find((row) => row.kind === "number");
     alert.window.initialFirstResponder = controls[focus.key];
-    layoutDetails(bridge.ns, alert, [built.details]);
-
-    const response = Number(alert.runModal);
+    const response = runDetailsModal(bridge, alert, [built.details]);
 
     if (response === MODAL_UNAVAILABLE) {
         return null;

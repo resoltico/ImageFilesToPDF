@@ -46,6 +46,14 @@ function installClasses(ns, state, application) {
         NSMakeRange: (location, length) => ({ location, length }),
         NSSelectorFromString: (name) => `sel:${name}`,
         NSModalPanelRunLoopMode: "NSModalPanelRunLoopMode",
+        NSWindowDidUpdateNotification: "NSWindowDidUpdateNotification",
+        NSNotificationCenter: { defaultCenter: {
+            addObserverForNameObjectQueueUsingBlock(name, object, queue, callback) {
+                const token = { name, object, queue, callback };
+                state.observers.push(token); return token;
+            },
+            removeObserver(token) { state.observers = state.observers.filter((entry) => entry !== token); state.removedObservers.push(token); }
+        } },
         NSButton: { alloc: { initWithFrame: (rect) => ({...makeView(rect), state: 0, setButtonType(type) {this.buttonType=type;}}) } },
         NSView: { alloc: { initWithFrame: makeView } },
         CALayer: { get layer() { return {}; } },
@@ -104,6 +112,7 @@ function createFakeObjC(settings = {}) {
         disarmed: [],
         pumped: [],
         policies: [],
+        observers: [], removedObservers: [], aborted: 0,
         duringModal: settings.duringModal ?? (() => undefined),
         // NSApplicationActivationPolicyAccessory unless a test says otherwise;
         // 2 is prohibited, which cannot put a window on screen.
@@ -122,6 +131,7 @@ function createFakeObjC(settings = {}) {
         }
     };
 
+    Object.defineProperty(application, "abortModal", { get() { state.aborted += 1; if (settings.abortFailure) { throw settings.abortFailure; } return undefined; } });
     Object.defineProperty(application, "activationPolicy", {
         get: () => state.policy
     });
@@ -141,7 +151,7 @@ function createFakeObjC(settings = {}) {
 
     installClasses(ns, state, application);
 
-    return { ns, objc: { unwrap: (value) => value, import: () => true, registerSubclass }, state };
+    return { ns, objc: { unwrap: (value) => value, import: () => true, block: (types, callback) => callback, registerSubclass }, state };
 }
 
 module.exports = { createFakeObjC };

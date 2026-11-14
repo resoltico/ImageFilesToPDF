@@ -79,11 +79,50 @@ function layoutDetails(ns, alert, scrolls) {
     }
 }
 
+function runDetailsModal(bridge, alert, scrolls) {
+    const { ns, objc } = bridge;
+    layoutDetails(ns, alert, scrolls);
+    const { window } = alert;
+    const center = ns.NSNotificationCenter.defaultCenter;
+    // Keep the native block alive through modal return, including after its
+    // one-shot registration has been removed.
+    const lifetime = { token: null, callback: null, phase: "registering", busy: false, attempted: false, failure: null };
+    lifetime.callback = objc.block(["void", ["id"]], () => {
+        // JXA native getters can pump another window-update notification.
+        // Every guard here must stay pure JavaScript until busy is set.
+        if (lifetime.phase !== "modal" || lifetime.busy || lifetime.attempted) { return; }
+        lifetime.busy = true;
+        try {
+            if (!window.visible) { return; }
+            lifetime.attempted = true;
+            if (lifetime.token) { center.removeObserver(lifetime.token); lifetime.token = null; }
+            layoutDetails(ns, alert, scrolls);
+        } catch (error) {
+            lifetime.attempted = true;
+            lifetime.failure = { error };
+            try {
+                // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+                ns.NSApplication.sharedApplication.abortModal;
+            } catch (abortFailure) { lifetime.failure.abortFailure = abortFailure; }
+        } finally { lifetime.busy = false; }
+    });
+    try {
+        lifetime.token = center.addObserverForNameObjectQueueUsingBlock(ns.NSWindowDidUpdateNotification, window, ns(), lifetime.callback);
+        lifetime.phase = "modal";
+        const response = Number(alert.runModal);
+        if (lifetime.failure) { throw lifetime.failure.error; }
+        return response;
+    } finally {
+        lifetime.phase = "closed";
+        if (lifetime.token) { center.removeObserver(lifetime.token); }
+        lifetime.callback = null;
+    }
+}
+
 function showDetails(app, spec, bridge = appkitBridge(globalThis.ObjC, globalThis.$)) {
     if (!bridge) { return showDetailPages(app, spec); }
     const alert = detailsAlert(bridge.ns, spec);
-    layoutDetails(bridge.ns, alert, [alert.accessoryView]);
-    const response = Number(alert.runModal);
+    const response = runDetailsModal(bridge, alert, [alert.accessoryView]);
     return response === MODAL_UNAVAILABLE ? showDetailPages(app, spec) : response - FIRST_BUTTON;
 }
-module.exports = { makeDetails, detailsAlert, layoutDetails, showDetails, detailPages, DETAIL_HEIGHT, DETAIL_WIDTH };
+module.exports = { makeDetails, detailsAlert, layoutDetails, runDetailsModal, showDetails, detailPages, DETAIL_HEIGHT, DETAIL_WIDTH };
