@@ -17,6 +17,7 @@
 - The stderr report precedes its receipt. Failed stdout completion gets a plain error when stderr is available; transport failures keep created PDFs and exit nonzero.
 - Reports name retained, unreadable or safely reclaimed stale workspaces, so unfinished temporary work remains visible.
 - Receipts and reports use the actual stored output and recovery basenames, including Unicode normalization changes made by the filesystem.
+- Filename-inspection cleanup failures retain validated work and stop remaining PDFs, including when another publication failure occurs first.
 - Recovered PDFs have a `Saved elsewhere` section with a one-line cause; `Could not convert` lists failures only and other issues remain visible.
 - Missing input paths are reported before format filtering; non-local URI schemes and remote file URLs are classified as remote URLs.
 - Command-line settings errors name the JSON key and distinguish missing fields from wrong JSON types.

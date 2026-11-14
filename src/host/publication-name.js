@@ -23,13 +23,15 @@ function actualPublicationPath(publication, { staged, original, path, claimed })
         let originalFailure = null;
         try { requireOriginal(publication, { staged, expected: original, cause: error }); }
         catch (failure) { originalFailure = failure; }
-        const nativeCode = issuesOf(error, "publication")[0].code;
-        const code = originalFailure ? ISSUE.fault : nativeCode;
+        const underlying = issuesOf(error, "publication");
+        const primary = underlying.findIndex((issue) => issue.code !== ISSUE.cleanup);
+        const code = originalFailure ? ISSUE.fault : underlying[primary]?.code ?? ISSUE.publication;
+        const stack = underlying[primary]?.diagnostic?.stack;
         const message = `A finished copy was created, but its stored filename could not be verified. ${originalFailure ? "The original PDF could not be verified either; no trustworthy recovery path is available." : "The validated original was retained."}`;
         throw new IssueError(message, { cause: originalFailure ?? error, recovery: originalFailure ? null : staged, stack: error?.stack,
             issues: [{ code: code === ISSUE.operation ? ISSUE.publication : code, stage: "publication", message,
-                diagnostic: { message: `${message} ${errorMessage(error)}`, folder: dirname(path), claimedIdentity: claimed.identity, claimedSize: claimed.size,
-                    ...(originalFailure ? originalFailure.issues[0].diagnostic : {}) } }] });
+                diagnostic: { ...(stack ? { stack } : {}), message: `${message} ${errorMessage(error)}`, folder: dirname(path), claimedIdentity: claimed.identity, claimedSize: claimed.size,
+                    ...(originalFailure ? originalFailure.issues[0].diagnostic : {}) } }, ...underlying.filter((unused, index) => index !== primary)] });
     }
 }
 module.exports = { actualPublicationPath, requireOriginal };

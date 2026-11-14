@@ -91,7 +91,10 @@ couples a unique exact
 or canonical-equivalent candidate to the claimed regular-file identity and size;
 normalization is for candidate selection, never for the returned spelling. The
 canonical API used for name-equivalence grouping is not a stored-name authority.
-Denied or ambiguous listings use the existing original-preservation path.
+Denied or ambiguous listings use the existing original-preservation path. A native
+stream close failure carries an explicit `cleanup` issue through publication
+context and stops the executor. Preserve all secondary issues and the original
+cause/stack; replacing the primary presentation must not discard mandatory cleanup.
 
 The document/run outcomes own source mappings, counts and actual saved/recovery
 locations. An explicit verified recovery path remains distinct from a producer

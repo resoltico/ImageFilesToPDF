@@ -1,6 +1,6 @@
 "use strict";
 const { OperationError, IssueError, errorMessage } = require("../core/errors.js");
-const { issuesOf } = require("../core/outcomes.js");
+const { ISSUE, issuesOf } = require("../core/outcomes.js");
 // SDK-checked Darwin64 dirent, shared by supported arm64 and x86_64 processes.
 const BYTE_RADIX = 256;
 const ERRNO_SYMBOL = "__error";
@@ -71,9 +71,12 @@ function readEntries(directory, pair, runtime) {
         if (status !== 0) { throw directoryFailure("closedir", code); }
     } catch (error) { cleanup.push(error); }
     if (cleanup.length) {
+        const closeIssues = issuesOf(cleanup[0], "cleanup");
+        const classifications = closeIssues.filter((issue) => [ISSUE.fault, ISSUE.canceled].includes(issue.code));
+        const mandatory = closeIssues.map((issue) => ({ ...issue, code: ISSUE.cleanup, stage: "cleanup" }));
         throw new IssueError(failed ? errorMessage(primary) : "The native directory stream could not be closed.", {
-            cause: failed ? primary : cleanup[0],
-            issues: [...failed ? issuesOf(primary, "publication") : [], ...issuesOf(cleanup[0], "cleanup")]
+            cause: failed ? primary : cleanup[0], stack: (failed ? primary : cleanup[0])?.stack,
+            issues: [...failed ? issuesOf(primary, "publication") : [], ...classifications, ...mandatory]
         });
     }
     if (failed) { throw primary; }

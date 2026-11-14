@@ -2,7 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { nativeEntryNames } = require("../../../src/host/directory-entry-names.js");
-const { OperationError } = require("../../../src/core/errors.js");
+const { OperationError, UserCanceled } = require("../../../src/core/errors.js");
 const { fakeDirectory } = require("../ports/fake-directory.cjs");
 
 function fixture(names = [".", "..", "café-jpg 2.pdf"]) {
@@ -45,11 +45,11 @@ test("open, read and close refusals fail closed and preserve stream ownership", 
     const read = fixture([]);read.control.readCode = 5;
     assert.throws(read.read, OperationError);assert.deepEqual(read.events, [["open", "/chosen/"], "read", "close"]);
     const close = fixture([]);close.control.closeCode = 9;
-    assert.throws(close.read, (error) => error.cause instanceof OperationError && error.issues[0].stage === "cleanup");assert.equal(close.events.at(-1), "close");
+    assert.throws(close.read, (error) => error.cause instanceof OperationError && error.issues[0].code === "cleanup" && error.issues[0].stage === "cleanup");assert.equal(close.events.at(-1), "close");
     const failed = fixture(), primary = new TypeError("record access failed");failed.control.readFault = primary;
     assert.throws(failed.read, (error) => error === primary);assert.equal(failed.events.at(-1), "close");
     failed.control.closeCode = 9;
-    assert.throws(failed.read, (error) => error.cause === primary && error.issues[0].code === "fault" && error.issues.at(-1).stage === "cleanup");
+    assert.throws(failed.read, (error) => error.cause === primary && error.issues[0].code === "fault" && error.issues.at(-1).code === "cleanup" && error.issues.at(-1).stage === "cleanup");
 });
 test("malformed directory records cannot become reported filenames", () => {
     const sample = fixture();
@@ -74,4 +74,11 @@ test("a post-open errno bridge fault is protected by stream closure", () => {
     sample.ns[errnoSymbol] = () => { throw primary; };
     assert.throws(sample.read, (error) => error === primary);
     assert.deepEqual(sample.events, [["open", "/chosen/"], "close"]);
+});
+
+test("a close bridge fault or cancellation retains its classification and mandatory cleanup", () => {
+    for (const [cause, code] of [[new TypeError("Close bridge fault."), "fault"], [new UserCanceled(), "canceled"]]) {
+        const sample = fixture([]);sample.ns.closedir = () => { throw cause; };
+        assert.throws(sample.read, (error) => error.cause === cause && error.issues[0].code === code && error.issues.at(-1).code === "cleanup" && error.issues.at(-1).stage === "cleanup");
+    }
 });

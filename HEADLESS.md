@@ -161,7 +161,7 @@ When nothing is admitted, the run issue `no-images` says
 `rejected`. JPEG decoder warnings count as damage. Damage found only by a full
 decode is `damaged` at the `preparation`
 stage; a combined PDF with such an image is not saved, while separate mode saves
-the others. Software faults (`fault`), cleanup failures and a stop end the run;
+the others. Software faults (`fault`), mandatory cleanup failures (including name-inspection cleanup combined with another failure) and a stop end the run;
 remaining PDFs are `not-started`. Confirmed PDFs are kept in every case.
 
 ## Names and saving

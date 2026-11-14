@@ -40,7 +40,8 @@ written inside. Native identity, size and the literal directory-entry basename c
 workspace copy is released. Exact names require read/search access to the output
 folder. An unavailable or ambiguous listing preserves the already-created entry
 and verified original without guessing a canonical spelling or making a duplicate
-recovery. The original private identity is checked again before
+recovery. Mandatory name-inspection cleanup failures also stop remaining PDFs
+and retain unresolved work, even when another failure occurred first. The original private identity is checked again before
 release; if it no longer matches, the confirmed output remains saved with a fatal
 cleanup issue, the original is not removed, and its workspace stays retained. A volume that supports neither exclusive route fails
 over to recovery instead of exposing a partial file.
