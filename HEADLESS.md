@@ -77,7 +77,7 @@ plain-language report to stderr. Read both the receipt and the exit status.
 | `rejected` | Selected items that were not admitted |
 | `issues` | Problems affecting the request as a whole |
 | `diagnostics` | Optional-surface and cleanup diagnostics, such as retained workspaces |
-| `elapsed` | Human-readable run time; absent when the run ends before conversion |
+| `elapsed` | Human-readable processing time, from the first image's preparation to completion; excludes dialogs and is absent before processing |
 
 `complete` requires every PDF saved, nothing rejected and no issues. A request
 refused before any work is `invalid`. Invalid usage/settings exit 2; an expected

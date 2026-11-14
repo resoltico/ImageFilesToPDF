@@ -111,3 +111,18 @@ test("setup phases and the no-images branch close progress before a result can b
     assert.equal(result.state,"incomplete");
     assert.deepEqual(events,["Checking required tools","Finding images","closed"]);
 });
+
+test("elapsed measures processing and excludes time spent choosing settings", (context) => {
+    context.mock.timers.enable({ apis: ["Date"], now: 0 });
+    const { app, caps } = fixture({ failures: [["'thumbnail'", (command) => {
+        if (!command.includes("nonexistent-image")) { context.mock.timers.tick(1000); }
+        return undefined;
+    }]] });
+    const invocation = { settings, timestamp: "20261029_010203", inputItems: ["/source.png"] };
+    const interaction = commandLineInteraction(invocation);
+    interaction.settings = () => { context.mock.timers.tick(120000); return settings; };
+    const result = executeUseCase(app, invocation, { interaction, capabilities: caps });
+    assert.equal(result.state, "complete");
+    assert.equal(result.elapsed, "1 second");
+    assert.equal(Date.now(), 121000);
+});
