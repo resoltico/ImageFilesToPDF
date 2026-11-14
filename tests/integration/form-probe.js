@@ -6,8 +6,10 @@ const { WIDGETS } = require("../../src/host/quick-action/appkit.js");
 const { appkitBridge } = require("../../src/host/quick-action/objc-bridge.js");
 const { build: buildProgressPanel, allowWindows } = require("../../src/host/quick-action/panel.js");
 const { detailsAlert, layoutDetails, runDetailsModal } = require("../../src/host/quick-action/details-dialog.js");
+const { shellJoin } = require("../../src/backend/shell.js");
 const SMALLEST_VISIBLE_HEIGHT = 744;
 const PNG_TYPE = 4;
+const MODAL_SCROLL_DELAY = 0.1;
 
 function requireNative(condition, message) {
     if (!condition) { throw new Error(message); }
@@ -79,18 +81,21 @@ function redExcess(control) {
     return Number(color.redComponent) - Number(color.blueComponent);
 }
 
-function checkInvalidTint(control, key) {
+function measureInvalidTint(control, key) {
     const layers = control.layer.sublayers;
     const fill = Array.from({ length: Number(layers.count) }, (ignored, index) => layers.objectAtIndex(index))
         .find((layer) => String(ObjC.unwrap(layer.name)) === "InvalidSettingFill");
     requireNative(Boolean(fill), `${key}: missing invalid fill layer`);
     const marked = redExcess(control);
+    const attachedAfterMarked = Boolean(fill.superlayer && !fill.superlayer.isNil());
     // The same native control without only its error fill is the negative control.
     // eslint-disable-next-line no-unused-expressions -- native zero-argument method
     fill.removeFromSuperlayer;
     const plain = redExcess(control);
     control.layer.addSublayer(fill);
-    requireNative(marked - plain > MINIMUM_TINT_DIFFERENCE, `${key}: invalid tint is hidden by the native control (${marked}, ${plain})`);
+    // eslint-disable-next-line no-console -- preserve geometry of a failed native point check
+    console.log(JSON.stringify({ tintPoint: key, marked, plain, attachedAfterMarked, bounds: control.bounds, fillFrame: fill.frame, fillBounds: fill.bounds, layerBounds: control.layer.bounds }));
+    return { key, marked, plain };
 }
 
 function writePreview(alert, path) {
@@ -105,20 +110,154 @@ function writePreview(alert, path) {
     requireNative(png.writeToFileAtomically(path, true), `Could not write ${path}`);
 }
 
+function bitmapSample(bitmap) {
+    const color = bitmap.colorAtXY(Math.floor(Number(bitmap.pixelsWide) * 0.75), Math.floor(Number(bitmap.pixelsHigh) * 0.5))
+        .colorUsingColorSpace($.NSColorSpace.deviceRGBColorSpace);
+    return { red: Number(color.redComponent), green: Number(color.greenComponent), blue: Number(color.blueComponent), alpha: Number(color.alphaComponent) };
+}
+
+function bitmapRegion(bitmap) {
+    const height = Number(bitmap.pixelsHigh), width = Number(bitmap.pixelsWide);
+    let total = 0;
+    for (let row = 1; row <= 5; row += 1) {
+        for (let column = 1; column <= 9; column += 1) {
+            const color = bitmap.colorAtXY(Math.floor(width * column / 10), Math.floor(height * row / 6)).colorUsingColorSpace($.NSColorSpace.deviceRGBColorSpace);
+            total += Number(color.redComponent) - Number(color.blueComponent);
+        }
+    }
+    return total / 45;
+}
+
+function saveBitmap(bitmap, path) {
+    requireNative(bitmap.representationUsingTypeProperties(PNG_TYPE, $.NSDictionary.dictionary).writeToFileAtomically(path, true), `Could not write ${path}`);
+}
+
+function tintLayer(control) {
+    const layers = control.layer.sublayers;
+    return Array.from({ length: Number(layers.count) }, (ignored, index) => layers.objectAtIndex(index))
+        .find((layer) => String(ObjC.unwrap(layer.name)) === "InvalidSettingFill");
+}
+
+function diagnosticControl(control, path) {
+    const { contents } = control.layer;
+    const cached = control.bitmapImageRepForCachingDisplayInRect(control.bounds);
+    control.cacheDisplayInRectToBitmapImageRep(control.bounds, cached);
+    saveBitmap(cached, `${path}-view.png`);
+    const composed = control.bitmapImageRepForCachingDisplayInRect(control.bounds);
+    const graphics = $.NSGraphicsContext.graphicsContextWithBitmapImageRep(composed);
+    // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+    $.NSGraphicsContext.saveGraphicsState;
+    try {
+        $.NSGraphicsContext.currentContext = graphics;
+        $.CGContextScaleCTM(graphics.CGContext, Number(composed.pixelsWide) / Number(control.bounds.size.width), Number(composed.pixelsHigh) / Number(control.bounds.size.height));
+        control.layer.renderInContext(graphics.CGContext);
+    } finally {
+        // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+        $.NSGraphicsContext.restoreGraphicsState;
+    }
+    saveBitmap(composed, `${path}-layer.png`);
+    const fill = tintLayer(control);
+    return { frame: control.frame, bounds: control.bounds, fillFrame: fill?.frame ?? null, fillBounds: fill?.bounds ?? null, windowVisible: Boolean(control.window.visible),
+        backingContentsPresent: Boolean(contents && !contents.isNil()), cached: bitmapSample(cached), composed: bitmapSample(composed),
+        cachedRegion: bitmapRegion(cached), composedRegion: bitmapRegion(composed), sample: [Math.floor(Number(cached.pixelsWide) * 0.75), Math.floor(Number(cached.pixelsHigh) * 0.5)],
+        pixels: [Number(cached.pixelsWide), Number(cached.pixelsHigh)], bits: Number(cached.bitsPerSample), samples: Number(cached.samplesPerPixel) };
+}
+
+function diagnosticScreen(window, path) {
+    try {
+        if (!$.CGPreflightScreenCaptureAccess()) { return { unavailable: "Screen capture is not already authorized." }; }
+        const number = Number(window.windowNumber);
+        requireNative(Number.isInteger(number) && number > 0 && window.visible, "The owned diagnostic window is not visible.");
+        const app = Application.currentApplication(); app.includeStandardAdditions = true;
+        app.doShellScript(shellJoin(["/usr/sbin/screencapture", "-x", "-o", "-l", String(number), path]));
+        return { path };
+    } catch (error) { return { unavailable: String(error) }; }
+}
+
+// Diagnostics retain the original pixel assertion; a red layer without native
+// contents is not accepted as proof that a composed control is visibly tinted.
+function diagnoseShownTint(folder, scenario, appearance) {
+    ObjC.import("CoreGraphics");
+    const built = nativeForm(scenario), restore = allowWindows($);
+    const invalid = built.rows.filter((row) => row.invalid).map((row) => ({ key: row.key, control: built.controls[row.key], fill: tintLayer(built.controls[row.key]) }));
+    const state = { busy: false, phase: 0, failure: null, callback: null };
+    let timer = null;
+    built.alert.window.appearance = $.NSAppearance.appearanceNamed(appearance);
+    state.callback = ObjC.block(["void", ["id"]], () => {
+        if (state.busy || state.phase > 1) { return; }
+        state.busy = true;
+        try {
+            const stage = state.phase === 0 ? "marked" : "plain";
+            const prefix = `${folder}/${scenario.name}-${appearance}-visible-${stage}`;
+            const screen = diagnosticScreen(built.alert.window, `${prefix}-window.png`);
+            const controls = invalid.map(({ key, control }) => ({ key, ...diagnosticControl(control, `${prefix}-${key}`) }));
+            // eslint-disable-next-line no-console -- native failure evidence
+            console.log(JSON.stringify({ tintDiagnostic: stage, appearance, screen, controls }));
+            state.phase += 1;
+            if (state.phase === 1) {
+                for (const { fill } of invalid) {
+                    // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+                    fill.removeFromSuperlayer;
+                }
+            }
+        } catch (error) { state.failure = { error }; state.phase = 2; }
+        finally {
+            if (state.phase === 2) {
+                try {
+                    // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+                    $.NSApplication.sharedApplication.abortModal;
+                } catch (error) { state.failure ??= { error }; }
+            }
+            state.busy = false;
+        }
+    });
+    try {
+        timer = $.NSTimer.timerWithTimeIntervalRepeatsBlock(MODAL_SCROLL_DELAY, true, state.callback);
+        $.NSRunLoop.currentRunLoop.addTimerForMode(timer, $.NSModalPanelRunLoopMode);
+        runDetailsModal({ objc: ObjC, ns: $ }, built.alert, [built.details]);
+        if (state.failure) { throw state.failure.error; }
+    } finally {
+        // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+        if (timer) { timer.invalidate; }
+        // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+        built.alert.window.close;
+        state.callback = null; restore();
+    }
+}
+
 function snapshot(folder, scenario, appearance) {
     const built = scenario.detail ? { alert: detailsAlert($, scenario) } : nativeForm(scenario);
     const { alert } = built;
     alert.window.appearance = $.NSAppearance.appearanceNamed(appearance);
     layoutDetails($, alert, [built.details ?? alert.accessoryView]);
-    for (const row of built.rows ?? []) { if (row.invalid) { checkInvalidTint(built.controls[row.key], row.key); } }
-    const height = Number(alert.window.frame.size.height);
-    requireNative(height <= SMALLEST_VISIBLE_HEIGHT, `${scenario.name}: ${height} points exceeds ${SMALLEST_VISIBLE_HEIGHT}`);
     const path = `${folder}/${scenario.name}-${appearance}.png`;
-    writePreview(alert, path);
-    // eslint-disable-next-line no-unused-expressions
-    alert.window.close;
-    // Diagnostic output from this native gate, never product stdout.
-    // eslint-disable-next-line no-console
+    const height = Number(alert.window.frame.size.height);
+    try {
+        // Preserve the original pre-preview samples; producing evidence must not
+        // initialize backing contents first and accidentally repair the old check.
+        const tints = (built.rows ?? []).filter((row) => row.invalid).map((row) => measureInvalidTint(built.controls[row.key], row.key));
+        writePreview(alert, path);
+        for (const { key, marked, plain } of tints) {
+            requireNative(marked - plain > MINIMUM_TINT_DIFFERENCE, `${key}: invalid tint is hidden by the native control (${marked}, ${plain})`);
+        }
+        requireNative(height <= SMALLEST_VISIBLE_HEIGHT, `${scenario.name}: ${height} points exceeds ${SMALLEST_VISIBLE_HEIGHT}`);
+    } catch (error) {
+        try { writePreview(alert, path); }
+        catch (previewError) {
+            // eslint-disable-next-line no-console -- preserve the original failure
+            console.log(JSON.stringify({ tintPreviewFailure: String(previewError) }));
+        }
+        try { diagnoseShownTint(folder, scenario, appearance); }
+        catch (diagnosticError) {
+            // eslint-disable-next-line no-console -- do not replace the original failure
+            console.log(JSON.stringify({ tintDiagnosticFailure: String(diagnosticError) }));
+        }
+        throw error;
+    } finally {
+        // eslint-disable-next-line no-unused-expressions -- native zero-argument method
+        alert.window.close;
+    }
+    // eslint-disable-next-line no-console -- diagnostic output from native gate
     console.log(JSON.stringify({ scenario: scenario.name, appearance, height, path }));
 }
 
@@ -155,7 +294,6 @@ function checkStopControl(appearance) {
     view.panel.close;
 }
 
-const MODAL_SCROLL_DELAY = 0.1;
 const SCROLL_TOLERANCE = 0.001;
 
 function checkModalScroll(appearance, initialize) {

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Real AppKit geometry, accessibility, actual auto-dismissed modal initialization
-# and off-screen previews; no screenshot permission or fabricated UI.
+# and off-screen previews. Failure diagnostics use an owned-window screenshot only
+# when already authorized; the native gate requires no screenshot permission.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
