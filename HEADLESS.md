@@ -158,5 +158,6 @@ External tools run with `LC_ALL=C`, independently of the caller's locale.
 `IMAGE_FILES_TO_PDF_VIPS`, `IMAGE_FILES_TO_PDF_VIPSHEADER` and
 `IMAGE_FILES_TO_PDF_PDFCPU` may name explicit executables. An override that is
 missing, relative or unusable fails setup with exit status 3; another executable is
-never substituted. Override errors identify the variable and its value. Setup checks
+never substituted. Override errors identify the variable and its value; fix or
+unset that override rather than installing a different automatic tool. Setup checks
 all three commands, including a real width read by `vipsheader` from a built-in PNG.

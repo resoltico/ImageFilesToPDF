@@ -138,3 +138,14 @@ test("vipsheader must read the built-in one-pixel PNG, not merely be executable"
     assert.match(describeSetupProblems([{ tool: "vipsheader", kind: "unusable", override: { name: "IMAGE_FILES_TO_PDF_VIPSHEADER", value: "/usr/bin/false" } }], true),
         /IMAGE_FILES_TO_PDF_VIPSHEADER="\/usr\/bin\/false" is not usable as vipsheader/u);
 });
+
+test("override-only failures ask to fix overrides without automatic installation advice", () => {
+    const explicit = { tool: "vipsheader", kind: "unusable", override: { name: "IMAGE_FILES_TO_PDF_VIPSHEADER", value: "/usr/bin/false" } };
+    const message = describeSetupProblems([explicit], true);
+    assert.match(message, /Fix or unset the named tool overrides, then try again\./u);
+    assert.doesNotMatch(message, /brew|Homebrew/u);
+    const mixed = describeSetupProblems([explicit, { tool: "pdfcpu", kind: "missing" }], true);
+    assert.match(mixed, /Fix or unset/u);
+    assert.match(mixed, /brew install vips pdfcpu/u);
+    assert.doesNotMatch(mixed, /brew upgrade/u, "the unusable override must not request upgrading automatic tools");
+});

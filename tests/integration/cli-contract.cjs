@@ -184,6 +184,7 @@ function setupRefusals() {
         assert.match(result.stderr,/^A required tool is missing or unusable\./u);
         assert.ok(result.stderr.includes("IMAGE_FILES_TO_PDF_VIPSHEADER="));
         assert.ok(result.stderr.includes(JSON.stringify(override)));
+        assert.doesNotMatch(result.stderr,/brew install|brew upgrade/u);
     }
 }
 

@@ -102,15 +102,18 @@ function describeProblem(problem) {
  * the next one.
  */
 function describeSetupProblems(problems, hasHomebrew) {
-    const commands = problems.some((problem) => problem.kind === "unusable")
+    const automatic = problems.filter((problem) => !problem.override);
+    const commands = automatic.some((problem) => problem.kind === "unusable")
         ? `${INSTALL_COMMAND}\nbrew upgrade vips pdfcpu`
         : INSTALL_COMMAND;
-    const remedy = hasHomebrew
-        ? `Run this in Terminal:\n\n${commands}`
-        : `Install Homebrew first, from ${HOMEBREW_URL}\n\n` +
-            `then run:\n\n${commands}`;
-
-    return `Setup needed.\n\n${problems.map(describeProblem).join("\n")}\n\n${remedy}`;
+    const remedies = [];
+    if (problems.some((problem) => problem.override)) { remedies.push("Fix or unset the named tool overrides, then try again."); }
+    if (automatic.length > 0) {
+        remedies.push(hasHomebrew
+            ? `Run this in Terminal:\n\n${commands}`
+            : `Install Homebrew first, from ${HOMEBREW_URL}\n\nthen run:\n\n${commands}`);
+    }
+    return `Setup needed.\n\n${problems.map(describeProblem).join("\n")}\n\n${remedies.join("\n\n")}`;
 }
 
 module.exports = {

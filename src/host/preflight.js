@@ -86,7 +86,7 @@ function checkTools(app) {
     const problems = results.filter((result) => result.kind !== "ok");
 
     if (problems.length > 0) {
-        throw new OperationError(describeSetupProblems(problems, hasHomebrew(app)));
+        throw new OperationError(describeSetupProblems(problems, problems.some((problem) => !problem.override) && hasHomebrew(app)));
     }
 
     const tools = {};
