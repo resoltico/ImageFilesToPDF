@@ -85,7 +85,7 @@ test("setup failure closes every progress surface before presenting its structur
     const closed=[];globalThis.Progress={get totalUnitCount(){return closed.at(-1);},set totalUnitCount(value){closed.push(value);}};
     assert.equal(run([["/source.png"],{}]),undefined);
     const [alert]=state.alerts;
-    assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","Finished with issues.\nNo PDF was created."]);
+    assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","A required tool is missing or unusable."]);
     assert.deepEqual(alert.buttons,["OK", "Details"]);
     assert.match(alert.accessoryView.documentView.string,/brew install vips pdfcpu/u);
     assert.doesNotMatch(alert.accessoryView.documentView.string,/diagnostic|stack/u);
@@ -143,4 +143,16 @@ test("Quick Action consent precedes settings and cancellation starts no conversi
     assert.equal(canceled.state.alerts.length, 1);
     assert.equal([...canceled.app.files].some((file) => file.endsWith(".pdf")), false);
     assert.equal(canceled.app.commands.some((command) => command.includes("'thumbnail'") && !command.includes("nonexistent-image")), false);
+});
+
+test("an unusable header probe is invalid setup with exit 3 before admission", () => {
+    const { app, output, stderr } = fixture();
+    app.headerProbe = "";
+    assert.equal(run(["--headless", "/config", "/source.png"]), 3);
+    const receipt = JSON.parse(output[0]);
+    assert.equal(receipt.state, "invalid");
+    assert.deepEqual(receipt.documents, []);
+    assert.deepEqual(receipt.rejected, []);
+    assert.equal(receipt.issues[0].stage, "setup");
+    assert.match(stderr.join(""), /^A required tool is missing or unusable\./u);
 });

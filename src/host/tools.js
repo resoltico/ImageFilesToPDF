@@ -34,7 +34,7 @@ const ENVIRONMENT_OVERRIDES = {
  * name set to nothing.
  */
 function optionalEnvironment(app, name) {
-    try { return { state: "provided", value: String(runArgv(app, [PRINTENV, name], "reading the requested tool override")).trim() }; }
+    try { return { state: "provided", value: String(runArgv(app, [PRINTENV, name], "reading the requested tool override")) }; }
     catch (error) {
         if (isUserCanceled(error)) { throw error; }
         if (error.cause?.errorNumber === 1) { return { state: "absent" }; }
@@ -77,19 +77,21 @@ function findTool(app, executableName) {
     );
 
     if (override.state === "provided") {
-        if (!override.value || !isExecutable(app, override.value)) {
-            throw new OperationError(`Requested ${executableName} is not executable: ${override.value || "(empty path)"}`);
+        const path = override.value.trim();
+        const requested = { name: ENVIRONMENT_OVERRIDES[executableName], value: override.value };
+        if (!path || !isExecutable(app, path)) {
+            throw new OperationError(`${requested.name}=${JSON.stringify(requested.value)} is not an absolute regular executable file.`);
         }
-        return override.value;
+        return { path, override: requested };
     }
 
     for (const candidate of candidatePaths(executableName)) {
         if (isExecutable(app, candidate)) {
-            return candidate;
+            return { path: candidate, override: null };
         }
     }
 
-    return searchPath(app, executableName);
+    return { path: searchPath(app, executableName), override: null };
 }
 
 module.exports = { TOOL_NAMES, TOOL_SEARCH_PATH, findTool };

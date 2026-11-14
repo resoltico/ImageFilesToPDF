@@ -4,6 +4,8 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
     buildVipsProbeArgv,
+    buildVipsheaderProbeArgv,
+    isVipsheaderUsable,
     buildPdfcpuProbeArgv,
     isVipsUsable,
     isPdfcpuUsable,
@@ -124,4 +126,15 @@ test("the probes name a file that cannot exist", () => {
             assert.notEqual(argument, "", "an empty argument is not a probe");
         }
     }
+});
+
+test("vipsheader must read the built-in one-pixel PNG, not merely be executable", () => {
+    assert.deepEqual(buildVipsheaderProbeArgv("/opt/vipsheader"), ["/opt/vipsheader", "-f", "width"]);
+    assert.equal(isVipsheaderUsable("1\n"), true);
+    for (const output of ["", "0", "01", "600", "1 warning", "1\nwarning", null]) {
+        assert.equal(isVipsheaderUsable(output), false);
+    }
+    assert.match(describeSetupProblems([{ tool: "vipsheader", kind: "unusable" }], true), /vipsheader could not read the built-in PNG image/u);
+    assert.match(describeSetupProblems([{ tool: "vipsheader", kind: "unusable", override: { name: "IMAGE_FILES_TO_PDF_VIPSHEADER", value: "/usr/bin/false" } }], true),
+        /IMAGE_FILES_TO_PDF_VIPSHEADER="\/usr\/bin\/false" is not usable as vipsheader/u);
 });

@@ -27,6 +27,14 @@ function buildVipsProbeArgv(vipsPath) {
     ];
 }
 
+const VIPSHEADER_PROBE_IMAGE = "\\0211\\0120\\0116\\0107\\0015\\0012\\0032\\0012\\0000\\0000\\0000\\0015\\0111\\0110\\0104\\0122\\0000\\0000\\0000\\0001\\0000\\0000\\0000\\0001\\0010\\0002\\0000\\0000\\0000\\0220\\0167\\0123\\0336\\0000\\0000\\0000\\0014\\0111\\0104\\0101\\0124\\0170\\0234\\0143\\0120\\0016\\0357\\0004\\0000\\0001\\0244\\0001\\0004\\0360\\0075\\0155\\0310\\0000\\0000\\0000\\0000\\0111\\0105\\0116\\0104\\0256\\0102\\0140\\0202";
+
+function buildVipsheaderProbeArgv(vipsheaderPath) {
+    return [vipsheaderPath, "-f", "width"];
+}
+
+function isVipsheaderUsable(probeOutput) { return String(probeOutput).trim() === "1"; }
+
 function buildPdfcpuProbeArgv(pdfcpuPath) {
     return [pdfcpuPath, "version"];
 }
@@ -69,9 +77,15 @@ const INSTALL_COMMAND = "brew install vips pdfcpu";
 const HOMEBREW_URL = "https://brew.sh";
 
 function describeProblem(problem) {
+    if (problem.override) {
+        return `- ${problem.override.name}=${JSON.stringify(problem.override.value)} is not usable as ${problem.tool}.`;
+    }
+
     if (problem.kind === "missing") {
         return `- ${problem.tool} is not installed.`;
     }
+
+    if (problem.tool === "vipsheader") { return "- vipsheader could not read the built-in PNG image."; }
 
     if (problem.tool === "pdfcpu") {
         return `- pdfcpu could not report a supported stable version. ` +
@@ -101,6 +115,9 @@ function describeSetupProblems(problems, hasHomebrew) {
 
 module.exports = {
     buildVipsProbeArgv,
+    buildVipsheaderProbeArgv,
+    VIPSHEADER_PROBE_IMAGE,
+    isVipsheaderUsable,
     buildPdfcpuProbeArgv,
     isVipsUsable,
     isPdfcpuUsable,

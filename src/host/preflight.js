@@ -4,12 +4,15 @@ const { OperationError } = require("../core/errors.js");
 const { shellQuote } = require("../backend/shell.js");
 const {
     buildVipsProbeArgv,
+    buildVipsheaderProbeArgv,
+    isVipsheaderUsable,
+    VIPSHEADER_PROBE_IMAGE,
     buildPdfcpuProbeArgv,
     isVipsUsable,
     isPdfcpuUsable,
     describeSetupProblems
 } = require("../backend/preflight.js");
-const { probeArgv } = require("./shell.js");
+const { probeArgv, probeImageArgv } = require("./shell.js");
 const { findTool, TOOL_NAMES, TOOL_SEARCH_PATH } = require("./tools.js");
 
 /*
@@ -25,9 +28,9 @@ const { findTool, TOOL_NAMES, TOOL_SEARCH_PATH } = require("./tools.js");
  * directly instead of being recovered from a thrown error. It is a fixed
  * string, never anything the user supplied.
  */
-function probe(app, argv) {
+function probe(app, argv, image) {
     try {
-        return probeArgv(app, argv);
+        return image ? probeImageArgv(app, argv, image) : probeArgv(app, argv);
     } catch {
         return "";
     }
@@ -42,6 +45,7 @@ function hasHomebrew(app) {
 }
 
 const TOOL_PROBES = {
+    vipsheader: { build: buildVipsheaderProbeArgv, usable: isVipsheaderUsable, image: VIPSHEADER_PROBE_IMAGE },
     vips: {
         build: buildVipsProbeArgv,
         usable: isVipsUsable,
@@ -56,22 +60,22 @@ const TOOL_PROBES = {
 function inspectTool(app, name) {
     const found = findTool(app, name);
 
-    if (!found) {
-        return { tool: name, kind: "missing", path: "" };
+    if (!found.path) {
+        return { tool: name, kind: "missing", ...found };
     }
 
     const capability = TOOL_PROBES[name];
 
-    if (capability && !capability.usable(probe(app, capability.build(found)))) {
+    if (capability && !capability.usable(probe(app, capability.build(found.path), capability.image))) {
         return {
             tool: name,
             kind: "unusable",
             flags: capability.flags,
-            path: found
+            ...found
         };
     }
 
-    return { tool: name, kind: "ok", path: found };
+    return { tool: name, kind: "ok", ...found };
 }
 
 /*

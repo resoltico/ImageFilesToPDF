@@ -74,3 +74,15 @@ test("a failure before any outcome is a setup issue", () => {
     const { failedRun } = require("../../../src/core/outcomes.js");
     assert.deepEqual(failedRun(new OperationError("no vips")).issues.map((issue) => [issue.code, issue.stage]), [["operation", "setup"]]);
 });
+
+test("only pre-work expected setup failures are refused requests", () => {
+    const { isSetupRefusal } = require("../../../src/core/outcomes.js");
+    const issue = { code: "operation", stage: "setup", message: "No usable vipsheader." };
+    assert.equal(isSetupRefusal(issue), true);
+    assert.equal(isSetupRefusal({ ...issue, code: "fault" }), false);
+    assert.equal(isSetupRefusal({ ...issue, code: "canceled" }), false);
+    assert.equal(isSetupRefusal({ ...issue, stage: "preparation" }), false);
+    assert.equal(runOutcome([], [], [issue]).state, "invalid");
+    assert.equal(runOutcome([saved], [], [issue]).state, "incomplete");
+    assert.equal(runOutcome([], [], [{ ...issue, code: "fault" }]).state, "incomplete");
+});

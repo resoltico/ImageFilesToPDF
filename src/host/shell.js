@@ -1,10 +1,10 @@
 "use strict";
 const { hostError } = require("./cancellation.js");
 
-const { RM } = require("./backend-executables.js");
+const { RM, RMDIR, MKTEMP } = require("./backend-executables.js");
 const { COMMAND_BUDGET_BYTES, commandLengthOf } = require("../backend/batching.js");
 const { utf8Length } = require("../core/utf8.js");
-const { shellJoin } = require("../backend/shell.js");
+const { shellJoin, shellQuote } = require("../backend/shell.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { OperationError, errorMessage } = require("../core/errors.js");
 
@@ -45,6 +45,13 @@ function probeArgv(app, argumentsList) {
     return runCommand(app, `${shellJoin(argumentsList)} 2>&1 || true`);
 }
 
+function probeImageArgv(app, argumentsList, image) {
+    const directory = shellJoin([MKTEMP, "-d", "-t", "image-tool-probe"]);
+    const cleanup = `${shellJoin([RM, "--"])} "$probe_dir/image.png"; ${shellJoin([RMDIR, "--"])} "$probe_dir"`;
+    const write = `printf '%b' ${shellQuote(image)} >"$probe_dir/image.png"`;
+    return runCommand(app, `probe_dir=$(${directory}) && (trap ${shellQuote(cleanup)} EXIT; ${write} && ${shellJoin(argumentsList)} "$probe_dir/image.png") 2>&1`);
+}
+
 function runHeaderArgv(app, argumentsList, label) {
     if (commandLengthOf(argumentsList) > HEADER_ARGV_BUDGET) { throw new OperationError("The image header command exceeds the argument budget."); }
     return runArgv(app, argumentsList, label);
@@ -71,4 +78,4 @@ function removeFile(app, path) {
     return path ? cleanupArgv(app, [RM, "-f", path]) : { state: "removed" };
 }
 
-module.exports = { HEADER_ARGV_BUDGET, runHeaderArgv, runArgv, probeArgv, removeFile, cleanupArgv };
+module.exports = { HEADER_ARGV_BUDGET, runHeaderArgv, runArgv, probeArgv, probeImageArgv, removeFile, cleanupArgv };

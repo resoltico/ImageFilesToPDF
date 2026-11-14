@@ -1,7 +1,9 @@
 "use strict";
+const { isSetupRefusal } = require("./outcomes.js");
 const { dirname, basename } = require("./paths.js");
 
 function summaryKind(outcome, counts) {
+    if (outcome.state === "invalid" && outcome.issues.some(isSetupRefusal)) { return "setup"; }
     if (outcome.state === "invalid") { return "invalid"; }
     if (outcome.state === "canceled" || counts["not-started"] > 0) { return "stopped"; }
     if (outcome.documents.length === 0 && outcome.issues.every((issue) => issue.code === "no-images")) { return "nothing-to-convert"; }

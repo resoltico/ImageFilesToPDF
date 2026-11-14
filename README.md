@@ -20,7 +20,8 @@ brew install vips pdfcpu
 
 To upgrade pdfcpu, run `brew update` and then `brew upgrade pdfcpu`. The Quick
 Action is one standalone JavaScript for Automation (JXA) file. Node.js and npm are
-needed only for development.
+needed only for development. Setup checks all three backend commands before
+inspecting images; missing or unusable tools are reported as setup problems.
 
 ## Install in Shortcuts
 

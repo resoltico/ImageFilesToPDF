@@ -23,6 +23,7 @@ function madeSentence(counts) {
 
 function headline(summary) {
     const made = madeSentence(summary.counts);
+    if (summary.kind === "setup") { return "A required tool is missing or unusable."; }
     if (summary.kind === "invalid") { return "The request is invalid."; }
     if (summary.kind === "nothing-to-convert") { return "Nothing to convert."; }
     if (summary.kind === "stopped") { return `Stopped. ${plural(summary.notStarted + summary.counts.canceled, "PDF")} not created.\n${made}`; }
@@ -39,7 +40,7 @@ function countsLine(summary) {
 
 function summaryText(summary, includeHeadline = true) {
     // An invalid request converted nothing, so it states its problems without counts or a conversion heading.
-    if (summary.kind === "invalid") {
+    if (summary.kind === "invalid" || summary.kind === "setup") {
         return [includeHeadline ? headline(summary) : "", ...summary.failures.map((entry) => entry.message)].filter(Boolean).join("\n\n");
     }
     const saved = summary.saved.map((group) => `${group.folder}\n${group.outputs.map((output) => output.name).join("\n")}`);

@@ -101,3 +101,13 @@ test("capability probes use the same fixed locale and preserve quoted argv", () 
     probeArgv(app, ["/v/vips", "a'b"]);
     assert.equal(app.commands[0], "export LC_ALL=C; '/v/vips' 'a'\\''b' 2>&1 || true");
 });
+
+test("built-in image probes use one owned file and cleanup an empty private directory", () => {
+    const { probeImageArgv } = require("../../../src/host/shell.js");
+    const app = createFakeApp([["image-tool-probe", "1"]]);
+    assert.equal(probeImageArgv(app, ["/tool path/vipsheader", "-f", "width"], "\\0211"), "1");
+    assert.match(app.commands[0], /^export LC_ALL=C; /u);
+    assert.ok(app.commands[0].includes("'/tool path/vipsheader' '-f' 'width'"));
+    assert.match(app.commands[0], /trap .*image\.png.*rmdir/u);
+    assert.doesNotMatch(app.commands[0], /-rf|\|\| true/u);
+});

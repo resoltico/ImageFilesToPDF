@@ -173,9 +173,22 @@ function placementAndNaming(pdf) {
     return separate;
 }
 
-function refusals(pdf,separate) {
+function setupRefusals() {
     const setup=convert(3,["photo.jpg"],config,{env:{...process.env,IMAGE_FILES_TO_PDF_VIPS:"/usr/bin/true"}});
+    assert.equal(setup.state,"invalid");
     assert.ok(setup.issues.some((issue)=>issue.stage==="setup"));
+    for (const override of ["/usr/bin/false",work,"relative-vipsheader","/no-such-fieldtest-vipsheader"]) {
+        const result=command(3,["--headless",config,"photo.jpg"],{env:{...process.env,IMAGE_FILES_TO_PDF_VIPSHEADER:override}});
+        const receipt=JSON.parse(result.stdout);
+        assert.equal(receipt.state,"invalid");assert.deepEqual(receipt.documents,[]);assert.deepEqual(receipt.rejected,[]);
+        assert.match(result.stderr,/^A required tool is missing or unusable\./u);
+        assert.ok(result.stderr.includes("IMAGE_FILES_TO_PDF_VIPSHEADER="));
+        assert.ok(result.stderr.includes(JSON.stringify(override)));
+    }
+}
+
+function refusals(pdf,separate) {
+    setupRefusals();
     fs.writeFileSync(at("empty.png"),"");fs.copyFileSync(at("source.svg"),at("vector.png"));
     fs.copyFileSync(pdf,at("document.png"));fs.writeFileSync(at("random.jpg"),"not an image");
     fs.copyFileSync(at("photo.jpg"),at("unreadable.jpg"));fs.chmodSync(at("unreadable.jpg"),0);

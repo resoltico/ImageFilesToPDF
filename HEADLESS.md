@@ -80,7 +80,9 @@ plain-language report to stderr. Read both the receipt and the exit status.
 | `elapsed` | Human-readable run time; absent when the run ends before conversion |
 
 `complete` requires every PDF saved, nothing rejected and no issues. A request
-refused before any work is `invalid`. A stop that leaves work undone is `canceled`;
+refused before any work is `invalid`. Invalid usage/settings exit 2; an expected
+tool-setup refusal is also `invalid` and exits 3 with the headline
+"A required tool is missing or unusable." A stop that leaves work undone is `canceled`;
 a stop that arrives after everything was saved does not erase the saved PDFs. An
 abrupt process end, an external kill or a failed stdout cannot guarantee a receipt.
 
@@ -156,4 +158,5 @@ External tools run with `LC_ALL=C`, independently of the caller's locale.
 `IMAGE_FILES_TO_PDF_VIPS`, `IMAGE_FILES_TO_PDF_VIPSHEADER` and
 `IMAGE_FILES_TO_PDF_PDFCPU` may name explicit executables. An override that is
 missing, relative or unusable fails setup with exit status 3; another executable is
-never substituted.
+never substituted. Override errors identify the variable and its value. Setup checks
+all three commands, including a real width read by `vipsheader` from a built-in PNG.
