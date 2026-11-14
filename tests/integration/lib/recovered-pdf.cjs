@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const process = require("node:process");
+const { parseReceipt } = require("./receipt.cjs");
 const { execFileSync } = require("node:child_process");
 
 function entries(folder) {
@@ -76,7 +77,7 @@ if (require.main === module) {
     const [receipt, source, capability, inventoryFile] = process.argv.slice(2);
     const saved = JSON.parse(fs.readFileSync(inventoryFile, "utf8"));
     const inventory = { ...saved, downloadIdentities: new Set(saved.downloadIdentities), temporaryIdentities: new Set(saved.temporaryIdentities) };
-    const result = JSON.parse(fs.readFileSync(receipt, "utf8"));
+    const result = parseReceipt(fs.readFileSync(receipt, "utf8"));
     assert.equal(result.state, "incomplete");
     assert.deepEqual(result.rejected, []);
     assert.deepEqual(result.issues, []);

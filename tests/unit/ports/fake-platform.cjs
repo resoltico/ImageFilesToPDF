@@ -69,6 +69,8 @@ function decodedText(data) {
 }
 
 function installPlatform(app, options = {}) {
+    const brokenPipe = require("../../../src/host/command-line/broken-pipe.js");
+    brokenPipe.withoutSigpipe = (write) => write();
     const signalController = require("../../../src/host/command-line/signal-controller.js");
     signalController.createSignalController = () => ({ poll: () => false, close: () => undefined });
     const bridge = createFakeObjC(options);

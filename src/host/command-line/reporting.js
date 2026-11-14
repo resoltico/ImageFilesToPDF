@@ -1,7 +1,7 @@
 "use strict";
 const { SETTINGS_SCHEMA } = require("../../core/settings.js");
 const { reportText } = require("../../core/run-report.js");
-const { writeReceipt, exitCli } = require("./receipt.js");
+const { writeReceipt, writeStdout, exitCli } = require("./receipt.js");
 const INVALID_EXIT = 2;
 const SETUP_EXIT = 3;
 function exitCode(result) {
@@ -34,11 +34,17 @@ function commandLineResult(result) {
     return { ...result, issues: result.issues.map((issue) => ({ ...issue, message: settingsIssueMessage(issue) })) };
 }
 
+function reportAttempt(text, write) {
+    try { return { written: write(text, undefined, true) !== false }; }
+    catch (error) { return { written: false, error }; }
+}
+
 function reportHeadless(result, write = writeReceipt, exit = exitCli) {
     const reported = commandLineResult(result);
-    write(`${JSON.stringify(reported)}\n`);
-    write(`${reportText(reported)}\n`, undefined, true);
-    return exit(exitCode(reported));
+    const prose = reportAttempt(`${reportText(reported)}\n`, write);
+    const receipt = writeStdout(`${JSON.stringify(reported, (key, value) => key === "stack" ? undefined : value)}\n`, write);
+    if (Object.hasOwn(prose, "error")) { throw prose.error; }
+    return exit(prose.written && receipt ? exitCode(reported) : 1);
 }
 
 module.exports = { reportHeadless };

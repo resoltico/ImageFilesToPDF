@@ -5,6 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 const crypto=require("node:crypto");
 const {spawnSync,execFileSync}=require("node:child_process");
+const {parseReceipt}=require("./lib/receipt.cjs");
 const {probeExclusiveRename}=require("./lib/exclusive-rename.cjs");
 const {recoveryInventory,assertRecoveredPdf,removeRecovery}=require("./lib/recovered-pdf.cjs");
 const [artifact,work,volume,label,expected]=process.argv.slice(2);
@@ -50,7 +51,7 @@ function convert(records,wanted,protectedFile=null) {
     const protectedHash=protectedFile?hash(protectedFile):null;
     const result=spawnSync("/usr/bin/osascript",["-l","JavaScript",artifact,"--headless",settings,...records.map(record=>record.path)],{encoding:"utf8",timeout:60000});
     assert.ifError(result.error);assert.equal(result.status,capability.supported?0:1,`${result.stderr}\n${result.stdout}`);
-    const receipt=JSON.parse(result.stdout);
+    const receipt=parseReceipt(result.stdout);
     assert.equal(receipt.state,capability.supported?"complete":"incomplete");
     assert.deepEqual(receipt.rejected,[]);assert.deepEqual(receipt.issues,[]);assert.equal(receipt.documents.length,2);
     for(const document of receipt.documents) {

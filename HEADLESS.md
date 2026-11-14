@@ -9,7 +9,7 @@ osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless settings.json photo
 ```
 
 `--help` lists every setting in the table order below with its values and default; `--version` prints
-`Image Files to PDF <version>`. Both print to stdout and exit 0. Anything else that
+`Image Files to PDF <version>`. Both print to stdout and exit 0 when transport succeeds. Anything else that
 is not a complete `--headless` request is a usage error: it names the problem in one
 sentence (`No arguments were given.`, `Unknown option: <arg>.`,
 `--headless needs a settings file and at least one path.`, `An argument is empty.`
@@ -58,15 +58,20 @@ When present it must be a real local date and time in exactly that shape; `null`
 
 ## Receipt and exit status
 
-Every handled request writes one JSON object, ending in a newline, to stdout, and a
-plain-language report to stderr. Read both the receipt and the exit status.
+A handled request attempts its plain-language stderr report before one JSON
+receipt on stdout, ending in a newline. Read both the receipt and the exit status.
+A transport failure exits nonzero even when a complete processing receipt was
+delivered; it does not remove confirmed PDFs or change their processing state.
+With working stderr, failed stdout completion adds one plain line:
+`Standard output could not be completed.` If stderr fails, the JSON receipt is
+still attempted; if both streams fail, neither readable output is guaranteed.
 
 | Exit | Meaning |
 | --- | --- |
 | `0` | Complete |
-| `1` | Incomplete or stopped; confirmed PDFs are kept |
+| `1` | Incomplete, stopped or stdout transport failed; confirmed PDFs are kept |
 | `2` | Usage error or invalid settings |
-| `3` | A required tool is missing or unusable |
+| `3` | Setup failed: a required tool/capability is unusable, or an unexpected setup fault occurred |
 
 ```json
 {"state":"complete","documents":[{"state":"saved","sources":["/Users/me/Pictures/photo.png"],"pages":1,"issues":[],"output":"/Users/me/Pictures/photo.pdf"}],"rejected":[],"issues":[],"diagnostics":[],"elapsed":"1 second"}
@@ -97,13 +102,14 @@ Output and recovery basenames are read back from the actual stored entry after i
 recovery path with a one-line cause. `Other issues:` keeps run-level or cleanup
 problems separate from failed conversions. `Temporary work:` names actual retained, unreadable or reclaimed workspaces when startup finds them; ordinary runs omit it. Its
 counts line lists only non-zero counts, as in `1 saved; 1 not included.`, and is
-left out when all are zero. `Elapsed: …` is the last section when known. An
+left out when all are zero. `Elapsed: …` ends the processing report when known; a transport-failure line can follow. An
 invalid request reports `The request is invalid.` and each problem.
 
 ## Document records
 
 Each record has `state`, `sources` (the full paths of its images, in page order),
-`pages` and `issues`.
+`pages` and `issues`. Optional `fatal: true` means a fault ended further documents;
+optional `diagnostics` holds technical observer diagnostics.
 
 | State | Meaning |
 | --- | --- |
@@ -128,7 +134,10 @@ filename that looks like a URI scheme, such as `photo:one.jpg`, use `./photo:one
 Every issue and every `rejected` entry carries a `code`, a `stage` and a message:
 `message` for issues, `reason` for rejected entries, which also carry `path` and
 `name`. An issue may also carry `field`, `source` and `diagnostic`; commands,
-native errors and stacks appear only in `diagnostic`. An `unsupported-content`
+native errors appear in `diagnostic`. Receipts omit every structured `stack` key,
+including nested diagnostic objects; user text containing the word “stack” is
+unchanged. Technical diagnostic records carry `code` and `message`, with optional
+`stage` and varying JSON details. An `unsupported-content`
 refusal includes `diagnostic.loader`, the vips loader that recognized its content, including excluded SVG and PDF content. Truncated HEIC recognized by its decoder is `damaged`; unrecognized bytes remain `not-an-image`. Visible pipes, sockets and devices inside selected folders are `special-file`; hidden entries and links remain skipped.
 Settings diagnostics distinguish `missing: true` from `expectedType`/`actualType`
 for wrong JSON types. CLI settings messages name the JSON key; form corrections
@@ -137,11 +146,15 @@ keep the setting's display name.
 | Stage | Codes |
 | --- | --- |
 | `request` | `usage`, `settings-file`, `timestamp` |
-| `settings` | `unknown`, `choice`, `integer`, `color`, `object` |
+| `settings` | `unknown`, `choice`, `integer`, `color`; `object` belongs to the core validator, not the CLI root check |
 | `setup` | `operation` when a required tool or capability is missing or unusable |
 | `selection` | `folder`, `unsupported-format`, `not-a-file`, `not-a-path`, `remote-url`, `not-a-folder`, `package`, `link`, `special-file`, `unreadable`, `unexaminable`, `empty-folder`, and the run issue `no-images` |
 | `inspection` | `unreadable`, `empty`, `not-an-image`, `unsupported-content`, `multiple-images`, `damaged` |
 | `allocation`, `planning`, `capture`, `preparation`, `execution`, `validation`, `publication`, `recovery`, `cleanup`, `workspace`, `reporting` | `operation`, `fault`, `canceled`, `damaged`, `publication`, `recovery`, `cleanup` |
+
+A CLI settings root that is an array, `null` or another non-object is
+`settings-file` at `request`, with exit 2. The core `object` validation code is
+reserved for callers of the core settings validator.
 
 When nothing is admitted, the run issue `no-images` says
 `None of the selected items can be converted.` and the refused items are in
@@ -163,10 +176,19 @@ rules for case and Unicode normalization, and folder aliases are matched by nati
 identity. An existing name gets ` 2`, ` 3` and so on. If those facts cannot be
 established, planning stops before any PDF is made rather than guessing.
 
+For an image-derived PDF name, the sanitized stem is shortened on a UTF-8 code
+point boundary as needed. The requested basename, including `.pdf` and any
+disambiguating source-extension suffix, uses at most 250 UTF-8 bytes before a
+collision number: five of the 255-byte budget are reserved for ` 9999`. Stored
+spelling can reflect filesystem normalization; use the actual receipt path.
+
 A PDF that cannot be saved at its destination is saved to `~/Downloads` under its
 intended name, or failing that to a confirmed copy in the system temporary
 directory. Always use the receipt's actual `output` or `recovery` path. Retained
-and unreadable workspaces are left in place and listed in `diagnostics`.
+and unreadable workspaces are left in place and listed in `diagnostics` and the
+human report. Successful safe startup reclamation uses diagnostic code
+`workspace-reclaimed`, stage `workspace`, and the exact workspace path in
+`diagnostic.path`; these notes do not change run state.
 
 ## Tool overrides
 

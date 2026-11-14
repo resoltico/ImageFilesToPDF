@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const {pathToFileURL} = require("node:url");
+const {parseReceipt} = require("./lib/receipt.cjs");
 const {spawnSync, execFileSync, spawn} = require("node:child_process");
 const {once} = require("node:events");
 const [script, work] = process.argv.slice(2);
@@ -27,7 +28,7 @@ function command(status, args, options={}) {
 function convert(status, files, file=config, options={}) {
     const result=command(status,["--","--headless",file,...files],options);
     assert.equal(result.stdout.trim().split("\n").length,1,"one receipt line");
-    const receipt=JSON.parse(result.stdout);
+    const receipt=parseReceipt(result.stdout);
     assert.ok(["complete","incomplete","invalid","canceled"].includes(receipt.state));
     // The stderr report has no version line, no zero counts, and ends with the elapsed time when known.
     assert.doesNotMatch(result.stderr,/Image Files to PDF \d|(?:^|; )0 \w/mu);
@@ -110,7 +111,7 @@ function settingsDiagnostics() {
         const file = at(`diagnostic-${key}.json`);
         fs.writeFileSync(file, JSON.stringify(values));
         const result = command(2, ["--headless", file, "photo.jpg"]);
-        const receipt = JSON.parse(result.stdout);
+        const receipt = parseReceipt(result.stdout);
         assert.equal(receipt.issues.find((issue) => issue.field === key).message, expected);
         assert.ok(result.stderr.includes(expected));
     }
@@ -155,7 +156,7 @@ async function signalRun(delivered, input) {
     for (const signal of delivered) { activeChild.kill(signal); }
     const [code, signal] = await ended;
     assert.equal(signal, null, stderr); assert.equal(code, 1, stderr);
-    const receipt = JSON.parse(stdout);
+    const receipt = parseReceipt(stdout);
     assert.equal(receipt.state, "canceled");
     assert.ok(receipt.issues.some((issue) => issue.code === "canceled") || receipt.documents.some((document) => document.state === "canceled"));
     assert.doesNotMatch(stderr, /execution error|\(-2700\)|\n\s+at \w/u);
@@ -184,7 +185,7 @@ async function ownership() {
     fs.writeFileSync(path.join(retained,"owner.json"),JSON.stringify({pid:2147483647,started:"not a live process"}));
     fs.writeFileSync(path.join(retained,"retain"),"");
     const checked = command(0, ["--headless", config, "photo.jpg"]);
-    const receipt = JSON.parse(checked.stdout);
+    const receipt = parseReceipt(checked.stdout);
     assert.ok(checked.stderr.includes(`Temporary work:\n`));
     assert.ok(checked.stderr.includes(orphan)); assert.ok(checked.stderr.includes(retained));
     assert.ok(checked.stderr.includes("A stale workspace was reclaimed."));
@@ -200,7 +201,7 @@ function grammar() {
         [["--headless",config],"--headless needs a settings file and at least one path."],[["--bogus"],"Unknown option: --bogus."],
         [["--help","extra"],"--help and --version take no other arguments."],[["--headless","",config],"An argument is empty."]]) {
         const started=Date.now();const result=command(2,args,{timeout:2000});
-        assert.ok(Date.now()-started<2000);assert.equal(JSON.parse(result.stdout).state,"invalid");
+        assert.ok(Date.now()-started<2000);assert.equal(parseReceipt(result.stdout).state,"invalid");
         assert.equal(result.stderr,`The request is invalid.\n\n${problem}\n${runLine}\n`,"a usage error is one problem and the run line, not the help");
     }
     const help=command(0,["--help"],{timeout:2000});
@@ -275,7 +276,7 @@ function setupRefusals() {
     assert.ok(setup.issues.some((issue)=>issue.stage==="setup"));
     for (const override of ["/usr/bin/false",work,"relative-vipsheader","/no-such-fieldtest-vipsheader"]) {
         const result=command(3,["--headless",config,"photo.jpg"],{env:{...process.env,IMAGE_FILES_TO_PDF_VIPSHEADER:override}});
-        const receipt=JSON.parse(result.stdout);
+        const receipt=parseReceipt(result.stdout);
         assert.equal(receipt.state,"invalid");assert.deepEqual(receipt.documents,[]);assert.deepEqual(receipt.rejected,[]);
         assert.match(result.stderr,/^A required tool is missing or unusable\./u);
         assert.ok(result.stderr.includes("IMAGE_FILES_TO_PDF_VIPSHEADER="));

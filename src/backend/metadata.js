@@ -41,9 +41,10 @@ function unmappedLoader(loader) {
 
 function rawMetadata(fields) {
     const loader = (fields["vips-loader"] ?? "").replace(/_buffer$/u, "");
+    const mapped = Object.hasOwn(LOADERS, loader) ? LOADERS[loader] : null;
     const orientation = fields.orientation === undefined ? 1 : positiveIntegerFrom(fields.orientation);
-    return { loader, format: LOADERS[loader]?.format, gainMap: LOADERS[loader]?.gainMap ?? false,
-        ...(LOADERS[loader] ? {} : unmappedLoader(loader)),
+    return { loader, format: mapped?.format, gainMap: mapped?.gainMap ?? false,
+        ...(mapped ? {} : unmappedLoader(loader)),
         width: positiveIntegerFrom(fields.width), height: positiveIntegerFrom(fields.height),
         bands: positiveIntegerFrom(fields.bands), orientation,
         pages: fields["n-pages"] === undefined ? 1 : positiveIntegerFrom(fields["n-pages"]),

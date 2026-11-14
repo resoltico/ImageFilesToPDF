@@ -4,7 +4,7 @@ const { SETTINGS_SCHEMA, DEFAULT_SETTINGS, validateSettings } = require("../../c
 const { readTimestamp, TIMESTAMP_FORM } = require("../../core/timestamps.js");
 const { OperationError } = require("../../core/errors.js");
 const { normalizeInvocationInput, hasUrlScheme, decodeFileUrl } = require("../invocation-syntax.js");
-const { writeReceipt, exitCli } = require("./receipt.js");
+const { writeStdout, exitCli } = require("./receipt.js");
 
 const JSON_INDENT = 2;
 const RUN_LINE = "osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless <settings.json> <path…>";
@@ -142,7 +142,7 @@ function cliCommand(input, injected = null) {
 }
 
 function showCliCommand(kind) {
-    writeReceipt(kind === "help" ? usage() : `${APP_NAME} ${VERSION}\n`);
-    return exitCli(0);
+    const written = writeStdout(kind === "help" ? usage() : `${APP_NAME} ${VERSION}\n`);
+    return exitCli(written ? 0 : 1);
 }
 module.exports = { cliCommand, showCliCommand, jsonConfiguration, configurationValues, usage };

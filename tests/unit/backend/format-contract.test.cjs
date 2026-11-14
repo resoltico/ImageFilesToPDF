@@ -17,7 +17,7 @@ test("missing content differs from every recognized but excluded loader", () => 
         assert.equal(issue.code, "not-an-image");
         assert.equal(issue.diagnostic, undefined);
     }
-    for (const loader of ["gifload", "svgload", "pdfload", "pdfiumload", "not-svgload", "unknown"]) {
+    for (const loader of ["gifload", "svgload", "pdfload", "pdfiumload", "not-svgload", "unknown", "constructor", "__proto__", "toString"]) {
         const [issue] = sourceIssues(rawMetadata({ "vips-loader": loader }));
         assert.equal(issue.code, "unsupported-content");
         assert.deepEqual(issue.diagnostic, { loader });

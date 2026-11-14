@@ -54,8 +54,12 @@ Commit generated JXA and checksums alongside source changes that affect them.
 
 `tools/lint/boundaries.mjs` enforces import direction and host-global boundaries.
 Required source/filesystem/publication capabilities fail setup when absent.
-Optional UI, progress and preferences can be unavailable; programming faults must
-remain diagnosable rather than silently triggering fallback.
+Optional UI/progress observers and preferences can be unavailable; required CLI
+Stop polling runs outside optional observer broadcasts. Programming faults must
+remain diagnosable rather than silently triggering fallback. Native signal-action
+snapshots have one owner shared by cooperative Stop monitoring and transport-only
+broken-pipe protection; transport must restore prior dispositions after each
+synchronous write without changing processing or child-process signals.
 
 `src/core/settings.js` owns canonical settings, defaults, names, captions, hints
 and legal choice IDs. The schema declares field kinds and the documented order;
@@ -81,7 +85,8 @@ fail closed. Do not insert fallible owner registration after validation, infer
 ownership from filenames, or discard a confirmed destination after a reporting fault.
 
 The document/run outcomes own source mappings, counts and actual saved/recovery
-locations. Progress counters do not establish publication. Shared report text belongs to the pure core run-report module; completion
+locations. An explicit verified recovery path remains distinct from a producer
+refusal to claim any trustworthy recovery. Progress counters do not establish publication. Shared report text belongs to the pure core run-report module; completion
 dialog controls, Details and CLI transport stay in their front ends. Keep issue
 meaning separate from interface wording and technical diagnostics.
 
@@ -108,14 +113,18 @@ the sibling repository.
 - Completion: `Created …` or `No … was created.`, prefixed `Finished with issues.`
   or `Stopped.`; PDFs saved elsewhere are counted in the headline, and refusals
   agreed to in the review do not add `Finished with issues.`. The detail lists the
-  non-zero counts, `Saved to:`, failures, recoveries, `Not started`,
+  non-zero counts, `Saved to:`, failed-only `Could not convert:`, `Saved elsewhere:`
+  with one-line causes, `Other issues:`, `Not started`,
   `Not included from your selection:`, `Elapsed:` and, in the dialog only, the
   version. `Show in Finder` reveals every saved or recovered PDF; `Details` shows
   `key: value` lines and `Back` returns to the summary.
 - Command line: the same commands and exit statuses; usage errors name the problem
   and print only the run line; `--help` lists the required fields and a complete, ready-to-copy JSON example;
-  stderr sections are separated by one blank line; receipts share the state and
-  issue-code vocabulary in [HEADLESS.md](HEADLESS.md).
+  prose precedes the one receipt attempt, and stderr sections are separated by
+  one blank line; receipts share the state and
+  issue-code vocabulary in [HEADLESS.md](HEADLESS.md), omit structured stack keys,
+  and are checked against the matching receipt schema without mutating internal
+  or GUI diagnostics.
 - Documents: README (users), INSTALL.txt (release asset), HEADLESS.md (command
   line), SECURITY.md (trust and file safety), QA.md (verification) and this file,
   with matching section order in both repositories. Documents describe the current

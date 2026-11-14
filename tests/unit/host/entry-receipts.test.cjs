@@ -197,3 +197,19 @@ test("a required monitor poll fault fails the run instead of disabling an option
     assert.equal(receipt.issues[0].message, "required monitor failed");
     assert.deepEqual(receipt.diagnostics, []);
 });
+
+
+test("failed native stdout preserves the human report and published PDF with one plain failure line", () => {
+    const context = fixture();
+    context.ns.NSFileHandle.fileHandleWithStandardOutput.writeData = () => { throw new Error("Bad file descriptor"); };
+    assert.equal(run(["--headless", "/config", "/source.png"]), 1);
+    assert.equal(context.output.length, 0);
+    assert.match(context.stderr[0], /^Created 1 PDF/u);
+    assert.equal(context.stderr[1], "Standard output could not be completed.\n");
+    assert.ok([...context.app.files].some((path) => path.endsWith(".pdf")));
+    for (const option of ["--help", "--version"]) {
+        const help = fixture();
+        help.ns.NSFileHandle.fileHandleWithStandardOutput.writeData = () => { throw new Error("Closed stdout"); };
+        assert.equal(run([option]), 1); assert.deepEqual(help.stderr, ["Standard output could not be completed.\n"]);
+    }
+});

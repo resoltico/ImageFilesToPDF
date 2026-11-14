@@ -30,7 +30,7 @@ test("controller converts through real adapters and derives a complete receipt",
     assert.equal(result.documents[0].pages,1);
     assert.equal(isCompleteSuccess(result),true);
     const lines=[]; assert.equal(reportHeadless(result,(text)=>lines.push(text),(code)=>code),0);
-    assert.equal(JSON.parse(lines[0]).documents.length,1);
+    assert.equal(JSON.parse(lines[1]).documents.length,1);
 });
 
 test("refused selection and conversion failures remain incomplete", () => {
@@ -42,7 +42,7 @@ test("refused selection and conversion failures remain incomplete", () => {
     const lines=[];
     assert.equal(reportHeadless(result,(text)=>lines.push(text),(code)=>code),1);
     assert.equal(lines.length,2);
-    assert.equal(JSON.parse(lines[0]).documents[0].issues[0].stage,"preparation");
+    assert.equal(JSON.parse(lines[1]).documents[0].issues[0].stage,"preparation");
 });
 
 test("missing mandatory source capabilities refuse direct files at setup", () => {

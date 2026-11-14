@@ -42,3 +42,5 @@ assert.equal(receipt.documents[0].state, 'saved');
 JS
 assert_valid_pdf "$WORK/german/photo.pdf"
 node "$ROOT/tests/integration/cli-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.jxa" "$WORK"
+
+node "$ROOT/tests/integration/cli-transport.cjs" "$ROOT/dist/Image-Files-to-PDF.jxa" "$WORK"

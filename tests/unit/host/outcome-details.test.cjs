@@ -69,7 +69,10 @@ test("stdout transport reports presence truthfully",()=>{
     const ns=(text)=>({dataUsingEncoding:()=>text});
     ns.NSFileHandle={fileHandleWithStandardOutput:{writeData:(text)=>written.push(text)}};
     assert.equal(foundation({import:()=>true},ns),ns);
-    assert.equal(writeReceipt("receipt\n",ns),true);
+    const brokenPipe = require("../../../src/host/command-line/broken-pipe.js");
+    const { withoutSigpipe } = brokenPipe;
+    try { brokenPipe.withoutSigpipe = (write) => write(); assert.equal(writeReceipt("receipt\n",ns),true); }
+    finally { brokenPipe.withoutSigpipe = withoutSigpipe; }
     assert.deepEqual(written,["receipt\n"]);
 });
 

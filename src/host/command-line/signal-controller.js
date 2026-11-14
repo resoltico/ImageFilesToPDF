@@ -1,24 +1,19 @@
 "use strict";
 const { OperationError } = require("../../core/errors.js");
 const { issuesOf } = require("../../core/outcomes.js");
+const { nativeSignalActions } = require("./signal-actions.js");
 const SIGINT = 2;
 const SIGTERM = 15;
 const SIGNALS = [SIGINT, SIGTERM];
 const OPEN_SYSTEM_LIBRARY = 10;
 const MILLISECONDS_PER_SECOND = 1000;
-// 64-bit Darwin: handler pointer (8), mask (4), flags (4); measured against the SDK.
-const SIGACTION_BYTES = 16;
 const MAXIMUM_CLOSE_MS = 1000;
-const POINTER_BYTES = 8;
 const POLL_SECONDS = 0.001;
 
 function bindSignalApis(objc) {
     try {
-        objc.import("Foundation"); objc.import("CoreFoundation"); objc.import("signal"); objc.import("dispatch");
+        objc.import("CoreFoundation"); objc.import("dispatch");
         for (const [name, types] of [
-            ["malloc", ["void *", ["unsigned long"]]], ["free", ["void", ["void *"]]],
-            ["sigaction", ["int", ["int", "void *", "void *"]]],
-            ["memcmp", ["int", ["void *", "void *", "unsigned long"]]],
             ["dlopen", ["void *", ["string", "int"]]], ["dlsym", ["void *", ["void *", "string"]]],
             ["dlclose", ["int", ["void *"]]],
             ["dispatch_source_create", ["id", ["void *", "unsigned long", "unsigned long", "id"]]],
@@ -49,6 +44,7 @@ function signalSourceType(ns, ref, library, nilPointer) {
 
 function nativeSignalAccess(objc = globalThis.ObjC, ns = globalThis.$, ref = globalThis.Ref) {
     if (!objc || !ns || !ref) { throw new OperationError("Command-line signal monitoring requires the Objective-C bridge."); }
+    const actions = nativeSignalActions(objc, ns, ref);
     bindSignalApis(objc);
     const nilPointer = ns.NSValue.valueWithPointer(null).pointerValue;
     const queue = ns.NSOperationQueue.mainQueue.underlyingQueue;
@@ -56,22 +52,9 @@ function nativeSignalAccess(objc = globalThis.ObjC, ns = globalThis.$, ref = glo
     const library = ns.dlopen("/usr/lib/libSystem.B.dylib", OPEN_SYSTEM_LIBRARY);
     if (ref.equals(library, nilPointer)) { throw new OperationError("The system signal library could not be opened."); }
     const type = signalSourceType(ns, ref, library, nilPointer);
-    const ignoredHandler = ref("unsigned long");
-    ignoredHandler[0] = 1;
     return {
+        ...actions,
         now: () => ns.NSProcessInfo.processInfo.systemUptime * MILLISECONDS_PER_SECOND,
-        allocate: () => { const snapshot = ns.malloc(SIGACTION_BYTES); return ref.equals(snapshot, nilPointer) ? null : snapshot; },
-        free: (snapshot) => ns.free(snapshot),
-        read: (number, snapshot) => ns.sigaction(number, null, snapshot),
-        restore: (number, snapshot) => ns.sigaction(number, snapshot, null),
-        ignore(number) {
-            const check = ns.malloc(SIGACTION_BYTES);
-            if (ref.equals(check, nilPointer)) { return -1; }
-            try {
-                ns.signal(number, 1);
-                return ns.sigaction(number, null, check) === 0 ? ns.memcmp(check, ignoredHandler, POINTER_BYTES) : -1;
-            } finally { ns.free(check); }
-        },
         create: (number) => { const source = ns.dispatch_source_create(type, number, 0, queue); return source && !source.isNil() ? source : null; },
         block: (callback) => objc.block(["void", []], callback),
         handlers(source, event, cancel) { ns.dispatch_source_set_cancel_handler(source, cancel); ns.dispatch_source_set_event_handler(source, event); },
