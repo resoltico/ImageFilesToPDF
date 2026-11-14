@@ -15,7 +15,7 @@ test("a claimed PDF with an unverifiable name preserves the validated original w
         assert.throws(() => publishPdf(job, staged, target), (error) => {
             assert.equal(error.recovery, staged);
             assert.equal(error.issues[0].code, "publication");
-            assert.match(error.issues[0].message, /claimed.*stored filename.*validated original was retained/u);
+            assert.match(error.issues[0].message, /finished copy was created.*stored filename.*validated original was retained/u);
             assert.equal(error.issues[0].diagnostic.folder, "/out/");
             assert.equal(Object.hasOwn(error.issues[0].diagnostic, "path"), false, "no guessed public output path");
             return true;
@@ -71,7 +71,7 @@ test("changed, missing or uninspectable originals cannot enter generic recovery 
             assert.equal(error.recovery, null); assert.equal(error.issues[0].code, "fault");
             assert.deepEqual(error.issues[0].diagnostic.observed, observation ?? { error: "Original inspection denied." });
             assert.equal(error.issues[0].diagnostic.folder, "/out/");
-            assert.match(error.issues[0].message, /A PDF was claimed.*no trustworthy recovery path/u);
+            assert.match(error.issues[0].message, /A finished copy was created.*no trustworthy recovery path/u);
             return true;
         });
         assert.ok(app.files.has(staged)); assert.ok(app.files.has(target));
@@ -169,4 +169,17 @@ test("original replacement before Downloads release preserves its named candidat
     });
     assert.ok(app.files.has(staged)); assert.ok(app.files.has("/Downloads/result.pdf"));
     assert.equal(job.artifacts.get(staged).state, "validated");
+});
+
+
+test("the human recovery report keeps creation/name uncertainty and the native lookup cause", () => {
+    const { runOutcome } = require("../../../src/core/outcomes.js");
+    const { reportText } = require("../../../src/core/run-report.js");
+    const { job } = fixture();
+    job.publication.actualPath = () => { throw new OperationError("Canonical name lookup failed."); };
+    assert.throws(() => publishPdf(job, staged, target), (error) => {
+        const outcome = runOutcome([{ state: "recovered", sources: ["/photo.jpg"], pages: 1, recovery: error.recovery, issues: error.issues }]);
+        assert.ok(reportText(outcome).includes(`Saved elsewhere:\n${staged}\nA finished copy was created, but its stored filename could not be verified. The validated original was retained. Canonical name lookup failed.`));
+        assert.ok(error.cause); return true;
+    });
 });

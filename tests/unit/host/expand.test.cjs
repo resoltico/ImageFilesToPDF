@@ -130,3 +130,14 @@ test("a dot-prefixed name is hidden, and only at the front", () => {
     assert.equal(isHidden(".DS_Store"), true);
     assert.equal(isHidden("holiday.2024.png"), false);
 });
+
+
+test("visible special files are reported before extension filtering while hidden entries and links stay excluded", () => {
+    const tree = treeOf({ "/t": ["a.png", "pipe.png", "device", ".hidden.png", "alias.png"] },
+        { "/t/pipe.png": "other", "/t/device": "other", "/t/.hidden.png": "other", "/t/alias.png": "link" });
+    const result = imagesInFolder(tree, "/t", new Set());
+    assert.deepEqual(result.found, ["/t/a.png"]);
+    assert.deepEqual(result.problems, [{ path: "/t/pipe.png", code: "special-file" }, { path: "/t/device", code: "special-file" }]);
+    assert.equal(result.code, "");
+    assert.equal(imagesInFolder(treeOf({ "/t": ["pipe"] }, { "/t/pipe": "other" }), "/t", new Set()).code, "");
+});

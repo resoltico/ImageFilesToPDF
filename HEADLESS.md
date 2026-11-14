@@ -129,7 +129,7 @@ Every issue and every `rejected` entry carries a `code`, a `stage` and a message
 `message` for issues, `reason` for rejected entries, which also carry `path` and
 `name`. An issue may also carry `field`, `source` and `diagnostic`; commands,
 native errors and stacks appear only in `diagnostic`. An `unsupported-content`
-refusal includes `diagnostic.loader`, the vips loader that recognized its content.
+refusal includes `diagnostic.loader`, the vips loader that recognized its content, including excluded SVG and PDF content. Truncated HEIC recognized by its decoder is `damaged`; unrecognized bytes remain `not-an-image`. Visible pipes, sockets and devices inside selected folders are `special-file`; hidden entries and links remain skipped.
 Settings diagnostics distinguish `missing: true` from `expectedType`/`actualType`
 for wrong JSON types. CLI settings messages name the JSON key; form corrections
 keep the setting's display name.

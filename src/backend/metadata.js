@@ -35,7 +35,7 @@ function interpretationFrom(value) {
 }
 
 function unmappedLoader(loader) {
-    if (!loader || /^(?:svg|pdf)/u.test(loader)) { return { problem: "not-an-image" }; }
+    if (!loader) { return { problem: "not-an-image" }; }
     return { problem: "unsupported-content", diagnostic: { loader } };
 }
 
@@ -108,9 +108,9 @@ function fieldAbsent(text, field) {
     return normalized(text).split("\n").some((line) => line.trim() === `vips_image_get: ${name}` || line.trim() === `vipsheader: vips_image_get: ${name}`);
 }
 
-// libvips' WebP loader reports a header it cannot parse under the lower-case "webp" domain.
+// Supported WebP and HEIF loaders also report damage under lower-case decoder domains.
 function headerFailureCode(text) {
-    return /(?:^|\n)(?:vipsheader:[ \t]*)?(?:VipsJpeg|VipsPng|VipsTiff|VipsHeif|VipsWebP|webp):/u.test(normalized(text))
+    return /(?:^|\n)(?:vipsheader:[ \t]*)?(?:VipsJpeg|VipsPng|VipsTiff|VipsHeif|VipsWebP|webp|heif):/u.test(normalized(text))
         ? "damaged" : "not-an-image";
 }
 module.exports = { LOADERS, REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata, optionalValue, scalarValues, fieldAbsent, headerFailureCode };

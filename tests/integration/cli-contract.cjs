@@ -294,7 +294,10 @@ function refusals(pdf,separate) {
     assert.equal(single.documents.length,1);assert.equal(single.documents[0].output,at("one-admitted/photo.pdf"));
     const corpus=["empty.png","vector.png","document.png","random.jpg","multi.tif","animated.webp","cut.webp","unreadable.jpg","photo.jpg"];
     const refused=convert(1,corpus,separate);
-    for(const [name,code] of [["empty.png","empty"],["vector.png","not-an-image"],["document.png","not-an-image"],["random.jpg","not-an-image"],["multi.tif","multiple-images"],["animated.webp","multiple-images"],["cut.webp","damaged"],["unreadable.jpg","unreadable"]]) {refusal(refused,name,code);}
+    for(const [name,code] of [["empty.png","empty"],["vector.png","unsupported-content"],["document.png","unsupported-content"],["random.jpg","not-an-image"],["multi.tif","multiple-images"],["animated.webp","multiple-images"],["cut.webp","damaged"],["unreadable.jpg","unreadable"]]) {refusal(refused,name,code);}
+    for (const [name, loader] of [["vector.png", "svgload"], ["document.png", "pdfload"]]) {
+        assert.equal(refused.rejected.find((entry) => entry.path === at(name)).diagnostic.loader, loader);
+    }
     assert.equal(refused.documents.length,1);assert.equal(refused.documents[0].state,"saved");
 }
 
@@ -302,6 +305,13 @@ async function run() {
     grammar();readerErrors();settingsDiagnostics();pathDiagnostics();settingsUrls();
     const {pdf,original}=embedding();
     const separate=placementAndNaming(pdf);refusals(pdf,separate);
+    const heic = convert(1, ["cut.heic", "text.heic"]);
+    refusal(heic, "cut.heic", "damaged"); refusal(heic, "text.heic", "not-an-image");
+    fs.mkdirSync(at("special-folder")); fs.copyFileSync(at("photo.jpg"), at("special-folder/photo.jpg"));
+    execFileSync("mkfifo", [at("special-folder/pipe.png"), at("special-folder/visible"), at("special-folder/.hidden.png")]);
+    const special = convert(1, ["special-folder"], config, { timeout: 10000, killSignal: "SIGKILL" });
+    assert.deepEqual(special.rejected.map((entry) => [path.basename(entry.path), entry.code]).sort(), [["pipe.png", "special-file"], ["visible", "special-file"]]);
+    assert.equal(special.documents[0].state, "saved");
     await signals();
     await ownership();
     assert.deepEqual(fs.readFileSync(at("photo.jpg")),original,"source bytes untouched");

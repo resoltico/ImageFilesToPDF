@@ -17,6 +17,10 @@ vips invert "$WORK/first.tif" "$WORK/second.tif"
 tiffcp "$WORK/first.tif" "$WORK/second.tif" "$WORK/multi.tif"
 vips webpsave "$WORK/multi.tif[n=-1]" "$WORK/animated.webp" --page-height 200
 test "$(vipsheader -f n-pages "$WORK/animated.webp")" = 2
+# A real HEIF decoder signature, independent of the .heic suffix.
+vips copy "$WORK/photo.png" "$WORK/whole.heic"
+head -c 64 "$WORK/whole.heic" >"$WORK/cut.heic"
+printf 'not an image' >"$WORK/text.heic"
 # A WebP cut short is damaged: its loader is known, yet its header cannot be parsed.
 vips gaussnoise "$WORK/noise.v" 400 200
 vips copy "$WORK/noise.v" "$WORK/whole.webp"

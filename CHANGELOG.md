@@ -12,6 +12,7 @@
 - Reports name retained, unreadable or safely reclaimed stale workspaces, so unfinished temporary work remains visible.
 - Receipts and reports use the actual stored output and recovery basenames, including Unicode normalization changes made by the filesystem.
 - Recovered PDFs have a `Saved elsewhere` section with a one-line cause; `Could not convert` lists failures only and other issues remain visible.
+- Truncated HEIC is reported as damaged; recognized excluded content names its loader, and visible special files inside selected folders are reported.
 - Missing input paths are reported before format filtering; non-local URI schemes and remote file URLs are classified as remote URLs.
 - Command-line settings errors name the JSON key and distinguish missing fields from wrong JSON types.
 - Every invalid setting control receives the same visible error tint, including numeric fields previously marked only by a red hint.

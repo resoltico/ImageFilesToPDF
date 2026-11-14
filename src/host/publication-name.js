@@ -23,10 +23,10 @@ function actualPublicationPath(publication, { staged, original, path, claimed })
         let originalFailure = null;
         try { requireOriginal(publication, { staged, expected: original, cause: error }); }
         catch (failure) { originalFailure = failure; }
-        const message = `A PDF was claimed in the destination folder, but its stored filename could not be verified. ${originalFailure ? "The original PDF could not be verified either; no trustworthy recovery path is available." : "The validated original was retained."}`;
+        const message = `A finished copy was created, but its stored filename could not be verified. ${originalFailure ? "The original PDF could not be verified either; no trustworthy recovery path is available." : "The validated original was retained."}`;
         throw new IssueError(message, { cause: originalFailure ?? error, recovery: originalFailure ? null : staged,
             issues: [{ code: originalFailure ? "fault" : "publication", stage: "publication", message,
-                diagnostic: { message: errorMessage(error), folder: dirname(path), claimedIdentity: claimed.identity, claimedSize: claimed.size,
+                diagnostic: { message: `${message} ${errorMessage(error)}`, folder: dirname(path), claimedIdentity: claimed.identity, claimedSize: claimed.size,
                     ...(originalFailure ? originalFailure.issues[0].diagnostic : {}) } }] });
     }
 }
