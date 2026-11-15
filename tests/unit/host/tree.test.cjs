@@ -17,6 +17,7 @@ const { createTree, kindFrom } = require("../../../src/host/tree.js");
 function bridgeOf(world = {}, imports = []) {
     const ns = (value) => ({
         boxed: value,
+        isNil() { return this.boxed === undefined && !Object.hasOwn(this, "code"); },
         // stringByStandardizingPath is a property, not a call.
         stringByStandardizingPath: String(value).replace("/../t", "")
     });
@@ -24,7 +25,11 @@ function bridgeOf(world = {}, imports = []) {
     Object.assign(ns, { NSFileType: "NSFileType", NSFileSystemNumber: "NSFileSystemNumber", NSFileSystemFileNumber: "NSFileSystemFileNumber" });
     ns.NSFileManager = {
         defaultManager: {
-            attributesOfItemAtPathError: (path) => nativeAttributes(world.attributes?.[path.boxed]),
+            attributesOfItemAtPathError(path, failure) {
+                const attributes = nativeAttributes(world.attributes?.[path.boxed]);
+                if (!attributes) { Object.assign(failure, world.errors?.[path.boxed] ?? { code: 260, domain: "NSCocoaErrorDomain" }); }
+                return attributes;
+            },
             contentsOfDirectoryAtPathError: (path) => world.entries?.[path.boxed]
         }
     };

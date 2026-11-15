@@ -25,8 +25,8 @@ const { createFakeObjC } = require("../ports/fake-objc.cjs");
  * exercised without anything waiting for real time to pass.
  */
 function opened(options = {}) {
-    const { ns, state } = createFakeObjC(options);
-    const view = build(ns);
+    const { ns, objc, state } = createFakeObjC(options);
+    const view = build(ns, objc);
     const now = { at: 0 };
     const restored = [];
     const sink = panelSink(view, ns, () => now.at, () => restored.push("restored"));
@@ -146,4 +146,16 @@ test("closing takes the window away, closes it, and puts the process back", () =
 
     assert.deepEqual(view.panel.done, ["center", "orderOut:null", "close"]);
     assert.deepEqual(restored, ["restored"]);
+});
+
+test("Stop is a momentary action with retained feedback and a cooperative stop latch", () => {
+    const { view, now, sink } = opened();
+    assert.equal(view.stop.buttonType, 7);
+    assert.equal(view.stop.enabled, true);
+    assert.equal(view.stop.target, view.stopController, "the weak native target has a run-lifetime owner");
+    view.stopController.requestStop(view.stop);
+    assert.equal(view.stop.title, "Stopping…");
+    assert.equal(view.stop.enabled, false);
+    now.at = APPEARANCE_DELAY;
+    assert.throws(() => sink.report(1, "Preparing", "x.png"), { name: "UserCanceled" });
 });

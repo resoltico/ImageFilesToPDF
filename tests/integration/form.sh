@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Real AppKit geometry, accessibility and off-screen previews; no modal dialog,
-# screenshot permission or fabricated UI. The shipped bundle supplies the form.
+# Real AppKit geometry, accessibility, actual auto-dismissed modal initialization
+# and composed native control previews; no screenshot permission is required.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)

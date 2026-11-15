@@ -39,6 +39,20 @@ run() {
         >"$WORK/receipt.json" 2>"$WORK/error.txt" || true
 }
 
+# A recovered PDF is named separately from failures, with the actual refusal.
+assert_recovery_report() {
+    node - "$WORK/error.txt" "$1" <<'NODE'
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const [file, recovery] = process.argv.slice(2);
+const text = fs.readFileSync(file, "utf8");
+assert.ok(text.includes(`Saved elsewhere:\n${recovery}\n`), text);
+const reason = text.split(`Saved elsewhere:\n${recovery}\n`)[1].split("\n")[0];
+assert.match(reason, /permission|denied|read.only|writ/iu);
+assert.doesNotMatch(text, /Could not convert:/u);
+NODE
+}
+
 # assert_nothing_left_behind <folder>
 #
 # The place a publication makes for itself is hidden and named for the attempt
@@ -135,6 +149,7 @@ run 20260907_030303 "$WORK/readonly/photo.png"
 KEPT=$(receipt_recovery "$WORK/receipt.json")
 test -n "$KEPT" || fail "no recovery path was named: $(cat "$WORK/error.txt")"
 assert_valid_pdf "$KEPT"
+assert_recovery_report "$KEPT"
 remove_test_recovery "$KEPT"
 assert_nothing_left_behind "$WORK/readonly"
 test -z "$(find "$WORK/readonly" -name '*.pdf')" ||
@@ -167,6 +182,7 @@ assert_nothing_left_behind "$WORK/denied"
 DENIED_KEPT=$(receipt_recovery "$WORK/receipt.json")
 test -n "$DENIED_KEPT" || fail "no recovery path was named: $(cat "$WORK/error.txt")"
 assert_valid_pdf "$DENIED_KEPT"
+assert_recovery_report "$DENIED_KEPT"
 remove_test_recovery "$DENIED_KEPT"
 chmod -a# 0 "$WORK/denied"
 

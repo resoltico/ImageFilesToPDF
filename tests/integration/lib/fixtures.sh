@@ -134,3 +134,18 @@ ultra_hdr_jpeg() {
     rm -rf "$work"
     test "$(vipsheader -f vips-loader "$1")" = uhdrload
 }
+
+# Corrupt the entropy scan while preserving the JPEG header and EOI marker.
+corrupt_jpeg_entropy() {
+    node - "$1" "$2" <<'JS'
+const fs = require('node:fs');
+const source = fs.readFileSync(process.argv[2]);
+const marker = source.indexOf(Buffer.from([0xff, 0xda]));
+const end = source.lastIndexOf(Buffer.from([0xff, 0xd9]));
+if (marker < 0 || end < 0) throw Error('generated JPEG has no scan or EOI');
+const start = marker + 2 + source.readUInt16BE(marker + 2);
+if (end - start < 10) throw Error('generated JPEG scan is too short');
+const cut = start + Math.floor((end - start) / 2);
+fs.writeFileSync(process.argv[3], Buffer.concat([source.subarray(0, cut), source.subarray(end)]));
+JS
+}

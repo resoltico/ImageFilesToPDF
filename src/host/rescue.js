@@ -1,4 +1,5 @@
 "use strict";
+const { actualPublicationPath, requireOriginal } = require("./publication-name.js");
 const { MKTEMP, CP, RMDIR } = require("./backend-executables.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { dirname } = require("../core/paths.js");
@@ -16,34 +17,41 @@ function releaseRecoveredOriginal(app, staged) {
 }
 
 /** Copy before release: an interrupted recovery cannot move away the only known copy. */
-function copyRecovery(app, staged, recovered, readFacts) {
-    const original = readFacts(staged);
-    if (!original.identity || original.size <= 0) { return { state: "retained", issues: [] }; }
+function copyRecovery(app, { staged, recovered, original }, publication) {
+    requireOriginal(publication, { staged, expected: original, cause: null, candidate: { folder: dirname(recovered) } });
     try { runArgv(app, [CP, staged, recovered], "keeping the validated PDF for recovery"); }
-    catch (error) { return { state: "retained", issues: [recoveryIssue(error)] }; }
-    const copied = readFacts(recovered);
+    catch (error) { requireOriginal(publication, { staged, expected: original, cause: error, candidate: { folder: dirname(recovered) } }); return { state: "retained", issues: [recoveryIssue(error)] }; }
+    const copied = publication.facts(recovered);
+    const candidate = { folder: dirname(recovered), identity: copied.identity, size: copied.size };
+    requireOriginal(publication, { staged, expected: original, cause: null, candidate });
     if (!copied.identity || copied.size !== original.size) {
         return { state: "retained", issues: [{ code: ISSUE.recovery, stage: "recovery", source: recovered, message: "The recovery copy could not be confirmed." }] };
     }
-    return releaseRecoveredOriginal(app, staged);
+    const path = actualPublicationPath(publication, { staged, original, path: recovered, claimed: copied });
+    requireOriginal(publication, { staged, expected: original, cause: null, candidate: { path, identity: copied.identity, size: copied.size } });
+    return { ...releaseRecoveredOriginal(app, staged), path };
 }
 
-function recoveryAttempt(app, staged, recovered, readFacts) {
+function recoveryAttempt(app, { staged, recovered, original }, publication) {
     const folder = dirname(recovered).replace(/\/$/u, "");
     let outcome = { state: "retained", issues: [] };
-    try { outcome = copyRecovery(app, staged, recovered, readFacts); }
-    catch (error) { outcome.issues.push(recoveryIssue(error)); }
-    if (outcome.state === "recovered") { return { ...outcome, path: recovered }; }
+    try { outcome = copyRecovery(app, { staged, recovered, original }, publication); }
+    catch (error) { if (error && Object.hasOwn(error, "recovery")) { throw error; } requireOriginal(publication, { staged, expected: original, cause: error, candidate: { folder: dirname(recovered) } }); outcome.issues.push(recoveryIssue(error)); }
+    if (outcome.state === "recovered") { return outcome; }
+    requireOriginal(publication, { staged, expected: original, cause: null, candidate: { folder: dirname(recovered) } });
     const cleanup = [removeFile(app, recovered), cleanupArgv(app, [RMDIR, folder])];
     return { ...outcome, path: staged,
         issues: [...outcome.issues, ...cleanup.filter((result) => result.state === "failed").map((result) => result.issue)] };
 }
 
-function setAside(app, stagedPath, readFacts, intendedName) {
+function setAside(app, stagedPath, publication, { intendedName, original }) {
     try {
+        requireOriginal(publication, { staged: stagedPath, expected: original, cause: null });
         const folder = String(runArgv(app, [MKTEMP, "-d", "-t", RECOVERY_PREFIX])).trim();
-        return recoveryAttempt(app, stagedPath, `${folder}/${intendedName}`, readFacts);
+        return recoveryAttempt(app, { staged: stagedPath, recovered: `${folder}/${intendedName}`, original }, publication);
     } catch (error) {
+        if (error && Object.hasOwn(error, "recovery")) { throw error; }
+        requireOriginal(publication, { staged: stagedPath, expected: original, cause: error });
         return { state: "retained", path: stagedPath, issues: [recoveryIssue(error)] };
     }
 }

@@ -23,6 +23,8 @@ function issuesOf(error, stage) {
     catch { return [{ code: ISSUE.fault, stage, message: "The failure details could not be read." }]; }
 }
 
+function isSetupRefusal(issue) { return issue.stage === "setup" && issue.code === ISSUE.operation; }
+
 /** Saved paths/source mappings are authoritative; rendered-page counts never imply publication. */
 function runOutcome(documents = [], rejected = [], issues = [], diagnostics = []) {
     const undone = documents.some((document) => document.state !== "saved");
@@ -30,7 +32,7 @@ function runOutcome(documents = [], rejected = [], issues = [], diagnostics = []
     let state = "complete";
     if (undone || documents.some((document) => document.issues.length > 0) || rejected.length > 0 || issues.length > 0 || documents.length === 0) { state = "incomplete"; }
     if (stopped && (undone || documents.length === 0)) { state = "canceled"; }
-    if (documents.length === 0 && issues.some((issue) => ["settings", "request"].includes(issue.stage))) { state = "invalid"; }
+    if (documents.length === 0 && issues.some((issue) => ["settings", "request"].includes(issue.stage) || (!stopped && isSetupRefusal(issue)))) { state = "invalid"; }
     return { state, documents, rejected, issues, diagnostics };
 }
 function noImagesOutcome(rejected) {
@@ -43,4 +45,4 @@ function failedRun(error, outcome = null) {
         [...(outcome?.issues ?? []), ...issuesOf(error, outcome ? "reporting" : "setup")], outcome?.diagnostics ?? []);
 }
 
-module.exports = { ISSUE, issuesOf, runOutcome, noImagesOutcome, failedRun };
+module.exports = { ISSUE, issuesOf, runOutcome, noImagesOutcome, failedRun, isSetupRefusal };

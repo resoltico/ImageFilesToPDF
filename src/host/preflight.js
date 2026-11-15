@@ -1,14 +1,18 @@
 "use strict";
 const { OperationError } = require("../core/errors.js");
 
-const { shellJoin, shellQuote } = require("../backend/shell.js");
+const { shellQuote } = require("../backend/shell.js");
 const {
     buildVipsProbeArgv,
+    buildVipsheaderProbeArgv,
+    isVipsheaderUsable,
+    VIPSHEADER_PROBE_IMAGE,
     buildPdfcpuProbeArgv,
     isVipsUsable,
     isPdfcpuUsable,
     describeSetupProblems
 } = require("../backend/preflight.js");
+const { probeArgv, probeImageArgv } = require("./shell.js");
 const { findTool, TOOL_NAMES, TOOL_SEARCH_PATH } = require("./tools.js");
 
 /*
@@ -24,9 +28,9 @@ const { findTool, TOOL_NAMES, TOOL_SEARCH_PATH } = require("./tools.js");
  * directly instead of being recovered from a thrown error. It is a fixed
  * string, never anything the user supplied.
  */
-function probe(app, argv) {
+function probe(app, argv, image) {
     try {
-        return app.doShellScript(`${shellJoin(argv)} 2>&1 || true`);
+        return image ? probeImageArgv(app, argv, image) : probeArgv(app, argv);
     } catch {
         return "";
     }
@@ -41,6 +45,7 @@ function hasHomebrew(app) {
 }
 
 const TOOL_PROBES = {
+    vipsheader: { build: buildVipsheaderProbeArgv, usable: isVipsheaderUsable, image: VIPSHEADER_PROBE_IMAGE },
     vips: {
         build: buildVipsProbeArgv,
         usable: isVipsUsable,
@@ -55,22 +60,22 @@ const TOOL_PROBES = {
 function inspectTool(app, name) {
     const found = findTool(app, name);
 
-    if (!found) {
-        return { tool: name, kind: "missing", path: "" };
+    if (!found.path) {
+        return { tool: name, kind: "missing", ...found };
     }
 
     const capability = TOOL_PROBES[name];
 
-    if (capability && !capability.usable(probe(app, capability.build(found)))) {
+    if (capability && !capability.usable(probe(app, capability.build(found.path), capability.image))) {
         return {
             tool: name,
             kind: "unusable",
             flags: capability.flags,
-            path: found
+            ...found
         };
     }
 
-    return { tool: name, kind: "ok", path: found };
+    return { tool: name, kind: "ok", ...found };
 }
 
 /*
@@ -81,7 +86,7 @@ function checkTools(app) {
     const problems = results.filter((result) => result.kind !== "ok");
 
     if (problems.length > 0) {
-        throw new OperationError(describeSetupProblems(problems, hasHomebrew(app)));
+        throw new OperationError(describeSetupProblems(problems, problems.some((problem) => !problem.override) && hasHomebrew(app)));
     }
 
     const tools = {};

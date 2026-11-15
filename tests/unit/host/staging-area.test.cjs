@@ -33,7 +33,7 @@ test("making it is one operation that either creates it or fails", () => {
 
     openStaging(host, area);
 
-    assert.equal(host.commands.at(-1), `'/bin/mkdir' '${area.directory}'`);
+    assert.equal(host.commands.at(-1), `export LC_ALL=C; '/bin/mkdir' '${area.directory}'`);
 });
 
 test("anything already at that name refuses it, whatever kind of thing it is", () => {
@@ -63,7 +63,7 @@ test("clearing it away takes what is in it and then the place itself", () => {
     assert.ok(!host.files.has(area.file));
     assert.deepEqual(
         host.commands.slice(-2),
-        [`'/bin/rm' '-f' '${area.file}'`, `'/bin/rmdir' '${area.directory}'`]
+        [`export LC_ALL=C; '/bin/rm' '-f' '${area.file}'`, `export LC_ALL=C; '/bin/rmdir' '${area.directory}'`]
     );
 });
 

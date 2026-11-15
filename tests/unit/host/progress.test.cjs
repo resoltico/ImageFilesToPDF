@@ -65,17 +65,17 @@ test("the label says which file, the count says how much is done", () => {
     assert.equal(sink.said.at(-1), "Preparing 2 | 3 of 20 — c.png");
 });
 
-test("the later stages keep the file they are working on", () => {
+test("image preparation phases keep their file until the detail is replaced", () => {
     const sink = recorder();
     const progress = opened(sink, 2, 2);
 
     progress.beginning(2, "last.png");
-    progress.phase("Creating PDF");
-    progress.phase("Validating PDF");
+    progress.phase("Reading image");
+    progress.phase("Encoding image");
 
     assert.deepEqual(sink.said.slice(-2), [
-        "Creating PDF 0 | 2 of 2 — last.png",
-        "Validating PDF 0 | 2 of 2 — last.png"
+        "Reading image 0 | 2 of 2 — last.png",
+        "Encoding image 0 | 2 of 2 — last.png"
     ]);
 });
 

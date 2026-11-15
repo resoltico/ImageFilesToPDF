@@ -14,15 +14,20 @@ function revealOutputs(paths) {
 }
 
 function diagnosticLines(value, label = "") {
-    if (value === null || value === undefined) { return []; }
+    if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) { return []; }
     if (typeof value !== "object") { return [`${label}${String(value).replace(/\r\n?/gu, "\n")}`]; }
     return Object.entries(value).filter(([key]) => key !== "stack").flatMap(([key, entry]) => diagnosticLines(entry, `${label}${key}: `));
+}
+
+function hasDiagnostic(entry) {
+    return entry?.code !== "canceled" || Object.entries(entry).some(([key, value]) =>
+        !["code", "stage", "stack"].includes(key) && diagnosticLines(value).length > 0);
 }
 
 function technicalDetails(result) {
     const issues = [...result.issues, ...result.rejected, ...result.documents.flatMap((document) => [...document.issues, ...(document.diagnostics ?? [])])];
     return [...result.diagnostics, ...issues.flatMap((issue) => issue.diagnostic ? [{ code: issue.code, stage: issue.stage, ...issue.diagnostic }] : [])]
-        .flatMap((entry) => diagnosticLines(entry)).join("\n");
+        .filter(hasDiagnostic).flatMap((entry) => diagnosticLines(entry)).join("\n");
 }
 
 function showCompletion(app, result, reveal = revealOutputs) {

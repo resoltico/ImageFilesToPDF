@@ -27,6 +27,14 @@ function buildVipsProbeArgv(vipsPath) {
     ];
 }
 
+const VIPSHEADER_PROBE_IMAGE = "\\0211\\0120\\0116\\0107\\0015\\0012\\0032\\0012\\0000\\0000\\0000\\0015\\0111\\0110\\0104\\0122\\0000\\0000\\0000\\0001\\0000\\0000\\0000\\0001\\0010\\0002\\0000\\0000\\0000\\0220\\0167\\0123\\0336\\0000\\0000\\0000\\0014\\0111\\0104\\0101\\0124\\0170\\0234\\0143\\0120\\0016\\0357\\0004\\0000\\0001\\0244\\0001\\0004\\0360\\0075\\0155\\0310\\0000\\0000\\0000\\0000\\0111\\0105\\0116\\0104\\0256\\0102\\0140\\0202";
+
+function buildVipsheaderProbeArgv(vipsheaderPath) {
+    return [vipsheaderPath, "-f", "width"];
+}
+
+function isVipsheaderUsable(probeOutput) { return String(probeOutput).trim() === "1"; }
+
 function buildPdfcpuProbeArgv(pdfcpuPath) {
     return [pdfcpuPath, "version"];
 }
@@ -68,18 +76,20 @@ function isPdfcpuUsable(probeOutput) {
 const INSTALL_COMMAND = "brew install vips pdfcpu";
 const HOMEBREW_URL = "https://brew.sh";
 
-function describeProblem(problem) {
-    if (problem.kind === "missing") {
-        return `- ${problem.tool} is not installed.`;
-    }
-
+function problemReason(problem) {
+    if (problem.kind === "missing") { return `${problem.tool} is not installed.`; }
+    if (problem.tool === "vipsheader") { return "vipsheader could not read the built-in PNG image."; }
     if (problem.tool === "pdfcpu") {
-        return `- pdfcpu could not report a supported stable version. ` +
-            `Version ${MINIMUM_PDFCPU_VERSION} or later is required.`;
+        return `pdfcpu could not report a supported stable version. Version ${MINIMUM_PDFCPU_VERSION} or later is required.`;
     }
+    return `${problem.tool} is installed but too old: it does not accept ${problem.flags}.`;
+}
 
-    return `- ${problem.tool} is installed but too old: it does not accept ` +
-        `${problem.flags}.`;
+function describeProblem(problem) {
+    const reason = problemReason(problem);
+    return problem.override
+        ? `- ${problem.override.name}=${JSON.stringify(problem.override.value)} is not usable as ${problem.tool}. ${reason}`
+        : `- ${reason}`;
 }
 
 /*
@@ -88,19 +98,25 @@ function describeProblem(problem) {
  * the next one.
  */
 function describeSetupProblems(problems, hasHomebrew) {
-    const commands = problems.some((problem) => problem.kind === "unusable")
+    const automatic = problems.filter((problem) => !problem.override);
+    const commands = automatic.some((problem) => problem.kind === "unusable")
         ? `${INSTALL_COMMAND}\nbrew upgrade vips pdfcpu`
         : INSTALL_COMMAND;
-    const remedy = hasHomebrew
-        ? `Run this in Terminal:\n\n${commands}`
-        : `Install Homebrew first, from ${HOMEBREW_URL}\n\n` +
-            `then run:\n\n${commands}`;
-
-    return `Setup needed.\n\n${problems.map(describeProblem).join("\n")}\n\n${remedy}`;
+    const remedies = [];
+    if (problems.some((problem) => problem.override)) { remedies.push("Fix or unset the named tool overrides, then try again."); }
+    if (automatic.length > 0) {
+        remedies.push(hasHomebrew
+            ? `Run this in Terminal:\n\n${commands}`
+            : `Install Homebrew first, from ${HOMEBREW_URL}\n\nthen run:\n\n${commands}`);
+    }
+    return `Setup needed.\n\n${problems.map(describeProblem).join("\n")}\n\n${remedies.join("\n\n")}`;
 }
 
 module.exports = {
     buildVipsProbeArgv,
+    buildVipsheaderProbeArgv,
+    VIPSHEADER_PROBE_IMAGE,
+    isVipsheaderUsable,
     buildPdfcpuProbeArgv,
     isVipsUsable,
     isPdfcpuUsable,

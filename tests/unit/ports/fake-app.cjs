@@ -50,6 +50,7 @@ const HEADER_FIELDS = [
 ];
 
 function cannedAnswer(app, command) {
+    if (command.includes("image-tool-probe")) { return app.headerProbe ?? "1"; }
     if (command.includes("printenv")) { throw Object.assign(new Error("unset"), { errorNumber: 1 }); }
     if (command.includes("'-a'")) { return "vips-loader: pngload\n"; }
 

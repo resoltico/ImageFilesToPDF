@@ -2,7 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { executeDocuments } = require("../../../src/application/documents.js");
-const { OperationError, UserCanceled } = require("../../../src/core/errors.js");
+const { OperationError, UserCanceled, IssueError } = require("../../../src/core/errors.js");
 const { documentPlan } = require("../../../src/core/document-plan.js");
 const { runOutcome } = require("../../../src/core/outcomes.js");
 
@@ -191,4 +191,26 @@ test("retain is established before validation and a retention failure prevents v
     assert.equal(record.state, "failed");
     assert.equal(failed.artifacts.get("/work/0.pdf").state, "building");
     assert.ok(!failed.events.some(([kind]) => kind === "validate"));
+});
+
+
+test("explicitly unavailable recovery never invents the registered artifact as a recovered path", () => {
+    for (const code of ["fault", "publication"]) {
+        const error = new IssueError("Original no longer verified.", { recovery: null, issues: [{ code, stage: "publication", message: "Original no longer verified." }] });
+        const sample = fixture(2, { mode: "separate", ports: { publish: () => { throw error; } } });
+        const records = executeDocuments(sample.ports, sample.plans);
+        assert.equal(records[0].state, "failed"); assert.equal(records[0].fatal, true);
+        assert.equal(Object.hasOwn(records[0], "recovery"), false);
+        assert.equal(records[1].state, "not-started");
+        assert.equal(sample.artifacts.get("/work/0.pdf").state, "validated");
+        assert.equal(sample.events.some(([kind, path]) => kind === "remove" && path.endsWith(".pdf")), false, "retained ownership is not deletion authority");
+    }
+});
+
+
+test("an inherited null recovery is not an explicit producer refusal", () => {
+    const prototype = new Error("Unclassified publication failure."); prototype.recovery = null;
+    const sample = fixture(1, { ports: { publish: () => { throw Object.create(prototype); } } });
+    const [result] = executeDocuments(sample.ports, sample.plans);
+    assert.equal(result.state, "recovered"); assert.equal(result.recovery, "/work/0.pdf");
 });

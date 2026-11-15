@@ -32,6 +32,7 @@ const INSTALLED_TOOLS = [
  * machine without Homebrew.
  */
 function setupAnswer(host, command) {
+    if (command.includes("image-tool-probe")) { return host.headerProbe ?? "1"; }
     if (command.includes("nonexistent-image-files-to-pdf-preflight") ||
         (command.includes("pdfcpu") && command.includes("'version'"))) {
         return host.preflight ?? (command.includes("pdfcpu")
@@ -91,6 +92,7 @@ function dialogSurface(host) {
 function nativePorts(fs, host) {
     const publication = {
         facts: fs.facts,
+        actualPath: (path) => path,
         link(from, to) {
             try { fs.test(["-e", to, "-o", "-L", to]); return { state: "exists" }; } catch {
                 // This fixture positively classified the path as unoccupied.

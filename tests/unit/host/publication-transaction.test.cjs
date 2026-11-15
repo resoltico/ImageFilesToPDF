@@ -3,16 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { publishPdf } = require("../../../src/host/publish.js");
 const { UserCanceled } = require("../../../src/core/errors.js");
-const { createFakeHost } = require("../ports/fake-host.cjs");
-const { makeJob } = require("../ports/fake-job.cjs");
-const staged = "/work/ready.pdf";
-const target = "/out/result.pdf";
-function fixture(options = {}) {
-    const app = createFakeHost({ files: [staged], ...options });
-    const job = makeJob(app);
-    job.artifacts.set(staged,{path:staged,state:"validated"});
-    return { app, job };
-}
+const { fixture, staged, target } = require("../ports/publication-fixture.cjs");
 
 test("publication confirms identity and returns its actual destination", () => {
     const { app, job } = fixture();
@@ -107,7 +98,7 @@ test("unknown original identity fails before any claim", () => {
     job.publication.facts = () => ({ identity: "", size: -1 });
     let called = false;
     job.publication.link = () => { called = true; return { state: "created" }; };
-    assert.throws(() => publishPdf(job, staged, target), (error) => Boolean(error.recovery));
+    assert.throws(() => publishPdf(job, staged, target), (error) => error.recovery === null && error.issues[0].code === "fault");
     assert.equal(called, false);
 });
 
@@ -133,7 +124,7 @@ test("unknown faults in a native adapter remain fatal diagnostics after recovery
 
 test("a measured zero-byte validated candidate is not published",()=>{
     const {job}=fixture({emptyFiles:[staged]});
-    assert.throws(()=>publishPdf(job,staged,target),/identity could not be measured/u);
+    assert.throws(()=>publishPdf(job,staged,target), (error) => error.recovery === null && error.issues[0].code === "fault");
 });
 
 test("publication cannot acquire ownership merely from a pathname",()=>{
@@ -147,7 +138,7 @@ test("recovery releases ownership only after confirmation and retains classified
     assert.throws(()=>publishPdf(job,staged,target),(error)=>{
         assert.match(error.message,/The PDF could not be saved where it was meant to go\.\n\n/u);
         assert.match(error.message,/The finished PDF has been kept here:\n\n/u);
-        assert.deepEqual(error.issues[0],{code:"publication",stage:"publication",message:"The PDF could not be saved to its requested destination.",diagnostic:{code:13,domain:"NSPOSIXErrorDomain",state:"denied"}});
+        assert.deepEqual(error.issues[0],{code:"publication",stage:"publication",message:"The PDF could not be saved to its requested destination.",diagnostic:{code:13,domain:"NSPOSIXErrorDomain",state:"denied",message:"The PDF destination could not be claimed (denied)."}});
         return true;
     });
     assert.ok([...job.artifacts.values()].every(artifact=>artifact.state==="released"));
@@ -227,4 +218,22 @@ test("diagnostic assembly faults after confirmation preserve the actual publishe
     const result=publishPdf(job,staged,target);
     assert.equal(result.path,target);assert.equal(result.state,"saved");assert.ok(app.files.has(target));
     assert.equal(result.issues[0].message,"post-confirmation diagnostics fault");assert.ok(!app.files.has(staged));
+});
+
+test("a later staging failure reports its current cause instead of an earlier collision", () => {
+    const { job, app } = fixture({ files: [staged, target], failures: [["'/bin/mkdir'", new Error("Current destination copy is denied.")]] });
+    const { link } = job.publication;
+    let attempts = 0;
+    job.publication.link = (from, to) => {
+        if (!to.startsWith("/out/")) { return link(from, to); }
+        attempts += 1;
+        return attempts === 1 ? { state: "exists", diagnostic: { message: "Old collision." } } : { state: "cross-device" };
+    };
+    assert.throws(() => publishPdf(job, staged, target), (error) => {
+        assert.match(error.issues[0].diagnostic.message, /Current destination copy is denied/u);
+        assert.doesNotMatch(error.issues[0].diagnostic.message, /Old collision/u);
+        assert.ok(error.recovery);
+        return true;
+    });
+    assert.ok(app.files.has(target), "the earlier occupied output remains untouched");
 });

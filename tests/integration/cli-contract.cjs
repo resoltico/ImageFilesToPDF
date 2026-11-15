@@ -1,10 +1,12 @@
 "use strict";
 const {Buffer} = require("node:buffer");
-const {setTimeout} = require("node:timers");
+const {clearTimeout, setTimeout} = require("node:timers");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const {pathToFileURL} = require("node:url");
+const {parseReceipt} = require("./lib/receipt.cjs");
 const {spawnSync, execFileSync, spawn} = require("node:child_process");
 const {once} = require("node:events");
 const [script, work] = process.argv.slice(2);
@@ -26,7 +28,7 @@ function command(status, args, options={}) {
 function convert(status, files, file=config, options={}) {
     const result=command(status,["--","--headless",file,...files],options);
     assert.equal(result.stdout.trim().split("\n").length,1,"one receipt line");
-    const receipt=JSON.parse(result.stdout);
+    const receipt=parseReceipt(result.stdout);
     assert.ok(["complete","incomplete","invalid","canceled"].includes(receipt.state));
     // The stderr report has no version line, no zero counts, and ends with the elapsed time when known.
     assert.doesNotMatch(result.stderr,/Image Files to PDF \d|(?:^|; )0 \w/mu);
@@ -61,6 +63,60 @@ function settingsError(filename, contents, cause) {
     assert.ok(receipt.issues.some((issue)=>issue.message.includes(at(filename))&&cause.test(issue.message)),JSON.stringify(receipt.issues));
 }
 
+function pathDiagnostics() {
+    for (const name of ["missing.jpg", "Phtos", "--headless"]) {
+        const receipt = convert(1, [name]);
+        assert.equal(receipt.rejected[0].code, "not-a-path");
+        assert.equal(receipt.rejected[0].reason, "No file or folder exists at this path.");
+        assert.equal(receipt.rejected[0].stage, "selection");
+    }
+    for (const url of ["data:image/png;base64,x", "mailto:a@example.com", "file://example.com/photo.jpg"]) {
+        const receipt = convert(1, [url]);
+        assert.equal(receipt.rejected[0].code, "remote-url");
+    }
+    fs.mkdirSync(at("blocked-parent"));fs.copyFileSync(at("photo.jpg"), at("blocked-parent/photo.jpg"));fs.chmodSync(at("blocked-parent"), 0);
+    try { assert.equal(convert(1, ["blocked-parent/photo.jpg"]).rejected[0].code, "unreadable"); }
+    finally { fs.chmodSync(at("blocked-parent"), 0o700); }
+}
+
+function assertValidOutput(receipt) {
+    const output = saved(receipt);
+    execFileSync("pdfcpu", ["validate", "--conf", "disable", "--mode=strict", output]);
+    execFileSync("qpdf", ["--check", output]);
+}
+
+function settingsUrls() {
+    fs.mkdirSync(at("settings URL"));
+    fs.copyFileSync(at("photo.jpg"), at("settings URL/photo.jpg"));
+    const file = at("settings URL/café %.json");
+    fs.writeFileSync(file, JSON.stringify(settings));
+    const url = pathToFileURL(file).href;
+    for (const local of [url, url.replace("file:///", "file://localhost/")]) {
+        const receipt = convert(0, ["settings URL/photo.jpg"], local);
+        assertValidOutput(receipt);
+    }
+    for (const invalid of ["file://remote/settings.json", "file:///bad%00.json", "file:///bad%.json"]) {
+        const receipt = convert(2, ["photo.jpg"], invalid);
+        assert.equal(receipt.issues[0].code, "settings-file");
+        assert.ok(receipt.issues[0].message.includes(invalid));
+    }
+}
+
+function settingsDiagnostics() {
+    for (const [key, values, expected] of [
+        ["mode", {}, "`mode` is missing."],
+        ["resolutionLimit", { ...settings, resolutionLimit: "300" }, "`resolutionLimit` must be a JSON number, not a string."],
+        ["background", { ...settings, background: null }, "`background` must be a JSON string, not null."]
+    ]) {
+        const file = at(`diagnostic-${key}.json`);
+        fs.writeFileSync(file, JSON.stringify(values));
+        const result = command(2, ["--headless", file, "photo.jpg"]);
+        const receipt = parseReceipt(result.stdout);
+        assert.equal(receipt.issues.find((issue) => issue.field === key).message, expected);
+        assert.ok(result.stderr.includes(expected));
+    }
+}
+
 function workspaceOf(pid, existing) {
     for(const name of fs.readdirSync(os.tmpdir()).filter((item)=>/^ImageFilesToPDF\.[A-Za-z0-9]{10}$/u.test(item)&&!existing.has(item))) {
         const candidate=path.join(os.tmpdir(),name);
@@ -72,30 +128,71 @@ function workspaceOf(pid, existing) {
     return null;
 }
 
+async function registeredWorkspace(existing) {
+    for (let attempt = 0; attempt < 1000; attempt += 1) {
+        const workspace = workspaceOf(activeChild.pid, existing);
+        if (workspace) { owned.add(workspace); return workspace; }
+        // Wait for this child's ownership registration before delivering any signal.
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
+    return assert.fail("actual child registered no workspace");
+}
+
+async function childEnded(child) {
+    const deadline = setTimeout(() => { child.kill("SIGKILL"); }, 30000);
+    try { return await once(child, "exit"); }
+    finally { clearTimeout(deadline); }
+}
+
+async function signalRun(delivered, input) {
+    const existing = new Set(fs.readdirSync(os.tmpdir()));
+    activeChild = spawn("/usr/bin/osascript", ["-l", "JavaScript", script, "--headless", config, input]);
+    let stderr = "", stdout = "";
+    activeChild.stdout.setEncoding("utf8"); activeChild.stderr.setEncoding("utf8");
+    activeChild.stdout.on("data", (text) => { stdout += text; }); activeChild.stderr.on("data", (text) => { stderr += text; });
+    await registeredWorkspace(existing);
+    const ended = childEnded(activeChild);
+    for (const signal of delivered) { activeChild.kill(signal); }
+    const [code, signal] = await ended;
+    assert.equal(signal, null, stderr); assert.equal(code, 1, stderr);
+    const receipt = parseReceipt(stdout);
+    assert.equal(receipt.state, "canceled");
+    assert.ok(receipt.issues.some((issue) => issue.code === "canceled") || receipt.documents.some((document) => document.state === "canceled"));
+    assert.doesNotMatch(stderr, /execution error|\(-2700\)|\n\s+at \w/u);
+    assert.equal(fs.readdirSync(input).some((name) => name.endsWith(".pdf")), false, "Stop cannot publish a partial combined PDF");
+}
+
+async function signals() {
+    const input = at("signal-input"); fs.mkdirSync(input);
+    for (let index = 0; index < 40; index += 1) { fs.copyFileSync(at("photo.jpg"), path.join(input, `${index}.jpg`)); }
+    for (const delivered of [["SIGINT"], ["SIGTERM"], ["SIGINT", "SIGTERM", "SIGINT"]]) {
+        // Each owned child exercises the production artifact and normal receipt/exit transport.
+        // eslint-disable-next-line no-await-in-loop
+        await signalRun(delivered, input);
+    }
+}
+
 async function ownership() {
     const input=at("many");fs.mkdirSync(input);
     for(let index=0;index<200;index+=1) {fs.copyFileSync(at("photo.jpg"),path.join(input,`${index}.jpg`));}
     const existing=new Set(fs.readdirSync(os.tmpdir()));
     activeChild=spawn("/usr/bin/osascript",["-l","JavaScript",script,"--headless",config,input],{stdio:"ignore"});
-    let orphan=null;
-    for(let attempt=0;attempt<200&&!orphan;attempt+=1) {
-        orphan=workspaceOf(activeChild.pid,existing);
-        if(!orphan) {
-            // Poll this process's owner registration before delivering TERM.
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise((resolve)=>{setTimeout(resolve,50);});
-        }
-    }
-    assert.ok(orphan,"actual run registered its owner before TERM");owned.add(orphan);
-    const ended=once(activeChild,"exit");activeChild.kill("SIGTERM");await ended;
-    assert.ok(fs.existsSync(orphan),"TERM left an observable orphan");
+    const orphan = await registeredWorkspace(existing);
+    const ended=childEnded(activeChild);activeChild.kill("SIGKILL");await ended;
+    assert.ok(fs.existsSync(orphan),"KILL left an observable orphan");
     const retained=execFileSync("mktemp",["-d","-t","ImageFilesToPDF"],{encoding:"utf8"}).trim();owned.add(retained);
     fs.writeFileSync(path.join(retained,"owner.json"),JSON.stringify({pid:2147483647,started:"not a live process"}));
     fs.writeFileSync(path.join(retained,"retain"),"");
-    const receipt=convert(0,["photo.jpg"]);
+    const checked = command(0, ["--headless", config, "photo.jpg"]);
+    const receipt = parseReceipt(checked.stdout);
+    assert.ok(checked.stderr.includes(`Temporary work:\n`));
+    assert.ok(checked.stderr.includes(orphan)); assert.ok(checked.stderr.includes(retained));
+    assert.ok(checked.stderr.includes("A stale workspace was reclaimed."));
     assert.ok(!fs.existsSync(orphan),"next startup reclaims the child-owned orphan");
     assert.ok(fs.existsSync(retained),"dead retained workspace survives");
     assert.ok(receipt.diagnostics.some((entry)=>entry.code==="workspace-retained"&&entry.diagnostic.path===retained));
+    assert.ok(receipt.diagnostics.some((entry)=>entry.code==="workspace-reclaimed"&&entry.diagnostic.path===orphan));
 }
 
 function grammar() {
@@ -104,7 +201,7 @@ function grammar() {
         [["--headless",config],"--headless needs a settings file and at least one path."],[["--bogus"],"Unknown option: --bogus."],
         [["--help","extra"],"--help and --version take no other arguments."],[["--headless","",config],"An argument is empty."]]) {
         const started=Date.now();const result=command(2,args,{timeout:2000});
-        assert.ok(Date.now()-started<2000);assert.equal(JSON.parse(result.stdout).state,"invalid");
+        assert.ok(Date.now()-started<2000);assert.equal(parseReceipt(result.stdout).state,"invalid");
         assert.equal(result.stderr,`The request is invalid.\n\n${problem}\n${runLine}\n`,"a usage error is one problem and the run line, not the help");
     }
     const help=command(0,["--help"],{timeout:2000});
@@ -120,7 +217,7 @@ function readerErrors() {
     settingsError("bytes.json",Buffer.from([255,254,255]),/UTF-8/u);
     settingsError("syntax.json","{",/not valid JSON/u);
     settingsError("array.json","[]",/not an object/u);
-    for(const [filename,changes,cause] of [["invalid.json",{resolutionLimit:1018},/Maximum resolution/u],["calendar.json",{timestamp:"20260230_010203"},/timestamp/u]]) {
+    for(const [filename,changes,cause] of [["invalid.json",{resolutionLimit:1018},/resolutionLimit/u],["calendar.json",{timestamp:"20260230_010203"},/timestamp/u]]) {
         fs.writeFileSync(at(filename),JSON.stringify({...settings,...changes}));
         const receipt=convert(2,["photo.jpg"],filename);
         assert.equal(receipt.state,"invalid");assert.ok(receipt.issues.some((issue)=>cause.test(issue.message)));
@@ -173,9 +270,23 @@ function placementAndNaming(pdf) {
     return separate;
 }
 
-function refusals(pdf,separate) {
+function setupRefusals() {
     const setup=convert(3,["photo.jpg"],config,{env:{...process.env,IMAGE_FILES_TO_PDF_VIPS:"/usr/bin/true"}});
+    assert.equal(setup.state,"invalid");
     assert.ok(setup.issues.some((issue)=>issue.stage==="setup"));
+    for (const override of ["/usr/bin/false",work,"relative-vipsheader","/no-such-fieldtest-vipsheader"]) {
+        const result=command(3,["--headless",config,"photo.jpg"],{env:{...process.env,IMAGE_FILES_TO_PDF_VIPSHEADER:override}});
+        const receipt=parseReceipt(result.stdout);
+        assert.equal(receipt.state,"invalid");assert.deepEqual(receipt.documents,[]);assert.deepEqual(receipt.rejected,[]);
+        assert.match(result.stderr,/^A required tool is missing or unusable\./u);
+        assert.ok(result.stderr.includes("IMAGE_FILES_TO_PDF_VIPSHEADER="));
+        assert.ok(result.stderr.includes(JSON.stringify(override)));
+        assert.doesNotMatch(result.stderr,/brew install|brew upgrade/u);
+    }
+}
+
+function refusals(pdf,separate) {
+    setupRefusals();
     fs.writeFileSync(at("empty.png"),"");fs.copyFileSync(at("source.svg"),at("vector.png"));
     fs.copyFileSync(pdf,at("document.png"));fs.writeFileSync(at("random.jpg"),"not an image");
     fs.copyFileSync(at("photo.jpg"),at("unreadable.jpg"));fs.chmodSync(at("unreadable.jpg"),0);
@@ -184,14 +295,25 @@ function refusals(pdf,separate) {
     assert.equal(single.documents.length,1);assert.equal(single.documents[0].output,at("one-admitted/photo.pdf"));
     const corpus=["empty.png","vector.png","document.png","random.jpg","multi.tif","animated.webp","cut.webp","unreadable.jpg","photo.jpg"];
     const refused=convert(1,corpus,separate);
-    for(const [name,code] of [["empty.png","empty"],["vector.png","not-an-image"],["document.png","not-an-image"],["random.jpg","not-an-image"],["multi.tif","multiple-images"],["animated.webp","multiple-images"],["cut.webp","damaged"],["unreadable.jpg","unreadable"]]) {refusal(refused,name,code);}
+    for(const [name,code] of [["empty.png","empty"],["vector.png","unsupported-content"],["document.png","unsupported-content"],["random.jpg","not-an-image"],["multi.tif","multiple-images"],["animated.webp","multiple-images"],["cut.webp","damaged"],["unreadable.jpg","unreadable"]]) {refusal(refused,name,code);}
+    for (const [name, loader] of [["vector.png", "svgload"], ["document.png", "pdfload"]]) {
+        assert.equal(refused.rejected.find((entry) => entry.path === at(name)).diagnostic.loader, loader);
+    }
     assert.equal(refused.documents.length,1);assert.equal(refused.documents[0].state,"saved");
 }
 
 async function run() {
-    grammar();readerErrors();
+    grammar();readerErrors();settingsDiagnostics();pathDiagnostics();settingsUrls();
     const {pdf,original}=embedding();
     const separate=placementAndNaming(pdf);refusals(pdf,separate);
+    const heic = convert(1, ["cut.heic", "text.heic"]);
+    refusal(heic, "cut.heic", "damaged"); refusal(heic, "text.heic", "not-an-image");
+    fs.mkdirSync(at("special-folder")); fs.copyFileSync(at("photo.jpg"), at("special-folder/photo.jpg"));
+    execFileSync("mkfifo", [at("special-folder/pipe.png"), at("special-folder/visible"), at("special-folder/.hidden.png")]);
+    const special = convert(1, ["special-folder"], config, { timeout: 10000, killSignal: "SIGKILL" });
+    assert.deepEqual(special.rejected.map((entry) => [path.basename(entry.path), entry.code]).sort(), [["pipe.png", "special-file"], ["visible", "special-file"]]);
+    assert.equal(special.documents[0].state, "saved");
+    await signals();
     await ownership();
     assert.deepEqual(fs.readFileSync(at("photo.jpg")),original,"source bytes untouched");
     // eslint-disable-next-line no-console
@@ -200,7 +322,7 @@ async function run() {
 // eslint-disable-next-line no-console
 run().catch((error)=>{console.error(error);process.exitCode=1;}).finally(async()=>{
     if(activeChild&&activeChild.exitCode===null&&activeChild.signalCode===null) {
-        const ended=once(activeChild,"exit");activeChild.kill("SIGKILL");await ended;
+        const ended=childEnded(activeChild);activeChild.kill("SIGKILL");await ended;
     }
     for(const directory of owned) {fs.rmSync(directory,{recursive:true,force:true});}
 });

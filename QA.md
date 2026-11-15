@@ -26,7 +26,13 @@ npm run test:integration:macos
 `quality` checks syntax, executable registry, import boundaries, toolchain and
 metadata consistency, document links and settings tables, ShellCheck/actionlint
 when available, ESLint, unit/repository tests, coverage, mutation and distribution
-bytes. It never rebuilds first: stale committed output must fail. Use
+bytes. Serialized receipts are checked against
+[the receipt schema](tests/integration/receipt.schema.json), maintained with
+[HEADLESS.md](HEADLESS.md), using the pinned development-only Ajv. Unit negative
+controls cover rejected `reason`, conditional saved/recovered paths, optional
+record notes and nested stack omission; actual CLI, naming and recovery receipts
+use the same validator. Schema validity supplements pixel, file and ownership
+checks. It never rebuilds first: stale committed output must fail. Use
 `npm run build` to regenerate intentionally. Inspect discovered tests and all skips.
 
 Core, application, pure backend contracts and `src/host/invocation-syntax.js` require
@@ -50,11 +56,11 @@ sequence:
 | `publication.sh` | Occupied entries, permissions, ownership and recoverable failures |
 | `volumes.sh` | Cross-volume APFS and HFS+ publication in both modes |
 | `cards.sh` | FAT32 independent rename probe, publication/collisions or validated recovery, and exFAT recovery, in both modes |
-| `damaged.sh` | Damaged-source refusal and combined/separate behavior |
-| `form.sh` | Production-renderer probe, native geometry and accessibility, PNG previews |
-| `cli.sh` | CLI grammar and statuses, settings reader, refusal corpus, names, JPEG streams, placement, TERM, reclaim and retention |
+| `damaged.sh` | Damaged-source refusal, JPEG entropy warnings in pass-through/re-encode, and combined/separate behavior |
+| `form.sh` | Production-renderer probe, native geometry/accessibility, shown modal scrollers at zero without fighting later scrolling, Stop button role/feedback and invalid-control pixel/negative controls in both appearances, PNG previews |
+| `cli.sh` | CLI grammar/statuses, settings reader, refusal corpus, unusable header overrides, German caller locale, names, JPEG streams, placement, actual INT/TERM/repeats, SIGKILL stale reclamation, HEIC/excluded-loader/FIFO refusals and closed/broken stream integrity |
 | `hdr.sh` | Synthetic Ultra HDR in both modes, SDR JPEG streams, ICC conversion, orientations 6/8, damage and unmapped-loader diagnostics |
-| `naming.sh` | Case and normalization namespaces, folder aliases, hard links and occupied-name protection on local, APFS, APFSX, HFS+, HFSX, FAT32 and exFAT volumes |
+| `naming.sh` | Case and normalization namespaces, folder aliases, hard links, raw stored-basename bytes, long-name/collision budgets and occupied-name protection on local, APFS, APFSX, HFS+, HFSX, FAT32 and exFAT volumes |
 
 ExifTool edits only synthetic HDR fixture metadata; the action does not use it.
 
@@ -120,7 +126,9 @@ changed by the test. Check Finder selection and running without files, the
 selection review, all six settings, keyboard navigation, Maximum resolution `1018`,
 JPEG quality `101` and background `purple` reported together with other choices
 kept, the form note opening at its first line, Create/Cancel, remembered settings,
-visible progress/Stop, one headline above selectable details, Details then Back,
+visible progress/Stop with disabled “Stopping…” feedback, document-level PDF
+phases without an image name, one headline above selectable details, Details then Back,
+no Details for a plain Stop,
 and Show in Finder revealing every saved and recovered PDF. Repeat with no images,
 only refused items and a mixed selection. Confirm no text-result files are returned
 to Shortcuts.

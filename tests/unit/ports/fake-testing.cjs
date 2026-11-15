@@ -22,7 +22,7 @@ function isLink(state, path) {
 }
 
 function isRegular(state, path) {
-    return state.files.has(path) && !state.directories.has(path);
+    return (state.files.has(path) || state.runnable.has(path)) && !state.directories.has(path);
 }
 
 function hasContents(state, path) {

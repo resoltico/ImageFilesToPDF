@@ -39,3 +39,10 @@ for (const error of [new TypeError("bridge bug"),new TypeError("nothing found to
         assert.throws(()=>appkitBridge({import(){throw error;}},{}),caught=>caught===error);
     });
 }
+
+test("native invalid styling needs no separate layer framework", () => {
+    const imported = [];
+    const objc = { import(name) { imported.push(name); if (name === "QuartzCore") { throw new Error("must not import"); } } };
+    assert.deepEqual(appkitBridge(objc, {}), { objc, ns: {} });
+    assert.deepEqual(imported, ["AppKit"]);
+});

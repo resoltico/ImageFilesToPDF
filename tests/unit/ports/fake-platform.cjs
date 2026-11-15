@@ -1,6 +1,7 @@
 "use strict";
 const { Buffer } = require("node:buffer");
 const { TextDecoder } = require("node:util");
+const { fakeDirectory } = require("./fake-directory.cjs");
 const { createFakeObjC } = require("./fake-objc.cjs");
 
 function attributesFor(app, path) {
@@ -25,7 +26,7 @@ function attributesFor(app, path) {
 function managerFor(app, unbox) {
     return {
         contentsOfDirectoryAtPathError(path) {
-            const prefix=`${unbox(path)}/`;
+            const prefix=`${unbox(path).replace(/\/$/u, "")}/`;
             const names=[...new Set([...app.files].filter((name)=>name.startsWith(prefix)).map((name)=>name.slice(prefix.length).split("/")[0]))];
             names.isNil=()=>false;return names;
         },
@@ -43,7 +44,11 @@ function managerFor(app, unbox) {
         isReadableFileAtPath: (path) => app.files.has(unbox(path)) || app.fileTexts.has(unbox(path)),
         currentDirectoryPath: "/cwd",
         fileExistsAtPathIsDirectory(path, directory) { const name = unbox(path); directory[0] = false; return app.files.has(name) || app.fileTexts.has(name); },
-        attributesOfItemAtPathError: (path) => attributesFor(app, unbox(path)),
+        attributesOfItemAtPathError(path, failure) {
+            const attributes = attributesFor(app, unbox(path));
+            if (!attributes) { Object.assign(failure, { code: 260, domain: "NSCocoaErrorDomain" }); }
+            return attributes;
+        },
         copyItemAtPathToPathError(from, to) { app.sources.capture(unbox(from), unbox(to)); return true; },
         linkItemAtPathToPathError(from, to, error) {
             const outcome = app.publication.link(unbox(from), unbox(to));
@@ -54,27 +59,36 @@ function managerFor(app, unbox) {
 }
 
 function fileData(bytes) {
-    return { bytes, length: bytes.length, isNil: () => false,
+    return { bytes, isEqualToData: (other) => bytes.equals(other.bytes), length: bytes.length, isNil: () => false,
         subdataWithRange: (range) => fileData(bytes.subarray(range.location, range.location + range.length)),
         base64EncodedStringWithOptions: () => ({ boxed: bytes.toString("base64") }) };
 }
 
 function decodedText(data) {
-    try { return { boxed: new TextDecoder("utf-8", { fatal: true }).decode(data.bytes), isNil: () => false }; }
+    try { const text = new TextDecoder("utf-8", { fatal: true }).decode(data.bytes); return { boxed: text, isNil: () => false, dataUsingEncoding: () => fileData(Buffer.from(text)) }; }
     catch { return null; }
 }
 
 function installPlatform(app, options = {}) {
+    const brokenPipe = require("../../../src/host/command-line/broken-pipe.js");
+    brokenPipe.withoutSigpipe = (write) => write();
+    const signalController = require("../../../src/host/command-line/signal-controller.js");
+    signalController.createSignalController = () => ({ poll: () => false, close: () => undefined });
     const bridge = createFakeObjC(options);
     app.nativeDirectories=new Set();app.nativeDirectoryIds=new Map();
+    const directory = fakeDirectory((path) => {
+        const prefix = `${path.replace(/\/$/u, "")}/`;
+        return [...new Set([...app.files].filter((name) => name.startsWith(prefix)).map((name) => name.slice(prefix.length).split("/")[0]))];
+    });
+    const errnoSymbol = "__error";
     const output = [];
     const stderr = [];
     const unbox = (value) => value?.boxed ?? value;
-    const ns = (value) => ({ boxed: value, objectForKey: (key) => value[unbox(key)], stringByStandardizingPath: value, dataUsingEncoding: () => value,
+    const ns = (value) => ({ boxed: value, isNil() { return (this.boxed === undefined || this.boxed === null) && !Object.hasOwn(this, "code"); }, objectForKey: (key) => value[unbox(key)], stringByStandardizingPath: value, dataUsingEncoding: () => value,
         writeToFileAtomicallyEncodingError(path) {app.fileTexts.set(unbox(path),value);app.files.add(unbox(path));return true;} });
-    Object.assign(ns, bridge.ns, {
+    Object.assign(ns, bridge.ns, directory.ns, {
         NSMakeRange: (location, length) => ({ location, length }),
-        NSData: { dataWithContentsOfFile: (path) => app.fileTexts.has(unbox(path)) ? fileData(Buffer.from(app.fileTexts.get(unbox(path)))) : null },
+        NSData: { ...directory.ns.NSData, dataWithContentsOfFile: (path) => app.fileTexts.has(unbox(path)) ? fileData(Buffer.from(app.fileTexts.get(unbox(path)))) : null },
         NSString: { alloc: { initWithDataEncoding: decodedText },
             stringWithContentsOfFileEncodingError: (path) => app.fileTexts.has(unbox(path)) ? {boxed:app.fileTexts.get(unbox(path)),isNil:()=>false} : null },
         NSTemporaryDirectory: () => "/var/folders/xx/T/", NSHomeDirectory: () => "/",
@@ -89,13 +103,15 @@ function installPlatform(app, options = {}) {
             url.URLByResolvingSymlinksInPath=url;return url;
         }},
         CGImageSourceCreateWithURL: () => ({}), CGImageSourceGetCount: () => app.pages ?? 1,
+        link: (from, to) => { directory.ns[errnoSymbol]()[0] = 17; return app.publication.link(from, to).state === "created" ? 0 : -1; },
+        strerror: () => "File exists",
         CFRelease: () => undefined,
         exit: (code) => code,
         NSFileHandle: { fileHandleWithStandardOutput: { writeData: (text) => output.push(text) }, fileHandleWithStandardError: { writeData: (text) => stderr.push(text) } }
     });
     Object.assign(bridge.objc, { deepUnwrap: (value) => value?.plain ?? value, unwrap: unbox,
         bindFunction: () => undefined, castRefToObject: () => ({ isNil: () => false }) });
-    Object.assign(globalThis, { ObjC: bridge.objc, $: ns, Ref: () => ({}),
+    Object.assign(globalThis, { ObjC: bridge.objc, $: ns, Ref: Object.assign(() => ({}), directory.ref),
         Application: Object.assign(() => ({selection:()=>["/source.png"]}),{currentApplication:()=>app}) });
     return { ...bridge, ns, output, stderr };
 }

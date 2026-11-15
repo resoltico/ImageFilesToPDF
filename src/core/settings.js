@@ -22,7 +22,7 @@ const SETTINGS_FIELDS = Object.keys(SETTINGS_SCHEMA);
 const DEFAULT_SETTINGS = Object.freeze(Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, SETTINGS_SCHEMA[field].default])));
 const SETTING_CHOICES = Object.freeze(Object.fromEntries(SETTINGS_FIELDS.filter((field) => SETTINGS_SCHEMA[field].kind === "choice").map((field) => [field, SETTINGS_SCHEMA[field].choices.map((choice) => choice.value)])));
 
-function settingIssue(field, value) {
+function settingValueIssue(field, value) {
     const rule = SETTINGS_SCHEMA[field];
     if (rule.kind === "color") {
         try { normalizeColor(value); return null; }
@@ -34,6 +34,20 @@ function settingIssue(field, value) {
     }
     return typeof value === "number" && Number.isInteger(value) && value >= rule.minimum && value <= rule.maximum ? null
         : { field, code: "integer", stage: "settings", message: `${rule.name} must be a whole number from ${rule.minimum} to ${rule.maximum}.` };
+}
+
+function settingType(value) {
+    if (value === null) { return "null"; }
+    return Array.isArray(value) ? "array" : typeof value;
+}
+
+function settingIssue(field, value) {
+    const issue = settingValueIssue(field, value);
+    if (!issue) { return null; }
+    if (value === undefined) { return { ...issue, diagnostic: { missing: true } }; }
+    const expectedType = SETTINGS_SCHEMA[field].kind === "integer" ? "number" : "string";
+    const actualType = settingType(value);
+    return actualType === expectedType ? issue : { ...issue, diagnostic: { expectedType, actualType } };
 }
 
 function validateSettings(input) {

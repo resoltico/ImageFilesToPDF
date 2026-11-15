@@ -20,7 +20,8 @@ brew install vips pdfcpu
 
 To upgrade pdfcpu, run `brew update` and then `brew upgrade pdfcpu`. The Quick
 Action is one standalone JavaScript for Automation (JXA) file. Node.js and npm are
-needed only for development.
+needed only for development. Setup checks all three backend commands before
+inspecting images; missing or unusable tools are reported as setup problems.
 
 ## Install in Shortcuts
 
@@ -51,7 +52,8 @@ installing and removing the action.
    safe point and keeps every PDF already saved.
 5. Completion lists what was saved, where, and anything that failed.
    **Show in Finder** reveals every saved or recovered PDF; **Details** shows
-   technical diagnostics and **Back** returns to the summary.
+   technical diagnostics when available, and **Back** returns to the summary.
+   A plain Stop does not offer empty Details.
 
 Confirmed settings are remembered for the next run in the preferences domain
 `com.resoltico.ImageFilesToPDF`, shared by every installed copy of the action. To
@@ -80,14 +82,17 @@ content. A typed background color may use either case and an optional `#`.
 
 ## Images and PDFs
 
-Supported formats are JPEG, PNG, HEIC/HEIF, TIFF, WebP and AVIF, with a matching
-filename extension. The content must be a single still image that the installed
-vips can decode. Animated and multi-image files, vectors, documents, camera RAW,
-empty files and damaged images are refused, with the reason. HDR JPEG photos are
+Supported formats are JPEG, PNG, HEIC/HEIF, TIFF, WebP and AVIF. Selection requires
+a supported filename extension; the decoded content decides the format and need
+not match that extension, so a PNG named `photo.jpg` is accepted as PNG. The
+content must be one still image that the installed vips can decode. Animated and multi-image files, vectors, documents, camera RAW,
+empty files and damaged images are refused, with the reason. JPEG decoder
+warnings count as damage. HDR JPEG photos are
 converted as standard-range images, without their gain maps.
 
 Selected folders are searched recursively. The search skips hidden entries,
-packages, links and unsupported names, and reports entries it cannot read. A
+packages, links and regular files with unsupported names. It reports visible
+pipes, sockets and devices, and entries it cannot read or examine. A
 hidden image selected directly is included; a selected link or package is
 refused. Overlapping selections, differently cased spellings and hard links are
 converted once. Pages follow the full path in natural order, so `2` comes before
@@ -100,7 +105,8 @@ mode names the PDF after it, as in `photo.pdf`, with no date-time suffix. A comb
 PDF of two or more images is named `Images YYYY-MM-DD at HH.MM.SS.pdf` in local
 time. Separate PDFs take their images' names. Two images whose names would clash
 in the same folder add their extension, as in `photo-jpg.pdf` and `photo-png.pdf`. An existing name gets a
-number, as in `photo 2.pdf`; nothing is ever overwritten.
+number, as in `photo 2.pdf`; nothing is ever overwritten. Very long stems are
+shortened to leave room for collision numbers; see [Names and saving](HEADLESS.md#names-and-saving).
 
 A standard-range RGB JPEG without an embedded color profile, upright, and no
 larger than the maximum resolution allows is embedded unchanged. Other images are rotated upright,

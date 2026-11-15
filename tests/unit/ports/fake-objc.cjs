@@ -34,11 +34,7 @@ function colorClass() {
         systemRedColor: {
             kind: "color",
             name: "systemRed",
-            colorWithAlphaComponent: (alpha) => ({
-                kind: "color",
-                name: "systemRed",
-                alpha
-            })
+            colorWithAlphaComponent: (alpha) => ({ kind: "color", name: "systemRed", alpha, CGColor: { name: "systemRed", alpha } })
         }
     };
 }
@@ -47,10 +43,20 @@ function installClasses(ns, state, application) {
     Object.assign(ns, {
         NSMakeRect: (left, bottom, width, height) => ({ left, bottom, width, height }),
         NSMakeSize: (width, height) => ({ width, height }),
+        NSMakeRange: (location, length) => ({ location, length }),
         NSSelectorFromString: (name) => `sel:${name}`,
         NSModalPanelRunLoopMode: "NSModalPanelRunLoopMode",
+        NSWindowDidUpdateNotification: "NSWindowDidUpdateNotification",
+        NSNotificationCenter: { defaultCenter: {
+            addObserverForNameObjectQueueUsingBlock(name, object, queue, callback) {
+                const token = { name, object, queue, callback };
+                state.observers.push(token); return token;
+            },
+            removeObserver(token) { state.observers = state.observers.filter((entry) => entry !== token); state.removedObservers.push(token); }
+        } },
         NSButton: { alloc: { initWithFrame: (rect) => ({...makeView(rect), state: 0, setButtonType(type) {this.buttonType=type;}}) } },
         NSView: { alloc: { initWithFrame: makeView } },
+        NSBoxCustom: 4, NSNoBorder: 0, NSNoTitle: 0, NSWindowAbove: 1,
         NSScrollView: { alloc: { initWithFrame: (rect) => {
             const scroll = { ...makeView(rect), contentSize: { width: rect.width - 15, height: rect.height }, reflected: 0 };
             scroll.contentView = { scrollToPoint(point) { scroll.scrolledTo = point; } };
@@ -58,7 +64,11 @@ function installClasses(ns, state, application) {
             return scroll;
         } } },
         NSMakePoint: (left, top) => ({ left, top }),
-        NSTextView: { alloc: { initWithFrame: (rect) => ({ ...makeField(rect), textContainer: {} }) } },
+        NSTextView: { alloc: { initWithFrame(rect) {
+            const field = { ...makeField(rect), textContainer: {} };
+            field.scrollRangeToVisible = (range) => { field.scrolledRange = range; };
+            return field;
+        } } },
         NSTextField: { alloc: { initWithFrame: makeField } },
         NSPopUpButton: { alloc: { initWithFramePullsDown: makePopup } },
         NSComboBox: { alloc: { initWithFrame: makeCombo } },
@@ -102,6 +112,7 @@ function createFakeObjC(settings = {}) {
         disarmed: [],
         pumped: [],
         policies: [],
+        observers: [], removedObservers: [], aborted: 0,
         duringModal: settings.duringModal ?? (() => undefined),
         // NSApplicationActivationPolicyAccessory unless a test says otherwise;
         // 2 is prohibited, which cannot put a window on screen.
@@ -120,12 +131,13 @@ function createFakeObjC(settings = {}) {
         }
     };
 
+    Object.defineProperty(application, "abortModal", { get() { state.aborted += 1; if (settings.abortFailure) { throw settings.abortFailure; } return undefined; } });
     Object.defineProperty(application, "activationPolicy", {
         get: () => state.policy
     });
 
     function boxed(value) {
-        return { boxed: value, objectForKey: (key) => {
+        return { boxed: value, isNil: () => value === undefined || value === null, objectForKey: (key) => {
             const found = value[key?.boxed ?? key];
             return found && typeof found === "object" && !found.kind ? boxed(found) : found;
         } };
@@ -134,12 +146,23 @@ function createFakeObjC(settings = {}) {
     const ns = boxed;
     ns.NSClassFromString = (name) => classes.get(name) ?? {isNil:()=>true};
     const registerSubclass = (definition) => {
-        classes.set(definition.name, {isNil:()=>false,alloc:{get init(){return {modeChanged:definition.methods["modeChanged:"].implementation};}}});
+        const instance = (base) => {
+            for (const [selector, method] of Object.entries(definition.methods)) {
+                const implementation = typeof method === "function" ? method : method.implementation;
+                if (selector.includes(":")) { base[selector.replace(/:$/u, "")] = implementation; }
+                else { Object.defineProperty(base, selector, { get: implementation }); }
+            }
+            return base;
+        };
+        classes.set(definition.name, { isNil: () => false, alloc: {
+            get init() { return instance({}); },
+            initWithFrame: (rect) => instance(Object.assign(makeView(rect), { kind: "box", frame: rect }))
+        } });
     };
 
     installClasses(ns, state, application);
 
-    return { ns, objc: { unwrap: (value) => value, import: () => true, registerSubclass }, state };
+    return { ns, objc: { unwrap: (value) => value, import: () => true, block: (types, callback) => callback, registerSubclass }, state };
 }
 
 module.exports = { createFakeObjC };

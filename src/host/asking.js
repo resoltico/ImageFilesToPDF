@@ -67,7 +67,7 @@ function isDirectory(app, path) {
 }
 
 function isExecutable(app, path) {
-    return testPath(app, "-x", path);
+    return path.startsWith("/") && isRegularFile(app, path) && testPath(app, "-x", path);
 }
 
 /*

@@ -1,15 +1,11 @@
 "use strict";
 
 /*
- * Invocation parsing.
+ * osascript may forward its own "--" argument separator into run(). Leading
+ * separators are removed before either front end reads the remaining input:
  *
- * osascript forwards its own "--" argument separator into run(), so the
- * script's first argument is "--" rather than the caller's first real
- * argument. Dropping leading separators makes both of these equivalent, which
- * is what lets the integration suite run unattended:
- *
- *     osascript -l JavaScript script.jxa -- --command-line config.json image
- *     osascript -l JavaScript script.jxa    --command-line config.json image
+ *     osascript -l JavaScript script.jxa -- <args…>
+ *     osascript -l JavaScript script.jxa    <args…>
  */
 
 const ARGUMENT_SEPARATOR = "--";
@@ -71,6 +67,17 @@ function isLocalAuthority(authority) {
     return authority === "" || authority.toLowerCase() === LOCAL_HOST;
 }
 
+function hasUrlScheme(value) { return /^[A-Za-z][A-Za-z\d+.-]*:/u.test(String(value)); }
+
+function isRemoteUrl(value) {
+    const text = String(value);
+    if (!hasUrlScheme(text)) { return false; }
+    if (!/^file:/iu.test(text)) { return true; }
+    if (!/^file:\/\//iu.test(text)) { return false; }
+    const [authority] = text.slice("file://".length).split("/");
+    return !isLocalAuthority(authority);
+}
+
 const NUL = "\u0000";
 
 function decodePath(path) {
@@ -93,4 +100,4 @@ function decodeFileUrl(value) {
     return decodePath(match.groups.path);
 }
 
-module.exports = { normalizeInvocationInput, isCliInput, decodeFileUrl };
+module.exports = { normalizeInvocationInput, isCliInput, decodeFileUrl, hasUrlScheme, isRemoteUrl };

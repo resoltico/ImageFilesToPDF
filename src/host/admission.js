@@ -56,8 +56,7 @@ function admitFolder(tree, path, outcome) {
  * target -- so a link and the file it points to were two images.
  */
 function reasonFor(app, root) {
-    return ["package", "link", "other"].includes(root.kind)
-        ? selectionReason(root.kind, root.path, false) : rejectionReason(app, root.path);
+    return root.kind === "file" ? rejectionReason(app, root.path) : selectionReason(root.kind, root.path, false);
 }
 
 /*

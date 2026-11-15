@@ -2,6 +2,7 @@
 
 const { selectionReason, selectionRefusal } = require("../core/selection-policy.js");
 const { isRegularFile, isDirectory } = require("./asking.js");
+const { isRemoteUrl } = require("./invocation-syntax.js");
 const { pathCandidates } = require("./input.js");
 
 /*
@@ -39,7 +40,7 @@ function describeUnresolved(item) {
         .find((candidate) => candidate && candidate !== ANONYMOUS);
 
     if (!named) { return null; }
-    const remote = /^[a-z][a-z\d+.-]*:\/\//iu.test(named) && !/^file:/iu.test(named);
+    const remote = isRemoteUrl(named);
     return selectionRefusal("", remote ? "remote-url" : "not-a-path", named);
 }
 

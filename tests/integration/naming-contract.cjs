@@ -1,9 +1,11 @@
 "use strict";
+const {Buffer}=require("node:buffer");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const crypto=require("node:crypto");
 const {spawnSync,execFileSync}=require("node:child_process");
+const {parseReceipt}=require("./lib/receipt.cjs");
 const {probeExclusiveRename}=require("./lib/exclusive-rename.cjs");
 const {recoveryInventory,assertRecoveredPdf,removeRecovery}=require("./lib/recovered-pdf.cjs");
 const [artifact,work,volume,label,expected]=process.argv.slice(2);
@@ -12,6 +14,25 @@ const capability=label==="fat32"?probeExclusiveRename(path.join(work,"rename.jxa
 const settings=path.join(root,"settings.json");
 fs.writeFileSync(settings,JSON.stringify({mode:"separate",paperSize:"A4",orientation:"Portrait",resolutionLimit:300,quality:92,background:"#FFFFFF",timestamp:"20261030_010203"}));
 const hash=(file)=>crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+
+// POSIX-created names can differ from Foundation-created names on FAT32.
+// Exercise the source-backed readback separately from exclusive-claim capability.
+function storedNames() {
+    const folder=path.join(root,"stored-names");fs.mkdirSync(folder);
+    for(const [index,name] of ["café-jpg 2.pdf","café-png.pdf"].entries()) {
+        const destination=path.join(folder,name),source=path.join(folder,`source-${index}`);
+        const bytes=Buffer.from(`owned filename readback ${index}`);fs.writeFileSync(source,bytes,{flag:"wx"});
+        const original=fs.statSync(source,{bigint:true});
+        const result=spawnSync("/usr/bin/osascript",["-l","JavaScript",path.join(work,"stored-name.jxa"),source,destination],{encoding:"utf8",timeout:10000});
+        assert.ifError(result.error);assert.equal(result.status,0,result.stderr);
+        const observed=JSON.parse(result.stdout),raw=fs.readdirSync(folder,{encoding:"buffer"});
+        assert.ok(raw.some(entry=>entry.equals(Buffer.from(path.basename(observed.actual)))),JSON.stringify({requirement:"POSIX-created stored name equals a raw entry",volume:label,...observed,entries:raw.map(entry=>entry.toString("hex"))}));
+        assert.deepEqual(observed.observed,observed.expected);assert.deepEqual(observed.expected,{identity:`${original.dev}:${original.ino}`,size:bytes.length});
+        const actual=fs.statSync(observed.actual,{bigint:true});assert.equal(actual.dev,original.dev);assert.equal(actual.ino,original.ino);
+        assert.equal(fs.existsSync(source),false);assert.deepEqual(fs.readFileSync(observed.actual),bytes);
+    }
+}
+storedNames();
 
 function alias(folder,left,right) {
     const first=path.join(folder,left),second=path.join(folder,right);
@@ -37,6 +58,8 @@ function groups(records) {
 }
 function assertSavedPdf(document,wanted) {
     assert.equal(document.state,"saved");assert.equal(document.pages,1);
+    const raw = fs.readdirSync(path.dirname(document.output), { encoding: "buffer" });
+    assert.ok(raw.some((name) => name.equals(Buffer.from(path.basename(document.output)))), JSON.stringify({ requirement: "receipt basename equals a raw directory entry without normalization", volume: label, output: document.output, reportedHex: Buffer.from(path.basename(document.output)).toString("hex"), entries: raw.map((name) => ({ name: name.toString("utf8"), hex: name.toString("hex") })) }));
     assert.equal(path.basename(document.output).normalize("NFC"),wanted.normalize("NFC"));
     execFileSync("qpdf",["--check",document.output],{stdio:"pipe"});
 }
@@ -47,7 +70,7 @@ function convert(records,wanted,protectedFile=null) {
     const protectedHash=protectedFile?hash(protectedFile):null;
     const result=spawnSync("/usr/bin/osascript",["-l","JavaScript",artifact,"--headless",settings,...records.map(record=>record.path)],{encoding:"utf8",timeout:60000});
     assert.ifError(result.error);assert.equal(result.status,capability.supported?0:1,`${result.stderr}\n${result.stdout}`);
-    const receipt=JSON.parse(result.stdout);
+    const receipt=parseReceipt(result.stdout);
     assert.equal(receipt.state,capability.supported?"complete":"incomplete");
     assert.deepEqual(receipt.rejected,[]);assert.deepEqual(receipt.issues,[]);assert.equal(receipt.documents.length,2);
     for(const document of receipt.documents) {
@@ -127,7 +150,8 @@ if(expected!=="measure") {assert.equal(insensitive,expected==="insensitive",`${l
 pair(0,"photo","PHOTO",{production:true});
 pair(1,"photo","photo",{production:true});
 for(const [index,left,right] of [[2,"caf\u00e9","cafe\u0301"],[3,"\u00c5","\u212b"],[4,"stra\u00dfe","STRASSE"],[5,"photo","photo\u200d"],[6,"\u03c3","\u03c2"],[7,"i","\u0131"],[8,"\u212a","K"],[9,"\u00df","\u1e9e"],[10,"\u00dfS","S\u00df"]]) {
-    pair(index,left,right);
+    pair(index,left,right,{production:index===2});
 }
 if(label!=="fat32"&&label!=="exfat") {pair(11,"caf\u00e9:Photo","CAF\u00c9:photo",{bareLeft:"caf\u00e9_Photo",bareRight:"CAF\u00c9_photo",production:true});}
+if(label==="local") {pair(12,"é".repeat(125),"ñ".repeat(125),{bareLeft:"é".repeat(123),bareRight:"ñ".repeat(123),production:true});}
 folderAliases();normalizedFolders();hardLinks();

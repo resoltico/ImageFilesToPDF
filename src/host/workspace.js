@@ -43,7 +43,7 @@ function reclaimOne(app, storage, path, processes) {
         if (disposition === "active") { return null; }
         if (disposition === "reclaim") {
             const removed = removeWorkspace(app, path);
-            return removed.state === "failed" ? workspaceDiagnostic("workspace-unreadable", path, "A stale workspace could not be reclaimed.", removed.issue) : null;
+            return removed.state === "failed" ? workspaceDiagnostic("workspace-unreadable", path, "A stale workspace could not be reclaimed.", removed.issue) : workspaceDiagnostic("workspace-reclaimed", path, "A stale workspace was reclaimed.");
         }
         return workspaceDiagnostic(`workspace-${disposition}`, path, "A retained or unreadable workspace was left in place.");
     } catch (error) { return workspaceDiagnostic("workspace-unreadable", path, "A workspace could not be inspected and was left in place.", error); }

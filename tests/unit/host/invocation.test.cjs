@@ -98,3 +98,18 @@ test("the caller's array is not modified while separators are stripped", () => {
         "the input array must be left as it was"
     );
 });
+
+test("URI schemes are ASCII and every non-local scheme or file authority is remote", () => {
+    const { hasUrlScheme, isRemoteUrl } = require("../../../src/host/invocation-syntax.js");
+    for (const value of ["data:text/plain,file:///tmp/a.png", "custom:file://localhost/a.png", "a:payload", "Z:payload", "z:payload", "https://host/a.jpg", "DATA:image/png;base64,x", "mailto:a@example.com", "custom+v1.2-x:payload", "file://example.com/a.png", "file://example.com"]) {
+        assert.equal(hasUrlScheme(value), true, value);
+        assert.equal(isRemoteUrl(value), true, value);
+    }
+    for (const value of ["/a/http://name.png", "./photo:name.jpg", "plain.jpg", "K:filename.jpg", "1bad:payload", "bad_name:payload", "bad name:payload"]) {
+        assert.equal(hasUrlScheme(value), false, value);
+        assert.equal(isRemoteUrl(value), false, value);
+    }
+    for (const value of ["file:///a.png", "FILE://LOCALHOST/a.png", "file://", "file:/a.png", "file:notes-file://remote/name"]) {
+        assert.equal(isRemoteUrl(value), false, value);
+    }
+});

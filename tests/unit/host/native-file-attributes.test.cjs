@@ -44,3 +44,20 @@ test("native numeric facts never accept prefixes or fractional byte counts",()=>
 test("an empty regular file remains a known measurement rather than an unknown entry",()=>{
     assert.deepEqual(fixture({kind:"NSFileTypeRegular",device:"1",file:"2",size:0}).port.facts("/empty"),{identity:"1:2",size:0});
 });
+
+test("absence needs a positive native error and permission failures remain unreadable", () => {
+    const { attributeFailureKind } = require("../../../src/host/native-file-attributes.js");
+    const objc = { unwrap: (value) => value };
+    const ns = { NSUnderlyingErrorKey: "underlying" };
+    const nil = { isNil: () => true };
+    const error = (domain, code, underlying = nil) => ({ domain, code, isNil: () => false,
+        userInfo: { objectForKey(key) { assert.equal(key, "underlying"); return underlying; } } });
+    assert.equal(attributeFailureKind(objc, ns, error("NSCocoaErrorDomain", 260)), "missing");
+    assert.equal(attributeFailureKind(objc, ns, error("NSCocoaErrorDomain", 256, error("NSPOSIXErrorDomain", 20))), "missing");
+    assert.equal(attributeFailureKind(objc, ns, error("NSCocoaErrorDomain", 257)), "unreadable");
+    assert.equal(attributeFailureKind(objc, ns, error("NSPOSIXErrorDomain", 13)), "unreadable");
+    assert.equal(attributeFailureKind(objc, ns, error("NSPOSIXErrorDomain", 1)), "unreadable");
+    assert.equal(attributeFailureKind(objc, ns, error("unknown", 260)), "unexaminable");
+    assert.equal(attributeFailureKind(objc, ns, error("NSCocoaErrorDomain", 256)), "unexaminable");
+    assert.equal(attributeFailureKind(objc, ns, nil), "unexaminable");
+});

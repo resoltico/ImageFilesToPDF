@@ -1,7 +1,9 @@
 "use strict";
 
+const { actualPublicationPath, requireOriginal } = require("./publication-name.js");
 const { isPublished } = require("../core/artifacts.js");
 const { releaseOwnedArtifact } = require("./workspace.js");
+const { IssueError } = require("../core/errors.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { keep, clearAway } = require("./recovery.js");
 const { removeOwned } = require("./owned-cleanup.js");
@@ -37,6 +39,13 @@ const { removeOwned } = require("./owned-cleanup.js");
  * out to have published needs exactly the same.
  */
 function settled(job, paths, outcome) {
+    try {
+        requireOriginal(job.publication, { staged: paths.staged, expected: outcome.original, cause: null,
+            candidate: { path: paths.final, identity: outcome.claimedIdentity, size: outcome.claimedSize } });
+    } catch (error) {
+        const message = "The original PDF could not be verified and was not removed.";
+        throw new IssueError(message, { cause: error, issues: issuesOf(error, "cleanup").map((issue) => ({ ...issue, stage: "cleanup", message })) });
+    }
     releaseOwnedArtifact(job, paths.staged);
     job.cleanupIssues.push(...clearAway(job.app, outcome));
     removeOwned(job, paths.staged);
@@ -55,6 +64,7 @@ function confirm(job, paths, outcome) {
         });
     }
 
+    paths.final = actualPublicationPath(job.publication, { staged: paths.staged, original: outcome.original, path: paths.final, claimed: { identity: outcome.claimedIdentity, size: outcome.claimedSize } });
     outcome.state = "confirmed";
     try { settled(job, paths, outcome); }
     catch (error) { job.cleanupIssues.push(...issuesOf(error, "cleanup")); }

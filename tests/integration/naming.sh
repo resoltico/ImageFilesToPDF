@@ -30,6 +30,7 @@ solid_svg "$WORK/red.svg" 400 200 '#DF2935'
 vips copy "$WORK/blue.svg" "$WORK/photo.jpg[Q=92,keep=none]"
 vips copy "$WORK/red.svg" "$WORK/photo.png"
 node "$ROOT/tools/build-probe.mjs" tests/integration/naming-probe.js "$WORK/names.jxa"
+node "$ROOT/tools/build-probe.mjs" tests/integration/stored-name-probe.js "$WORK/stored-name.jxa"
 node "$ROOT/tools/build-probe.mjs" tests/integration/rename-probe.js "$WORK/rename.jxa"
 mkdir "$WORK/local"
 node "$ROOT/tests/integration/naming-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.jxa" "$WORK" "$WORK/local" local measure

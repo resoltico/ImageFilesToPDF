@@ -30,7 +30,7 @@ test("controller converts through real adapters and derives a complete receipt",
     assert.equal(result.documents[0].pages,1);
     assert.equal(isCompleteSuccess(result),true);
     const lines=[]; assert.equal(reportHeadless(result,(text)=>lines.push(text),(code)=>code),0);
-    assert.equal(JSON.parse(lines[0]).documents.length,1);
+    assert.equal(JSON.parse(lines[1]).documents.length,1);
 });
 
 test("refused selection and conversion failures remain incomplete", () => {
@@ -42,7 +42,7 @@ test("refused selection and conversion failures remain incomplete", () => {
     const lines=[];
     assert.equal(reportHeadless(result,(text)=>lines.push(text),(code)=>code),1);
     assert.equal(lines.length,2);
-    assert.equal(JSON.parse(lines[0]).documents[0].issues[0].stage,"preparation");
+    assert.equal(JSON.parse(lines[1]).documents[0].issues[0].stage,"preparation");
 });
 
 test("missing mandatory source capabilities refuse direct files at setup", () => {
@@ -110,4 +110,19 @@ test("setup phases and the no-images branch close progress before a result can b
     const result=execute(app,{settings,timestamp:"",inputItems:["/notes.txt"]},{report,capabilities:caps});
     assert.equal(result.state,"incomplete");
     assert.deepEqual(events,["Checking required tools","Finding images","closed"]);
+});
+
+test("elapsed measures processing and excludes time spent choosing settings", (context) => {
+    context.mock.timers.enable({ apis: ["Date"], now: 0 });
+    const { app, caps } = fixture({ failures: [["'thumbnail'", (command) => {
+        if (!command.includes("nonexistent-image")) { context.mock.timers.tick(1000); }
+        return undefined;
+    }]] });
+    const invocation = { settings, timestamp: "20261029_010203", inputItems: ["/source.png"] };
+    const interaction = commandLineInteraction(invocation);
+    interaction.settings = () => { context.mock.timers.tick(120000); return settings; };
+    const result = executeUseCase(app, invocation, { interaction, capabilities: caps });
+    assert.equal(result.state, "complete");
+    assert.equal(result.elapsed, "1 second");
+    assert.equal(Date.now(), 121000);
 });

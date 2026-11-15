@@ -5,7 +5,7 @@ const { buildThumbnailArgv, buildFlattenArgv, buildDecodeArgv, hasAlphaBand } = 
 const options = { placement: { widthPixels: 600, heightPixels: 300 }, source: { bands: 3, icc: false }, background: "#8E79E0", quality: 85, intermediate: false };
 
 test("normalization is image-sized, down-only, color-managed and damage-sensitive", () => {
-    assert.deepEqual(buildThumbnailArgv("vips", "input", "image.jpg", options), ["vips", "thumbnail", "input", "image.jpg[keep=none,Q=85,background=142 121 224]", "600", "--height=300", "--size=down", "--fail-on=error", "--export-profile=srgb"]);
+    assert.deepEqual(buildThumbnailArgv("vips", "input", "image.jpg", options), ["vips", "thumbnail", "input", "image.jpg[keep=none,Q=85,background=142 121 224]", "600", "--height=300", "--size=down", "--fail-on=warning", "--export-profile=srgb"]);
     const png = buildThumbnailArgv("vips", "input", "image.png", options);
     assert.equal(png[3], "image.png[keep=none]");
     const intermediate = buildThumbnailArgv("vips", "input", "image.v", { ...options, intermediate: true });
@@ -16,7 +16,7 @@ test("normalization is image-sized, down-only, color-managed and damage-sensitiv
 
 test("lossless alpha intermediate is flattened once and metadata is removed at final encode", () => {
     assert.deepEqual(buildFlattenArgv("vips", "input.v", "image.png", "#8E79E0"), ["vips", "flatten", "input.v", "image.png[keep=none]", "--background=142,121,224"]);
-    assert.deepEqual(buildDecodeArgv("vips", "input.jpg"), ["vips", "avg", "input.jpg[fail-on=error]"]);
+    assert.deepEqual(buildDecodeArgv("vips", "input.jpg"), ["vips", "avg", "input.jpg[fail-on=warning]"]);
 });
 
 test("alpha detection distinguishes opaque CMYK from RGBA and grayscale alpha", () => {

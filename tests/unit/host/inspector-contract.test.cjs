@@ -24,7 +24,7 @@ test("unknown loaders and damaged metadata produce domain messages with the user
     for (const loader of ["svgload", "pdfload", "rawload", "unknownload"]) {
         const host = createFakeHost(); host.loader = loader;
         assert.throws(() => inspectCaptured(makeJob(host), { path: "/owned" }, "/user.png"), (error) =>
-            error.issues[0].source === "/user.png" && ["not-an-image", "unsupported-content"].includes(error.issues[0].code));
+            error.issues[0].source === "/user.png" && error.issues[0].code === "unsupported-content" && error.issues[0].diagnostic.loader === loader);
     }
     for (const facts of [{ width: 0 }, { height: 0 }, { bands: 0 }, { orientation: 0 }, { orientation: 9 }]) {
         const host = createFakeHost(); Object.assign(host, facts);
@@ -62,7 +62,7 @@ test("ordinary candidates are inspected in bounded batches before producing admi
     assert.equal(result.images.length, 2);
     assert.equal(result.images[0].admission.identity, "/a.png");
     assert.ok(host.commands.some((command) => command.includes("'-a' '/a.png' '/b.png'")));
-    assert.ok(host.commands.every((command) => command.startsWith("LC_ALL=C ")));
+    assert.ok(host.commands.every((command) => command.startsWith("export LC_ALL=C; ")));
 });
 
 test("exact final page count is independently required before strict validation", () => {
