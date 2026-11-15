@@ -8,12 +8,16 @@ osascript -l JavaScript Image-Files-to-PDF.jxa -- --version
 osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless settings.json photo.jpg folder
 ```
 
-`--help` lists every setting in the table order below with its values and default; `--version` prints
-`Image Files to PDF <version>`. Both print to stdout and exit 0 when transport succeeds. Anything else that
+`--help` lists the required settings in the table order below, their allowed values
+and a complete example JSON object. The example values are not fallback defaults:
+every page setting is required. `--version` prints `Image Files to PDF <version>`.
+Both print to stdout and exit 0 when transport succeeds. Anything else that
 is not a complete `--headless` request is a usage error: it names the problem in one
 sentence (`No arguments were given.`, `Unknown option: <arg>.`,
 `--headless needs a settings file and at least one path.`, `An argument is empty.`
-or `--help and --version take no other arguments.`), prints the run line and exits 2.
+or `--help and --version take no other arguments.`), includes the run line and a
+help hint in its stderr report, attempts a JSON receipt with state `invalid`, and
+exits 2.
 
 A command-line run never opens a dialog and neither reads nor writes remembered
 settings. Paths may be absolute or relative to the working directory. Local
@@ -69,7 +73,7 @@ still attempted; if both streams fail, neither readable output is guaranteed.
 | Exit | Meaning |
 | --- | --- |
 | `0` | Complete |
-| `1` | Incomplete, stopped or stdout transport failed; confirmed PDFs are kept |
+| `1` | Incomplete, stopped or report/receipt transport failed; confirmed PDFs are kept |
 | `2` | Usage error or invalid settings |
 | `3` | Setup failed: a required tool/capability is unusable, or an unexpected setup fault occurred |
 
@@ -84,10 +88,10 @@ still attempted; if both streams fail, neither readable output is guaranteed.
 | `rejected` | Selected items that were not admitted |
 | `issues` | Problems affecting the request as a whole |
 | `diagnostics` | Optional-surface and cleanup diagnostics, such as retained workspaces |
-| `elapsed` | Human-readable processing time, from the first image's preparation to completion; excludes dialogs and is absent before processing |
+| `elapsed` | Human-readable batch processing time, including output planning, through completion; excludes tool setup, source inspection and dialogs, and is absent before processing |
 
-`complete` requires every PDF saved, nothing rejected and no issues. A request
-refused before any work is `invalid`. Invalid usage/settings exit 2; an expected
+`complete` requires every PDF saved, nothing rejected and no issues.
+Usage errors and rejected settings have state `invalid` and exit 2; an expected
 tool-setup refusal is also `invalid` and exits 3 with the headline
 "A required tool is missing or unusable." A canceled run exits 1, including a stop during setup. A stop that leaves work undone is `canceled`;
 a stop that arrives after everything was saved does not erase the saved PDFs. An
@@ -96,7 +100,7 @@ abrupt process end, `SIGKILL` or a failed stdout cannot guarantee a receipt.
 `SIGINT` and `SIGTERM` request cooperative Stop. A running native command finishes before the next safe checkpoint observes the request; publication and recovery protections remain in force. Signal monitoring stays active through receipt transport. Normal process exit lets the OS reclaim its resources.
 
 The stderr report is the headline, then sections separated by one blank line.
-Output and recovery basenames are read back as literal directory-entry names after identity and size confirmation; chosen parent-folder spelling is preserved. If a claim's name cannot be verified, a verified private original stays in place and the issue reports that uncertainty rather than guessing a public output path. If the original cannot be verified either, the PDF is failed with a fatal issue and no recovery path; existing files remain untouched. The destination folder needs read/search access for this verification. An unavailable or ambiguous directory listing reports the same claim uncertainty and preserves existing files; a canonicalized path is not used as a guessed stored name.
+Output and recovery basenames are read back as literal directory-entry names after identity and size confirmation; chosen parent-folder spelling is preserved. If a claim's name cannot be verified, a verified workspace PDF stays in place and the issue reports that uncertainty rather than guessing a public output path. If that workspace PDF cannot be verified either, the PDF is failed with a fatal issue and no recovery path; existing files remain untouched. The destination folder needs read/search access for this verification. An unavailable or ambiguous directory listing reports the same claim uncertainty and preserves existing files; a canonicalized path is not used as a guessed stored name.
 
 `Could not convert:` lists failed PDFs only. `Saved elsewhere:` lists each actual
 recovery path with a one-line cause. `Other issues:` keeps run-level or cleanup
@@ -108,7 +112,8 @@ invalid request reports `The request is invalid.` and each problem.
 ## Document records
 
 Each record has `state`, `sources` (the full paths of its images, in page order),
-`pages` and `issues`. Optional `fatal: true` means a fault ended further documents;
+`pages` and `issues`. Optional `fatal: true` means a software fault or mandatory
+cleanup failure ended further documents;
 optional `diagnostics` holds technical observer diagnostics.
 
 | State | Meaning |
@@ -182,9 +187,11 @@ disambiguating source-extension suffix, uses at most 250 UTF-8 bytes before a
 collision number: five of the 255-byte budget are reserved for ` 9999`. Stored
 spelling can reflect filesystem normalization; use the actual receipt path.
 
-A PDF that cannot be saved at its destination is saved to `~/Downloads` under its
-intended name, or failing that to a confirmed copy in the system temporary
-directory. Always use the receipt's actual `output` or `recovery` path. Retained
+Recovery attempts use `~/Downloads` under the intended name, then private
+temporary storage. Recovery
+is reported only when its path and contents are verified; otherwise the report
+identifies retained work or unresolved uncertainty. Always use the receipt's
+actual `output` or `recovery` path. Retained
 and unreadable workspaces are left in place and listed in `diagnostics` and the
 human report. Successful safe startup reclamation uses diagnostic code
 `workspace-reclaimed`, stage `workspace`, and the exact workspace path in

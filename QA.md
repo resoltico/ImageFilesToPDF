@@ -26,14 +26,16 @@ npm run test:integration:macos
 `quality` checks syntax, executable registry, import boundaries, toolchain and
 metadata consistency, document links and settings tables, ShellCheck/actionlint
 when available, ESLint, unit/repository tests, coverage, mutation and distribution
-bytes. Serialized receipts are checked against
+bytes. It never rebuilds first: stale committed output must fail. Use
+`npm run build` to regenerate intentionally. Inspect discovered tests and all skips.
+
+Serialized receipts are checked against
 [the receipt schema](tests/integration/receipt.schema.json), maintained with
 [HEADLESS.md](HEADLESS.md), using the pinned development-only Ajv. Unit negative
 controls cover rejected `reason`, conditional saved/recovered paths, optional
-record notes and nested stack omission; actual CLI, naming and recovery receipts
-use the same validator. Schema validity supplements pixel, file and ownership
-checks. It never rebuilds first: stale committed output must fail. Use
-`npm run build` to regenerate intentionally. Inspect discovered tests and all skips.
+record notes and nested stack omission. Actual CLI, naming and recovery receipts
+use the same validator in the native suites, separately from the source gate.
+Schema validity supplements pixel, file and ownership checks.
 
 Core, application, pure backend contracts and `src/host/invocation-syntax.js` require
 100% line, branch and function coverage and a mutation score of at least 96. Host
@@ -65,8 +67,10 @@ sequence:
 ExifTool edits only synthetic HDR fixture metadata; the action does not use it.
 
 Install the native tools listed in [CONTRIBUTING.md](CONTRIBUTING.md). Volume tests
-need permission to create and attach disk images; inability to attach one is a
-skipped environment check, never a passing filesystem result. `cards.sh` and
+need permission to create and attach disk images. `cards.sh` and `volumes.sh`
+report unavailable volume checks as skipped; `naming.sh` requires every listed
+volume and fails if one cannot attach. A skip is an unperformed environment check,
+never a passing filesystem result. `cards.sh` and
 `naming.sh` independently probe FAT32 exclusive rename with free and occupied
 destinations. Supported drivers must pass publication and collision checks;
 unsupported drivers must leave final names untouched and produce validated

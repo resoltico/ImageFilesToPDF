@@ -14,13 +14,11 @@ npm ci --ignore-scripts
 Keep optional platform packages enabled: the pinned esbuild installation uses
 them. No development package is a runtime dependency of the generated JXA.
 
-The minimatch and glob overrides keep development tools off releases affected by
-GHSA-g3hv-75wg-m249 and GHSA-3g3m-2fjr-6pw4.
-They move together: glob 13 expects RegExp pattern parts, while minimatch 11
-returns Matcher objects supported by glob 14. Remove these overrides when
-all upstream ESLint and Stryker dependency ranges exclude every affected version.
-The qs override fixes GHSA-6pq8-jhm2-2vcw in typed-rest-client, whose
-pinned qs 6.15.1 is affected; remove it when that range excludes affected versions.
+The `glob` and `minimatch` overrides in `package.json` form a compatible pair and
+address GHSA-g3hv-75wg-m249 and GHSA-3g3m-2fjr-6pw4. Update them together; remove
+them only when upstream ESLint and Stryker ranges exclude the affected versions.
+The `qs` override addresses GHSA-6pq8-jhm2-2vcw in `typed-rest-client`; remove it
+when the upstream range excludes affected versions.
 
 | Command | Purpose |
 | --- | --- |
@@ -130,8 +128,9 @@ the sibling repository.
   `Not included from your selection:`, `Elapsed:` and, in the dialog only, the
   version. `Show in Finder` reveals every saved or recovered PDF; `Details` shows
   `key: value` lines and `Back` returns to the summary.
-- Command line: the same commands and exit statuses; usage errors name the problem
-  and print only the run line; `--help` lists the required fields and a complete, ready-to-copy JSON example;
+- Command line: usage errors name the problem, show the run line and help hint,
+  and attempt a JSON receipt with state `invalid`; `--help` lists the required
+  fields and a complete, ready-to-copy JSON example;
   prose precedes the one receipt attempt, and stderr sections are separated by
   one blank line; receipts share the state and
   issue-code vocabulary in [HEADLESS.md](HEADLESS.md), omit structured stack keys,

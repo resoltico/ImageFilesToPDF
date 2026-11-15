@@ -10,7 +10,7 @@ Source and releases: https://github.com/resoltico/ImageFilesToPDF
 
 ## Requirements
 
-- macOS 12.3 or later, with Shortcuts.
+- macOS 12.3 or later; Shortcuts is needed for the Finder Quick Action.
 - `vips` (which includes `vipsheader`) and stable `pdfcpu` 0.16.4 or later,
   installed with Homebrew:
 
@@ -48,8 +48,9 @@ installing and removing the action.
 3. Choose the settings and click **Create**. The note above the controls says
    how many PDFs and pages will be made and where they will be saved. If a
    setting is wrong, every problem is listed at once and your draft is kept.
-4. A progress panel shows the current image. **Stop** takes effect at the next
-   safe point and keeps every PDF already saved.
+4. Progress shows the current image during preparation and the PDF phase during
+   assembly, validation and saving. **Stop** takes effect at the next safe point
+   and keeps every PDF already saved.
 5. Completion lists what was saved, where, and anything that failed.
    **Show in Finder** reveals every saved or recovered PDF; **Details** shows
    technical diagnostics when available, and **Back** returns to the summary.
@@ -114,21 +115,33 @@ converted from their color profile to sRGB (untagged grayscale stays grayscale),
 flattened onto the page background where transparent, and downsampled where
 needed. PNG and TIFF are then stored losslessly; JPEG, HEIC/HEIF, WebP and AVIF
 are re-encoded as JPEG at the JPEG quality setting. A combined PDF is saved only
-if every image converts; in separate mode, an image that fails does not stop the
-others.
+if every image converts. In separate mode, ordinary conversion failures affect
+only their image; Stop, software faults and mandatory cleanup failures end the
+remaining work.
 
 ## Privacy and safety
 
 **A JPEG embedded unchanged keeps its metadata**, including any location or
 camera details, inside the PDF. Re-encoded images carry no metadata into the PDF.
 
-Image Files to PDF reads only the images you select, works in a private temporary
-folder, and never opens an original for writing. Nothing is sent over the network.
-If a PDF cannot be saved where it belongs, it is saved to Downloads under its
-intended name, or failing that to a checked temporary copy, and completion shows
-where. [SECURITY.md](SECURITY.md) describes the file-safety rules in full.
+Image Files to PDF processes selected images and images found in selected folders
+in private workspaces, and never opens an input image for writing. Nothing is sent
+over the network.
+If saving fails, the action attempts verified recovery in Downloads or private
+temporary storage. Completion reports the actual recovery location, retained work
+or any remaining uncertainty. Move needed temporary work somewhere permanent
+promptly. [SECURITY.md](SECURITY.md) describes the file-safety rules in full.
 
 ## Command line
+
+Both interfaces use the same selection, conversion and saving rules.
+
+| Behavior | Finder Quick Action | Command line |
+| --- | --- | --- |
+| Input | Files or folders from Shortcuts; Finder selection when no files are supplied | Explicit file or folder paths |
+| Settings | Interactive form with remembered page settings | Required JSON settings file; no remembered settings |
+| Feedback | Progress panel and completion dialog | Plain-language stderr report, JSON receipt attempt and exit status |
+| Stop | **Stop** button | `SIGINT` or `SIGTERM` |
 
 ```sh
 osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless settings.json photo.jpg folder
@@ -162,6 +175,6 @@ only](LICENSE) (`AGPL-3.0-only`). You may use it, including commercially, and co
 modify and share it under those terms; it comes without any warranty. If you
 distribute the script or a modified version, keep its notices and make the
 corresponding source available as the license requires; the generated JXA names
-the source for its version. Dependencies keep their own licenses. A separate
-commercial licensing route is intended but not yet offered; see
+the source for its version. Dependencies keep their own licenses. No separate
+commercial license is currently offered through this repository; see
 [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md).

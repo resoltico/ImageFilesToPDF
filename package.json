@@ -1,6 +1,6 @@
 {
   "name": "image-files-to-pdf-macos",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
   "description": "Source, build, QA, and release scaffolding for a vips + pdfcpu macOS Finder Quick Action",
   "license": "AGPL-3.0-only",
@@ -34,7 +34,7 @@
     "acorn": "8.19.0",
     "ajv": "8.20.0",
     "esbuild": "0.28.2",
-    "eslint": "10.14.0",
+    "eslint": "10.15.0",
     "fast-check": "4.10.2"
   },
   "overrides": {

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-11-15
+
 - Licensed under AGPL-3.0-only instead of MPL-2.0: distributing the script or a modified version requires offering its corresponding source; see [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md).
 - Contributions are accepted under the [contribution terms](CONTRIBUTING.md#contribution-terms), which also let Ervins Strauhmanis license them commercially.
 - Contributors must use Node 26.13.1 and npm 12.2.2; restore refreshed development dependencies with `npm ci --ignore-scripts`.
@@ -29,7 +31,6 @@
 - Backend commands use a fixed C locale, so conversion works independently of the caller's language settings.
 - JPEG decoder warnings now refuse corrupt images as damaged, including byte-preserving and re-encoded JPEG paths.
 - Ultra HDR JPEG photos are accepted and converted as standard-range images; gain maps are never embedded in PDFs.
-- Documentation explains long-name shortening and that supported content can differ from its filename extension.
 - `--help` lists required settings in documented order and includes a complete JSON example instead of suggesting omitted fields receive defaults.
 
 ## [3.0.0] - 2026-11-05

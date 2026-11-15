@@ -14,7 +14,9 @@ explicitly selected item is checked on its own terms. Required file-kind, packag
 identity and source-capture capabilities must be available; processing does not
 fall back to weaker checks.
 
-Candidates are inspected before consent and settings. Each admitted source is then
+In the Quick Action, candidates are inspected before the settings dialog. The
+command line validates its settings before tool setup and source inspection.
+Each admitted source is then
 copied into an owned private workspace, and the same captured bytes are inspected
 and decoded. Identity, version and image facts, including gain-map presence, are
 checked around the capture, and an observed change refuses the image. Coarse filesystem timestamps cannot guarantee
@@ -39,19 +41,20 @@ by exclusive rename. Only a classified name collision is retried, with the next
 written inside. Native identity, size and the literal directory-entry basename confirm the actual output before the
 workspace copy is released. Exact names require read/search access to the output
 folder. An unavailable or ambiguous listing preserves the already-created entry
-and verified original without guessing a canonical spelling or making a duplicate
+and verified workspace PDF without guessing a canonical spelling or making a duplicate
 recovery. Mandatory name-inspection cleanup failures also stop remaining PDFs
-and retain unresolved work, even when another failure occurred first. The original private identity is checked again before
-release; if it no longer matches, the confirmed output remains saved with a fatal
-cleanup issue, the original is not removed, and its workspace stays retained. A volume that supports neither exclusive route fails
+and retain unresolved work, even when another failure occurred first. The validated
+workspace PDF's identity is checked again before release; if it no longer matches,
+the confirmed output remains saved with a fatal cleanup issue, the workspace PDF
+is not removed, and its workspace stays retained. A volume that supports neither exclusive route fails
 over to recovery instead of exposing a partial file.
 
-If a PDF cannot be published, it is recovered to `~/Downloads` under its intended
-name with the same exclusive rules, or failing that to a confirmed copy in the system
-temporary directory. Only a confirmed recovery releases the workspace copy. An unverifiable stored
-name leaves any already-created entry untouched and retains a verified private
-original, with explicit uncertainty rather than a guessed output path. If the
-original cannot be verified either, the run reports a fatal issue without claiming
+If a PDF cannot be published, the action attempts recovery to `~/Downloads` under
+its intended name with the same exclusive rules, then to private temporary
+storage. Only a confirmed recovery releases the workspace copy. An unverifiable stored
+name leaves any already-created entry untouched and retains a verified workspace
+PDF, with explicit uncertainty rather than a guessed output path. If that
+workspace PDF cannot be verified either, the run reports a fatal issue without claiming
 a recovery; raw ownership observations remain in diagnostics. A candidate whose validation
 faulted is reported as unconfirmed, never as a validated recovery. Stop keeps saved
 PDFs and preserves validated unpublished work in recovery or its workspace. Temporary storage is
