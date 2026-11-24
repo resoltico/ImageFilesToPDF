@@ -36,6 +36,26 @@ truncate_file() {
     dd if="$1" of="$2" bs=1 count=$((bytes * $3 / 100)) 2>/dev/null
 }
 
+# The same inputs run through the cross-platform CLI suite.
+mkdir "$WORK/header-damage"
+node "$ROOT/tests/integration/lib/damaged-samples.cjs" "$WORK/header-damage"
+write_config "$WORK/header-config.json" A4 Portrait combined "#FFFFFF" 20261029_012345
+status=0
+run_headless "$WORK/header-config.json" "$WORK/header-damage/"* || status=$?
+test "$status" = 1
+node - "$ROOT" "$WORK/receipt" <<'NODE'
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const [root, receipt] = process.argv.slice(2);
+const { parseReceipt } = require(root + "/tests/integration/lib/receipt.cjs");
+const result = parseReceipt(fs.readFileSync(receipt, "utf8"));
+assert.deepEqual(result.documents, []);
+assert.deepEqual(Object.fromEntries(result.rejected.map(({ name, code }) => [name, code])), {
+    "cut.jpg": "damaged", "cut.png": "damaged", "cut.tif": "damaged",
+    "cut.webp": "damaged", "text.png": "not-an-image"
+});
+NODE
+
 solid_svg "$WORK/photo.svg" 900 600 "#235789"
 vips copy "$WORK/photo.svg" "$WORK/whole.jpg[Q=90,keep=none]"
 truncate_file "$WORK/whole.jpg" "$WORK/cut.jpg" 55

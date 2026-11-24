@@ -71,6 +71,16 @@ broken receipt stream. Set `IFTP_SECOND_VOLUME` to exercise another device.
 reclamation, source replacement and native header-argument batching, using
 the Python standard library.
 
+## Truncated image diagnostics
+
+The same 16-byte PNG prefix produces a VIPS `not enough data` warning on
+macOS and Windows (libvips 8.18.7), and `pngload: end of stream` on Debian
+(libvips 8.16.1). The truncated TIFF reports a TIFF directory read error on
+macOS and Debian. Windows reports `is not a known file format` for those TIFF
+bytes, the same diagnostic as text supplied as PNG. Windows classifies both
+as `not-an-image`. The native fixture asserts this measured behavior and verifies
+that the source bytes remain unchanged.
+
 ## Required native checks
 
 `npm run test:integration:macos` runs these scripts under `tests/integration/` in

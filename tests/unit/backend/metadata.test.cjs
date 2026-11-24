@@ -165,3 +165,19 @@ test("batch headers accept single-digit dimensions and wider separators", () => 
     const block = (path, gap) => `${path}:${gap}4x2 uchar, 3 bands, srgb, jpegload\n${base.split("\n").filter(Boolean).map((line) => `${path}: ${line}`).join("\n")}\n`;
     assert.deepEqual(readMetadataBatch(`${block(paths[0], " ")}${block(paths[1], "  ")}`, paths).map((entry) => entry.raw.width), [400, 400]);
 });
+
+test("measured header diagnostics classify truncated fixtures on all native platforms", () => {
+    for (const detail of [
+        "(vipsheader:67249): VIPS-WARNING **: 14:39:26.053: not enough data\n\nvipsheader:",
+        "(vipsheader.exe:6756): VIPS-WARNING **: 05:00:46.638: not enough data\r\n\r\nvipsheader.exe:",
+        "vipsheader: pngload: end of stream",
+        "vipsheader: magickload: Magick: Can not read TIFF directory count. `TIFFFetchDirectory' @ error/tiff.c/TIFFErrors/565 (null)",
+        "vipsheader: magickload: Magick: cut.tif: Can not read TIFF directory count. `TIFFFetchDirectory' @ error/tiff.c/TIFFErrors/586 (null)",
+        "vipsheader.exe: webp: unable to parse image"
+    ]) { assert.equal(headerFailureCode(detail), "damaged", detail); }
+    for (const file of ["cut.tif", "text.png"]) {
+        assert.equal(headerFailureCode(`vipsheader.exe: VipsForeignLoad: "C:\\input\\${file}" is not a known file format`), "not-an-image");
+    }
+    assert.equal(headerFailureCode("vipsheader: magickload: Magick: Resource limit exceeded for sample.TIFF."), "unexaminable");
+    assert.equal(headerFailureCode("A file named not enough data.png could not be opened."), "unexaminable");
+});

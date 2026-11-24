@@ -8,6 +8,7 @@ const { promisify } = require("node:util");
 const { fileURLToPath, pathToFileURL } = require("node:url");
 const { parseReceipt } = require("./lib/receipt.cjs");
 const heifFixtures = require("./lib/heif-fixtures.cjs");
+const { damagedSamples } = require("./lib/damaged-samples.cjs");
 const { pngFixtures } = require("./lib/png-fixtures.cjs");
 
 const run = promisify(execFile);
@@ -122,6 +123,19 @@ async function verifyFormats(folder, photo) {
     assert.equal(reply.state, "complete");
     verifyPdf(reply.documents[0].output, inputs.length);
     inputs.forEach((file, index) => assert.deepEqual(fs.readFileSync(file), expectedBytes[index]));
+}
+
+async function verifyDamage(folder) {
+    const samples = damagedSamples(folder);
+    const result = parseReceipt(await cli(["--settings", config(folder), "--", ...Object.keys(samples)], folder, 1));
+    assert.deepEqual(result.documents, []);
+    assert.deepEqual(Object.fromEntries(result.rejected.map(({ name, code }) => [name, code])), {
+        "cut.jpg": "damaged", "cut.png": "damaged", "cut.tif": windows ? "not-an-image" : "damaged",
+        "cut.webp": "damaged", "text.png": "not-an-image"
+    });
+    for (const [file, contents] of Object.entries(samples)) { assert.deepEqual(fs.readFileSync(file), contents); }
+    assert.equal(result.rejected.length, Object.keys(samples).length);
+    process.stdout.write(`Measured damage and unknown-format outcomes passed on ${process.platform}.\n`);
 }
 
 async function verifyHevcRefusal(folder) {
@@ -311,6 +325,7 @@ async function main() {
         return;
     }
     await verifySetup(work.path, photo);
+    await verifyDamage(work.path);
     await verifyFormats(work.path, photo);
     if (process.env.IFTP_HEVC_UNAVAILABLE) { await verifyHevcRefusal(work.path); }
     await verifyPngCounts(work.path);

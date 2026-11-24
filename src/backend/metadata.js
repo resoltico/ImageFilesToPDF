@@ -112,11 +112,14 @@ function fieldAbsent(text, field) {
     return normalized(text).split("\n").some((line) => line.trim() === `vips_image_get: ${name}` || line.trim() === `vipsheader: vips_image_get: ${name}`);
 }
 
-// Supported WebP and HEIF loaders also report damage under lower-case decoder domains.
+// The Windows tool includes its .exe suffix in the diagnostic prefix.
 function headerFailureCode(text) {
-    const diagnostic = normalized(text);
-    if (/^(?:vipsheader:[ \t]*)?VipsForeignLoad: "[\s\S]*" is not a known file format[ \t]*\n?$/u.test(diagnostic)) { return "not-an-image"; }
-    if (/(?:^|\n)(?:vipsheader:[ \t]*)?(?:VipsJpeg|VipsPng|VipsTiff|VipsHeif|VipsWebP|webp|heif):/u.test(diagnostic)) { return "damaged"; }
+    const diagnostic = normalized(text).replace(/^vipsheader(?:\.exe)?:[ \t]*/gmu, "");
+    if (/^VipsForeignLoad: "[\s\S]*" is not a known file format[ \t]*\n?$/u.test(diagnostic)) { return "not-an-image"; }
+    if (/(?:^|\n)(?:VipsJpeg|VipsPng|VipsTiff|VipsHeif|VipsWebP|webp|heif):/u.test(diagnostic)) { return "damaged"; }
+    if (/(?:^|\n)pngload: end of stream[ \t]*(?:\n|$)/u.test(diagnostic)) { return "damaged"; }
+    if (/(?:^|\n)\(vipsheader(?:\.exe)?:\d+\): VIPS-WARNING \*\*: \d{2}:\d{2}:\d{2}\.\d{3}: not enough data[ \t]*(?:\n|$)/u.test(diagnostic)) { return "damaged"; }
+    if (/(?:^|\n)magickload: Magick: (?:[^\n]+: )?Can not read TIFF directory count\./u.test(diagnostic)) { return "damaged"; }
     return "unexaminable";
 }
 module.exports = { REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata, optionalValue, scalarValues, fieldAbsent, headerFailureCode };
