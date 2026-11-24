@@ -114,7 +114,9 @@ function fieldAbsent(text, field) {
 
 // Supported WebP and HEIF loaders also report damage under lower-case decoder domains.
 function headerFailureCode(text) {
-    return /(?:^|\n)(?:vipsheader:[ \t]*)?(?:VipsJpeg|VipsPng|VipsTiff|VipsHeif|VipsWebP|webp|heif):/u.test(normalized(text))
-        ? "damaged" : "not-an-image";
+    const diagnostic = normalized(text);
+    if (/^(?:vipsheader:[ \t]*)?VipsForeignLoad: "[\s\S]*" is not a known file format[ \t]*\n?$/u.test(diagnostic)) { return "not-an-image"; }
+    if (/(?:^|\n)(?:vipsheader:[ \t]*)?(?:VipsJpeg|VipsPng|VipsTiff|VipsHeif|VipsWebP|webp|heif):/u.test(diagnostic)) { return "damaged"; }
+    return "unexaminable";
 }
 module.exports = { LOADERS, REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata, optionalValue, scalarValues, fieldAbsent, headerFailureCode };

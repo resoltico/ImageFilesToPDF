@@ -25,9 +25,12 @@ function boundedStem(stem, suffix) {
     return kept === stem ? stem : sanitizeFilename(kept);
 }
 
+function sourceExtension(name) {
+    return name.slice(name.lastIndexOf(".") + 1).toLowerCase();
+}
+
 function outputNameForSeparate(record, distinguish = false) {
-    const dot = record.originalName.lastIndexOf(".");
-    const extension = record.originalName.slice(dot + 1).toLowerCase();
+    const extension = sourceExtension(record.originalName);
     const suffix = `${distinguish ? `-${extension}` : ""}${EXTENSION}`;
     return `${boundedStem(sanitizeFilename(fileStem(record.originalName)), suffix)}${suffix}`;
 }
@@ -43,4 +46,4 @@ function collisionPath(initialPath, attempt) {
 }
 
 function stagedPdfPath(workspace, token) { return `${workspace}/staged-${sanitizeFilename(String(token))}.pdf`; }
-module.exports = { collisionPath, MAXIMUM_SUFFIX, outputNameForCombined, outputNameForSeparate, stagedPdfPath };
+module.exports = { collisionPath, MAXIMUM_SUFFIX, outputNameForCombined, outputNameForSeparate, sourceExtension, stagedPdfPath };

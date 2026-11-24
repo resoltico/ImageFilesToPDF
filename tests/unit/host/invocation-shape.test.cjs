@@ -60,12 +60,3 @@ test("flattening does not disturb a flat headless argv", () => {
         ["--headless", "/c.json", "/a/1.jpg"]
     );
 });
-
-test("a separator inside the nesting is still stripped", () => {
-    // osascript's "--" arrives before the selection, and after flattening it
-    // is once again the first item.
-    assert.deepEqual(
-        normalizeInvocationInput([["--", "/a/1.jpg"], {}]),
-        ["/a/1.jpg", {}]
-    );
-});

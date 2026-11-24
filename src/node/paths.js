@@ -1,7 +1,7 @@
 "use strict";
 const path = require("node:path");
 const { platform } = require("node:process");
-const { fileURLToPath } = require("node:url");
+const { classifyInput } = require("../core/input-items.js");
 const { outputNameForSeparate } = require("../core/naming.js");
 const { selectionRefusal } = require("../core/selection-policy.js");
 
@@ -20,19 +20,7 @@ function ordinaryWindowsPath(value) {
         part === "." || part === ".." || (!INVALID.test(part) && !DEVICE.test(part)));
 }
 
-function decodeLocalUrl(text) {
-    const url = new URL(text);
-    if (!/^file:\/\//iu.test(text) || url.host || url.username || url.password || url.search || url.hash) {
-        throw new Error("A local absolute file URL is required.");
-    }
-    return fileURLToPath(url);
-}
-
-function localPath(value) {
-    let text = value;
-    if (/^file:/iu.test(text)) { text = decodeLocalUrl(text); }
-    else if (!(WINDOWS && DRIVE.test(text)) && /^[a-z][a-z\d+.-]*:/iu.test(text)) { throw new Error("A local path is required."); }
-    if (!text.isWellFormed() || text.includes("\0") || text.includes("\uFFFD")) { throw new Error("The path cannot be transported losslessly."); }
+function canonicalPath(text) {
     if (WINDOWS && !ordinaryWindowsPath(text)) { throw new Error("The Windows pathname is ambiguous or reserved."); }
     const absolute = path.resolve(text);
     if (WINDOWS && !ABSOLUTE_DRIVE.test(absolute)) { throw new Error("A local drive pathname is required."); }
@@ -41,13 +29,17 @@ function localPath(value) {
     return slash.test(text) && !stable.endsWith("/") ? `${stable}/` : stable;
 }
 
+function localPath(value) {
+    const item = classifyInput(value, WINDOWS);
+    if (!item.path) { throw new Error("A local path or file URL is required."); }
+    return canonicalPath(item.path);
+}
+
 function resolvedSource(value) {
-    try { return { path: localPath(value) }; }
-    catch {
-        const remote = !(WINDOWS && DRIVE.test(value)) && /^[a-z][a-z\d+.-]*:/iu.test(value) &&
-            (!/^file:/iu.test(value) || /^file:\/\/[^/]+/iu.test(value) && !/^file:\/\/localhost\//iu.test(value));
-        return { refusal: selectionRefusal("", remote ? "remote-url" : "not-a-path", value) };
-    }
+    const item = classifyInput(value, WINDOWS);
+    if (!item.path) { return { refusal: selectionRefusal("", item.kind, value) }; }
+    try { return { path: canonicalPath(item.path) }; }
+    catch { return { refusal: selectionRefusal("", "not-a-path", value) }; }
 }
 
 function standardize(value) {

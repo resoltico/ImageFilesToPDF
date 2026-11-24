@@ -15,7 +15,10 @@ test("same-run destination conflicts get source extensions, while different dest
     const source = (originalName, folder = "/out/") => ({ path: `${folder}${originalName}`, originalName, folder });
     const sources = [source("photo.jpg"), source("photo.PNG"), source("photo.jpg", "/other/")];
     assert.deepEqual(documentPlan({ mode: "separate" }, sources, "20260904_070509", { nameGroups: [0,0,1] }).map((plan) => plan.destination), ["/out/photo-jpg.pdf", "/out/photo-png.pdf", "/other/photo.pdf"]);
-    assert.deepEqual(documentPlan({ mode: "separate" }, [source("photo.JPG"), source("photo.jpg")], "20260904_070509", { nameGroups: [0,0] }).map((plan) => plan.destination), ["/out/photo-jpg.pdf", "/out/photo-jpg.pdf"]);
+    assert.deepEqual(documentPlan({ mode: "separate" }, [source("photo.JPG"), source("photo.jpg")], "20260904_070509", { nameGroups: [0,0] }).map((plan) => plan.destination), ["/out/photo.pdf", "/out/photo.pdf"]);
+    const repeated = [source("a.png"), source("a.jpg"), source("a.png")];
+    assert.deepEqual(documentPlan({ mode: "separate" }, repeated, "unused", { nameGroups: [0, 0, 0] }).map((plan) => plan.destination),
+        ["/out/a-png.pdf", "/out/a-jpg.pdf", "/out/a-png.pdf"]);
     assert.equal(documentPlan({ mode: "combined" }, sources, "20260904_070509")[0].destination, "/out/Images 2026-09-04 at 07.05.09.pdf");
     assert.deepEqual(documentPlan({ mode: "combined" }, [], "unused"), []);
 });

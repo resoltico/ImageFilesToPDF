@@ -156,6 +156,7 @@ const MESSAGES = Object.freeze({
     selectionUnexaminable: "This item could not be examined.",
     selectionEmptyFolder: "This folder contains no supported images.",
     sourcePermissionDenied: "This file cannot be read (permission denied).",
+    sourceUnexaminable: "This file could not be examined.",
     sourceEmpty: "This file is empty.",
     sourceNotImage: "This file is not a supported still raster image.",
     sourceUnsupportedContent: "This file's content is not a supported still image; use {formats}.",

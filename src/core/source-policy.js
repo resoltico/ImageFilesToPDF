@@ -11,6 +11,7 @@ function sourceIssue(code, facts = {}, diagnostic = null) {
     const messages = {
         unreadable: facts.unavailable ? "sourceUnavailable" : "sourcePermissionDenied",
         empty: "sourceEmpty",
+        unexaminable: "sourceUnexaminable",
         "not-an-image": "sourceNotImage",
         "unsupported-content": "sourceUnsupportedContent",
         "multiple-images": "sourceMultipleImages",

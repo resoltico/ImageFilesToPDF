@@ -1,6 +1,6 @@
 "use strict";
 
-const { decodeFileUrl } = require("./invocation-syntax.js");
+const { classifyInput } = require("../core/input-items.js");
 
 /*
  * Resolving whatever Shortcuts, Finder, or a command-line caller supplies into
@@ -47,13 +47,9 @@ function pathCandidates(item) {
  */
 function inputItemToPosixPath(item) {
     for (const value of pathCandidates(item)) {
-        if (/^file:\/\//iu.test(value)) {
-            return decodeFileUrl(value);
-        }
-
-        if (value.charAt(0) === "/") {
-            return value;
-        }
+        const candidate = classifyInput(value);
+        if (candidate.kind === "file-url" || candidate.kind === "path" && candidate.path.startsWith("/")) { return candidate.path; }
+        if (/^file:\/\//iu.test(value)) { return ""; }
     }
 
     return "";

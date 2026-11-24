@@ -1,6 +1,6 @@
 "use strict";
 const { PDF_MODE } = require("./settings.js");
-const { outputNameForCombined, outputNameForSeparate } = require("./naming.js");
+const { outputNameForCombined, outputNameForSeparate, sourceExtension } = require("./naming.js");
 
 /** Name groups are filesystem equivalence classes, supplied by the host. */
 function documentPlan(settings, sources, timestamp, { nameGroups, separateName = outputNameForSeparate } = {}) {
@@ -13,9 +13,13 @@ function documentPlan(settings, sources, timestamp, { nameGroups, separateName =
         Array.from(nameGroups).some((group) => !Number.isSafeInteger(group) || group < 0)) {
         throw new TypeError("Destination name groups must identify every source.");
     }
-    const counts = new Map();
-    for (const group of nameGroups) { counts.set(group, (counts.get(group) ?? 0) + 1); }
+    const extensions = new Map();
+    for (const [index, source] of sources.entries()) {
+        const group = nameGroups[index];
+        if (!extensions.has(group)) { extensions.set(group, new Set()); }
+        extensions.get(group).add(sourceExtension(source.originalName));
+    }
     return sources.map((source, index) => ({ sources: [source],
-        destination: source.folder + separateName(source, counts.get(nameGroups[index]) > 1) }));
+        destination: source.folder + separateName(source, extensions.get(nameGroups[index]).size > 1) }));
 }
 module.exports = { documentPlan };

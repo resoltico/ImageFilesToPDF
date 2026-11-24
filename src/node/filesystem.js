@@ -8,7 +8,8 @@ const { TextDecoder } = require("node:util");
 const { OperationError } = require("../core/errors.js");
 const { captureIssue, changedSourceIssue } = require("../core/source-policy.js");
 const { WINDOWS, standardize, ordinaryWindowsPath } = require("./paths.js");
-const { countPng } = require("./png-count.js");
+const { countPng } = require("../core/png-count.js");
+const { crc32 } = require("node:zlib");
 
 const BIGINT = { bigint: true };
 const DECODER = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
@@ -103,6 +104,16 @@ function readable(file) {
     catch { return false; }
 }
 
+function readPng(fd, size) {
+    return countPng({
+        checksum: crc32,
+        read(position, length) {
+            const data = Buffer.alloc(length);
+            return data.subarray(0, fs.readSync(fd, data, 0, length, position));
+        }
+    }, size);
+}
+
 function localFilesystem(windows) {
     const checked = (file, options) => checkedPath(windows, file, options);
     function inspect(file) {
@@ -178,7 +189,7 @@ function localFilesystem(windows) {
         tree: { inspect, entries, standardize },
         sources: { facts, capture,
             readable,
-            pngCount: (file) => withSource(file, (fd, opened) => countPng(fd, Number(opened.size)))
+            pngCount: (file) => withSource(file, (fd, opened) => readPng(fd, Number(opened.size)))
         }
     };
 }

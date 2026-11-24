@@ -12,6 +12,7 @@ test("file access and empty-file refusals are distinct and precede content inspe
     }
     assert.equal(sourceFileIssue({ readable: true, size: "100" }), null);
     assert.equal(sourceIssue("unreadable").message, "This file cannot be read (permission denied).");
+    assert.deepEqual(sourceIssue("unexaminable"), { code: "unexaminable", stage: "inspection", params: {}, message: "This file could not be examined." });
     assert.throws(() => sourceIssue("typo"), /Unknown source issue code/u);
 });
 

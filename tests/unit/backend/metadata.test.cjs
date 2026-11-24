@@ -86,16 +86,20 @@ test("only the actual absent-field diagnostic establishes an optional default", 
     assert.equal(fieldAbsent('path has field "orientation" not found in its name', "orientation"), false);
     assert.equal(headerFailureCode("vipsheader: VipsJpeg: truncated header"), "damaged");
     assert.equal(headerFailureCode("Command failed.\r\rvipsheader: VipsPng: broken"), "damaged");
-    assert.equal(headerFailureCode("vipsheader: VipsForeignLoad: unknown format"), "not-an-image");
-    assert.equal(headerFailureCode("vipsheader: glib: PDF document is damaged"), "not-an-image");
-    assert.equal(headerFailureCode("vipsheader: webp: unable to parse image"), "damaged", "a truncated WebP is damaged, not foreign");
-    for (const message of ["heif: Invalid input: No meta box", "vipsheader: heif: Insufficient data", "Command failed.\r\nheif: bad seek"]) {
-        assert.equal(headerFailureCode(message), "damaged");
+    assert.equal(headerFailureCode('vipsheader:\t  VipsForeignLoad: "/tmp/text.png" is not a known file format \t\n'), "not-an-image");
+    assert.equal(headerFailureCode('VipsForeignLoad: "/tmp/a\nb.png" is not a known file format'), "not-an-image");
+    assert.equal(headerFailureCode("vipsheader: webp: unable to parse image"), "damaged", "a truncated WebP is damaged");
+    for (const detail of ["heif: Invalid input: No meta box", "vipsheader: heif: Insufficient data", "Command failed.\r\nheif: bad seek"]) {
+        assert.equal(headerFailureCode(detail), "damaged");
     }
-    for (const message of ["a file named heif: image.heic", "heifload: unknown", "vipsheader: VipsForeignLoad: text.heic is not known"]) {
-        assert.equal(headerFailureCode(message), "not-an-image");
-    }
-    assert.equal(headerFailureCode("vipsheader: webpload: unable to parse image"), "not-an-image");
+    for (const detail of [
+        'vipsheader: VipsForeignLoad: file "/tmp/missing.png" does not exist',
+        'vipsheader: VipsForeignLoad: "/tmp/directory.png" is a directory',
+        'vipsheader: VipsForeignLoad: "/tmp/a.png" is not a known file format but could not be opened',
+        'prefix: VipsForeignLoad: "/tmp/a.png" is not a known file format',
+        "vipsheader: unexpected permission error", "vipsheader: glib: PDF document is damaged",
+        "vipsheader: webpload: unable to parse image", ""
+    ]) { assert.equal(headerFailureCode(detail), "unexaminable"); }
 });
 
 test("scalar enum responses normalize to the same interpretation facts as printable dumps", () => {

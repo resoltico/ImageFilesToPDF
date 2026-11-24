@@ -185,7 +185,7 @@ keep the setting's display name.
 | `settings` | `unknown`, `choice`, `integer`, `color`; `object` belongs to the core validator, not the CLI root check |
 | `setup` | `operation` when a required tool or capability is missing or unusable |
 | `selection` | `folder`, `unsupported-format`, `not-a-file`, `not-a-path`, `remote-url`, `not-a-folder`, `package`, `link`, `special-file`, `unreadable`, `unexaminable`, `empty-folder`, and the run issue `no-images` |
-| `inspection` | `unreadable`, `empty`, `not-an-image`, `unsupported-content`, `multiple-images`, `damaged` |
+| `inspection` | `unreadable`, `unexaminable`, `empty`, `not-an-image`, `unsupported-content`, `multiple-images`, `damaged` |
 | `allocation`, `planning`, `capture`, `preparation`, `execution`, `validation`, `publication`, `recovery`, `cleanup`, `workspace`, `reporting` | `operation`, `fault`, `canceled`, `damaged`, `publication`, `recovery`, `cleanup` |
 
 A CLI settings root that is an array, `null` or another non-object is
@@ -207,7 +207,8 @@ either mode: `photo.jpg` becomes `photo.pdf`, then `photo 2.pdf` if occupied.
 A combined PDF of two or more admitted images is named
 `Images YYYY-MM-DD at HH.MM.SS.pdf` from `timestamp`. Separate PDFs use the
 image's sanitized name; images whose names would clash in one
-destination add their lower-case extension. Clashes follow the destination's own
+destination add their lower-case extension when their extensions differ. Two
+images named `inner.png` produce `inner.pdf` and `inner 2.pdf`. Clashes follow the destination's own
 rules for case and Unicode normalization, and folder aliases are matched by native
 identity. An existing name gets ` 2`, ` 3` and so on. If those facts cannot be
 established, planning stops before any PDF is made rather than guessing.

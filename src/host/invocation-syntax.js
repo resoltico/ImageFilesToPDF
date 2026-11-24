@@ -1,8 +1,5 @@
 "use strict";
 
-// osascript may forward its separator to the Shortcuts run handler.
-const ARGUMENT_SEPARATOR = "--";
-
 /*
  * Shortcuts does not hand over a flat list. A Quick Action on a Finder
  * selection arrives as [[file, file, ...], parameters]: the selection nested
@@ -24,69 +21,7 @@ function normalizeInvocationInput(input) {
         return [];
     }
 
-    const items = (Array.isArray(input) ? input : [input]).flat(Infinity);
-
-    while (items.length > 0 && String(items[0]) === ARGUMENT_SEPARATOR) {
-        items.shift();
-    }
-
-    return items;
+    return (Array.isArray(input) ? input : [input]).flat(Infinity);
 }
 
-/*
- * Finder hands over file URLs rather than POSIX paths.
- *
- * Parsed rather than stripped of a prefix. Taking "file://" off the front and
- * keeping the rest treats the authority as though it were part of the path:
- * "file://remotehost/tmp/a.png" became "remotehost/tmp/a.png", which is a
- * relative path, and the filesystem answers a relative path against whatever
- * the process's working directory happens to be. Matching the longer prefix
- * "file://localhost" first made it worse rather than better --
- * "file://localhostevil/tmp/a.png" became "evil/tmp/a.png".
- *
- * A file URL denotes a local absolute path or it denotes nothing this action
- * can open. "" is the existing answer for an item that is not a path, and
- * selection.js turns it into a stated rejection naming the URL, which is what
- * somebody who selected it needs to read.
- */
-const FILE_URL = /^file:\/\/(?<authority>[^/]*)(?<path>\/.*)$/iu;
-const LOCAL_HOST = "localhost";
-
-function isLocalAuthority(authority) {
-    return authority === "" || authority.toLowerCase() === LOCAL_HOST;
-}
-
-function hasUrlScheme(value) { return /^[A-Za-z][A-Za-z\d+.-]*:/u.test(String(value)); }
-
-function isRemoteUrl(value) {
-    const text = String(value);
-    if (!hasUrlScheme(text)) { return false; }
-    if (!/^file:/iu.test(text)) { return true; }
-    if (!/^file:\/\//iu.test(text)) { return false; }
-    const [authority] = text.slice("file://".length).split("/");
-    return !isLocalAuthority(authority);
-}
-
-const NUL = "\u0000";
-
-function decodePath(path) {
-    try {
-        const decoded = decodeURIComponent(path);
-
-        return decoded.includes(NUL) ? "" : decoded;
-    } catch {
-        return "";
-    }
-}
-
-function decodeFileUrl(value) {
-    const match = FILE_URL.exec(String(value));
-
-    if (!match || !isLocalAuthority(match.groups.authority)) {
-        return "";
-    }
-
-    return decodePath(match.groups.path);
-}
-
-module.exports = { normalizeInvocationInput, decodeFileUrl, hasUrlScheme, isRemoteUrl };
+module.exports = { normalizeInvocationInput };

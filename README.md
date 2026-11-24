@@ -104,8 +104,9 @@ made from an image selected directly is saved beside it. A combined PDF goes whe
 the first image's PDF would go. When exactly one image can be included, either
 mode names the PDF after it, as in `photo.pdf`, with no date-time suffix. A combined
 PDF of two or more images is named `Images YYYY-MM-DD at HH.MM.SS.pdf` in local
-time. Separate PDFs take their images' names. Two images whose names would clash
-in the same folder add their extension, as in `photo-jpg.pdf` and `photo-png.pdf`. An existing name gets a
+time. Separate PDFs take their images' names. Images with the same name stem and different extensions add their extension when
+saved to the same folder, as in `photo-jpg.pdf` and `photo-png.pdf`. Two images named
+`inner.png` produce `inner.pdf` and `inner 2.pdf`. An existing name gets a
 number, as in `photo 2.pdf`; nothing is ever overwritten. Very long stems are
 shortened to leave room for collision numbers; see [Names and saving](HEADLESS.md#names-and-saving).
 

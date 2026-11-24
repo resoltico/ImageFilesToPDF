@@ -1,7 +1,7 @@
 "use strict";
 
 const { selectionRefusal } = require("../core/selection-policy.js");
-const { isRemoteUrl } = require("./invocation-syntax.js");
+const { classifyInput } = require("../core/input-items.js");
 const { pathCandidates } = require("./input.js");
 
 /*
@@ -22,7 +22,7 @@ function describeUnresolved(item) {
         .find((candidate) => candidate && candidate !== ANONYMOUS);
 
     if (!named) { return null; }
-    const remote = isRemoteUrl(named);
+    const remote = classifyInput(named).kind === "remote-url";
     return selectionRefusal("", remote ? "remote-url" : "not-a-path", named);
 }
 
