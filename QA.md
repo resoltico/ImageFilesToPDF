@@ -39,8 +39,9 @@ Schema validity supplements pixel, file and ownership checks.
 
 The [pure module declaration](tools/pure-modules.mjs) supplies the coverage
 and mutation scopes. The gate requires 100% line, branch and function coverage
-and a mutation score of at least 96. Adapter checks exercise the production
-artifacts and native tools on each host. ESLint rules and deliberate
+and a mutation score of at least 96. The catalog tests check issue construction
+and explicit progress titles at the application boundary. Adapter checks
+exercise the production artifacts and native tools on each host. ESLint rules and deliberate
 exceptions are recorded in `tools/eslint/rules.mjs`. Dependency and toolchain pins
 live in package.json, package-lock.json, .node-version and mise.toml; clean restores
 use `npm ci --ignore-scripts` with the declared npm version.
@@ -154,8 +155,8 @@ variable detail must be selectable and scrollable.
 
 The engine uses one persistent PowerShell helper on Windows and one persistent
 osascript helper on macOS. The Windows process-budget check counts process
-starts during a 20-image separate run. Windows ARM measurements were 7.42 and
-9.00 seconds for 20 documents, with one PowerShell process in each run.
+starts during a 20-image separate run. Windows ARM measurements were 7.13, 7.42
+and 9.00 seconds for 20 documents, with one PowerShell process in each run.
 Native lifecycle checks cover Ctrl+C, helper exit and workspace retention
 after a forced termination.
 
@@ -198,10 +199,15 @@ The workspace writer guard remains until every in-flight command settles.
 
 ## Live Shortcuts acceptance
 
-Live Shortcuts acceptance remains pending. A preliminary launch under
-ShortcutsMacHelper established that the helper could start Node and osascript.
-The osascript harness checks ordered progress with the embedded engine. The
-native form suite verifies the dialogs separately.
+On macOS 27.2.1, the live Shortcut launches Node and osascript under
+ShortcutsMacHelper. The live checks exercise Finder selection, settings
+correction and recall, cancellation, normal completion, progress streaming
+and recovery to Downloads. Tab moves focus in the settings window. Show in
+Finder selects both saved and recovered PDFs. Both helpers exit after
+completion and Stop.
+During a running vips command, recorded pointer activation changed Stop to
+disabled “Stopping…” within 184 ms. Live fallback on a host without native
+form capability remains unverified.
 
 Use an isolated test Shortcut containing the complete current artifact and
 synthetic inputs. Preserve the production Shortcut and restore only preferences

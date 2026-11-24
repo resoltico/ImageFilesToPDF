@@ -11,7 +11,6 @@ function reportsNowhere(progress) {
     // ever ask it to stop, because nothing is listening to ask.
     progress.expect({ units: 1, images: 1 });
     progress.beginning(1, "x.png");
-    progress.about("1 image prepared");
     progress.phase("Saving PDF");
     progress.finished("Saved");
     progress.pause();

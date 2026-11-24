@@ -153,6 +153,26 @@ test("queue, validation and cleanup keep their progress and ownership boundaries
     assert.ok(app.commands.some((command) => command.includes("'/bin/rm' '-rf'")));
 });
 
+test("capture and ordered encoding each have a Stop checkpoint and truthful progress", async () => {
+    const { job, events } = await jobFixture("combined");
+    const { capture } = job.sources;
+    job.sources.capture = (from, to) => {
+        events.push(["capture", from]);
+        return capture(from, to);
+    };
+    job.operations.checkpoint = () => events.push(["checkpoint"]);
+    const result = await runJob(job, [imageOf("/a/1.png")]);
+    assert.equal(result.state, "complete");
+    assert.deepEqual(events.slice(1, 7), [
+        [0, "Capturing and checking images", ""],
+        ["checkpoint"],
+        ["capture", "/a/1.png"],
+        ["source", 1, "1.png"],
+        [0, "Preparing", "1 of 2 — 1.png"],
+        ["checkpoint"]
+    ]);
+});
+
 test("the initial setup reports prior workspace observations before showing a selection", async () => {
     const { execute } = require("../../../src/application/workflow.js");
     const { treeOf } = require("../ports/fake-tree.cjs");

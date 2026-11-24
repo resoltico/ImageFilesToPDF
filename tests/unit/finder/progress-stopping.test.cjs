@@ -87,7 +87,6 @@ test("the report that discovers a stop is the one that acts on it", () => {
 test("every way of saying what is about to happen stops the run", () => {
     for (const say of [
         (progress) => progress.phase("Saving PDF"),
-        (progress) => progress.about("2 images prepared"),
         (progress) => progress.beginning(1, "x.png")
     ]) {
         const progress = createProgress([stoppingOnce()], undefined, hostError);
@@ -138,7 +137,6 @@ test("nothing to report to is nothing to be stopped by", () => {
 
     assert.doesNotThrow(() => {
         silent.phase("Preparing");
-        silent.about("1 image prepared");
         silent.beginning(1, "x.png");
     });
 });
