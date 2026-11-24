@@ -8,12 +8,13 @@ function expectedFailure(error) {
     if (isUserCanceled(error) || issuesOf(error, "inspection")[0].code === ISSUE.fault) { throw error; }
 }
 
-function fileCandidates(ports, images, rejected) {
+async function fileCandidates(ports, images, rejected) {
     const candidates = [];
     for (const [index, source] of images.entries()) {
         if (index % ACCESS_CHECK_INTERVAL === 0) { ports.accessed(index, images.length); }
         try {
-            const file = ports.fileFacts(source);
+            // eslint-disable-next-line no-await-in-loop -- Observe cancellation between independent source facts.
+            const file = await ports.fileFacts(source);
             const issue = sourceFileIssue(file);
             if (issue) { rejected.push(sourceRefusal(source.path, issue)); }
             else { candidates.push({ source, file }); }
@@ -53,7 +54,7 @@ async function inspectSelection(ports, selection) {
     const rejected = [...selection.rejected];
     const images = [];
     ports.begin(selection.images.length);
-    const candidates = fileCandidates(ports, selection.images, rejected);
+    const candidates = await fileCandidates(ports, selection.images, rejected);
     let completed = selection.images.length - candidates.length;
     ports.checked(completed);
     for (const batch of ports.batches(candidates)) {

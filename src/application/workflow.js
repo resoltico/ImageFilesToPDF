@@ -14,22 +14,22 @@ async function prepare(input, options) {
     progress.phase("Checking required tools");
     const tools = await options.checkTools();
     const invocation = interaction.collect(input);
-    const capabilities = typeof options.capabilities === "function" ? options.capabilities() : options.capabilities;
+    const capabilities = typeof options.capabilities === "function" ? await options.capabilities() : options.capabilities;
     const { tree, sources, publication, storage, destinationNames } = capabilities;
     if (!tree || !sources || !publication || !storage || !destinationNames || typeof destinationNames.groups !== "function" ||
         ["facts", "readable", "capture", "pngCount"].some((method) => typeof sources[method] !== "function")) {
         throw new OperationError(message("filesystemCapabilitiesUnavailable"));
     }
-    progress.diagnostics.push(...options.reclaim(storage));
+    progress.diagnostics.push(...await options.reclaim(storage));
     progress.phase("Finding images");
-    const selected = collectImageFiles(operations, invocation.inputItems.map(operations.resolve), tree);
+    const selected = await collectImageFiles(operations, invocation.inputItems.map(operations.resolve), tree);
     const selection = await inspectCandidates(operations, selected, { tools, sources, progress });
     return { tools, invocation, ...capabilities, selection };
 }
 
-function jobFor(request, settings, options) {
+async function jobFor(request, settings, options) {
     const { progress } = options.interaction;
-    const job = createJob(options.operations, settings, request.invocation.timestamp || makeTimestamp(options.now()), request);
+    const job = await createJob(options.operations, settings, request.invocation.timestamp || makeTimestamp(options.now()), request);
     Object.assign(job, { sources: request.sources, publication: request.publication, progress });
     const images = request.selection.images.length;
     progress.expect({ units: unitsOf(settings, images), images });

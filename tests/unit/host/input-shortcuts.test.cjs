@@ -31,24 +31,24 @@ function selectedFile(path) {
 
 const PARAMETERS = { toString: () => "[object Object]" };
 
-function quickAction(app, paths) {
+async function quickAction(app, paths) {
     const selection = paths.map(selectedFile);
     const { inputItems } = collectInvocation(app, [selection, PARAMETERS]);
 
-    return collectImageFiles(app, inputItems).images;
+    return (await collectImageFiles(app, inputItems)).images;
 }
 
-test("several selected images all reach the pipeline", () => {
+test("several selected images all reach the pipeline", async () => {
     // The reported bug: four images selected produced "No images selected",
     // because the nested array stringified to one comma-joined path that
     // passed every check until the filesystem was asked.
     const app = createFakeApp();
-    const records = quickAction(app, [
+    const records = (await quickAction(app, [
         "/Users/someone/Downloads/IMG_1545.JPG",
         "/Users/someone/Downloads/IMG_1547.JPG",
         "/Users/someone/Downloads/IMG_1542.JPG",
         "/Users/someone/Downloads/IMG_1538.JPG"
-    ]);
+    ]));
 
     assert.deepEqual(records.map((record) => record.originalName), [
         "IMG_1538.JPG",
@@ -58,22 +58,22 @@ test("several selected images all reach the pipeline", () => {
     ]);
 });
 
-test("one selected image still reaches the pipeline", () => {
+test("one selected image still reaches the pipeline", async () => {
     // This case worked before the fix and must keep working: it is the reason
     // the bug looked like it was about having several images.
     const app = createFakeApp();
-    const records = quickAction(app, ["/Users/someone/Downloads/IMG_1545.JPG"]);
+    const records = (await quickAction(app, ["/Users/someone/Downloads/IMG_1545.JPG"]));
 
     assert.deepEqual(records.map((record) => record.path), [
         "/Users/someone/Downloads/IMG_1545.JPG"
     ]);
 });
 
-test("the trailing parameters object is dropped, not resolved", () => {
+test("the trailing parameters object is dropped, not resolved", async () => {
     // It is not a file and never was. Nothing may treat it as one, and it
     // must not abort the run either.
     const app = createFakeApp();
-    const records = quickAction(app, ["/a/photo.jpg"]);
+    const records = (await quickAction(app, ["/a/photo.jpg"]));
 
     assert.equal(records.length, 1);
     assert.ok(
@@ -82,10 +82,10 @@ test("the trailing parameters object is dropped, not resolved", () => {
     );
 });
 
-test("no image is ever a comma-joined list of images", () => {
+test("no image is ever a comma-joined list of images", async () => {
     const app = createFakeApp();
 
-    for (const record of quickAction(app, ["/a/1.jpg", "/a/2.jpg", "/a/3.jpg"])) {
+    for (const record of (await quickAction(app, ["/a/1.jpg", "/a/2.jpg", "/a/3.jpg"]))) {
         assert.ok(
             !record.path.includes(","),
             `${record.path} is several paths pretending to be one`
@@ -93,15 +93,15 @@ test("no image is ever a comma-joined list of images", () => {
     }
 });
 
-test("unsupported files in the selection are still filtered out", () => {
+test("unsupported files in the selection are still filtered out", async () => {
     const app = createFakeApp();
-    const records = quickAction(app, ["/a/1.jpg", "/a/notes.txt", "/a/2.png"]);
+    const records = (await quickAction(app, ["/a/1.jpg", "/a/notes.txt", "/a/2.png"]));
 
     assert.deepEqual(records.map((record) => record.path), ["/a/1.jpg", "/a/2.png"]);
 });
 
 
-test("an invocation without files falls back to Finder's selection", () => {
+test("an invocation without files falls back to Finder's selection", async () => {
     // Shortcuts run without files passes [[], parameters] and an applet passes
     // {}. The record alone is not a selection, so Finder's is used instead of
     // reporting that no images were selected.
@@ -112,7 +112,8 @@ test("an invocation without files falls back to Finder's selection", () => {
         for (const input of [[[], PARAMETERS], {}, [[], { source: "Finder", ignoresInput: false, "temporary items path": "/tmp/shortcuts-items" }]]) {
             const { inputItems } = collectInvocation(app, input);
             assert.deepEqual(inputItems.map(String), ["/finder/chosen.png"], "the record is dropped before Finder fallback");
-            assert.deepEqual(collectImageFiles(app, inputItems).images.map((record) => record.path), ["/finder/chosen.png"]);
+            // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
+            assert.deepEqual((await collectImageFiles(app, inputItems)).images.map((record) => record.path), ["/finder/chosen.png"]);
         }
     } finally {
         globalThis.Application = previous;

@@ -12,6 +12,7 @@ function assembly() {
         tools: { pdfcpu: "/tools/pdfcpu" }, parts: new Map([[staged, parts]]), artifacts: new Map(), cleanupIssues: [],
         progress: { phase() { return undefined; } },
         operations: {
+        toolPath: (file) => file,
             fits(args) { budgets.push(args); return args.slice(args.indexOf("--") + 2).length <= 2; },
             run(argv) { commands.push(argv); },
             verifyFile(file) { verified.push(file); },

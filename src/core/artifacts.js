@@ -1,4 +1,5 @@
 "use strict";
+const { basename } = require("./paths.js");
 
 /** Owned before bytes exist; validating is retained until validation is resolved. */
 function registerArtifact(artifacts, path) {
@@ -30,4 +31,10 @@ function isPublished(published, outcome) {
     return Boolean(published.identity) && published.identity === outcome.claimedIdentity && published.size === outcome.claimedSize;
 }
 
-module.exports = { isPublished, registerArtifact, retainsArtifact, hasRetainedArtifacts, requireValidatedArtifact, releaseArtifact };
+function recoveryDestination(downloads, intended, workspacePdf) {
+    return downloads
+        ? { kind: "downloads", path: downloads + basename(intended) }
+        : { kind: "workspace", path: workspacePdf };
+}
+
+module.exports = { recoveryDestination, isPublished, registerArtifact, retainsArtifact, hasRetainedArtifacts, requireValidatedArtifact, releaseArtifact };

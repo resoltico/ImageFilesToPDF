@@ -24,7 +24,7 @@ test("artifact is standalone, scoped, licensed, deterministic, and current", asy
     assert.equal(commentsIn(release, 2022).length, 1);
     assert.deepEqual(await renderArtifacts(), artifacts);
     assert.equal(await readFile(nodeArtifactPath, "utf8"), artifacts[nodeArtifactName]);
-    const { MINIMUM_NODE_VERSION } = require("../../src/node/runtime.js");
+    const { MINIMUM_NODE_VERSION } = require("../../src/engine/runtime.js");
     assert.equal((await readFile(require("node:path").resolve(__dirname, "../../.node-version"), "utf8")).trim(), MINIMUM_NODE_VERSION);
     assert.match(artifacts[nodeArtifactName], /Requires Node\.js 26\.13\.1 or later/u);
     assert.equal(await readFile(artifactPath, "utf8"), release);

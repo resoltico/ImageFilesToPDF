@@ -33,6 +33,7 @@ function fixture(paths, options = {}) {
     };
     const selection = { images: paths.map((path) => ({ path })), rejected: [] };
     const operations = {
+        toolPath: (file) => file,
         fits: options.fits ?? (() => true),
         run(argv, label) {
             commands.push([label, ...argv]);

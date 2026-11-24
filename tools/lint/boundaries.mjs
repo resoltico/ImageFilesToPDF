@@ -8,10 +8,9 @@ import { root } from "../repository.mjs";
 const ALLOWED = {
     core: ["core"], application: ["core", "application", "backend"],
     backend: ["core", "backend"], host: ["core", "host"],
-    node: ["node", "application", "core", "backend"], serve: ["serve", "node", "core"], entry: ["host"]
+    engine: ["engine", "application", "core", "backend"], cli: ["cli", "engine", "core"],
+    serve: ["serve", "engine", "core"], entry: ["host"]
 };
-
-const CLI_MODULES = new Set(["src/node/entry.js", "src/node/request.js", "src/node/transport.js"]);
 
 const HOST_NAMES = new Set(["Application", "ObjC", "Ref", "Path", "Progress", "globalThis", "$"]);
 
@@ -29,7 +28,7 @@ function hostInterface(file) {
 export function checkBoundary(file, source) {
     const layer = file === "src/entry.js" ? "entry" : file.split("/")[1];
     if (!ALLOWED[layer]) { throw new Error(`${file}: unknown source layer`); }
-    if (!["host", "node", "serve"].includes(layer) && hasHostGlobal(parseScript(source, "latest"))) {
+    if (!["host", "engine", "cli", "serve"].includes(layer) && hasHostGlobal(parseScript(source, "latest"))) {
         throw new Error(`${file}: host global outside native adapters`);
     }
     for (const match of source.matchAll(/require\("(?<target>[^"]+)"\)/gu)) {
@@ -39,11 +38,10 @@ export function checkBoundary(file, source) {
             if (layer === "host" && hostInterface(target) && hostInterface(file) !== hostInterface(target)) {
                 throw new Error(`${file}: forbidden host interface dependency ${target}`);
             }
-            if (!target.startsWith("src/") || !ALLOWED[layer].includes(target.split("/")[1]) ||
-                (layer === "serve" && CLI_MODULES.has(target))) {
+            if (!target.startsWith("src/") || !ALLOWED[layer].includes(target.split("/")[1])) {
                 throw new Error(`${file}: forbidden dependency ${target}`);
             }
-        } else if (!(["node", "serve"].includes(layer) && name.startsWith("node:") && isBuiltin(name))) {
+        } else if (!(["engine", "cli", "serve"].includes(layer) && name.startsWith("node:") && isBuiltin(name))) {
             throw new Error(`${file}: external dependency ${name}`);
         }
     }

@@ -14,7 +14,7 @@ test("the artifact names no executable the source does not", async () => {
     // artifact contains exactly what that module names, which is a property
     // of src/ that check-dist carries through to dist/.
     const { NODE_EXECUTABLES } = await import("../../src/host/backend-executables.js");
-    const { MAC_PS, MAC_OSASCRIPT } = await import("../../src/node/executables.js");
+    const { MAC_PS, MAC_OSASCRIPT } = await import("../../src/engine/executables.js");
     const { executablePathsIn } =
         await import("../../tools/lint/source-rules.mjs");
     const { renderRelease } = await import("../../tools/release.mjs");

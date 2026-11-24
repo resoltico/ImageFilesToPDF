@@ -15,7 +15,7 @@ const test = require("node:test");
 const { imagesInFolder } = require("../../../src/application/expand.js");
 const { treeOf } = require("../ports/fake-tree.cjs");
 
-test("a subfolder that cannot be read comes back with the images", () => {
+test("a subfolder that cannot be read comes back with the images", async () => {
     // Its result used to be thrown away, so a folder whose photographs were
     // all in a subfolder nobody had permission to open produced a PDF of
     // whatever else was lying around and said nothing about the rest.
@@ -23,7 +23,7 @@ test("a subfolder that cannot be read comes back with the images", () => {
         { "/t": ["a.png", "locked", "sub"], "/t/sub": ["b.png"] },
         { "/t/locked": "directory" }
     );
-    const outcome = imagesInFolder(tree, "/t", new Set());
+    const outcome = (await imagesInFolder(tree, "/t", new Set()));
 
     assert.deepEqual(outcome.found, ["/t/a.png", "/t/sub/b.png"]);
     assert.deepEqual(outcome.problems, [
@@ -31,7 +31,7 @@ test("a subfolder that cannot be read comes back with the images", () => {
     ]);
 });
 
-test("an entry the walk cannot look at comes back too", () => {
+test("an entry the walk cannot look at comes back too", async () => {
     // A listing can succeed while inspecting what it listed fails -- a folder
     // with read but not execute permission does exactly that -- and an item
     // nobody could look at might have been a photograph. Passing over it
@@ -40,7 +40,7 @@ test("an entry the walk cannot look at comes back too", () => {
         { "/t": ["a.png", "b.png", "sub"] },
         { "/t/b.png": "missing", "/t/sub": "missing" }
     );
-    const outcome = imagesInFolder(tree, "/t", new Set());
+    const outcome = (await imagesInFolder(tree, "/t", new Set()));
 
     assert.deepEqual(outcome.found, ["/t/a.png"]);
     assert.deepEqual(outcome.problems, [
@@ -49,20 +49,20 @@ test("an entry the walk cannot look at comes back too", () => {
     ]);
 });
 
-test("a folder holding nothing new is not a folder holding nothing", () => {
+test("a folder holding nothing new is not a folder holding nothing", async () => {
     // Selecting a folder and a folder inside it: by the time the inner one is
     // walked, everything in it is already in the run. That is not a folder to
     // complain about.
     const tree = treeOf({ "/t": ["a.png"] });
-    const outcome = imagesInFolder(tree, "/t", new Set(["/t/a.png"]));
+    const outcome = (await imagesInFolder(tree, "/t", new Set(["/t/a.png"])));
 
     assert.deepEqual(outcome.found, []);
     assert.equal(outcome.code, "");
 });
 
-test("unexamined images do not establish an empty folder", () => {
+test("unexamined images do not establish an empty folder", async () => {
     const tree = treeOf({ "/t": ["locked"] }, { "/t/locked": "directory" });
-    const outcome = imagesInFolder(tree, "/t", new Set());
+    const outcome = (await imagesInFolder(tree, "/t", new Set()));
 
     assert.equal(outcome.code, "");
     assert.deepEqual(outcome.problems, [
@@ -70,29 +70,29 @@ test("unexamined images do not establish an empty folder", () => {
     ]);
 });
 
-test("the folder that was selected is reported as itself, once", () => {
+test("the folder that was selected is reported as itself, once", async () => {
     // Unreadable at the root is the folder the user chose, not something
     // unreadable inside it.
-    const outcome = imagesInFolder(treeOf({}), "/nope", new Set());
+    const outcome = (await imagesInFolder(treeOf({}), "/nope", new Set()));
 
     assert.equal(outcome.code, "unreadable");
     assert.deepEqual(outcome.problems, []);
 });
 
 
-test("failed child traversal cannot establish an empty parent folder",()=>{
+test("failed child traversal cannot establish an empty parent folder",async ()=>{
     const tree=treeOf({"/t":["child"],"/t/child":null},{"/t/child":"directory"});
-    const result=imagesInFolder(tree,"/t",new Set());
+    const result=(await imagesInFolder(tree,"/t",new Set()));
     assert.equal(result.code,"");assert.deepEqual(result.problems,[{path:"/t/child",code:"unreadable"}]);
 });
 
-test("all unknown file identities are refused without claiming known-empty",()=>{
+test("all unknown file identities are refused without claiming known-empty",async ()=>{
     const tree=treeOf({"/t":["first.png","second.png"]},{},{"/t/first.png":"","/t/second.png":""});
-    const result=imagesInFolder(tree,"/t",new Set());
+    const result=(await imagesInFolder(tree,"/t",new Set()));
     assert.deepEqual(result,{found:[],code:"",problems:[{path:"/t/first.png",code:"unexaminable"},{path:"/t/second.png",code:"unexaminable"}]});
 });
 
-test("a directory's listing attributes distinguish unexamined entries from hidden, linked and package entries", () => {
+test("a directory's listing attributes distinguish unexamined entries from hidden, linked and package entries", async () => {
     const kinds = {
         "/t/denied.png": { kind: "unreadable" },
         "/t/unknown.png": { kind: "unexaminable" },
@@ -105,7 +105,7 @@ test("a directory's listing attributes distinguish unexamined entries from hidde
         inspect: (file) => kinds[file],
         standardize: (value) => value
     };
-    assert.deepEqual(imagesInFolder(tree, "/t", new Set()), {
+    assert.deepEqual((await imagesInFolder(tree, "/t", new Set())), {
         found: [], code: "", problems: [
             { path: "/t/denied.png", code: "unreadable" },
             { path: "/t/unknown.png", code: "unexaminable" }

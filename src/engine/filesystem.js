@@ -5,7 +5,7 @@ const path = require("node:path");
 const { platform } = require("node:process");
 const { Buffer } = require("node:buffer");
 const { TextDecoder } = require("node:util");
-const { OperationError } = require("../core/errors.js");
+const { OperationError, isUserCanceled } = require("../core/errors.js");
 const { captureIssue, changedSourceIssue } = require("../core/source-policy.js");
 const { WINDOWS, standardize, ordinaryWindowsPath } = require("./paths.js");
 const { countPng } = require("../core/png-count.js");
@@ -46,22 +46,19 @@ function kindOf(stats) {
     return stats.isFile() ? "file" : "other";
 }
 
-function macKind(mac, prefixes, leaf, leafKind) {
+async function macKind(mac, prefixes, leaf, leafKind) {
     // checkedPath already verifies the two macOS system symlinks by their exact targets.
     const paths = [...prefixes.filter((part) => !MAC_SYSTEM_ALIASES.has(part)), leaf];
-    const records = mac({ type: "packages", paths });
+    const records = await mac.request({ type: "packages", paths });
     if (!Array.isArray(records) || records.length !== paths.length || records.some((record) =>
         typeof record?.package !== "boolean" || typeof record?.alias !== "boolean")) { return "unexaminable"; }
     if (records.some((record) => record.alias)) { return "link"; }
     return records.some((record) => record.package) ? "package" : leafKind;
 }
 
-function checkedPath(windows, mac, file, { owned = false } = {}) {
+function checkedPath(file) {
     const prefixes = pathPrefixes(standardize(file));
     const leaf = prefixes.pop();
-    const attributes = windows ? windows.attributes(leaf) : "ordinary";
-    if (attributes === "missing" || attributes === "link") { return { kind: attributes }; }
-    if (!["ordinary", "hidden"].includes(attributes)) { throw new OperationError(message("nativeFileAttributesUnavailable"), { diagnostic: { attributes } }); }
     for (const part of prefixes) {
         const stats = fs.lstatSync(part, BIGINT);
         if (!stats.isDirectory()) {
@@ -72,9 +69,7 @@ function checkedPath(windows, mac, file, { owned = false } = {}) {
         }
     }
     const stats = fs.lstatSync(leaf, BIGINT);
-    const observed = kindOf(stats);
-    const kind = mac && !owned && ["file", "directory"].includes(observed) ? macKind(mac, prefixes, leaf, observed) : observed;
-    return { stats, kind, hidden: attributes === "hidden", identity: identity(stats) };
+    return { stats, kind: kindOf(stats), prefixes, leaf, identity: identity(stats) };
 }
 
 function changedSource(file) {
@@ -122,62 +117,106 @@ function readPng(fd, size) {
     }, size);
 }
 
-function localFilesystem(windows, mac) {
-    const checked = (file, options) => checkedPath(windows, mac, file, options);
-    function inspect(file) {
-        try {
-            const found = checked(file);
-            return { kind: found.kind, identity: found.identity, hidden: found.hidden };
-        } catch (error) {
-            const kind = { ENOENT: "missing", ENOTDIR: "missing", EACCES: "unreadable", EPERM: "unreadable" }[error.code];
-            return { kind: kind ?? "unexaminable" };
-        }
-    }
+function listedMacKind(record, kind) {
+    if (typeof record?.package !== "boolean" || typeof record?.alias !== "boolean") { return "unexaminable"; }
+    if (record.alias) { return "link"; }
+    return record.package ? "package" : kind;
+}
 
-    function entries(directory) {
+function sourceOperations(checkedSource) {
+    async function facts(file) {
         try {
-            if (checked(directory).kind !== "directory") { return null; }
-            return storedNames(directory);
-        } catch { return null; }
-    }
-
-    function facts(file) {
-        try {
-            const found = checked(file);
+            const found = await checkedSource(file);
             return fileFacts(found.kind === "file" ? found.stats : null);
         } catch (error) {
-            if (error instanceof OperationError) { throw error; }
+            if (error instanceof OperationError || isUserCanceled(error)) { throw error; }
             throw new OperationError(message("sourceAttributesUnavailable"), { cause: error });
         }
     }
 
-    function withSource(file, use) {
-        const before = facts(file);
+    async function withSource(file, use) {
+        const before = await facts(file);
         // POSIX flags reject a leaf symlink and prevent a raced FIFO from blocking.
         // eslint-disable-next-line no-bitwise -- These are independent native open flags.
         const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | (fs.constants.O_NONBLOCK ?? 0);
         const fd = fs.openSync(file, flags);
         try {
             const opened = fileFacts(fs.fstatSync(fd, BIGINT));
-            if (!sameFile(before, opened) || !sameFile(opened, facts(file))) { throw changedSource(file); }
+            if (!sameFile(before, opened) || !sameFile(opened, await facts(file))) { throw changedSource(file); }
             const result = use(fd, opened);
-            if (!sameFile(opened, fileFacts(fs.fstatSync(fd, BIGINT))) || !sameFile(opened, facts(file))) { throw changedSource(file); }
+            if (!sameFile(opened, fileFacts(fs.fstatSync(fd, BIGINT))) || !sameFile(opened, await facts(file))) { throw changedSource(file); }
             return result;
         } finally { fs.closeSync(fd); }
     }
 
-    function capture(file, destination) {
+    async function capture(file, destination) {
         try {
-            return withSource(file, (fd, opened) => {
+            return await withSource(file, (fd, opened) => {
                 const out = fs.openSync(destination, "wx", PRIVATE_FILE_MODE);
                 try { copyHandle(fd, out, Number(opened.size)); }
                 finally { fs.closeSync(out); }
                 return { path: destination, identity: opened.identity, version: opened.version };
             });
         } catch (error) {
-            if (error.issues) { throw error; }
+            if (error.issues || isUserCanceled(error)) { throw error; }
             const issue = captureIssue(file, { message: error.message });
             throw new OperationError(message("fileIssue", { path: file, reason: issue.message }), { cause: error, issues: [issue] });
+        }
+    }
+
+    return { facts, capture, readable, pngCount: (file) => withSource(file, (fd, opened) => readPng(fd, Number(opened.size))) };
+}
+
+function localFilesystem(windows, mac) {
+    const folderFacts = new Map();
+    const checked = (file) => checkedPath(file);
+    async function checkedSource(file, listed = false) {
+        if (windows && !await windows.local(file)) { return { kind: "unexaminable" }; }
+        const found = checked(file);
+        if (!mac || !["file", "directory"].includes(found.kind)) { return found; }
+        const prior = listed ? folderFacts.get(file) : null;
+        if (prior?.identity === found.identity && prior.changed === found.stats.ctimeNs) { return { ...found, kind: prior.kind }; }
+        return { ...found, kind: await macKind(mac, found.prefixes, found.leaf, found.kind) };
+    }
+
+    async function inspect(file) {
+        try {
+            const found = await checkedSource(file, true);
+            return { kind: found.kind, identity: found.identity, hidden: found.hidden };
+        } catch (error) {
+            if (isUserCanceled(error)) { throw error; }
+            const kind = { ENOENT: "missing", ENOTDIR: "missing", EACCES: "unreadable", EPERM: "unreadable" }[error.code];
+            return { kind: kind ?? "unexaminable" };
+        }
+    }
+
+    async function rememberDirectoryFacts(directory, names) {
+        const children = names.flatMap((name) => {
+            const file = standardize(`${directory}/${name}`);
+            try {
+                const found = checked(file);
+                return ["file", "directory"].includes(found.kind) ? [{ file, ...found }] : [];
+            } catch { return []; }
+        });
+        if (children.length === 0) { return; }
+        const records = await mac.request({ type: "packages", paths: children.map(({ file }) => file) });
+        if (!Array.isArray(records) || records.length !== children.length) { throw new Error("The macOS directory facts were incomplete."); }
+        children.forEach(({ file, identity: id, stats, kind }, index) =>
+            folderFacts.set(file, { identity: id, changed: stats.ctimeNs, kind: listedMacKind(records[index], kind) }));
+    }
+
+    async function entries(directory) {
+        try {
+            if ((await checkedSource(directory, true)).kind !== "directory") { return null; }
+            const names = storedNames(directory);
+            if (mac) { await rememberDirectoryFacts(directory, names); }
+            if (!windows) { return names; }
+            const listed = await windows.entries(directory);
+            const visible = new Set(listed.filter((entry) => entry.hidden === false).map((entry) => entry.name));
+            return names.filter((name) => visible.has(name));
+        } catch (error) {
+            if (isUserCanceled(error)) { throw error; }
+            return null;
         }
     }
 
@@ -190,10 +229,7 @@ function localFilesystem(windows, mac) {
     return {
         checked, directoryIdentity,
         tree: { inspect, entries, standardize },
-        sources: { facts, capture,
-            readable,
-            pngCount: (file) => withSource(file, (fd, opened) => readPng(fd, Number(opened.size)))
-        }
+        sources: sourceOperations(checkedSource)
     };
 }
 

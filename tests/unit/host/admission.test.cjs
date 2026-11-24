@@ -17,16 +17,16 @@ globalThis.Application = (name) => {
     return { selection: () => globalThis.finderItems ?? [] };
 };
 
-test("what cannot be converted is reported, not dropped", () => {
+test("what cannot be converted is reported, not dropped", async () => {
     // A silent filter turned a GIF selected alongside a photo into a report
     // that nothing had failed, so the count described the surviving subset
     // rather than what was asked for.
     const app = createFakeApp([["'/a/missing.png'", failing("1")]]);
-    const { images, rejected } = collectImageFiles(app, [
+    const { images, rejected } = (await collectImageFiles(app, [
         "/a/photo.JPG",
         "/a/notes.txt",
         "/a/missing.png"
-    ]);
+    ]));
 
     assert.deepEqual(images.map((record) => record.originalName), ["photo.JPG"]);
     assert.deepEqual(rejected.map((entry) => entry.name), ["notes.txt", "missing.png"]);
@@ -34,26 +34,26 @@ test("what cannot be converted is reported, not dropped", () => {
     assert.match(rejected[1].reason, /This file cannot be read; check that it still exists and that you have access./u);
 });
 
-test("collectImageFiles keeps only supported, regular files", () => {
+test("collectImageFiles keeps only supported, regular files", async () => {
     const app = createFakeApp([["'/a/missing.png'", failing("1")]]);
-    const { images: records } = collectImageFiles(app, [
+    const { images: records } = (await collectImageFiles(app, [
         "/a/photo.JPG",
         "/a/notes.txt",
         "/a/missing.png",
         "/a/scan.png"
-    ]);
+    ]));
 
     assert.deepEqual(records.map((record) => record.path), ["/a/photo.JPG", "/a/scan.png"]);
     assert.deepEqual(records.map((record) => record.originalName), ["photo.JPG", "scan.png"]);
 });
 
-test("collectImageFiles returns them in natural order", () => {
+test("collectImageFiles returns them in natural order", async () => {
     const app = createFakeApp();
-    const { images: records } = collectImageFiles(app, [
+    const { images: records } = (await collectImageFiles(app, [
         "/a/page10.png",
         "/a/page2.png",
         "/a/page1.png"
-    ]);
+    ]));
 
     assert.deepEqual(
         records.map((record) => record.originalName),
@@ -61,12 +61,12 @@ test("collectImageFiles returns them in natural order", () => {
     );
 });
 
-test("Quick Action input falls back to the Finder selection", () => {
+test("Quick Action input falls back to the Finder selection", async () => {
     const app = createFakeApp();
 
     globalThis.finderItems = ["/a/fromfinder.png"];
     assert.deepEqual(
-        collectImageFiles(app, collectInvocation(app, []).inputItems).images.map((record) => record.path),
+        (await collectImageFiles(app, collectInvocation(app, []).inputItems)).images.map((record) => record.path),
         ["/a/fromfinder.png"]
     );
     globalThis.finderItems = [];

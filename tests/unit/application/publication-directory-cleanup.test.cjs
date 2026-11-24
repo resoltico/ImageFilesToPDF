@@ -36,8 +36,8 @@ for (const [label, makeCause, code] of [
             const lookups = [];
             job.publication.link = (from, to) => location === "public" || (location === "downloads" && to.startsWith("/Downloads/")) ? link(from, to) : { state: "denied" };
             job.publication.actualPath = (path) => { lookups.push(path);return reader.read(path); };
-            const sample = documentFixture(2, { mode: "separate", ports: { publish: () => {
-                try { return publishPdf(job, staged, target); }
+            const sample = documentFixture(2, { mode: "separate", ports: { publish: async () => {
+                try { return (await publishPdf(job, staged, target)); }
                 catch (error) { failure = error;throw error; }
             } } });
             // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
@@ -60,7 +60,7 @@ test("mandatory close failure preserves an explicit unavailable original without
     let lookedUp = false;
     job.publication.actualPath = (path) => { lookedUp = true;return reader.read(path); };
     job.publication.facts = (path) => lookedUp && path === staged ? { identity: "", size: -1 } : facts(path);
-    const sample = documentFixture(2, { mode: "separate", ports: { publish: () => publishPdf(job, staged, target) } });
+    const sample = documentFixture(2, { mode: "separate", ports: { publish: async () => (await publishPdf(job, staged, target)) } });
     const records = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(records[0].state, "failed");assert.equal(records[0].fatal, true);assert.equal(Object.hasOwn(records[0], "recovery"), false);
     assert.equal(records[0].issues[0].code, "fault");assert.ok(records[0].issues.some((issue) => issue.code === "cleanup" && issue.stage === "cleanup"));
@@ -73,7 +73,7 @@ test("every underlying cleanup issue survives even when it precedes the read iss
     const cause = new IssueError("Read refused after earlier cleanup failure.", { issues: [prior, { code: "operation", stage: "publication", message: "Read refused." }] });
     const { job } = fixture(), reader = closingReader(cause);
     job.publication.actualPath = (path) => reader.read(path);
-    const sample = documentFixture(2, { mode: "separate", ports: { publish: () => publishPdf(job, staged, target) } });
+    const sample = documentFixture(2, { mode: "separate", ports: { publish: async () => (await publishPdf(job, staged, target)) } });
     const records = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(records[0].issues[0].code, "publication");assert.equal(records[0].fatal, true);assert.equal(records[1].state, "not-started");
     const cleanup = records[0].issues.filter((issue) => issue.code === "cleanup" && issue.stage === "cleanup");

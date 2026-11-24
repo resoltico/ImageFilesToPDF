@@ -6,7 +6,7 @@ const { OperationError } = require("../core/errors.js");
 const { issueMessage, issueMessages } = require("../core/messages.js");
 const fs = require("node:fs");
 const { TextDecoder } = require("node:util");
-const { localPath } = require("./paths.js");
+const { localPath } = require("../engine/paths.js");
 
 const JSON_INDENT = 2;
 const FIRST_SOURCE = 3;

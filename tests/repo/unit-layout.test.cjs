@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, "../..");
 
 // A test of an adapter may use inner-layer values as fixtures. The outermost
 // production layer it imports owns the test, including mixed-layer contracts.
-const LAYERS = ["core", "backend", "application", "host", "node"];
+const LAYERS = ["core", "backend", "application", "host", "engine", "cli", "serve"];
 
 function testedLayer(source, file) {
     const imports = [...source.matchAll(/(?:require(?:\.resolve)?|import)\s*\(\s*["'](?<target>\.[^"']+)["']\s*\)/gu)];

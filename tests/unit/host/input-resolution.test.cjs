@@ -27,20 +27,20 @@ function selectedFile(path) {
 
 const PARAMETERS = { toString: () => "[object Object]" };
 
-function quickAction(app, paths) {
+async function quickAction(app, paths) {
     const selection = paths.map(selectedFile);
     const { inputItems } = collectInvocation(app, [selection, PARAMETERS], false);
 
-    return collectImageFiles(app, inputItems).images;
+    return (await collectImageFiles(app, inputItems)).images;
 }
 
-test("an item that stringifies to nothing cannot reach Path()", () => {
+test("an item that stringifies to nothing cannot reach Path()", async () => {
     // Measured: Path("") does not throw, it raises an ObjC exception that no
     // JavaScript try/catch can intercept, killing the action outright with no
     // dialog. Nothing may hand an empty value to it.
     const app = createFakeApp();
 
-    assert.doesNotThrow(() => quickAction(app, []));
+    await assert.doesNotReject(() => quickAction(app, []));
 
     for (const empty of ["", { toString: () => "" }]) {
         assert.equal(inputItemToPosixPath(empty), "");
@@ -64,13 +64,13 @@ test("only a leading file:// makes an item a URL", () => {
     assert.equal(inputItemToPosixPath("file:///a/b%20c.png"), "/a/b c.png");
 });
 
-test("a Quick Action reports the files it will not convert", () => {
+test("a Quick Action reports the files it will not convert", async () => {
     // Shortcuts appends its parameters to every input; that object is not a
     // file the user asked for and must not be reported as one.
     const app = createFakeApp();
     const selection = ["/a/photo.jpg", "/a/anim.gif"].map(selectedFile);
     const { inputItems } = collectInvocation(app, [selection, PARAMETERS], false);
-    const { images, rejected } = collectImageFiles(app, inputItems);
+    const { images, rejected } = (await collectImageFiles(app, inputItems));
 
     assert.deepEqual(images.map((record) => record.originalName), ["photo.jpg"]);
     assert.deepEqual(rejected.map((entry) => entry.name), ["anim.gif"]);

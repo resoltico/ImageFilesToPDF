@@ -11,9 +11,9 @@ const settings={paperSize:"A4",orientation:"Portrait",mode:"combined",resolution
 const tools={vips:"/v/vips",vipsheader:"/v/vipsheader",pdfcpu:"/v/pdfcpu"};
 const stamp="20261029_070000";
 
-function jobFixture(mode="combined",failures=[]) {
+async function jobFixture(mode="combined",failures=[]) {
     const app=createFakeHost({files:["/a/1.png","/a/2.png"],failures});
-    const job=createJob(runOperations(app),{...settings,mode},stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
+    const job=(await createJob(runOperations(app),{...settings,mode},stamp,{tools,storage:app.storage,destinationNames:app.destinationNames}));
     const events=[];
     job.sources=app.sources;job.publication=app.publication;
     job.progress=createProgress([{start:(units)=>events.push(["expect",units]),report:(done,text,detail)=>events.push([done,text,detail])}]);
@@ -23,8 +23,8 @@ function jobFixture(mode="combined",failures=[]) {
     return {job,app,events};
 }
 
-test("job carries validated settings, exact geometry, ownership and explicit progress units",()=>{
-    const {job}=jobFixture();
+test("job carries validated settings, exact geometry, ownership and explicit progress units",async ()=>{
+    const {job}=(await jobFixture());
     assert.equal(job.timestamp,stamp);assert.equal(job.tools,tools);
     assert.deepEqual(job.settings,settings);
     assert.deepEqual(job.geometry,{widthPoints:595.2756,heightPoints:841.8898,resolutionLimit:72});
@@ -36,7 +36,7 @@ test("job carries validated settings, exact geometry, ownership and explicit pro
 
 for(const mode of ["combined","separate"]) {
     test(`${mode} source positions, completion events, and output paths follow the plan`,async ()=>{
-        const {job,app,events}=jobFixture(mode);
+        const {job,app,events}=(await jobFixture(mode));
         const result=(await runJob(job,[imageOf("/a/1.png"),imageOf("/a/2.png")]));
         assert.equal(result.state,"complete");
         assert.deepEqual(events.filter((event)=>event[0]==="source").map((event)=>event.slice(1)),[[1,"1.png"],[2,"2.png"]]);
@@ -48,14 +48,14 @@ for(const mode of ["combined","separate"]) {
 }
 
 test("ordinary separate failures advance attempted-work progress and continue",async ()=>{
-    const {job,events}=jobFixture("separate",[["'thumbnail'",new Error("damage")]]);
+    const {job,events}=(await jobFixture("separate",[["'thumbnail'",new Error("damage")]]));
     const result=(await runJob(job,[imageOf("/a/1.png"),imageOf("/a/2.png")]));
     assert.deepEqual(result.documents.map((document)=>document.state),["failed","failed"]);
     assert.equal(events.at(-1)[0],2);assert.equal(events.at(-1)[1],"Finished");
 });
 
 test("unconfirmed validated work keeps the workspace even after unexpected publication faults",async ()=>{
-    const {job,app}=jobFixture("combined",[["'/bin/cp'",new Error("recovery denied")]]);
+    const {job,app}=(await jobFixture("combined",[["'/bin/cp'",new Error("recovery denied")]]));
     job.publication.link=()=>{throw new TypeError("bridge fault");};
     const result=(await runJob(job,[imageOf("/a/1.png")]));
     assert.equal(result.documents[0].state,"recovered");
@@ -63,16 +63,16 @@ test("unconfirmed validated work keeps the workspace even after unexpected publi
     assert.ok(!app.commands.some((command)=>command.includes("'/bin/rm' '-rf'")));
 });
 
-test("a default job has an inert progress capability, not a malformed sink",()=>{
+test("a default job has an inert progress capability, not a malformed sink",async ()=>{
     const app=createFakeHost();
-    const job=createJob(runOperations(app),settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
+    const job=(await createJob(runOperations(app),settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames}));
     job.progress.phase("Checking");assert.deepEqual(job.progress.diagnostics,[]);
 });
 
-function longPathFixture() {
+async function longPathFixture() {
     const sources=Array.from({length:35},(unused,index)=>`/a/${index}.png`);
     const app=createFakeHost({files:sources});
-    const job=createJob(runOperations(app),settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
+    const job=(await createJob(runOperations(app),settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames}));
     Object.assign(job,{sources:app.sources,publication:app.publication,tools:{...tools,pdfcpu:"/opt/homebrew/Cellar/pdfcpu/0.16.4/bin/pdfcpu"}});
     job.workspace=`/${[246,246,246,245].map((width)=>"'".repeat(width)).join("/")}/ImageFilesToPDF.x`;
     const counts=[];const original=app.doShellScript;
@@ -81,7 +81,7 @@ function longPathFixture() {
 }
 
 test("page staging stays bounded across real adapter imports, including quote-heavy valid paths",async ()=>{
-    const {app,job,counts,sources}=longPathFixture();
+    const {app,job,counts,sources}=(await longPathFixture());
     const result=(await runJob(job,sources.map(imageOf)));
     assert.equal(result.state,"complete");assert.ok(Math.max(...counts)<=32);
     const imports=app.commands.filter((command)=>command.includes("'import'"));
@@ -96,7 +96,7 @@ test("job accumulator outlives executor and workspace teardown faults",async ()=
         if(name==="./documents.js"){return {executeDocuments(ports,plans,records){records.push({state:"saved",sources:["/a/1.png"],pages:1,output:"/saved.pdf",issues:[]});throw new TypeError("executor bug");}};}
         return actualRequire(name);
     }}, {filename:jobPath});
-    const {job}=jobFixture("combined");
+    const {job}=(await jobFixture("combined"));
     job.operations.removeWorkspace = () => { throw new Error("workspace teardown bug"); };
     const result=await module.exports.runJob(job,[imageOf("/a/1.png")]);
     assert.deepEqual([result.documents[0].output,Array.from(result.issues,issue=>issue.stage),result.state], ["/saved.pdf",["execution","cleanup"],"incomplete"]);
@@ -104,7 +104,7 @@ test("job accumulator outlives executor and workspace teardown faults",async ()=
 
 
 test("name-planning faults release the owned workspace before any PDF bytes",async ()=>{
-    const {job,app}=jobFixture("separate");
+    const {job,app}=(await jobFixture("separate"));
     job.destinationNames={groups(){throw new TypeError("namespace unavailable");}};
     const result=(await runJob(job,[imageOf("/a/1.png"),imageOf("/a/2.png")]));
     assert.equal(result.state,"incomplete");assert.deepEqual(result.documents,[]);
@@ -117,7 +117,8 @@ test("name-planning faults release the owned workspace before any PDF bytes",asy
 test("actual PDF import, assembly, validation and publication clear image detail and new images restore their name", async () => {
     const phases = ["Creating PDF", "Assembling PDF", "Validating PDF", "Saving PDF"];
     for (const mode of ["combined", "separate"]) {
-        const { job, events } = jobFixture(mode);
+        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
+        const { job, events } = (await jobFixture(mode));
         // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         assert.equal((await runJob(job, [imageOf("/a/1.png"), imageOf("/a/2.png")])).state, "complete");
         const documents = events.filter((event) => phases.includes(event[1]));
@@ -130,7 +131,7 @@ test("actual PDF import, assembly, validation and publication clear image detail
 });
 
 test("queue, validation and cleanup keep their progress and ownership boundaries", async () => {
-    const { job, app, events } = jobFixture("combined");
+    const { job, app, events } = (await jobFixture("combined"));
     const { run } = job.operations;
     const { write } = job.storage;
     let retained = false;
@@ -169,7 +170,7 @@ test("the initial setup reports prior workspace observations before showing a se
 });
 
 test("a failed owned-page release stops before another native write and is included in diagnostics", async () => {
-    const { job, app } = jobFixture();
+    const { job, app } = (await jobFixture());
     const prior = { code: "cleanup", stage: "cleanup", message: "A previously owned page could not be released." };
     job.cleanupIssues.push(prior);
     const result = await runJob(job, [imageOf("/a/1.png")]);
@@ -179,7 +180,7 @@ test("a failed owned-page release stops before another native write and is inclu
 });
 
 test("empty prepared output cannot reach import and is removed", async () => {
-    const { job, app } = jobFixture();
+    const { job, app } = (await jobFixture());
     const {facts} = job.publication;
     job.publication.facts = (file) => file.endsWith("-page.png") ? { identity: "fixture-page", size: 0 } : facts(file);
     const result = await runJob(job, [imageOf("/a/1.png")]);
@@ -190,7 +191,7 @@ test("empty prepared output cannot reach import and is removed", async () => {
 });
 
 test("mandatory cleanup failure immediately before validation prevents the validator from writing", async () => {
-    const { job, app } = jobFixture();
+    const { job, app } = (await jobFixture());
     const {write} = job.storage;
     const failure = { code: "cleanup", stage: "cleanup", message: "Pre-validation cleanup failed." };
     job.storage.write = (marker, content) => { write(marker, content); job.cleanupIssues.push(failure); };
@@ -201,7 +202,7 @@ test("mandatory cleanup failure immediately before validation prevents the valid
 });
 
 test("a marker inspection fault remains visible and prevents workspace removal", async () => {
-    const { job, app } = jobFixture();
+    const { job, app } = (await jobFixture());
     job.storage.entries = () => { throw new TypeError("Workspace marker inspection failed."); };
     const result = await runJob(job, []);
     assert.deepEqual(result.issues.map(({ code, stage, message }) => [code, stage, message]), [

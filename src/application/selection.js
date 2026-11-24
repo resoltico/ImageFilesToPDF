@@ -19,14 +19,14 @@ function inspect(tree, path) {
  * asking the tree is asking Foundation; two spellings are asked about
  * separately, which is how they turn out to be one file.
  */
-function remember(found, tree, path, rejected) {
+async function remember(found, tree, path, rejected) {
     const standardized = tree.standardize(path);
 
     if (found.roots.has(standardized)) {
         return;
     }
 
-    const entry = inspect(tree, standardized);
+    const entry = await inspect(tree, standardized);
     if (path.endsWith("/") && !["directory", "package"].includes(entry.kind)) {
         rejected.push(selectionRefusal(path, "not-a-folder", path));
         return;
@@ -39,14 +39,15 @@ function remember(found, tree, path, rejected) {
     });
 }
 
-function resolve(tree, items, rejected) {
+async function resolve(tree, items, rejected) {
     const found = { roots: new Map() };
 
     for (const item of items) {
         const { path, refusal } = item;
 
         if (path) {
-            remember(found, tree, path, rejected);
+            // eslint-disable-next-line no-await-in-loop -- Preserve deduplication and refusal order.
+            await remember(found, tree, path, rejected);
         } else if (refusal) {
             rejected.push(refusal);
         }
@@ -70,8 +71,8 @@ function byPath(left, right) {
     return left.path < right.path ? -1 : 1;
 }
 
-function selectedItems(tree, items, rejected) {
-    const roots = resolve(tree, items, rejected);
+async function selectedItems(tree, items, rejected) {
+    const roots = await resolve(tree, items, rejected);
 
     return [
         ...roots.filter(isFolder).sort(byPath),

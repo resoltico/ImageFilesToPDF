@@ -47,8 +47,7 @@ Commit both generated bundles and checksums alongside source changes that affect
   Each process adapter determines whether the full command fits.
 - `src/host/` contains the JXA filesystem bridge and Finder presentation.
   `src/entry.js` exports the synchronous Shortcuts handler.
-- `src/node/` contains CLI parsing, native process and filesystem ports and
-  receipt transport. `src/node/entry.js` is the sole terminal entry point.
+- `src/cli/` owns CLI parsing and receipts. `src/engine/` owns native process, filesystem and platform ports. `src/cli/entry.js` is the sole terminal entry point.
 
 `tools/lint/boundaries.mjs` enforces import direction. The build also checks
 each entry point's full dependency graph and requires every source module to be

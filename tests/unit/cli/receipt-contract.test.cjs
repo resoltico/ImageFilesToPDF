@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { report } = require("../../../src/node/transport.js");
+const { report } = require("../../../src/cli/transport.js");
 function reportHeadless(result, take) {
     const stream = (stderr) => ({ on() { return this; }, write(data, done) { try { done(take(data.toString("utf8"), undefined, stderr) === false ? new Error("write refused") : null); } catch (error) { done(error); } } });
     return report(result, stream(false), stream(true));

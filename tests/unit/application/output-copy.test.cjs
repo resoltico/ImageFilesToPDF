@@ -97,7 +97,7 @@ test("neither file being measurable is not a match", () => {
     assert.equal(outcome.error.message, "the staged file is -1 bytes where -1 were expected");
 });
 
-test("a truncated copy never wears the finished PDF's name", () => {
+test("a truncated copy never wears the finished PDF's name", async () => {
     const host = createFakeHost({
         files: ["/a/p.pdf"],
         failures: [
@@ -109,7 +109,7 @@ test("a truncated copy never wears the finished PDF's name", () => {
     host.publication.link = () => ({ state: "unsupported" });
     const job = makeJob(host);
     job.artifacts.set("/a/p.pdf",{path:"/a/p.pdf",state:"validated"});
-    assert.throws(
+    await assert.rejects(
         () => publishPdf(job, "/a/p.pdf", "/a/out.pdf"),
         /7 bytes where 1024 were expected/u
     );

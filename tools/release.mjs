@@ -5,7 +5,7 @@ import path from "node:path";
 import { renderBanner, readMetadata } from "./banner.mjs";
 import { scopedBundle, nodeBundle } from "./scoped-bundle.mjs";
 import { root } from "./repository.mjs";
-import runtime from "../src/node/runtime.js";
+import runtime from "../src/engine/runtime.js";
 
 const HASH_PREFIX_LENGTH = 12;
 const ENGINE_DEFINE = "globalThis.iftpEmbeddedEngine";
@@ -36,7 +36,7 @@ export function assertSourceDiscovery(files, inputs) {
 export async function renderArtifacts() {
     const [meta, node, engine] = await Promise.all([
         readMetadata((relative) => readFile(path.join(root, relative), "utf8"), MINIMUM_MACOS),
-        nodeBundle("src/node/entry.js", root, runtime.MINIMUM_NODE_VERSION),
+        nodeBundle("src/cli/entry.js", root, runtime.MINIMUM_NODE_VERSION),
         nodeBundle("src/serve/entry.js", root, runtime.MINIMUM_NODE_VERSION)
     ]);
     const engineBundle = { filename: `engine-${meta.version}-${createHash("sha256").update(engine.source).digest("hex").slice(0, HASH_PREFIX_LENGTH)}.cjs`, source: engine.source };
@@ -44,7 +44,7 @@ export async function renderArtifacts() {
     assertSourceDiscovery(await sourceFiles(), [...jxa.inputs, ...node.inputs, ...engine.inputs]);
     if (jxa.inputs.some((file) => !file.startsWith("src/core/") && !file.startsWith("src/host/") && file !== "src/entry.js" && file !== `<define:${ENGINE_DEFINE}>`) ||
         [...node.inputs, ...engine.inputs].some((file) => file.startsWith("src/host/") || file === "src/entry.js") ||
-        node.inputs.some((file) => file.startsWith("src/serve/")) || engine.inputs.includes("src/node/entry.js")) {
+        node.inputs.some((file) => file.startsWith("src/serve/")) || engine.inputs.includes("src/cli/entry.js")) {
         throw new Error("an artifact includes the other runtime's adapter");
     }
     const finderRuntime = `Requires macOS ${meta.minimumMacos} or later, Node.js 26 or later, libvips and pdfcpu.\n *     brew install node vips pdfcpu`;

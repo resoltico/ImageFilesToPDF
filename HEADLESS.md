@@ -219,7 +219,10 @@ disambiguating source-extension suffix, uses at most 250 UTF-8 bytes before a
 collision number: five of the 255-byte budget are reserved for ` 9999`. Stored
 spelling can reflect filesystem normalization; use the actual receipt path.
 
-Recovery first attempts the intended name under `~/Downloads`. If it cannot confirm a recovery there, it keeps and verifies the private workspace PDF. A claim with uncertain acknowledgement or identity leaves the existing entry and the verified original in place. Recovery
+Recovery first attempts the intended name in the system's Downloads folder when
+available. When it cannot confirm a recovery there, it keeps and verifies the
+PDF in its durable private workspace. macOS uses `~/Downloads`, Linux uses the
+configured XDG Downloads directory, and Windows uses the Downloads known folder. A claim with uncertain acknowledgement or identity leaves the existing entry and the verified original in place. Recovery
 is reported only when its path and contents are verified; otherwise the report
 identifies retained work or unresolved uncertainty. Always use the receipt's
 actual `output` or `recovery` path. Retained
@@ -241,11 +244,10 @@ images, including an APNG with a separate default image. Malformed or
 unverifiable image-count metadata is refused.
 
 Only positively identified name collisions produce a numeric suffix. The CLI
-uses a hard-link claim, staging beside the destination for cross-volume copies.
-When no exclusive route is available, it attempts recovery. Separate-mode name
-equivalence for multiple images in one folder needs permission to create an
-owned comparison directory there. The Finder action also supports the macOS
-exclusive-rename route described in [QA.md](QA.md).
+tries a hard-link claim, staging a verified copy beside the destination when
+needed. macOS and Windows also attempt an exclusive rename. Linux uses hard
+links and recovery. Separate-mode name equivalence for multiple images in one
+folder needs permission to create an owned comparison directory there.
 
 `IMAGE_FILES_TO_PDF_VIPS`, `IMAGE_FILES_TO_PDF_VIPSHEADER` and
 `IMAGE_FILES_TO_PDF_PDFCPU` may name explicit executables. An override that is

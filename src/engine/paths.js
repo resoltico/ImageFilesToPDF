@@ -47,9 +47,13 @@ function standardize(value) {
     return WINDOWS ? normalized.replace(/\\/gu, "/") : normalized;
 }
 
+function toolPath(file) {
+    return WINDOWS ? `\\\\?\\${path.win32.normalize(file)}` : file;
+}
+
 function outputName(record, distinguish) {
     const name = outputNameForSeparate(record, distinguish);
     return WINDOWS && DEVICE.test(name) ? `_${name}` : name;
 }
 
-module.exports = { outputName, WINDOWS, localPath, resolvedSource, standardize, ordinaryWindowsPath };
+module.exports = { outputName, toolPath, WINDOWS, localPath, resolvedSource, standardize, ordinaryWindowsPath };

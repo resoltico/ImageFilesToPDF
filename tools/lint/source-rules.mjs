@@ -75,7 +75,7 @@ export function executablePathsIn(content) {
 function checkExecutables(relativePath, content) {
     // The rule is about what the shipped action runs. A test naming a path as
     // a fixture is asserting against it, not invoking it.
-    if (!relativePath.startsWith("src/") || [EXECUTABLES_MODULE, "src/node/executables.js"].includes(relativePath)) {
+    if (!relativePath.startsWith("src/") || [EXECUTABLES_MODULE, "src/engine/executables.js"].includes(relativePath)) {
         return;
     }
 

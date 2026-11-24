@@ -11,11 +11,11 @@ test("the Finder, CLI and serve boundaries reject dependencies on peer adapters"
     for (const [source, required] of [
         ["src/host/client.js", "../application/workflow.js"],
         ["src/host/client.js", "../backend/commands.js"],
-        ["src/host/client.js", "../node/convert.js"],
-        ["src/host/client.js", "../node/entry.js"],
+        ["src/host/client.js", "../engine/convert.js"],
+        ["src/host/client.js", "../cli/entry.js"],
         ["src/host/client.js", "../serve/entry.js"],
-        ["src/node/request.js", "../serve/serve.js"],
-        ["src/serve/serve.js", "../node/transport.js"],
+        ["src/cli/request.js", "../serve/serve.js"],
+        ["src/serve/serve.js", "../cli/transport.js"],
         ["src/core/protocol.js", "../serve/serve.js"]
     ]) { assert.throws(() => checkBoundary(source, `require("${required}");`), /forbidden dependency/u); }
 });

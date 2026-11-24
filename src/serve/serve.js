@@ -5,7 +5,13 @@ const { VERSION } = require("../core/version.js");
 const { validateMessage } = require("../core/protocol.js");
 const { UserCanceled } = require("../core/errors.js");
 const { failedRun } = require("../core/outcomes.js");
-const { startWorker } = require("../node/processes.js");
+const { commandSession } = require("../engine/processes.js");
+const { convert } = require("../engine/convert.js");
+const { interactions } = require("./interactions.js");
+
+const FINDER_TOOL_DIRECTORIES = [
+    "/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"
+];
 
 function lineWriter(output) {
     output.on("error", () => undefined);
@@ -23,34 +29,48 @@ function fromLine(line) {
     return validateMessage("client", JSON.parse(line));
 }
 
-function stop(active) {
-    active.requestStop();
-    active.send({ type: "stop" });
+function clientQueue(commands) {
+    const pending = [];
+    let wake = null;
+    return {
+        stop() { commands.requestStop(); wake?.(); },
+        receive(answer) { pending.push(answer); wake?.(); },
+        async next() {
+            if (pending.length === 0 && !commands.stopped()) { await new Promise((resolve) => { wake = resolve; }); }
+            wake = null;
+            if (commands.stopped()) { throw new UserCanceled(); }
+            return pending.shift();
+        }
+    };
 }
 
-async function relayClient(active, messages) {
+async function relayClient(queue, messages) {
     try {
         for await (const line of messages) {
             const answer = fromLine(line);
             if (answer.type === "start") { throw new Error("The engine session has already started."); }
-            if (answer.type === "stop") { active.requestStop(); }
-            active.send(answer);
+            if (answer.type === "stop") { queue.stop(); }
+            else { queue.receive(answer); }
         }
-    } finally { stop(active); }
+    } finally { queue.stop(); }
 }
 
 async function runConversion({ inputItems }, read, send) {
-    const active = startWorker(__filename, { inputItems }, { interactive: true, event: send });
+    const commands = commandSession();
+    const queue = clientQueue(commands);
     let fault = null;
-    const incoming = relayClient(active, read).catch((error) => { fault = error; });
+    const incoming = relayClient(queue, read).catch((error) => { fault = error; });
     try {
-        const receipt = await active.done;
-        if (fault) { throw fault; }
-        return receipt;
+        const session = interactions(send, async (event) => {
+            if (!await send(event)) { queue.stop(); }
+            return queue.next();
+        });
+        const receipt = await convert({ inputItems }, commands, { session, directories: FINDER_TOOL_DIRECTORIES });
+        return fault ? failedRun(fault, receipt) : receipt;
     } finally {
         read.close();
         await incoming;
-        active.close();
+        commands.close();
     }
 }
 

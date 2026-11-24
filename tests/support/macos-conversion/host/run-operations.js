@@ -14,6 +14,7 @@ const { OperationError } = require("../../../../src/core/errors.js");
 function runOperations(app) {
     const fits = (argv) => commandLengthOf(argv) <= HEADER_ARGV_BUDGET;
     return {
+        toolPath: (path) => path,
         fits,
         run(argv, label) {
             if (!fits(argv)) { throw new OperationError(message("commandArgumentBudgetExceeded")); }

@@ -24,7 +24,7 @@ async function executeRun(ports) {
     ports.progress.pause();
     const context = { ...selectionContext(request.selection), diagnostics: ports.progress.diagnostics };
     const settings = await ports.interaction.settings(context, request);
-    const job = ports.createJob(request, settings);
+    const job = await ports.createJob(request, settings);
     const result = await ports.convert(job, images);
     result.rejected = rejected;
     return presentOutcome(ports, result);

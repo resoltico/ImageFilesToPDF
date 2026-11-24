@@ -1,17 +1,17 @@
 "use strict";
 const { message: wording } = require("../core/messages.js");
 const fs = require("node:fs");
-const os = require("node:os");
 const { getuid, pid, platform, kill } = require("node:process");
-const { OperationError } = require("../core/errors.js");
+const { OperationError, isUserCanceled } = require("../core/errors.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { validWorkspaceOwner } = require("../core/workspaces.js");
 const { dirname } = require("../core/paths.js");
 const { standardize } = require("./paths.js");
 const { identity, BIGINT } = require("./filesystem.js");
+const { locations } = require("./workspace-locations.js");
 const { MAC_PS } = require("./executables.js");
 
-const TAG = "image-files-to-pdf-node-1";
+const TAG = "image-files-to-pdf-workspace";
 const NAME = /^run-[a-zA-Z0-9]{6}$/u;
 const OWNER = "owner.json";
 const IN_FLIGHT = "command-in-flight";
@@ -24,10 +24,10 @@ const NO_PERMISSIONS = 0n;
 const SINGLE_LINK = 1n;
 const PRIVATE_FILE_MODE = 0o600;
 
-function processStart(owner, commands, windows) {
+async function processStart(owner, commands, windows) {
     try {
         kill(owner, 0);
-        if (windows) { return windows.startTime(owner); }
+        if (windows) { return await windows.startTime(owner); }
         if (platform === "linux") {
             const stat = fs.readFileSync(`/proc/${owner}/stat`, "utf8");
             // The process name is parenthesized and can itself contain a closing parenthesis.
@@ -35,9 +35,12 @@ function processStart(owner, commands, windows) {
             const boot = fs.readFileSync("/proc/sys/kernel/random/boot_id", "utf8").trim();
             return /^\d+$/u.test(ticks) && boot ? `${boot}:${ticks}` : undefined;
         }
-        const snapshot = commands.request([MAC_PS, "-p", String(owner), "-o", "lstart="]);
+        const snapshot = await commands.request([MAC_PS, "-p", String(owner), "-o", "lstart="]);
         return snapshot.status === 0 && snapshot.stdout.trim() ? snapshot.stdout.trim() : undefined;
-    } catch (error) { return error.code === "ESRCH" ? null : undefined; }
+    } catch (error) {
+        if (isUserCanceled(error)) { throw error; }
+        return error.code === "ESRCH" ? null : undefined;
+    }
 }
 
 function privateMode(stats) {
@@ -45,16 +48,29 @@ function privateMode(stats) {
     return stats.uid === BigInt(getuid()) && (stats.mode & GROUP_AND_OTHER) === NO_PERMISSIONS;
 }
 
-function createPrivateRoot(files, windows) {
-    const base = windows ? standardize(`${os.homedir()}/AppData/Local`) : standardize(fs.realpathSync.native(os.tmpdir()));
-    if (files.checked(base, { owned: true }).kind !== "directory") { throw new OperationError(wording("workspaceParentUnverified")); }
-    const root = `${base}/${TAG}${windows ? "" : `-${getuid()}`}`;
+function createParent(files, folder) {
+    try {
+        if (files.checked(folder).kind !== "directory") { throw new OperationError(wording("workspaceParentUnverified")); }
+    } catch (error) {
+        if (error.code !== "ENOENT") { throw error; }
+        const parent = dirname(folder.replace(/(?<=.)\/$/u, ""));
+        if (parent === folder || !parent) { throw new OperationError(wording("workspaceParentUnverified"), { cause: error }); }
+        createParent(files, parent);
+        try { fs.mkdirSync(folder, { mode: 0o700 }); }
+        catch (failure) { if (failure.code !== "EEXIST") { throw failure; } }
+        if (files.checked(folder).kind !== "directory") { throw new OperationError(wording("workspaceParentUnverified")); }
+    }
+}
+
+async function createPrivateRoot(files, windows, root) {
+    if (windows && !await windows.local(root)) { throw new OperationError(wording("workspaceParentUnverified")); }
+    createParent(files, dirname(root));
     let created = false;
     try { fs.mkdirSync(root, { mode: 0o700 }); created = true; }
     catch (error) { if (error.code !== "EEXIST") { throw error; } }
-    const found = files.checked(root, { owned: true });
+    const found = files.checked(root);
     if (found.kind !== "directory" || !found.identity) { throw new OperationError(wording("workspaceStorageUnverified")); }
-    if (windows) { windows.privateDirectory(root, created); }
+    if (windows) { await windows.privateDirectory(root, created); }
     else if (!privateMode(found.stats)) { throw new OperationError(wording("workspaceStorageNotPrivate")); }
     return root;
 }
@@ -79,10 +95,10 @@ function ownerAt(file) {
 function diagnostic(path, code, message, detail) {
     return { code: `workspace-${code}`, stage: "workspace", message, diagnostic: { path, ...(detail ? { message: detail } : {}) } };
 }
-function reclaimCandidate(directory, { commands, inspect, release, windows }, files) {
+async function reclaimCandidate(directory, { commands, inspect, release, windows }, files) {
     try {
         const stat = inspect(directory);
-        if (windows && files.checked(directory, { owned: true }).kind !== "directory") { throw new Error("The workspace is a reparse point."); }
+        if (windows && files.checked(directory).kind !== "directory") { throw new Error("The workspace is a reparse point."); }
         if (present(`${directory}/${RETAIN}`) || present(`${directory}/${IN_FLIGHT}`)) {
             return diagnostic(directory, "retained", "A retained or possibly active workspace was left in place.");
         }
@@ -90,19 +106,21 @@ function reclaimCandidate(directory, { commands, inspect, release, windows }, fi
         if (owner?.format !== TAG || !validWorkspaceOwner(owner) || owner.identity !== identity(stat)) {
             throw new Error("Workspace ownership could not be established.");
         }
-        const started = processStart(owner.pid, commands, windows);
+        const started = await processStart(owner.pid, commands, windows);
         if (started === undefined) { throw new Error("Workspace process lifetime could not be established."); }
         if (started === owner.started) { return null; }
         release(directory, owner.identity);
         return diagnostic(directory, "reclaimed", "A stale workspace was reclaimed.");
     } catch (error) {
+        if (isUserCanceled(error)) { throw error; }
         if (error.code === "ENOENT" && !present(directory)) { return null; }
         return diagnostic(directory, "unreadable", "A workspace could not be verified and was left in place.", error.message);
     }
 }
 
-function workspaceStore(files, commands, windows) {
-    const root = createPrivateRoot(files, windows);
+async function workspaceStore(files, commands, windows) {
+    const { root, downloads } = await locations(files, windows);
+    await createPrivateRoot(files, windows, root);
     const rootIdentity = identity(fs.lstatSync(root, BIGINT));
     let current = null;
     function inspect(directory) {
@@ -121,7 +139,7 @@ function workspaceStore(files, commands, windows) {
         fs.rmSync(directory, { recursive: true });
     }
     return {
-        downloads: `${standardize(`${os.homedir()}/Downloads`)}/`,
+        downloads,
         entries: (directory) => fs.readdirSync(directory),
         write(file, text) {
             try { writeNew(file, text); }
@@ -130,8 +148,8 @@ function workspaceStore(files, commands, windows) {
             }
         },
         remove: (file) => fs.unlinkSync(file),
-        create() {
-            const started = processStart(pid, commands, windows);
+        async create() {
+            const started = await processStart(pid, commands, windows);
             if (!started) { throw new OperationError(wording("workspaceOwnerUnknown")); }
             const directory = standardize(fs.mkdtempSync(`${root}/run-`));
             const id = identity(inspect(directory));
@@ -151,19 +169,24 @@ function workspaceStore(files, commands, windows) {
                 return { state: "failed", issue: { ...issue, code: ISSUE.cleanup, diagnostic: { path: directory, message: error.message } } };
             }
         },
-        reclaim() {
+        async reclaim() {
             const ports = { commands, inspect, release, windows };
-            return fs.readdirSync(root).filter((name) => NAME.test(name))
-                .map((name) => reclaimCandidate(`${root}/${name}`, ports, files)).filter(Boolean);
+            const diagnostics = [];
+            for (const name of fs.readdirSync(root).filter((entry) => NAME.test(entry))) {
+                // eslint-disable-next-line no-await-in-loop -- Verify each owner before the next removal.
+                const item = await reclaimCandidate(`${root}/${name}`, ports, files);
+                if (item) { diagnostics.push(item); }
+            }
+            return diagnostics;
         },
         canReleaseFiles() { return !current || !present(`${current.directory}/${IN_FLIGHT}`); },
-        command(argv, request) {
+        async command(argv, request) {
             if (!current) { return request(argv); }
             const guard = `${current.directory}/${IN_FLIGHT}`;
             writeNew(guard, "Native command settlement has not been acknowledged.\n");
-            // The guard is removed only after a correlated reply following child close.
-            // If either thread or the process dies, future runs leave the workspace alone.
-            const result = request(argv);
+            // A native writer owns the guard until the process and its streams have closed.
+            // A process crash leaves that work and its guard for inspection.
+            const result = await request(argv);
             fs.unlinkSync(guard);
             return result;
         }

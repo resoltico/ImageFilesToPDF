@@ -18,15 +18,15 @@ const { fixture } = require("../application/document-fixture.cjs");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 const { makeJob, imageOf } = require("../ports/fake-job.cjs");
 
-test("a drive root already supplies its directory separator and a trailing slash requires a directory", () => {
+test("a drive root already supplies its directory separator and a trailing slash requires a directory", async () => {
     const tree = treeOf({ "C:/": ["p.png"] });
     tree.standardize = (value) => value === "C:/" ? value : value.replace(/\/+$/u, "");
     tree.entries = (value) => value === "C:/" ? ["p.png"] : [];
     tree.inspect = (value) => ({ kind: value === "C:/" ? "directory" : "file", identity: value });
-    const selection = collectImageFiles({ fileKind: () => "file" }, [{ path: "C:/" }, { path: "C:/readme/" }], tree);
+    const selection = (await collectImageFiles({ fileKind: () => "file" }, [{ path: "C:/" }, { path: "C:/readme/" }], tree));
     assert.deepEqual(selection.images.map((entry) => entry.folder), ["C:/"]);
     assert.equal(selection.rejected[0].code, "not-a-folder");
-    assert.equal(selectedItems(tree, [{ path: "C:/" }], [])[0].kind, "directory");
+    assert.equal((await selectedItems(tree, [{ path: "C:/" }], []))[0].kind, "directory");
 });
 
 test("one oversized page fails explicitly before import and releases the queue", async () => {
@@ -111,27 +111,27 @@ function publicationFixture() {
     return { host, job, staged, target: "/public/out.pdf" };
 }
 
-test("measurement errors after a claim preserve the confirmed private path", () => {
+test("measurement errors after a claim preserve the confirmed private path", async () => {
     const { host, job, staged, target } = publicationFixture();
     const { facts } = host.publication;
     host.publication.facts = (file) => {
         if (file === target) { throw new Error("Lost acknowledgement"); }
         return facts(file);
     };
-    assert.throws(() => publishPdf(job, staged, target), (error) => error.recovery === staged && error.issues[0].diagnostic.detail === "Lost acknowledgement");
+    await assert.rejects(() => publishPdf(job, staged, target), (error) => error.recovery === staged && error.issues[0].diagnostic.detail === "Lost acknowledgement");
     assert.ok(host.files.has(staged));
     assert.ok(host.files.has(target));
 });
 
-test("recovery checks destination sizes and retains the private original on ambiguous acknowledgement", () => {
+test("recovery checks destination sizes and retains the private original on ambiguous acknowledgement", async () => {
     const { host, job, staged, target } = publicationFixture();
     const { facts, link } = host.publication;
     host.publication.link = (from, to) => to === target ? { state: "denied", diagnostic: { message: "Permission denied." } } : link(from, to);
     host.publication.facts = (file) => file.startsWith("/Downloads/") ? { ...facts(file), size: 7 } : facts(file);
-    assert.throws(() => publishPdf(job, staged, target), (error) => error.recovery === staged);
+    await assert.rejects(() => publishPdf(job, staged, target), (error) => error.recovery === staged);
     assert.ok(host.files.has(staged));
     assert.ok(host.files.has("/Downloads/out.pdf"));
-    assert.throws(() => keep(job, { staged }, {}), /intent is required/u);
+    await assert.rejects(() => keep(job, { staged }, {}), /intent is required/u);
 });
 
 test("ambiguous batched vips headers are confirmed individually", async () => {
@@ -150,7 +150,7 @@ test("ambiguous batched vips headers are confirmed individually", async () => {
     assert.equal(host.commands.filter((command) => command.includes("'-a'")).length, 2);
 });
 
-test("cross-device Downloads recovery reports its native cause and any cleanup failure", () => {
+test("cross-device Downloads recovery reports its native cause and any cleanup failure", async () => {
     const { host, job, staged, target } = publicationFixture();
     const { link } = host.publication;
     host.publication.link = (from, to) => {
@@ -158,7 +158,7 @@ test("cross-device Downloads recovery reports its native cause and any cleanup f
         return from === staged ? { state: "cross-device" } : link(from, to);
     };
     job.operations.removeFile = () => ({ state: "failed", issue: { code: "cleanup", stage: "cleanup", message: "Could not remove the original." } });
-    assert.throws(() => publishPdf(job, staged, target), (error) => {
+    await assert.rejects(() => publishPdf(job, staged, target), (error) => {
         assert.equal(error.recovery, "/Downloads/out.pdf");
         assert.equal(error.issues[0].diagnostic.message, "Permission denied.");
         assert.ok(error.issues.some((issue) => issue.code === "cleanup"));
@@ -168,11 +168,11 @@ test("cross-device Downloads recovery reports its native cause and any cleanup f
     assert.ok(host.files.has("/Downloads/out.pdf"));
 });
 
-test("a blank native destination detail falls back to the operation error", () => {
+test("a blank native destination detail falls back to the operation error", async () => {
     const { host, job, staged, target } = publicationFixture();
     const { link } = host.publication;
     host.publication.link = (from, to) => to === target ? { state: "denied", diagnostic: { message: " " } } : link(from, to);
-    assert.throws(() => publishPdf(job, staged, target), (error) =>
+    await assert.rejects(() => publishPdf(job, staged, target), (error) =>
         error.issues[0].diagnostic.message === "The PDF destination could not be claimed (denied).");
 });
 

@@ -21,11 +21,11 @@ function appWith(directories) {
     return app;
 }
 
-function collect(selection, tree) {
-    return collectImageFiles(appWith(["/Trip"]), selection, tree);
+async function collect(selection, tree) {
+    return (await collectImageFiles(appWith(["/Trip"]), selection, tree));
 }
 
-test("a package is refused rather than walked into", () => {
+test("a package is refused rather than walked into", async () => {
     // An .app or a .photoslibrary is a folder as far as the shell is
     // concerned, so asking the shell sent the walk inside the bundle and the
     // PDFs were written in there.
@@ -33,7 +33,7 @@ test("a package is refused rather than walked into", () => {
         { "/Trip/Photos.app": ["Contents"], "/Trip/Photos.app/Contents": ["a.png"] },
         { "/Trip/Photos.app": "package" }
     );
-    const { images, rejected } = collect(["/Trip/Photos.app"], tree);
+    const { images, rejected } = (await collect(["/Trip/Photos.app"], tree));
 
     assert.deepEqual(images, []);
     assert.deepEqual(rejected.map((entry) => `${entry.name}: ${entry.reason}`), [
@@ -41,17 +41,17 @@ test("a package is refused rather than walked into", () => {
     ]);
 });
 
-test("a photo selected inside a package is still the user's own selection", () => {
+test("a photo selected inside a package is still the user's own selection", async () => {
     // The package is refused whole, so it covers nothing: what was picked out
     // by hand was picked out by hand.
     const tree = treeOf(
         { "/Trip/Photos.app": ["a.png"] },
         { "/Trip/Photos.app": "package" }
     );
-    const { images } = collect(
+    const { images } = (await collect(
         ["/Trip/Photos.app", "/Trip/Photos.app/a.png"],
         tree
-    );
+    ));
 
     assert.deepEqual(images.map((image) => image.path), ["/Trip/Photos.app/a.png"]);
 });

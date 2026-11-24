@@ -127,10 +127,10 @@ camera details, inside the PDF. Re-encoded images carry no metadata into the PDF
 Image Files to PDF processes selected images and images found in selected folders
 in private workspaces, and never opens an input image for writing. Nothing is sent
 over the network.
-If saving fails, the action attempts verified recovery in Downloads or private
-temporary storage. Completion reports the actual recovery location, retained work
-or any remaining uncertainty. Move needed temporary work somewhere permanent
-promptly. [SECURITY.md](SECURITY.md) describes the file-safety rules in full.
+If saving fails, the engine attempts verified recovery in the system's Downloads
+folder when available. Otherwise it keeps the verified PDF in private durable
+workspace storage. Completion reports the actual recovery location or explains
+what could not be verified. [SECURITY.md](SECURITY.md) describes the file-safety rules in full.
 
 ## Command line
 

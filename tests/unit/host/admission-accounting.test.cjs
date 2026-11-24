@@ -12,15 +12,15 @@ const test = require("node:test");
 const { collectImageFiles } = require("../ports/fake-selection.cjs");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
-test("an input that named itself and did not resolve is reported", () => {
+test("an input that named itself and did not resolve is reported", async () => {
     // It used to fall between the resolution and the admission: no image
     // record, no rejection, and a smaller job than the one that was asked for.
     const app = createFakeApp();
-    const { images, rejected } = collectImageFiles(app, [
+    const { images, rejected } = (await collectImageFiles(app, [
         "/a/good.png",
         "./second.jpg",
         "~/Pictures/third.png"
-    ]);
+    ]));
 
     assert.deepEqual(images.map((image) => image.originalName), ["good.png"]);
     assert.deepEqual(rejected, [
@@ -37,42 +37,42 @@ test("an input that named itself and did not resolve is reported", () => {
     ]);
 });
 
-test("the parameters object Shortcuts appends is not a rejection", () => {
+test("the parameters object Shortcuts appends is not a rejection", async () => {
     // It is on the input of every Quick Action, has no identity of its own,
     // and the user never asked for it. Reporting it would put a rejection on
     // every single interactive run.
     const app = createFakeApp();
-    const { images, rejected } = collectImageFiles(app, ["/a/good.png", {}]);
+    const { images, rejected } = (await collectImageFiles(app, ["/a/good.png", {}]));
 
     assert.equal(images.length, 1);
     assert.deepEqual(rejected, []);
 });
 
-test("a Finder item that cannot say where it is is still reported", () => {
+test("a Finder item that cannot say where it is is still reported", async () => {
     // An object is not automatically host metadata: this one named a place,
     // it just was not one that could be used.
     const app = createFakeApp();
-    const { rejected } = collectImageFiles(app, [
+    const { rejected } = (await collectImageFiles(app, [
         { url: () => "https://example.com/photo.png" }
-    ]);
+    ]));
 
     assert.deepEqual(rejected.map((entry) => entry.name), [
         "https://example.com/photo.png"
     ]);
 });
 
-test("a folder is reported as a folder, whatever it is called", () => {
+test("a folder is reported as a folder, whatever it is called", async () => {
     // It used to be turned away for having the wrong extension -- and one
     // called album.png for not being readable. Neither says what it is.
     const app = createFakeApp();
 
     app.directories = ["/a/album", "/a/album.png"];
 
-    const { images, rejected } = collectImageFiles(app, [
+    const { images, rejected } = (await collectImageFiles(app, [
         "/a/album",
         "/a/album.png",
         "/a/photo.png"
-    ]);
+    ]));
 
     assert.deepEqual(images.map((image) => image.originalName), ["photo.png"]);
     assert.deepEqual(rejected.map((entry) => `${entry.name}: ${entry.reason}`), [

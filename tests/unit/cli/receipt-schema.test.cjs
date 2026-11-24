@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { receiptText } = require("../../../src/node/transport.js");
+const { receiptText } = require("../../../src/cli/transport.js");
 const { assertReceipt } = require("../../integration/lib/receipt.cjs");
 const schema = require("../../integration/receipt.schema.json");
 

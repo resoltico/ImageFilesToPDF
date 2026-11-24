@@ -63,7 +63,7 @@ export default [
     },
 
     {
-        files: ["src/node/**/*.js", "src/serve/**/*.js"],
+        files: ["src/engine/**/*.js", "src/cli/**/*.js", "src/serve/**/*.js"],
         languageOptions: {
             ecmaVersion: "latest",
             sourceType: "commonjs",

@@ -1,8 +1,6 @@
 "use strict";
-const { spawn } = require("node:child_process");
-const { createInterface } = require("node:readline");
-const { once } = require("node:events");
-const { MAC_OSASCRIPT } = require("./executables.js");
+const { helperSession } = require("../line-helper.js");
+const { MAC_OSASCRIPT } = require("../executables.js");
 
 const HELPER = `
 ObjC.import("Foundation");
@@ -52,22 +50,13 @@ function encode(request) {
 }
 
 function darwinHelper() {
-    const child = spawn(MAC_OSASCRIPT, ["-l", "JavaScript", "-e", HELPER], { stdio: ["pipe", "pipe", "ignore"], detached: true });
-    const output = createInterface({ input: child.stdout, crlfDelay: Infinity })[Symbol.asyncIterator]();
-    const closed = once(child, "close");
-    closed.catch(() => undefined);
-    child.stdin.on("error", () => undefined);
+    let native = null;
     return {
-        async request(request) {
-            child.stdin.write(`${encode(request)}\n`);
-            const { value, done } = await output.next();
-            if (done) { throw new Error("The macOS helper ended before answering."); }
-            return JSON.parse(value);
+        request(request) {
+            native ??= helperSession(MAC_OSASCRIPT, ["-l", "JavaScript", "-e", HELPER], { detached: true, encode });
+            return native.request(request);
         },
-        async close() {
-            child.stdin.end();
-            await closed;
-        }
+        close() { return native?.close(); }
     };
 }
 

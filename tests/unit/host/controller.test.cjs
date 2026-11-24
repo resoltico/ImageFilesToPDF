@@ -75,10 +75,10 @@ const { describeNoImages } = require("../../../src/core/run-report.js");
     assert.match(app.dialogs[1].message,/notes\.txt: unsupported/u);
 });
 
-test("an unidentifiable selected source is refused before conversion",()=>{
+test("an unidentifiable selected source is refused before conversion",async ()=>{
     const {collectImageFiles}=require("../ports/fake-selection.cjs");
     const tree=treeOf({}, {}, {"/source.png":""});
-    const result=collectImageFiles(createFakeHost({files:["/source.png"]}),["/source.png"],tree);
+    const result=(await collectImageFiles(createFakeHost({files:["/source.png"]}),["/source.png"],tree));
     assert.equal(result.images.length,0);
     assert.deepEqual([result.rejected[0].code,result.rejected[0].reason],["unexaminable","This item could not be examined."]);
 });

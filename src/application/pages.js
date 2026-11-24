@@ -13,11 +13,12 @@ async function normalizeImage(job, captured, source, page) {
     const { path, placement } = page;
     const intermediate = path.endsWith(".png") && hasAlphaBand(source.bands, source.interpretation);
     const prepared = `${path}.v`;
+    const { toolPath } = job.operations;
     try {
-        await job.operations.run(buildThumbnailArgv(job.tools.vips, captured.path, intermediate ? prepared : path,
+        await job.operations.run(buildThumbnailArgv(job.tools.vips, toolPath(captured.path), toolPath(intermediate ? prepared : path),
             { placement, source, intermediate, background: job.settings.background, quality: job.settings.quality }), "normalizing the image");
         if (intermediate) {
-            await job.operations.run(buildFlattenArgv(job.tools.vips, prepared, path, job.settings.background), "flattening transparency");
+            await job.operations.run(buildFlattenArgv(job.tools.vips, toolPath(prepared), toolPath(path), job.settings.background), "flattening transparency");
         }
         job.operations.verifyFile(path, "prepared image");
     } finally { if (intermediate) { removeOwned(job, prepared); } }
@@ -43,7 +44,7 @@ async function preparePage(job, imageFile, index) {
     const capturedPath = `${job.workspace}/input-${index}`;
     let made = false, pagePath = "";
     try {
-        const captured = job.sources.capture(imageFile.path, capturedPath);
+        const captured = await job.sources.capture(imageFile.path, capturedPath);
         const source = await inspectCaptured(job, captured, imageFile.path);
         requireAdmission(imageFile, source);
         const placement = calculatePlacement(job.geometry, source);
@@ -52,8 +53,8 @@ async function preparePage(job, imageFile, index) {
         pagePath = `${job.workspace}/${index}-page.${extension}`;
         try {
             if (pass) {
-                await job.operations.run(buildDecodeArgv(job.tools.vips, captured.path), "checking image data");
-                job.sources.capture(captured.path, pagePath);
+                await job.operations.run(buildDecodeArgv(job.tools.vips, job.operations.toolPath(captured.path)), "checking image data");
+                await job.sources.capture(captured.path, pagePath);
             } else { await normalizeImage(job, captured, source, { path: pagePath, placement }); }
         } catch (error) { if (isUserCanceled(error) || issuesOf(error, "preparation")[0].code === ISSUE.fault) { throw error; } throw damaged(error, imageFile.path); }
         made = true;

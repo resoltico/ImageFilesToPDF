@@ -21,9 +21,9 @@ function failedInspection(caught) {
         diagnostic: { ...issue.diagnostic, message: diagnosticText(error), command: commandOf(error) } };
 }
 
-function pngFacts(sources, path, facts) {
+async function pngFacts(sources, path, facts) {
     if (facts.format !== "PNG") { return facts; }
-    try { return { ...facts, pages: sources.pngCount(path) }; }
+    try { return { ...facts, pages: await sources.pngCount(path) }; }
     catch (error) { return { ...facts, ...failedInspection(error), problem: "damaged" }; }
 }
 
@@ -72,8 +72,9 @@ async function confirmedOne(app, tool, path, parsed) {
 
 async function readOne(app, tools, sources, path) {
     try {
-        const parsed = await parsedHeader(app, tools.vipsheader, path);
-        return pngFacts(sources, path, await confirmedOne(app, tools.vipsheader, path, parsed));
+        const reportedPath = app.toolPath(path);
+        const parsed = await parsedHeader(app, tools.vipsheader, reportedPath);
+        return pngFacts(sources, path, await confirmedOne(app, tools.vipsheader, reportedPath, parsed));
     } catch (error) { return failedInspection(error); }
 }
 
@@ -92,14 +93,20 @@ async function confirmBatch(app, tool, paths, parsed) {
 }
 
 async function inspectBatch(app, tools, sources, entries) {
-    const paths = entries.map((entry) => entry.source.path);
+    const paths = entries.map((entry) => app.toolPath(entry.source.path));
     const text = await app.run(buildHeaderArgv(tools.vipsheader, paths), "checking image headers");
     const parsed = paths.length === 1 ? [readMetadata(text, paths[0])] : readMetadataBatch(text, paths);
-    return (await confirmBatch(app, tools.vipsheader, paths, parsed)).map((image, index) => pngFacts(sources, paths[index], image));
+    const confirmed = await confirmBatch(app, tools.vipsheader, paths, parsed);
+    const facts = [];
+    for (const [index, image] of confirmed.entries()) {
+        // eslint-disable-next-line no-await-in-loop -- Keep source observations and filesystem requests ordered.
+        facts.push(await pngFacts(sources, entries[index].source.path, image));
+    }
+    return facts;
 }
 
 function batchesFor(app, tools, candidates) {
-    const groups = headerGroups(tools.vipsheader, candidates.map((entry) => entry.source.path), app.fits);
+    const groups = headerGroups(tools.vipsheader, candidates.map((entry) => app.toolPath(entry.source.path)), app.fits);
     let offset = 0;
     return groups.map((paths) => {
         const batch = candidates.slice(offset, offset + paths.length);
@@ -115,7 +122,7 @@ function inspectCandidates(app, selection, context) {
         begin: (count) => progress.expect({ units: count, images: count }),
         accessed: (done, count) => progress.checking(done, count, "Checking image access"),
         checked: (done) => progress.checking(done, total),
-        fileFacts: (entry) => ({ ...sources.facts(entry.path), readable: sources.readable(entry.path) }),
+        fileFacts: async (entry) => ({ ...await sources.facts(entry.path), readable: await sources.readable(entry.path) }),
         batches: (candidates) => batchesFor(app, tools, candidates),
         inspect: (entries) => inspectBatch(app, tools, sources, entries),
         inspectOne: (entry) => readOne(app, tools, sources, entry.source.path)

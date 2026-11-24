@@ -36,7 +36,7 @@ function unitsOf(settings, images) {
 /*
  * The invariants of a run, gathered once and passed as a unit.
  */
-function createJob(operations, settings, timestamp, environment) {
+async function createJob(operations, settings, timestamp, environment) {
     const { tools, storage, destinationNames } = environment;
     return {
         operations,
@@ -44,7 +44,7 @@ function createJob(operations, settings, timestamp, environment) {
         timestamp,
         tools,
         geometry: calculatePageGeometry(settings),
-        workspace: operations.createWorkspace(storage),
+        workspace: await operations.createWorkspace(storage),
         storage,
         destinationNames,
         // Authoritative artifact lifecycles, registered before PDF bytes exist.
@@ -60,6 +60,7 @@ function createJob(operations, settings, timestamp, environment) {
 }
 
 function documentPorts(job) {
+    const { toolPath } = job.operations;
     return {
         allocate(index) {
             const artifact = registerArtifact(job.artifacts, stagedPdfPath(job.workspace, index));
@@ -76,7 +77,7 @@ function documentPorts(job) {
             if (size <= 0) { removeOwned(job, path); throw new OperationError(message("pageSizeUnknown")); }
             return { ...page, size, group: page.placement.relativeScale };
         },
-        fits: (staged, pages, placement) => job.operations.fits(buildPdfcpuImportArgv(job.tools.pdfcpu, partPdfPath(staged, job.parts.get(staged).length), pages, { geometry: job.geometry, placement, background: job.settings.background })),
+        fits: (staged, pages, placement) => job.operations.fits(buildPdfcpuImportArgv(job.tools.pdfcpu, toolPath(partPdfPath(staged, job.parts.get(staged).length)), pages.map(toolPath), { geometry: job.geometry, placement, background: job.settings.background })),
         import(staged, pages, placement) {
             job.progress.about("");
             job.progress.phase("Creating PDF");

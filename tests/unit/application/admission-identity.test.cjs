@@ -22,11 +22,11 @@ function appWith(directories) {
     return app;
 }
 
-function collect(selection, tree) {
-    return collectImageFiles(appWith(["/Trip"]), selection, tree);
+async function collect(selection, tree) {
+    return (await collectImageFiles(appWith(["/Trip"]), selection, tree));
 }
 
-test("two spellings of one file are one photograph", () => {
+test("two spellings of one file are one photograph", async () => {
     // A Mac is case-insensitive as formatted, so /Trip/A.png and /Trip/a.png
     // are one file -- measured: the same volume and the same file number.
     // Comparing the spellings put it in the PDF twice.
@@ -41,11 +41,12 @@ test("two spellings of one file are one photograph", () => {
         ["/Trip/a.png", "/Trip"],
         ["/Trip/A.png", "/Trip/a.png"]
     ]) {
-        const { images, rejected } = collectImageFiles(
+        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
+        const { images, rejected } = (await collectImageFiles(
             appWith(["/Trip"]),
             selection,
             tree
-        );
+        ));
 
         assert.equal(images.length, 1, selection.join(" then "));
         // The name it is stored under: a folder is walked before any
@@ -59,16 +60,16 @@ test("two spellings of one file are one photograph", () => {
     }
 });
 
-test("the same folder under two names is one folder", () => {
+test("the same folder under two names is one folder", async () => {
     // A trailing separator, or the path Finder gives against the one a
     // Shortcut passes. Standardizing is what makes them the same selection.
     const tree = treeOf({ "/Trip": ["a.png"] });
-    const { images } = collect(["/Trip", "/Trip/"], tree);
+    const { images } = (await collect(["/Trip", "/Trip/"], tree));
 
     assert.deepEqual(images.map((image) => image.path), ["/Trip/a.png"]);
 });
 
-test("what a selected path is, is asked once", () => {
+test("what a selected path is, is asked once", async () => {
     // Asking the tree is asking Foundation, and the same folder handed over
     // twice is one selection: it is settled once and not asked again.
     const asked = [];
@@ -85,14 +86,14 @@ test("what a selected path is, is asked once", () => {
         standardize: (path) => path.replace(/\/+$/u, "")
     };
 
-    collect(["/Trip", "/Trip/", "/Trip"], tree);
+    (await collect(["/Trip", "/Trip/", "/Trip"], tree));
 
     // The walk asks about what it finds inside; the selection itself is
     // classified once, however many times it was handed over.
     assert.deepEqual(asked.filter((path) => path === "/Trip"), ["/Trip"]);
 });
 
-test("a folder inside a selected folder is not reported as empty", () => {
+test("a folder inside a selected folder is not reported as empty", async () => {
     // Everything in it is already in the run by the time it is walked, which
     // is not the same as it holding nothing -- and the images belong to the
     // outermost folder that was selected, whichever order they arrived in.
@@ -102,11 +103,12 @@ test("a folder inside a selected folder is not reported as empty", () => {
         ["/Trip", "/Trip/Berlin"],
         ["/Trip/Berlin", "/Trip"]
     ]) {
-        const { images, rejected } = collectImageFiles(
+        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
+        const { images, rejected } = (await collectImageFiles(
             appWith(["/Trip", "/Trip/Berlin"]),
             selection,
             tree
-        );
+        ));
 
         assert.deepEqual(images.map((image) => image.path), ["/Trip/Berlin/1.png"]);
         assert.deepEqual(images.map((image) => image.folder), ["/Trip/"],
@@ -115,15 +117,15 @@ test("a folder inside a selected folder is not reported as empty", () => {
     }
 });
 
-test("a folder beside one whose name it starts with is still its own folder", () => {
+test("a folder beside one whose name it starts with is still its own folder", async () => {
     // /Trip-2024 is not inside /Trip. Comparing the names without the
     // separator would swallow it.
     const tree = treeOf({ "/Trip": ["a.png"], "/Trip-2024": ["b.png"] });
-    const { images } = collectImageFiles(
+    const { images } = (await collectImageFiles(
         appWith(["/Trip", "/Trip-2024"]),
         ["/Trip", "/Trip-2024"],
         tree
-    );
+    ));
 
     assert.deepEqual(images.map((image) => image.path).sort(), [
         "/Trip-2024/b.png",
@@ -131,7 +133,7 @@ test("a folder beside one whose name it starts with is still its own folder", ()
     ]);
 });
 
-test("missing mandatory tree fails setup for every selection", () => {
+test("missing mandatory tree fails setup for every selection", async () => {
     const { collectImageFiles: nativeCollect } = require("../../../src/application/admission.js");
-    assert.throws(() => nativeCollect(createFakeApp(), ["/photos", "/photos/photo.png"], null), /Required filesystem/u);
+    await assert.rejects(() => nativeCollect(createFakeApp(), ["/photos", "/photos/photo.png"], null), /Required filesystem/u);
 });

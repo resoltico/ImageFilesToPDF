@@ -30,24 +30,25 @@ function destinationCopy(context) {
     Object.assign(context, { from: area.file, claimed: { identity: copied.identity, size: facts.size } });
 }
 
-function claim(context) {
+async function claim(context) {
     const { job, paths } = context;
     context.diagnostic = null;
     let outcome = job.publication.link(context.from, paths.final);
     if (needsStaging(outcome.state)) {
         if (!context.area) { destinationCopy(context); outcome = job.publication.link(context.from, paths.final); }
-        if (needsStaging(outcome.state) && job.publication.rename) { outcome = job.publication.rename(context.from, paths.final); }
+        if (needsStaging(outcome.state) && job.publication.rename) { outcome = await job.publication.rename(context.from, paths.final); }
     }
-    context.diagnostic = { ...outcome.diagnostic, state: outcome.state };
+    Object.assign(context, { diagnostic: { ...outcome.diagnostic, state: outcome.state } });
     return outcome;
 }
 
 /** Atomic claims share collision policy; callers own confirmation, release and checkpoints. */
-function claimAvailable(context, destination, created, checkpoint) {
+async function claimAvailable(context, destination, created, checkpoint) {
     for (let attempt = 1; attempt < MAXIMUM_SUFFIX; attempt += 1) {
         checkpoint();
         context.paths.final = collisionPath(destination, attempt);
-        const outcome = claim(context);
+        // eslint-disable-next-line no-await-in-loop -- Only a confirmed collision permits trying the next name.
+        const outcome = await claim(context);
         if (outcome.state === "created") { return created(context); }
         if (outcome.state === "unknown") {
             throw unconfirmedClaim(context.job.publication, { staged: context.paths.staged, original: context.facts,

@@ -24,8 +24,8 @@ function record(path, folder) {
     return { path, originalName: basename(path), folder };
 }
 
-function admitFolder(tree, path, outcome) {
-    const found = imagesInFolder(tree, path, outcome.taken);
+async function admitFolder(tree, path, outcome) {
+    const found = await imagesInFolder(tree, path, outcome.taken);
 
     // Reported as themselves: naming the folder or the file the walk could
     // not look at is what lets someone go and see why.
@@ -54,8 +54,8 @@ function admitFolder(tree, path, outcome) {
  * twice. Asking the shell instead followed it -- test -f reports on the
  * target -- so a link and the file it points to were two images.
  */
-function reasonFor(app, root) {
-    const kind = root.kind === "file" ? app.fileKind(root.path) : root.kind;
+async function reasonFor(app, root) {
+    const kind = root.kind === "file" ? await app.fileKind(root.path) : root.kind;
     return selectionReason(kind, root.path, kind === "file");
 }
 
@@ -77,15 +77,15 @@ function reasonFor(app, root) {
  * already is the one case that is neither a rejection nor a second copy: it
  * was converted, which is what was asked.
  */
-function admit(app, tree, root, outcome) {
+async function admit(app, tree, root, outcome) {
     // A kind at all means there is a tree: it is the tree that answered.
     if (root.kind === "directory") {
-        admitFolder(tree, root.path, outcome);
+        await admitFolder(tree, root.path, outcome);
 
         return;
     }
 
-    const code = root.kind === "file" && !root.identity ? "unexaminable" : reasonFor(app, root);
+    const code = root.kind === "file" && !root.identity ? "unexaminable" : await reasonFor(app, root);
 
     if (code) {
         outcome.rejected.push(selectionRefusal(root.path, code));
@@ -102,14 +102,15 @@ function admit(app, tree, root, outcome) {
 }
 
 /* Mandatory tree facts apply to directly selected files as well as folders. */
-function collectImageFiles(app, inputItems, tree = null) {
+async function collectImageFiles(app, inputItems, tree = null) {
     if (!tree) { throw new Error("Required filesystem capabilities are unavailable."); }
     const outcome = { images: [], rejected: [], taken: new Set() };
 
-    const roots = selectedItems(tree, inputItems, outcome.rejected);
+    const roots = await selectedItems(tree, inputItems, outcome.rejected);
 
     for (const root of roots) {
-        admit(app, tree, root, outcome);
+        // eslint-disable-next-line no-await-in-loop -- Explicit answers depend on the folder admission ledger.
+        await admit(app, tree, root, outcome);
     }
 
     return {

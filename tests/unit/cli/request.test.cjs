@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { cliCommand, jsonConfiguration, configurationValues, usage } = require("../../../src/node/request.js");
+const { cliCommand, jsonConfiguration, configurationValues, usage } = require("../../../src/cli/request.js");
 const { DEFAULT_SETTINGS } = require("../../../src/core/settings.js");
 const settings = { ...DEFAULT_SETTINGS };
 
@@ -76,13 +76,13 @@ test("supplied timestamp is optional only by absence",()=>{
 });
 
 test("the Node floor compares the release tuple", () => {
-    const { supportedNode } = require("../../../src/node/runtime.js");
+    const { supportedNode } = require("../../../src/engine/runtime.js");
     for (const version of ["26.13.1", "26.13.2", "26.14.0", "27.0.0"]) { assert.ok(supportedNode(version)); }
     for (const version of ["25.15.1", "26.0.0", "26.13.0"]) { assert.equal(supportedNode(version), false); }
 });
 
 test("Windows path grammar distinguishes ordinary names from ambiguous namespaces", () => {
-    const { ordinaryWindowsPath } = require("../../../src/node/paths.js");
+    const { ordinaryWindowsPath } = require("../../../src/engine/paths.js");
     for (const name of ["C:\\Photos\\été.png", "D:/Folder/photo.jpg", "photos\\café.png", "..\\photo.png", "name with spaces.jpg"]) {
         assert.ok(ordinaryWindowsPath(name), name);
     }

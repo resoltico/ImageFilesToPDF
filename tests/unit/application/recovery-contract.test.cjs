@@ -53,9 +53,9 @@ function recoveryIssue() {
     };
 }
 
-test("a verified Downloads claim releases the original and reports only the requested destination failure", () => {
+test("a verified Downloads claim releases the original and reports only the requested destination failure", async () => {
     const { job, paths, artifact, files, events } = recoveryPort();
-    const error = keep(job, paths, { reasons: ["Destination denied."] });
+    const error = (await keep(job, paths, { reasons: ["Destination denied."] }));
     assert.equal(error.recovery, download);
     assert.deepEqual(error.issues, [publicationIssue]);
     assert.equal(artifact.state, "released");
@@ -64,9 +64,9 @@ test("a verified Downloads claim releases the original and reports only the requ
     assert.deepEqual(events, [["remove file", staged], ["remove marker", "/private/retain"]]);
 });
 
-test("when Downloads refuses the claim, the verified original gains no second public name", () => {
+test("when Downloads refuses the claim, the verified original gains no second public name", async () => {
     const { job, paths, artifact, files, events } = recoveryPort({ deny: true });
-    const error = keep(job, paths, { reasons: ["Destination denied."] });
+    const error = (await keep(job, paths, { reasons: ["Destination denied."] }));
     assert.equal(error.recovery, staged);
     assert.deepEqual(error.issues, [publicationIssue, recoveryIssue()]);
     assert.equal(artifact.state, "validated");
@@ -74,9 +74,9 @@ test("when Downloads refuses the claim, the verified original gains no second pu
     assert.deepEqual(events, [["set aside", staged, { intendedName: "photo.pdf", original }]]);
 });
 
-test("an original missing after recovery cannot be reported as a trustworthy location", () => {
+test("an original missing after recovery cannot be reported as a trustworthy location", async () => {
     const { job, paths } = recoveryPort({ deny: true, losePrivate: true });
-    assert.throws(() => keep(job, paths, { reasons: ["Destination denied."] }), (error) => {
+    await assert.rejects(() => keep(job, paths, { reasons: ["Destination denied."] }), (error) => {
         assert.equal(error.recovery, null);
         assert.equal(error.issues[0].stage, "publication");
         assert.match(error.message, /no trustworthy recovery path/u);
@@ -108,22 +108,34 @@ test("a lost stored-name acknowledgement preserves secondary cleanup issues and 
     });
 });
 
-test("a Downloads lookup fault leaves a verified original and a run-specific recovery diagnostic", () => {
+test("a Downloads lookup fault leaves a verified original and a run-specific recovery diagnostic", async () => {
     const { job, paths, artifact } = recoveryPort();
     const lookup = new TypeError("Downloads lookup failed.");
     Object.defineProperty(job.storage, "downloads", { get() { throw lookup; } });
-    const failure = keep(job, paths, { reasons: ["Destination denied."] });
+    const failure = (await keep(job, paths, { reasons: ["Destination denied."] }));
     assert.equal(artifact.state, "validated");
     assert.equal(failure.recovery, staged);
     assert.deepEqual(failure.issues.map(({ code, stage }) => [code, stage]), [["publication", "publication"], ["fault", "recovery"]]);
     assert.deepEqual(failure.issues[1].diagnostic, { message: "Downloads lookup failed.", path: undefined, detail: undefined });
 });
 
-test("a failed recovery marker release leaves the verified Downloads PDF and reports the cleanup stage", () => {
+test("a failed recovery marker release leaves the verified Downloads PDF and reports the cleanup stage", async () => {
     const { job, paths, files } = recoveryPort();
     job.storage.remove = () => { throw new Error("Marker removal was denied."); };
-    const failure = keep(job, paths, { reasons: ["Destination denied."] });
+    const failure = (await keep(job, paths, { reasons: ["Destination denied."] }));
     assert.equal(failure.recovery, download);
     assert.deepEqual(files.get(download), original);
     assert.deepEqual(failure.issues.map(({ code, stage }) => [code, stage]), [["publication", "publication"], ["cleanup", "cleanup"]]);
+});
+
+test("without Downloads, recovery reports the verified private PDF without a Downloads failure", async () => {
+    const { job, paths, artifact, files, events } = recoveryPort();
+    job.storage.downloads = null;
+    job.publication.link = () => { throw new Error("No recovery folder was available."); };
+    const error = await keep(job, paths, { reasons: ["Destination denied."] });
+    assert.equal(artifact.state, "validated");
+    assert.deepEqual(files.get(staged), original);
+    assert.equal(error.recovery, staged);
+    assert.deepEqual(error.issues, [publicationIssue]);
+    assert.deepEqual(events, [["set aside", staged, { intendedName: "photo.pdf", original }]]);
 });

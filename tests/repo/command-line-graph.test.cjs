@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, "../..");
 
 test("the command-line dependency graph never imports AppKit", () => {
     const visited = new Set();
-    const pending = [path.join(root, "src/node/entry.js")];
+    const pending = [path.join(root, "src/cli/entry.js")];
     while (pending.length > 0) {
         const file = pending.pop();
         if (!visited.has(file)) {

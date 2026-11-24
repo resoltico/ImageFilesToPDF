@@ -18,12 +18,12 @@ const { collectImageFiles } = require("../ports/fake-selection.cjs");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 const { treeOf } = require("../ports/fake-tree.cjs");
 
-function collect(selection, tree, directories = ["/photos"]) {
+async function collect(selection, tree, directories = ["/photos"]) {
     const app = createFakeApp();
 
     app.directories = directories;
 
-    const { images, rejected } = collectImageFiles(app, selection, tree);
+    const { images, rejected } = (await collectImageFiles(app, selection, tree));
 
     return {
         images: images.map((image) => image.path),
@@ -36,26 +36,28 @@ function bothWays(one, other) {
     return [[one, other], [other, one]];
 }
 
-test("a hidden image selected by hand is converted, folder or no folder", () => {
+test("a hidden image selected by hand is converted, folder or no folder", async () => {
     const tree = treeOf({ "/photos": ["a.jpg", ".evidence.jpg"] });
 
     for (const selection of bothWays("/photos", "/photos/.evidence.jpg")) {
         assert.deepEqual(
-            collect(selection, tree).images,
+            // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
+            (await collect(selection, tree)).images,
             ["/photos/.evidence.jpg", "/photos/a.jpg"],
             selection.join(" then ")
         );
     }
 });
 
-test("a file that cannot be converted still says so when its folder is selected too", () => {
+test("a file that cannot be converted still says so when its folder is selected too", async () => {
     // Selected alone it is reported. Selected alongside its folder it used to
     // stop being reported, which is the silent filter this action exists not
     // to have.
     const tree = treeOf({ "/photos": ["a.jpg", "readme.txt"] });
 
     for (const selection of bothWays("/photos", "/photos/readme.txt")) {
-        const { images, rejected } = collect(selection, tree);
+        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
+        const { images, rejected } = (await collect(selection, tree));
 
         assert.deepEqual(images, ["/photos/a.jpg"]);
         assert.deepEqual(rejected, [
@@ -64,7 +66,7 @@ test("a file that cannot be converted still says so when its folder is selected 
     }
 });
 
-test("a hidden folder selected by hand is walked", () => {
+test("a hidden folder selected by hand is walked", async () => {
     // Hidden-ness governs what a walk discovers, not what a person selects.
     const tree = treeOf({
         "/photos": [".old"],
@@ -73,43 +75,45 @@ test("a hidden folder selected by hand is walked", () => {
 
     for (const selection of bothWays("/photos", "/photos/.old")) {
         assert.deepEqual(
-            collect(selection, tree, ["/photos", "/photos/.old"]).images,
+            // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
+            (await collect(selection, tree, ["/photos", "/photos/.old"])).images,
             ["/photos/.old/b.jpg"],
             selection.join(" then ")
         );
     }
 });
 
-test("an image the walk already took is not converted twice", () => {
+test("an image the walk already took is not converted twice", async () => {
     // The ledger, not the pathname, decides: it was asked for and it is in
     // the run, which is neither a rejection nor a second copy.
     const tree = treeOf({ "/photos": ["a.jpg", "b.jpg"] });
 
     for (const selection of bothWays("/photos", "/photos/a.jpg")) {
-        const { images, rejected } = collect(selection, tree);
+        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
+        const { images, rejected } = (await collect(selection, tree));
 
         assert.deepEqual(images, ["/photos/a.jpg", "/photos/b.jpg"]);
         assert.deepEqual(rejected, []);
     }
 });
 
-test("an entry the walk could not look at is reported by name", () => {
+test("an entry the walk could not look at is reported by name", async () => {
     const tree = treeOf(
         { "/photos": ["a.jpg", "b.jpg"] },
         { "/photos/b.jpg": "missing" }
     );
-    const { images, rejected } = collect(["/photos"], tree);
+    const { images, rejected } = (await collect(["/photos"], tree));
 
     assert.deepEqual(images, ["/photos/a.jpg"]);
     assert.deepEqual(rejected, ["b.jpg: This item could not be examined."]);
 });
 
-test("a subfolder that could not be looked at is reported as well", () => {
+test("a subfolder that could not be looked at is reported as well", async () => {
     const tree = treeOf(
         { "/photos": ["a.jpg", "sub"], "/photos/sub": ["b.jpg"] },
         { "/photos/sub": "missing" }
     );
-    const { images, rejected } = collect(["/photos"], tree);
+    const { images, rejected } = (await collect(["/photos"], tree));
 
     assert.deepEqual(images, ["/photos/a.jpg"]);
     assert.deepEqual(rejected, ["sub: This item could not be examined."]);

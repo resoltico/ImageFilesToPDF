@@ -5,7 +5,7 @@ const { commandLengthOf } = require("../../support/macos-conversion/backend/batc
 const { mergeGroups: groupMerge } = require("../../../src/backend/merging.js");
 const { buildPdfcpuMergeArgv } = require("../../../src/backend/pdfcpu.js");
 
-const mergeGroups = (tool, output, paths, budget = 131072) => groupMerge(tool, output, paths, (args) => commandLengthOf(args) <= budget);
+const mergeGroups = (tool, output, paths, budget = 131072) => groupMerge(tool, output, paths, { fits: (args) => commandLengthOf(args) <= budget, toolPath: (file) => file });
 
 test("merge disables bookmarks and external configuration", () => {
     assert.deepEqual(buildPdfcpuMergeArgv("pdfcpu", "/out.pdf", ["/1.pdf", "/2.pdf"]), ["pdfcpu", "merge", "--conf", "disable", "--bookmarks=false", "--", "/out.pdf", "/1.pdf", "/2.pdf"]);

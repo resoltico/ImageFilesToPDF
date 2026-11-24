@@ -9,7 +9,7 @@ not as a public issue. This is a personal project without a support commitment.
 ## File-safety boundary
 
 Originals are read and copied without modification. The tree excludes links,
-junctions and reparse points, packages where applicable, and hidden entries from
+junctions and symbolic links, packages where applicable, and hidden entries from
 folder walks. The CLI treats Windows hidden attributes as hidden and requires
 local drive paths. It refuses POSIX special files and source path components it
 cannot verify. Explicitly selected hidden images are assessed individually.
@@ -19,9 +19,8 @@ validates its request and settings before tool setup, reclamation or conversion.
 Both re-inspect and render private captured bytes. The Node adapter opens a
 regular source by handle, checks its identity, size and version against the
 named path before and after the copy, and writes an exclusively created private
-file. POSIX opens use no-follow and nonblocking flags where available. On
-Windows the adapter checks reparse attributes along the path and compares the
-open handle with the named path.
+file. POSIX opens use no-follow and nonblocking flags where available. On Windows the engine uses `lstat` along the path and compares the open handle
+with the named path.
 
 The capture checks detect ordinary replacement and concurrent edits. They do not
 lock other applications out of a source or provide an atomic snapshot. Writers
@@ -33,9 +32,9 @@ Separate-mode naming uses actual namespace lookups and native directory identity
 Temporary comparison directories contain name tokens. An abrupt process end can
 leave a comparison or staging directory on the destination volume.
 
-A validated PDF is claimed at its final path using an exclusive hard link.
-For cross-volume publication, a complete owned copy is staged beside the
-destination first. The Finder adapter also has an exclusive macOS rename route.
+The engine first claims a validated PDF at its final path using an exclusive
+hard link. It stages a complete owned copy beside the destination when needed.
+macOS and Windows provide an exclusive rename route from the owned staging copy.
 Only an observed existing entry triggers a suffix retry. The requested
 destination must be readable and searchable so the tool can confirm the stored
 basename, size and identity before releasing the verified original. A possibly
@@ -45,16 +44,14 @@ without supplying a recovery path. An unavailable exclusive route tries
 Downloads under the same rules, then keeps verified private work. Stop and
 receipt transport failures preserve validated or confirmed files.
 
-Workspace metadata records process identity and retention before use. The Node
-workspace root is private to the current user, using POSIX ownership and
-permissions or a verified Windows access-control list. Its owner record binds
-the directory's identity to a process ID and start discriminator. A guard
-created before any workspace-writing command is removed after a correlated
-settlement reply. Interruption before that reply leaves an unknown writer, so a
-later run preserves the workspace even if its owner died. Startup only reclaims
-recognized, unretained work whose recorded owner instance has ended and whose
-writer guard is absent. The Quick Action uses its own workspace records.
-Temporary storage can be cleared by the OS.
+Workspace metadata records process identity and retention before use. The
+engine's durable workspace root is private to the current user, using POSIX
+ownership and permissions or a verified Windows access-control list. Its owner
+record binds the directory's identity to a process ID and start discriminator.
+The engine creates a guard before starting a workspace-writing command and
+removes it after the writer and its streams close. Startup preserves guarded
+workspaces and reclaims recognized, unretained work only when it verifies that
+the recorded owner instance has ended.
 
 ## Embedded image metadata
 
@@ -69,8 +66,8 @@ Remembered settings, under `com.resoltico.ImageFilesToPDF`, hold page settings o
 
 ## Commands and trust
 
-External commands are built as argument vectors. Node passes them directly to
-the native executable. The Finder adapter quotes them for the shell.
+The Node engine passes native arguments directly to the installed executable.
+The Finder client uses a fixed directory search with explicit tool overrides.
 Executable discovery and overrides select trusted installed tools. `IMAGE_FILES_TO_PDF_VIPS`,
 `IMAGE_FILES_TO_PDF_VIPSHEADER` and `IMAGE_FILES_TO_PDF_PDFCPU` can name explicit
 executables; they select trusted tools and are not a sandbox.

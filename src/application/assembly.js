@@ -5,7 +5,8 @@ const { mergeGroups } = require("../backend/merging.js");
 const { removeOwned, requireReleasedResources } = require("./owned-cleanup.js");
 
 async function mergeParts(job, output, inputs) {
-    await job.operations.run(buildPdfcpuMergeArgv(job.tools.pdfcpu, output, inputs), "assembling PDF");
+    const { toolPath } = job.operations;
+    await job.operations.run(buildPdfcpuMergeArgv(job.tools.pdfcpu, toolPath(output), inputs.map(toolPath)), "assembling PDF");
     job.operations.verifyFile(output, "assembled PDF");
     for (const input of inputs) {
         removeOwned(job, input);
@@ -21,7 +22,7 @@ async function assemblePdf(job, staged) {
     while (parts.length > 0) {
         job.progress.phase("Assembling PDF");
         const prefix = `${staged}.merge-${level}`;
-        const groups = mergeGroups(job.tools.pdfcpu, `${prefix}-${parts.length}.pdf`, parts, job.operations.fits);
+        const groups = mergeGroups(job.tools.pdfcpu, `${prefix}-${parts.length}.pdf`, parts, job.operations);
         if (groups.length === 1) {
             // eslint-disable-next-line no-await-in-loop -- Settle the final merge before the workspace is released.
             await mergeParts(job, staged, parts);

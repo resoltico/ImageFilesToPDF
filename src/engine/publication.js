@@ -87,7 +87,7 @@ function nameGroups(files, sources) {
 
 const MAC_RENAME_ERRORS = { 1: "denied", 13: "denied", 18: "cross-device", 30: "denied", 45: "unsupported", 78: "unsupported" };
 
-function destinationOperations(files, mac) {
+function destinationOperations(files, mac, windows) {
     const parents = new Map();
     function link(from, to) {
         parents.delete(to);
@@ -103,10 +103,10 @@ function destinationOperations(files, mac) {
         }
     }
 
-    function rename(from, to) {
+    async function rename(from, to) {
         const directory = files.directoryIdentity(dirname(to));
         const original = facts(from);
-        const reported = mac({ type: "renameExclusive", from, to });
+        const reported = mac ? await mac.request({ type: "renameExclusive", from, to }) : await windows.move(from, to);
         const remaining = facts(from);
         const target = facts(to);
         if (!remaining.identity && same(target, original)) {
@@ -159,7 +159,7 @@ function destinationOperations(files, mac) {
     }
 
     return {
-        publication: { facts, link, actualPath, ...(mac ? { rename } : {}) },
+        publication: { facts, link, actualPath, ...(mac || windows ? { rename } : {}) },
         operations: { stagingArea, openStaging, closeStaging,
             copyBeside: (from, to) => fs.copyFileSync(from, to, fs.constants.COPYFILE_EXCL) },
         destinationNames: { groups: (sources) => nameGroups(files, sources) }

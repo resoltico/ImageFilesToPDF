@@ -18,8 +18,8 @@ const { treeOf } = require("../ports/fake-tree.cjs");
 
 const ONE_FILE = "16777232:5";
 
-function collect(selection, tree) {
-    const { images, rejected } = collectImageFiles(createFakeApp(), selection, tree);
+async function collect(selection, tree) {
+    const { images, rejected } = (await collectImageFiles(createFakeApp(), selection, tree));
 
     return {
         images: images.map((image) => image.path),
@@ -27,7 +27,7 @@ function collect(selection, tree) {
     };
 }
 
-test("a name this action cannot convert does not silence another that it can", () => {
+test("a name this action cannot convert does not silence another that it can", async () => {
     // Two hard links to one photograph, one named .jpg and one .backup. Keyed
     // by the file, the first spelling was the only one considered -- and
     // whether that spelling was convertible had not been asked yet, so the
@@ -41,7 +41,8 @@ test("a name this action cannot convert does not silence another that it can", (
         ["/a/image.backup", "/a/image.jpg", "/a/extra.jpg"],
         ["/a/image.jpg", "/a/image.backup", "/a/extra.jpg"]
     ]) {
-        const { images, rejected } = collect(selection, tree);
+        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
+        const { images, rejected } = (await collect(selection, tree));
 
         assert.deepEqual(images, ["/a/extra.jpg", "/a/image.jpg"], selection.join(" then "));
         assert.deepEqual(rejected, [
@@ -50,11 +51,12 @@ test("a name this action cannot convert does not silence another that it can", (
     }
 });
 
-test("one photograph under two names it can convert is converted once", () => {
+test("one photograph under two names it can convert is converted once", async () => {
     const tree = treeOf({}, {}, { "/a/A.jpg": ONE_FILE, "/a/a.jpg": ONE_FILE });
 
     for (const selection of [["/a/A.jpg", "/a/a.jpg"], ["/a/a.jpg", "/a/A.jpg"]]) {
-        const { images, rejected } = collect(selection, tree);
+        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
+        const { images, rejected } = (await collect(selection, tree));
 
         assert.equal(images.length, 1, selection.join(" then "));
         assert.equal(images[0], selection[0], "under the name it was first asked for by");
@@ -62,7 +64,7 @@ test("one photograph under two names it can convert is converted once", () => {
     }
 });
 
-test("a link is refused rather than followed", () => {
+test("a link is refused rather than followed", async () => {
     // The walk passes over links because following one is how a run leaves
     // the folder it was given and how it converts the same photograph twice.
     // Asking the shell instead followed it -- test -f reports on the target --
@@ -71,13 +73,13 @@ test("a link is refused rather than followed", () => {
         "/a/image.jpg": "16777232:8",
         "/a/link.jpg": "16777232:9"
     });
-    const { images, rejected } = collect(["/a/image.jpg", "/a/link.jpg"], tree);
+    const { images, rejected } = (await collect(["/a/image.jpg", "/a/link.jpg"], tree));
 
     assert.deepEqual(images, ["/a/image.jpg"]);
     assert.deepEqual(rejected, ["link.jpg: This is a link; select the file it points to."]);
 });
 
-test("a link inside a selected folder is refused when it is selected too", () => {
+test("a link inside a selected folder is refused when it is selected too", async () => {
     // Discovery skips it; admission used to accept it afterwards, which put
     // the photograph it points to in the PDF a second time.
     const tree = treeOf(
@@ -89,7 +91,7 @@ test("a link inside a selected folder is refused when it is selected too", () =>
 
     app.directories = ["/a"];
 
-    const { images, rejected } = collectImageFiles(app, ["/a", "/a/link.jpg"], tree);
+    const { images, rejected } = (await collectImageFiles(app, ["/a", "/a/link.jpg"], tree));
 
     assert.deepEqual(images.map((image) => image.path), ["/a/image.jpg"]);
     assert.deepEqual(

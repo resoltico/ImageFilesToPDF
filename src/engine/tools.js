@@ -6,7 +6,7 @@ const { Buffer } = require("node:buffer");
 const { env, platform } = require("node:process");
 const { checkRequiredTools } = require("../application/setup.js");
 const { VIPSHEADER_PROBE_IMAGE } = require("../backend/preflight.js");
-const { WINDOWS, localPath, standardize } = require("./paths.js");
+const { WINDOWS, localPath, standardize, toolPath } = require("./paths.js");
 
 function executableFile(value) {
     try {
@@ -44,7 +44,7 @@ async function withSample(inspect) {
         const output = standardize(path.join(directory.path, "output.png"));
         const octal = [...VIPSHEADER_PROBE_IMAGE.matchAll(/\\0(?<byte>[0-7]{3})/gu)].map((match) => Number.parseInt(match.groups.byte, 8));
         fs.writeFileSync(input, Buffer.from(octal), { flag: "wx", mode: 0o600 });
-        return await inspect({ input, output, outputExists: () => fs.statSync(output, { throwIfNoEntry: false })?.isFile() });
+        return await inspect({ input: toolPath(input), output: toolPath(output), outputExists: () => fs.statSync(output, { throwIfNoEntry: false })?.isFile() });
     } finally { directory.remove(); }
 }
 

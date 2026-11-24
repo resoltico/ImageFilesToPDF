@@ -6,7 +6,7 @@ const { releaseOwnedArtifact } = require("./workspace.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { IssueError, diagnosticText } = require("../core/errors.js");
 const { basename } = require("../core/paths.js");
-const { isPublished } = require("../core/artifacts.js");
+const { isPublished, recoveryDestination } = require("../core/artifacts.js");
 const { claimAvailable } = require("./destination.js");
 
 /*
@@ -48,14 +48,16 @@ function confirmedDownloads(context) {
     return { state: "recovered", path: paths.final, issues: [...cleanup, ...(removed.state === "failed" ? [removed.issue] : [])] };
 }
 
-function downloadsRecovery(job, paths) {
+async function downloadsRecovery(job, paths) {
     let context = null;
     try {
         requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: null });
         const facts = paths.original;
-        const destination = job.storage.downloads + basename(paths.intended);
+        const target = recoveryDestination(job.storage.downloads, paths.intended, paths.staged);
+        if (target.kind === "workspace") { return { state: "retained", path: target.path, issues: [] }; }
+        const destination = target.path;
         context = { job, paths: { staged: paths.staged, final: destination, original: paths.original }, facts, from: paths.staged, claimed: facts, area: null, diagnostic: null };
-        return claimAvailable(context, destination, confirmedDownloads, () => undefined);
+        return await claimAvailable(context, destination, confirmedDownloads, () => undefined);
     } catch (error) {
         if (error && Object.hasOwn(error, "recovery")) { throw error; }
         requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: error, candidate: context?.area ? { folder: context.area.directory } : null });
@@ -66,12 +68,12 @@ function downloadsRecovery(job, paths) {
     }
 }
 
-function keep(job, paths, outcome) {
+async function keep(job, paths, outcome) {
     if (typeof paths.intended !== "string") { throw new Error("Publication intent is required for recovery."); }
     requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: null });
     const cleanup = clearAway(job.operations, outcome);
 
-    const downloads = downloadsRecovery(job, paths);
+    const downloads = await downloadsRecovery(job, paths);
     const rescue = downloads.state === "recovered" ? downloads : job.operations.setAside( paths.staged, job.publication, { intendedName: basename(paths.intended), original: paths.original });
     const recovered = rescue.path;
     if (recovered === paths.staged) { requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: null }); }

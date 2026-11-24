@@ -1,7 +1,6 @@
 "use strict";
 const { validateSettings } = require("../core/settings.js");
 const { UserCanceled } = require("../core/errors.js");
-const { validateMessage } = require("../core/protocol.js");
 
 function progressSink(send) {
     let total = 0;
@@ -40,22 +39,8 @@ async function settings(context, ask) {
     }
 }
 
-function workerSession(port, stopped) {
-    const send = (message) => port.postMessage({ event: validateMessage("engine", message) });
-    function ask(question) {
-        if (stopped()) { throw new UserCanceled(); }
-        return new Promise((resolve, reject) => {
-            port.once("message", (raw) => {
-                try {
-                    const answer = validateMessage("client", raw);
-                    if (stopped() || answer.type === "stop") { throw new UserCanceled(); }
-                    resolve(answer);
-                } catch (error) { reject(error); }
-            });
-            send(question);
-        });
-    }
+function interactions(send, ask) {
     return { sink: progressSink(send), settings: (context) => settings(context, ask) };
 }
 
-module.exports = { workerSession };
+module.exports = { interactions };

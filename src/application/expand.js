@@ -78,8 +78,8 @@ function consider(path, entry, taken, outcome) {
     outcome.found.push(path);
 }
 
-function walk(tree, folder, taken, outcome) {
-    const names = tree.entries(folder);
+async function walk(tree, folder, taken, outcome) {
+    const names = await tree.entries(folder);
 
     if (!names) {
         outcome.problems.push({ path: folder, code: "unreadable" });
@@ -88,10 +88,14 @@ function walk(tree, folder, taken, outcome) {
     }
 
     for (const path of childrenOf(tree, folder, names)) {
-        const entry = tree.inspect(path);
+        // eslint-disable-next-line no-await-in-loop -- Walk the shared identity ledger in one order.
+        const entry = await tree.inspect(path);
 
         if (!entry.hidden) {
-            if (entry.kind === "directory") { walk(tree, path, taken, outcome); }
+            if (entry.kind === "directory") {
+                // eslint-disable-next-line no-await-in-loop -- Descendants settle before the next sibling.
+                await walk(tree, path, taken, outcome);
+            }
             else { consider(path, entry, taken, outcome); }
         }
     }
@@ -115,10 +119,10 @@ function emptiness(outcome) {
  * and why there are none to take. The taken set is shared across every folder
  * of one run, and the walk adds to it as it goes.
  */
-function imagesInFolder(tree, folder, taken) {
+async function imagesInFolder(tree, folder, taken) {
     const outcome = { found: [], problems: [], alreadyTaken: false };
 
-    if (!walk(tree, folder, taken, outcome)) {
+    if (!await walk(tree, folder, taken, outcome)) {
         // The folder that was selected, which is reported as itself rather
         // than as something unreadable inside it.
         return { found: [], problems: [], code: "unreadable" };

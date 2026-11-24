@@ -19,17 +19,17 @@ function appWith(directories) {
     return app;
 }
 
-test("a selected folder becomes the images inside it, in folder order", () => {
+test("a selected folder becomes the images inside it, in folder order", async () => {
     const tree = treeOf({
         "/Trip": ["top.png", "Berlin", "Aalborg"],
         "/Trip/Aalborg": ["10.png", "2.png"],
         "/Trip/Berlin": ["1.png"]
     });
-    const { images, rejected, selectedFolders } = collectImageFiles(
+    const { images, rejected, selectedFolders } = (await collectImageFiles(
         appWith(["/Trip"]),
         ["/Trip"],
         tree
-    );
+    ));
 
     assert.deepEqual(images.map((image) => image.path), [
         "/Trip/Aalborg/2.png",
@@ -41,24 +41,24 @@ test("a selected folder becomes the images inside it, in folder order", () => {
     assert.equal(selectedFolders, 1);
 });
 
-test("the PDF goes in the folder that was selected", () => {
+test("the PDF goes in the folder that was selected", async () => {
     // Not in the subfolder whose name happened to sort first, which is where
     // "beside the first image" would have put it.
     const tree = treeOf({
         "/Trip": ["Aalborg"],
         "/Trip/Aalborg": ["2.png"]
     });
-    const { images } = collectImageFiles(appWith(["/Trip"]), ["/Trip"], tree);
+    const { images } = (await collectImageFiles(appWith(["/Trip"]), ["/Trip"], tree));
 
     assert.deepEqual(images.map((image) => image.folder), ["/Trip/"]);
 });
 
-test("a file selected by hand still goes beside itself", () => {
-    const { images, selectedFolders } = collectImageFiles(
+test("a file selected by hand still goes beside itself", async () => {
+    const { images, selectedFolders } = (await collectImageFiles(
         appWith([]),
         ["/a/photo.png"],
         treeOf({})
-    );
+    ));
 
     assert.equal(selectedFolders, 0);
     assert.deepEqual(images, [{
@@ -68,26 +68,26 @@ test("a file selected by hand still goes beside itself", () => {
     }]);
 });
 
-test("a folder that holds nothing to convert says so", () => {
+test("a folder that holds nothing to convert says so", async () => {
     // "No images selected" would be a reply to somebody who selected nothing.
-    const { rejected } = collectImageFiles(
+    const { rejected } = (await collectImageFiles(
         appWith(["/empty"]),
         ["/empty"],
         treeOf({ "/empty": ["notes.txt"] })
-    );
+    ));
 
     assert.deepEqual(rejected.map((entry) => `${entry.name}: ${entry.reason}`), [
         "empty: This folder contains no supported images."
     ]);
 });
 
-test("a folder and a file inside it do not convert it twice", () => {
+test("a folder and a file inside it do not convert it twice", async () => {
     const tree = treeOf({ "/Trip": ["a.png", "b.png"] });
-    const { images } = collectImageFiles(
+    const { images } = (await collectImageFiles(
         appWith(["/Trip"]),
         ["/Trip/a.png", "/Trip"],
         tree
-    );
+    ));
 
     assert.deepEqual(images.map((image) => image.path), [
         "/Trip/a.png",
@@ -95,7 +95,7 @@ test("a folder and a file inside it do not convert it twice", () => {
     ]);
 });
 
-test("a subfolder that could not be read is named, not passed over", () => {
+test("a subfolder that could not be read is named, not passed over", async () => {
     // The images elsewhere in the folder are still converted -- and the
     // report says which folder was closed, which is what lets someone go and
     // look at its permissions.
@@ -103,11 +103,11 @@ test("a subfolder that could not be read is named, not passed over", () => {
         { "/Trip": ["a.png", "Locked"] },
         { "/Trip/Locked": "directory" }
     );
-    const { images, rejected, selectedFolders } = collectImageFiles(
+    const { images, rejected, selectedFolders } = (await collectImageFiles(
         appWith(["/Trip"]),
         ["/Trip"],
         tree
-    );
+    ));
 
     assert.equal(selectedFolders, 1);
     assert.deepEqual(images.map((image) => image.path), ["/Trip/a.png"]);
@@ -118,7 +118,7 @@ test("a subfolder that could not be read is named, not passed over", () => {
     }]);
 });
 
-test("missing mandatory tree fails setup for every selection", () => {
+test("missing mandatory tree fails setup for every selection", async () => {
     const { collectImageFiles: collect } = require("../../../src/application/admission.js");
-    assert.throws(() => collect(createFakeApp(), ["/photos", "/photos/photo.png"], null), /Required filesystem/u);
+    await assert.rejects(() => collect(createFakeApp(), ["/photos", "/photos/photo.png"], null), /Required filesystem/u);
 });
