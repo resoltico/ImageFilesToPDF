@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { OperationError } = require("../core/errors.js");
 
 const { PRINTENV } = require("./backend-executables.js");
@@ -80,7 +81,7 @@ function findTool(app, executableName) {
         const path = override.value.trim();
         const requested = { name: ENVIRONMENT_OVERRIDES[executableName], value: override.value };
         if (!path || !isExecutable(app, path)) {
-            throw new OperationError(`${requested.name}=${JSON.stringify(requested.value)} is not an absolute regular executable file.`);
+            throw new OperationError(message("toolOverrideInvalid", { override: `${requested.name}=${JSON.stringify(requested.value)}` }));
         }
         return { path, override: requested };
     }

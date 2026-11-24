@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { Buffer } = require("node:buffer");
 const { env } = require("node:process");
 const path = require("node:path");
@@ -65,7 +66,7 @@ if (-not $acl.AreAccessRulesProtected -or $rules.Count -ne 1 -or $rules[0].Ident
 
 function windowsNative(commands) {
     const root = env.SystemRoot;
-    if (!root || !/^[a-z]:[/\\]/iu.test(root)) { throw new OperationError("The Windows system directory could not be located."); }
+    if (!root || !/^[a-z]:[/\\]/iu.test(root)) { throw new OperationError(message("windowsSystemDirectoryUnavailable")); }
     const powershell = path.win32.join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
     function run(script, values, label) {
         const encoded = Buffer.from(`$ErrorActionPreference = 'Stop'\n${script}`, "utf16le").toString("base64");

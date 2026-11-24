@@ -20,7 +20,7 @@ test("consented refusals do not change a fully saved GUI headline", () => {
 });
 
 test("summary distinguishes invalid, empty, stopped, failed and partially saved runs", () => {
-    assert.equal(summarizeRun({ ...runOutcome(), state: "invalid" }).kind, "invalid");
+    assert.equal(summarizeRun({ ...runOutcome(), state: "invalid-request" }).kind, "invalid");
     assert.equal(summarizeRun(runOutcome()).kind, "nothing-to-convert");
     const failed = { state: "failed", sources: ["/first.png", "/bad.png"], issues: [{ source: "/bad.png", message: "damaged" }] };
     const recovered = { state: "recovered", sources: ["/kept.png"], recovery: "/Downloads/kept.pdf", issues: [{ message: "destination unavailable" }] };

@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { formatDuration } = require("../core/formatting.js");
 const { OperationError } = require("../core/errors.js");
 const { executeRun } = require("./run.js");
@@ -17,7 +18,7 @@ function prepare(input, options) {
     const { tree, sources, publication, storage, destinationNames } = capabilities;
     if (!tree || !sources || !publication || !storage || !destinationNames || typeof destinationNames.groups !== "function" ||
         ["facts", "readable", "capture", "pngCount"].some((method) => typeof sources[method] !== "function")) {
-        throw new OperationError("Required filesystem/source capabilities are unavailable.");
+        throw new OperationError(message("filesystemCapabilitiesUnavailable"));
     }
     progress.diagnostics.push(...options.reclaim(storage));
     progress.phase("Finding images");

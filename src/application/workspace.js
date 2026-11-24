@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { OperationError } = require("../core/errors.js");
 const { ISSUE } = require("../core/outcomes.js");
 const { releaseArtifact, hasRetainedArtifacts } = require("../core/artifacts.js");
@@ -10,8 +11,8 @@ function clearRetention(job) {
     if (job.storage.entries(job.workspace).includes(RETAIN)) {
         try { job.storage.remove(`${job.workspace}/${RETAIN}`); }
         catch (error) {
-            const message = "The workspace retention marker could not be cleared.";
-            const failure = new OperationError(message, { cause: error, issues: [{ code: ISSUE.cleanup, stage: "cleanup", message, diagnostic: { path: job.workspace } }] });
+            const wording = message("retentionMarkerRemovalFailed");
+            const failure = new OperationError(wording, { cause: error, issues: [{ code: ISSUE.cleanup, stage: "cleanup", params: {}, message: wording, diagnostic: { path: job.workspace } }] });
             throw failure;
         }
     }

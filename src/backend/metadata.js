@@ -1,6 +1,7 @@
 "use strict";
 const { positiveIntegerFrom } = require("../core/numbers.js");
 const { OperationError } = require("../core/errors.js");
+const { message } = require("../core/messages.js");
 const { sourceIssue, orientedSize } = require("../core/source-policy.js");
 const LOADERS = {
     jpegload: { format: "JPEG", gainMap: false }, uhdrload: { format: "JPEG", gainMap: true }, pngload: { format: "PNG", gainMap: false },
@@ -14,8 +15,10 @@ const HEADER = /^(?<path>.+):[ \t]+\d+x\d+[ \t]/u;
 
 function normalized(text) { return String(text).replace(/\r\n?/gu, "\n"); }
 
-function metadataError(message) {
-    const error = new OperationError(message, { issues: [sourceIssue("damaged", {}, { message })] });
+function metadataError(id, params) {
+    const detail = { message: message(id, params) };
+    const issue = sourceIssue("damaged", {}, detail);
+    const error = new OperationError(issue.message, { issues: [issue], diagnostic: detail });
     return error;
 }
 
@@ -23,7 +26,7 @@ function addField(fields, line) {
     const match = FIELD.exec(line);
     if (match) {
         const { field, value } = match.groups;
-        if (Object.hasOwn(fields, field)) { throw metadataError(`Duplicate image metadata field: ${field}`); }
+        if (Object.hasOwn(fields, field)) { throw metadataError("metadataDuplicateField", { field }); }
         fields[field] = value.trim();
     }
 }
@@ -74,13 +77,13 @@ function readMetadataBatch(text, paths) {
         const header = HEADER.exec(line);
         if (header && records.has(header.groups.path)) {
             current = header.groups.path;
-            if (paths[index] !== current) { throw metadataError("Image metadata blocks are ambiguous or out of order."); }
+            if (paths[index] !== current) { throw metadataError("metadataAmbiguousBlocks"); }
             index += 1;
         } else if (current && line.startsWith(`${current}: `)) {
             addField(records.get(current), line.slice(current.length + PATH_SEPARATOR.length));
         }
     }
-    if (index !== paths.length) { throw metadataError("Image metadata blocks are incomplete."); }
+    if (index !== paths.length) { throw metadataError("metadataIncompleteBlocks"); }
     return paths.map((path) => {
         const fields = records.get(path);
         return { raw: rawMetadata(fields), optional: OPTIONAL_FIELDS.filter((field) => Object.hasOwn(fields, field)) };
@@ -100,7 +103,7 @@ function optionalValue(raw, field, value) {
 
 function scalarValues(text, expected) {
     const lines = normalized(text).trim().split("\n");
-    if (lines.length !== expected || lines.some((line) => line.trim() === "")) { throw metadataError("The image field response is incomplete or ambiguous."); }
+    if (lines.length !== expected || lines.some((line) => line.trim() === "")) { throw metadataError("metadataScalarResponseAmbiguous"); }
     return lines.map((line) => line.trim());
 }
 

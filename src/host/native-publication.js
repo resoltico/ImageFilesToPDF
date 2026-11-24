@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { OperationError } = require("../core/errors.js");
 const { nativeEntryNames } = require("./directory-entry-names.js");
 const { basename, dirname } = require("../core/paths.js");
@@ -34,7 +35,7 @@ function sameArtifact(facts, expected) {
 
 function storedPath({ objc, ns, ref, manager }, path, expected) {
     if (!sameArtifact(nativeFacts(objc, ns, manager, path), expected)) {
-        throw new OperationError("The published PDF identity could not be confirmed before reading its name.");
+        throw new OperationError(message("publishedPdfIdentityUnverified"));
     }
     const directory = dirname(path);
     const entries = nativeEntryNames(objc, ns, ref)(directory);
@@ -45,11 +46,11 @@ function storedPath({ objc, ns, ref, manager }, path, expected) {
     const verified = candidates.map((name) => directory + name)
         .filter((candidate) => sameArtifact(nativeFacts(objc, ns, manager, candidate), expected));
     if (verified.length !== 1) {
-        throw new OperationError("The published PDF's stored filename could not be uniquely verified from its directory entries.");
+        throw new OperationError(message("publishedPdfNameUnverified"));
     }
     const [actual] = verified;
     if (!sameArtifact(nativeFacts(objc, ns, manager, path), expected) || !sameArtifact(nativeFacts(objc, ns, manager, actual), expected)) {
-        throw new OperationError("The published PDF identity changed while reading its stored filename.");
+        throw new OperationError(message("publishedPdfIdentityChanged"));
     }
     return actual;
 }

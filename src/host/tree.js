@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { OperationError } = require("../core/errors.js");
 const { attributesAt, identityOf, kindOf, attributeFailureKind } = require("./native-file-attributes.js");
 
@@ -51,9 +52,9 @@ function kindFrom(attributes, packageFor, path) {
 function packageAt({ objc, ns, ref }, path) {
     const url = ns.NSURL.fileURLWithPath(ns(path));
     const values = url.resourceValuesForKeysError(ns([ns.NSURLIsPackageKey]), ref());
-    if (!values || values.isNil()) { throw new OperationError("The folder's package status could not be read."); }
+    if (!values || values.isNil()) { throw new OperationError(message("folderPackageStatusUnreadable")); }
     const value = objc.unwrap(values.objectForKey(ns.NSURLIsPackageKey));
-    if (typeof value !== "boolean") { throw new OperationError("The folder's package status could not be read."); }
+    if (typeof value !== "boolean") { throw new OperationError(message("folderPackageStatusUnreadable")); }
     return value;
 }
 

@@ -1,20 +1,13 @@
 "use strict";
+const { message, publicationFailureDetails } = require("../core/messages.js");
 
 const { actualPublicationPath, requireOriginal, unconfirmedClaim } = require("./publication-name.js");
 const { releaseOwnedArtifact } = require("./workspace.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
-const { IssueError, errorMessage } = require("../core/errors.js");
+const { IssueError, diagnosticText } = require("../core/errors.js");
 const { basename } = require("../core/paths.js");
 const { isPublished } = require("../core/artifacts.js");
 const { claimAvailable } = require("./destination.js");
-
-function describeFailure(reasons, whereabouts) {
-    return [
-        "The PDF could not be saved where it was meant to go.",
-        ...reasons,
-        whereabouts
-    ].join("\n\n");
-}
 
 /*
  * What this attempt made and does not need: the place it made in the output
@@ -68,8 +61,8 @@ function downloadsRecovery(job, paths) {
         requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: error, candidate: context?.area ? { folder: context.area.directory } : null });
         const cleanup = context?.area ? job.operations.closeStaging(context.area) : [];
         const [issue] = issuesOf(error, "recovery");
-        return { state: "retained", path: paths.staged, issues: [{ code: issue.code === ISSUE.operation ? ISSUE.recovery : issue.code, stage: "recovery",
-            message: "The PDF could not be recovered to Downloads.", diagnostic: { message: errorMessage(error), path: context?.paths.final, detail: context?.diagnostic } }, ...cleanup] };
+        return { state: "retained", path: paths.staged, issues: [{ code: issue.code === ISSUE.operation ? ISSUE.recovery : issue.code, stage: "recovery", params: {},
+            message: message("downloadsRecoveryFailed"), diagnostic: { message: diagnosticText(error), path: context?.paths.final, detail: context?.diagnostic } }, ...cleanup] };
     }
 }
 
@@ -85,10 +78,7 @@ function keep(job, paths, outcome) {
 
     releaseRecoveredArtifact(job, paths.staged, recovered, cleanup);
 
-    const failure = new IssueError(describeFailure(
-        outcome.reasons,
-        `The finished PDF has been kept here:\n\n${recovered}`
-    ), { recovery: recovered, issues: [{ code: ISSUE.publication, stage: "publication", message: "The PDF could not be saved to its requested destination.", diagnostic: outcome.reasons }, ...cleanup, ...rescue.issues, ...(downloads.state === "recovered" ? [] : downloads.issues)] });
+    const failure = new IssueError(publicationFailureDetails(outcome.reasons, recovered), { recovery: recovered, issues: [{ code: ISSUE.publication, stage: "publication", params: {}, message: message("publicationDestinationFailed"), diagnostic: outcome.reasons }, ...cleanup, ...rescue.issues, ...(downloads.state === "recovered" ? [] : downloads.issues)] });
     return failure;
 }
 

@@ -32,7 +32,7 @@ test("runArgv reports the label and the cause, and carries the command", () => {
         () => runArgv(app, ["/bin/vips", "thumbnail"], "resizing photo.png"),
         (error) => {
             assert.match(error.message, /while resizing photo\.png/u);
-            assert.match(error.message, /exit 1/u);
+            assert.match(error.diagnostic.message, /exit 1/u);
             assert.ok(
                 !error.message.includes("/bin/vips"),
                 "the argv must not be in the message"
@@ -51,7 +51,7 @@ test("runArgv omits the context when given no label", () => {
     assert.throws(
         () => runArgv(app, ["/bin/vips"], ""),
         (error) => {
-            assert.match(error.message, /^Command failed\.\n/u);
+            assert.equal(error.message, "Command failed.");
             assert.ok(!error.message.includes("while"));
 
             return true;

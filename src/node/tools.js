@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -11,7 +12,7 @@ const {
 } = require("../backend/preflight.js");
 const { WINDOWS, localPath, standardize } = require("./paths.js");
 
-const { MINIMUM_PDFCPU_VERSION } = require("../backend/preflight.js");
+const { MINIMUM_PDFCPU_VERSION } = require("../core/setup.js");
 
 const TOOL_NAMES = ["vips", "vipsheader", "pdfcpu"];
 
@@ -36,7 +37,7 @@ function executable(name) {
     if (Object.hasOwn(env, override)) {
         const value = env[override];
         const file = fileAt(value);
-        if (!file) { throw new OperationError(`${override}=${JSON.stringify(value)} is not an absolute regular executable file.`); }
+        if (!file) { throw new OperationError(message("toolOverrideInvalid", { override: `${override}=${JSON.stringify(value)}` })); }
         return { file, override };
     }
     const search = WINDOWS ? Object.entries(env).find(([key]) => key.toUpperCase() === "PATH")?.[1] : env.PATH;
@@ -45,7 +46,7 @@ function executable(name) {
         const file = fileAt(path.join(directory, filename));
         if (file) { return { file, override: null }; }
     }
-    throw new OperationError(`${name} is not installed on the absolute executable search path.`);
+    throw new OperationError(message("toolMissingFromPath", { name }));
 }
 
 function validateTool(commands, argv, usable, { name, file, override }) {
@@ -53,8 +54,8 @@ function validateTool(commands, argv, usable, { name, file, override }) {
     const result = commands.request(argv);
     if (result.status !== 0 || result.error || !usable(result.stdout)) {
         const selected = override ? `${override}=${JSON.stringify(file)}` : name;
-        const prerequisite = name === "pdfcpu" ? ` Version ${MINIMUM_PDFCPU_VERSION} or later is required.` : "";
-        throw new OperationError(`${selected} failed its capability check.${prerequisite} ${(result.error || result.stderr || result.stdout || "").trim()}`.trimEnd());
+        const wording = message(name === "pdfcpu" ? "pdfcpuUnusable" : "toolUnusable", { name: selected, minimum: MINIMUM_PDFCPU_VERSION });
+        throw new OperationError(wording, { diagnostic: { message: (result.error || result.stderr || result.stdout || "").trim() } });
     }
 }
 

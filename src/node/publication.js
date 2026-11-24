@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const fs = require("node:fs");
 const { randomUUID } = require("node:crypto");
 const { OperationError } = require("../core/errors.js");
@@ -34,13 +35,13 @@ function claimGroup(directory, name, counter) {
         counter.next += 1;
     } catch (error) { if (error.code !== "EEXIST") { throw error; } }
     const group = fs.readFileSync(marker, "utf8");
-    if (!/^\d+$/u.test(group) || Number(group) >= counter.next) { throw new OperationError("The destination name comparison token could not be verified."); }
+    if (!/^\d+$/u.test(group) || Number(group) >= counter.next) { throw new OperationError(message("destinationComparisonTokenUnverified")); }
     return Number(group);
 }
 
 function removeNameProbe(directory, owned) {
     const observed = fs.lstatSync(directory, BIGINT);
-    if (!observed.isDirectory() || identity(observed) !== owned) { throw new OperationError("The destination comparison directory changed."); }
+    if (!observed.isDirectory() || identity(observed) !== owned) { throw new OperationError(message("destinationComparisonDirectoryChanged")); }
     fs.rmSync(directory, { recursive: true });
 }
 
@@ -51,13 +52,13 @@ function probeGroups(files, id, scope, counter) {
     let groups = [];
     let failure = null;
     try {
-        if (!owned || id !== files.directoryIdentity(folder)) { throw new OperationError("The destination name comparison could not be established."); }
+        if (!owned || id !== files.directoryIdentity(folder)) { throw new OperationError(message("destinationComparisonUnavailable")); }
         groups = scope.map(({ source, index }) => [index, claimGroup(directory, outputName(source), counter)]);
     } catch (error) { failure = error; }
     try { removeNameProbe(directory, owned); }
     catch (error) {
         const issues = failure ? issuesOf(failure, "planning") : [];
-        throw new OperationError("The destination comparison directory could not be removed.", { issues: [...issues, cleanupIssue(error, directory)] });
+        throw new OperationError(message("destinationComparisonDirectoryRemovalFailed"), { issues: [...issues, cleanupIssue(error, directory)] });
     }
     if (failure) { throw failure; }
     return groups;
@@ -104,13 +105,13 @@ function destinationOperations(files) {
         const folder = dirname(file), requested = basename(file);
         const directory = parents.get(file) ?? files.directoryIdentity(folder);
         if (directory !== files.directoryIdentity(folder) || !same(facts(file), expected)) {
-            throw new OperationError("The published PDF identity could not be confirmed before reading its name.");
+            throw new OperationError(message("publishedPdfIdentityUnverified"));
         }
         const entries = storedNames(folder);
         const candidates = entries.includes(requested) ? [requested] : entries.filter((name) => name.normalize("NFC") === requested.normalize("NFC"));
         const matching = candidates.map((name) => folder + name).filter((candidate) => same(facts(candidate), expected));
         if (matching.length !== 1 || !same(facts(file), expected) || !same(facts(matching[0]), expected) || directory !== files.directoryIdentity(folder)) {
-            throw new OperationError("The published PDF's stored filename could not be uniquely verified.");
+            throw new OperationError(message("publishedPdfNameAmbiguous"));
         }
         parents.delete(file);
         return matching[0];
@@ -124,7 +125,7 @@ function destinationOperations(files) {
     function openStaging(area) {
         fs.mkdirSync(area.directory, { mode: 0o700 });
         area.owned = identity(fs.lstatSync(area.directory, BIGINT));
-        if (!area.owned) { throw new OperationError("The staging directory identity could not be established."); }
+        if (!area.owned) { throw new OperationError(message("stagingDirectoryUnverified")); }
     }
 
     function closeStaging(area) {
@@ -135,7 +136,7 @@ function destinationOperations(files) {
                 fs.rmdirSync(area.directory);
                 return [];
             }
-            throw new OperationError("The staging directory is no longer owned by this run.");
+            throw new OperationError(message("stagingDirectoryOwnershipLost"));
         } catch (error) { return [cleanupIssue(error, area.directory)]; }
     }
 

@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { SUPPORTED_FORMATS } = require("../core/formats.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { OperationError, isUserCanceled } = require("../core/errors.js");
@@ -23,15 +24,15 @@ function normalizeImage(job, captured, source, page) {
 }
 
 function damaged(error, path) {
-    const issue = { ...sourceIssue("damaged", {}, { message: error.message, command: error.command ?? "" }), stage: "preparation", source: path };
-    const failure = new OperationError(`${path}: ${issue.message}`, { cause: error, issues: [issue] });
+    const issue = { ...sourceIssue("damaged", {}, { message: error.diagnostic?.message ?? error.message, command: error.command ?? "" }), stage: "preparation", source: path };
+    const failure = new OperationError(message("fileIssue", { path, reason: issue.message }), { cause: error, issues: [issue] });
     return failure;
 }
 
 function requireAdmission(imageFile, captured) {
     if (!matchesAdmission(imageFile.admission, captured)) {
         const issue = changedSourceIssue(imageFile.path, { admitted: imageFile.admission, captured });
-        const failure = new OperationError(`${imageFile.path}: ${issue.message}`, { issues: [issue] });
+        const failure = new OperationError(message("fileIssue", { path: imageFile.path, reason: issue.message }), { issues: [issue] });
         throw failure;
     }
 }

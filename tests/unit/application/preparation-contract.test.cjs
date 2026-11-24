@@ -98,7 +98,7 @@ test("decoder failure abandons the incomplete page and reports source and stage"
     assert.throws(() => preparePage(job, source, 0), (error) => {
         assert.equal(error.message, "/source.png: This image is damaged or incomplete.");
         assert.deepEqual(error.issues, [{
-            code: "damaged", stage: "preparation", source: "/source.png", message: "This image is damaged or incomplete.",
+            code: "damaged", stage: "preparation", params: {}, source: "/source.png", message: "This image is damaged or incomplete.",
             diagnostic: { message: "Decoder refused data.", command: "thumbnail" }
         }]);
         return true;

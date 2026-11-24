@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 
 const { actualPublicationPath, requireOriginal, unconfirmedClaim } = require("./publication-name.js");
 const { isPublished } = require("../core/artifacts.js");
@@ -43,8 +44,8 @@ function settled(job, paths, outcome) {
         requireOriginal(job.publication, { staged: paths.staged, expected: outcome.original, cause: null,
             candidate: { path: paths.final, identity: outcome.claimedIdentity, size: outcome.claimedSize } });
     } catch (error) {
-        const message = "The original PDF could not be verified and was not removed.";
-        throw new IssueError(message, { cause: error, issues: issuesOf(error, "cleanup").map((issue) => ({ ...issue, stage: "cleanup", message })) });
+        const wording = message("publicationOriginalRetained");
+        throw new IssueError(wording, { cause: error, issues: issuesOf(error, "cleanup").map((issue) => ({ ...issue, stage: "cleanup", params: {}, message: wording })) });
     }
     releaseOwnedArtifact(job, paths.staged);
     job.cleanupIssues.push(...clearAway(job.operations, outcome));

@@ -2,20 +2,21 @@
 const { basename } = require("./paths.js");
 const { isSupportedImage, supportedFormatList } = require("./formats.js");
 
-/* Receipt code for each selection refusal, and the sentence that explains it. */
+const { message } = require("./messages.js");
+
 const SELECTION_REASONS = Object.freeze({
-    folder: "This is a folder; select the images inside it.",
-    "unsupported-format": `This file is not a supported format; use ${supportedFormatList()}.`,
-    "not-a-file": "This file cannot be read; check that it still exists and that you have access.",
-    "not-a-path": "No file or folder exists at this path.",
-    "remote-url": "Remote URLs are not supported; download the file first.",
-    "not-a-folder": "This is not a folder; the path ends with a slash.",
-    package: "This is a package, not a folder of images.",
-    link: "This is a link; select the file it points to.",
-    "special-file": "This is not a regular file (a pipe, socket or device).",
-    unreadable: "This item could not be read.",
-    unexaminable: "This item could not be examined.",
-    "empty-folder": "This folder contains no supported images."
+    folder: "selectionFolder",
+    "unsupported-format": "selectionUnsupportedFormat",
+    "not-a-file": "sourceUnavailable",
+    "not-a-path": "selectionMissing",
+    "remote-url": "selectionRemoteUrl",
+    "not-a-folder": "selectionNotDirectory",
+    package: "selectionPackage",
+    link: "selectionLink",
+    "special-file": "selectionSpecialFile",
+    unreadable: "selectionUnreadable",
+    unexaminable: "selectionUnexaminable",
+    "empty-folder": "selectionEmptyFolder"
 });
 
 const KIND_CODES = Object.freeze({ package: "package", link: "link", other: "special-file", directory: "folder", missing: "not-a-path", unreadable: "unreadable", unexaminable: "unexaminable" });
@@ -29,7 +30,7 @@ function selectionReason(kind, path, regular) {
 
 function selectionRefusal(path, code, name = basename(path)) {
     if (!Object.hasOwn(SELECTION_REASONS, code)) { throw new Error(`Unknown selection refusal code: ${code}`); }
-    return { path, name, reason: SELECTION_REASONS[code], code, stage: "selection" };
+    return { path, name, reason: message(SELECTION_REASONS[code], { formats: supportedFormatList() }), code, stage: "selection" };
 }
 function selectionContext(selection) {
     return {

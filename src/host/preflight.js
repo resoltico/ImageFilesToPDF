@@ -1,5 +1,6 @@
 "use strict";
 const { OperationError } = require("../core/errors.js");
+const { describeSetupProblems } = require("../core/setup.js");
 
 const { shellQuote } = require("../backend/shell.js");
 const {
@@ -9,8 +10,7 @@ const {
     VIPSHEADER_PROBE_IMAGE,
     buildPdfcpuProbeArgv,
     isVipsUsable,
-    isPdfcpuUsable,
-    describeSetupProblems
+    isPdfcpuUsable
 } = require("../backend/preflight.js");
 const { probeArgv, probeImageArgv } = require("./shell.js");
 const { findTool, TOOL_NAMES, TOOL_SEARCH_PATH } = require("./tools.js");

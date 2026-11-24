@@ -132,7 +132,7 @@ the sibling repository.
   version. `Show in Finder` reveals every saved or recovered PDF; `Details` shows
   `key: value` lines and `Back` returns to the summary.
 - Command line: usage errors name the problem, show the run line and help hint,
-  and attempt a JSON receipt with state `invalid`; `--help` lists the required
+  and attempt a JSON receipt with state `invalid-request`; `--help` lists the required
   fields and a complete, ready-to-copy JSON example;
   prose precedes the one receipt attempt, and stderr sections are separated by
   one blank line; receipts share the state and

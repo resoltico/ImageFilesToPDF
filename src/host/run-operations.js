@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { commandLengthOf } = require("../backend/batching.js");
 const { HEADER_ARGV_BUDGET, runArgv, removeFile } = require("./shell.js");
 const { isDirectory, isRegularFile, verifyFileWritten } = require("./asking.js");
@@ -15,7 +16,7 @@ function runOperations(app) {
     return {
         fits,
         run(argv, label) {
-            if (!fits(argv)) { throw new OperationError("The command exceeds the argument budget."); }
+            if (!fits(argv)) { throw new OperationError(message("commandArgumentBudgetExceeded")); }
             return runArgv(app, argv, label);
         },
         resolve(item) { const path = inputItemToPosixPath(item); return path ? { path } : { refusal: describeUnresolved(item) }; },

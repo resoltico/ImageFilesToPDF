@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { describeSetupProblems } = require("../../../src/core/setup.js");
 const test = require("node:test");
 const {
     buildVipsProbeArgv,
@@ -8,8 +9,7 @@ const {
     isVipsheaderUsable,
     buildPdfcpuProbeArgv,
     isVipsUsable,
-    isPdfcpuUsable,
-    describeSetupProblems
+    isPdfcpuUsable
 } = require("../../../src/backend/preflight.js");
 
 test("the vips probe uses the flags the pipeline depends on", () => {

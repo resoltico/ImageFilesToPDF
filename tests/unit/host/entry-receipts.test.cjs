@@ -44,7 +44,7 @@ test("setup failure closes every progress surface before presenting its structur
     const closed=[];globalThis.Progress={get totalUnitCount(){return closed.at(-1);},set totalUnitCount(value){closed.push(value);}};
     assert.equal(run([["/source.png"],{}]),undefined);
     const [alert]=state.alerts;
-    assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","A required tool is missing or unusable."]);
+    assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","Setup failed."]);
     assert.deepEqual(alert.buttons,["OK", "Details"]);
     assert.match(alert.accessoryView.documentView.string,/brew install vips pdfcpu/u);
     assert.doesNotMatch(alert.accessoryView.documentView.string,/diagnostic|stack/u);

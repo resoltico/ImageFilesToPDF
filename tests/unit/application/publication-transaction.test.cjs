@@ -138,7 +138,7 @@ test("recovery releases ownership only after confirmation and retains classified
     assert.throws(()=>publishPdf(job,staged,target),(error)=>{
         assert.match(error.message,/The PDF could not be saved where it was meant to go\.\n\n/u);
         assert.match(error.message,/The finished PDF has been kept here:\n\n/u);
-        assert.deepEqual(error.issues[0],{code:"publication",stage:"publication",message:"The PDF could not be saved to its requested destination.",diagnostic:{code:13,domain:"NSPOSIXErrorDomain",state:"denied",message:"The PDF destination could not be claimed (denied)."}});
+        assert.deepEqual(error.issues[0],{code:"publication",stage:"publication",params:{},message:"The PDF could not be saved to its requested destination.",diagnostic:{code:13,domain:"NSPOSIXErrorDomain",state:"denied",message:"The PDF destination could not be claimed (denied)."}});
         return true;
     });
     assert.ok([...job.artifacts.values()].every(artifact=>artifact.state==="released"));

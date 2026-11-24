@@ -12,7 +12,7 @@ const document = { state: "saved", sources: ["/ok.png"], pages: 1, output: "/sav
 test("CLI writes one receipt and plain summary and returns the contract status", async () => {
     for (const [result, code] of [
         [runOutcome([document]), 0], [runOutcome([document], [{ path: "/bad.gif", reason: "unsupported" }]), 1],
-        [{ ...runOutcome(), state: "invalid" }, 2], [runOutcome([], [], [{ stage: "setup", message: "brew install vips pdfcpu" }]), 3],
+        [{ ...runOutcome(), state: "invalid-request" }, 2], [runOutcome([], [], [{ stage: "setup", message: "brew install vips pdfcpu" }]), 3],
         [{ ...runOutcome(), state: "canceled" }, 1],
         [runOutcome([], [], [{ code: "operation", stage: "setup", message: "Unavailable." }, { code: "canceled", stage: "setup", message: "User canceled." }]), 1]
     ]) {
@@ -35,7 +35,7 @@ test("nothing-to-convert retains refusals in the machine receipt", () => {
 });
 
 test("an invalid request lists its problems without conversion counts", async () => {
-    const result = { ...runOutcome([], [], [{ code: "usage", stage: "request", message: "Usage: run it properly" }]), state: "invalid" };
+    const result = { ...runOutcome([], [], [{ code: "usage", stage: "request", message: "Usage: run it properly" }]), state: "invalid-request" };
     const writes = [];
     await reportHeadless(result, (...args) => writes.push(args));
     assert.equal(writes[0][0], "The request is invalid.\n\nUsage: run it properly\n");
@@ -54,13 +54,13 @@ test("the command-line report lists only non-zero counts and ends with the elaps
 test("a run with nothing to count has no counts line", async () => {
     const writes = [];
     await reportHeadless({ ...runOutcome([], [], [{ code: "setup", stage: "setup", message: "Install vips." }]) }, (...args) => writes.push(args));
-    assert.equal(writes[0][0], "Finished with issues.\nNo PDF was created.\n\nOther issues:\nInstall vips.\n");
+    assert.equal(writes[0][0], "Setup failed.\n\nInstall vips.\n");
 });
 
 test("nothing admitted reports one issue sentence and lists the refusals once", async () => {
     const refused = [{ path: "/a/bad.gif", name: "bad.gif", reason: "This file is not a supported format.", code: "unsupported-format", stage: "selection" }];
     const result = noImagesOutcome(refused);
-    assert.deepEqual(result.issues, [{ code: "no-images", stage: "selection", message: "None of the selected items can be converted." }]);
+    assert.deepEqual(result.issues, [{ code: "no-images", stage: "selection", params: {}, message: "None of the selected items can be converted." }]);
     const writes = [];
     await reportHeadless(result, (...args) => writes.push(args));
     assert.equal(writes[0][0], "Nothing to convert.\n\n1 not included.\n\nNot included from your selection:\n/a/bad.gif: This file is not a supported format.\n");

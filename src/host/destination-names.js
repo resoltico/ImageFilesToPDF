@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { OperationError } = require("../core/errors.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { fileStem, dirname } = require("../core/paths.js");
@@ -6,7 +7,7 @@ const { outputNameForSeparate } = require("../core/naming.js");
 const { attributesAt, identityOf, kindOf, attributeText } = require("./native-file-attributes.js");
 
 function comparisonError(folder) {
-    return new OperationError(`Output names could not be compared in this destination: ${folder}`);
+    return new OperationError(message("destinationComparisonUnavailableAtPath", { folder }));
 }
 
 function resource(runtime, url, key) {
@@ -183,11 +184,11 @@ function removePrototypes(runtime) {
     const issues = [];
     for (const path of paths) {
         if (!runtime.manager.removeItemAtPathError(runtime.ns(path), runtime.ref())) {
-            issues.push({ code: ISSUE.cleanup, stage: "cleanup", message: "Temporary output-name comparisons could not be removed.", diagnostic: { path } });
+            issues.push({ code: ISSUE.cleanup, stage: "cleanup", params: {}, message: message("outputComparisonRemovalFailed"), diagnostic: { path } });
         }
     }
     if (issues.length > 0) {
-        const error = new OperationError("Temporary output-name comparisons could not be removed.", { issues });
+        const error = new OperationError(message("outputComparisonRemovalFailed"), { issues });
         throw error;
     }
 }
@@ -200,7 +201,7 @@ function managedGroups(runtime, sources) {
     catch (error) {
         if (failure) {
             const issues = [...issuesOf(failure, "planning"), ...issuesOf(error, "cleanup")];
-            failure = new OperationError("Output-name comparison failed.", { cause: failure, issues });
+            failure = new OperationError(message("outputComparisonFailed"), { cause: failure, issues });
         } else { failure = error; }
     }
     if (failure) { throw failure; }
@@ -210,8 +211,8 @@ function managedGroups(runtime, sources) {
 function workspaceDevice(runtime, path) {
     try { return directory(runtime, path).device; }
     catch (cause) {
-        const message = "The private working folder could not be inspected.";
-        const error = new OperationError(message, { cause, issues: issuesOf(cause, "planning").map((issue) => ({ ...issue, message,
+        const wording = message("privateWorkspaceInspectionFailed");
+        const error = new OperationError(wording, { cause, issues: issuesOf(cause, "planning").map((issue) => ({ ...issue, params: {}, message: wording,
             diagnostic: { ...issue.diagnostic, path, detail: issue.message } })) });
         throw error;
     }

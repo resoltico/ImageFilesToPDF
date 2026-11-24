@@ -155,7 +155,7 @@ async function verifyTransport(folder, photo) {
     assert.equal(broken.issues[0].code, "usage");
     const setup = parseReceipt(await cli(["--settings", configFile, "--", photo], folder, 3,
         { env: { ...process.env, IMAGE_FILES_TO_PDF_VIPS: path.join(folder, "missing.exe") } }));
-    assert.equal(setup.state, "invalid");
+    assert.equal(setup.state, "setup-failed");
 
     const output = path.join(folder, "broken stream.pdf");
     const source = path.join(folder, "broken stream.png");

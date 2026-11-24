@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { Buffer } = require("node:buffer");
 const { readSync } = require("node:fs");
 const { crc32 } = require("node:zlib");
@@ -15,7 +16,7 @@ const FRAME_FIELDS = { width: 4, height: 8, xOffset: 12, yOffset: 16, dispose: 2
 const LAST_DISPOSE_OP = 2;
 
 function requirePng(ok) {
-    if (!ok) { throw new OperationError("PNG image count could not be verified."); }
+    if (!ok) { throw new OperationError(message("pngCountUnverified")); }
 }
 
 function readAt(fd, size, position) {
@@ -111,6 +112,6 @@ function countPng(fd, fileSize) {
         observeChunk(fd, offset, chunk, state);
         offset = chunk.end;
     }
-    throw new OperationError("PNG image count exceeded the chunk limit.");
+    throw new OperationError(message("pngCountChunkLimit"));
 }
 module.exports = { countPng };

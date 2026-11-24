@@ -26,14 +26,14 @@ test("expected errors, stops, unknown faults and provided issues retain their di
     assert.equal(issuesOf(stop,"inspection")[0].code,"canceled");
     assert.equal(issuesOf(new OperationError("denied"),"capture")[0].code,"operation");
     assert.equal(issuesOf(new Error("bug"),"publication")[0].code,"fault");
-    assert.deepEqual(issuesOf({message:"bad"},"prepare"),[{code:"fault",stage:"prepare",message:"bad",diagnostic:{command:"",stack:""}}]);
+    assert.deepEqual(issuesOf({message:"bad"},"prepare"),[{code:"fault",stage:"prepare",params:{},message:"bad",diagnostic:{command:"",stack:""}}]);
     const issues=[{field:"resolutionLimit",code:"integer"}];
     assert.equal(issuesOf({issues},"setup"),issues);
 });
 
 test("unexpected null faults and wrapped programming faults remain identifiable",()=>{
     for(const error of [null,undefined]){
-        assert.deepEqual(issuesOf(error,"publication"),[{code:"fault",stage:"publication",message:"Unknown error",diagnostic:{command:"",stack:""}}]);
+        assert.deepEqual(issuesOf(error,"publication"),[{code:"fault",stage:"publication",params:{},message:"Unknown error",diagnostic:{command:"",stack:""}}]);
     }
     for(const cause of [new TypeError("bug"),new ReferenceError("bug")]){
         assert.equal(issuesOf(new OperationError("command",{cause}),"prepare")[0].code,"fault");
@@ -75,21 +75,17 @@ test("a failure before any outcome is a setup issue", () => {
     assert.deepEqual(failedRun(new OperationError("no vips")).issues.map((issue) => [issue.code, issue.stage]), [["operation", "setup"]]);
 });
 
-test("only pre-work expected setup failures are refused requests", () => {
-    const { isSetupRefusal } = require("../../../src/core/outcomes.js");
+test("pre-work setup refusals and faults have the same setup-failed outcome", () => {
     const issue = { code: "operation", stage: "setup", message: "No usable vipsheader." };
-    assert.equal(isSetupRefusal(issue), true);
-    assert.equal(isSetupRefusal({ ...issue, code: "fault" }), false);
-    assert.equal(isSetupRefusal({ ...issue, code: "canceled" }), false);
-    assert.equal(isSetupRefusal({ ...issue, stage: "preparation" }), false);
-    assert.equal(runOutcome([], [], [issue]).state, "invalid");
+    assert.equal(runOutcome([], [], [issue]).state, "setup-failed");
     assert.equal(runOutcome([saved], [], [issue]).state, "incomplete");
-    assert.equal(runOutcome([], [], [{ ...issue, code: "fault" }]).state, "incomplete");
+    assert.equal(runOutcome([], [], [{ ...issue, code: "fault" }]).state, "setup-failed");
+    assert.equal(runOutcome([], [], [{ ...issue, stage: "preparation" }]).state, "incomplete");
 });
 
 
 test("a setup refusal does not overwrite an already requested stop", () => {
     const stopped = [{ code: "operation", stage: "setup", message: "Missing tool." }, { code: "canceled", stage: "setup", message: "User canceled." }];
     assert.equal(runOutcome([], [], stopped).state, "canceled");
-    assert.equal(runOutcome([], [], [...stopped, { code: "invalid", stage: "settings" }]).state, "invalid");
+    assert.equal(runOutcome([], [], [...stopped, { code: "invalid", stage: "settings" }]).state, "invalid-request");
 });

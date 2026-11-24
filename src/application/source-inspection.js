@@ -1,5 +1,6 @@
 "use strict";
-const { OperationError, isUserCanceled, errorMessage, commandOf } = require("../core/errors.js");
+const { message } = require("../core/messages.js");
+const { OperationError, isUserCanceled, diagnosticText, commandOf } = require("../core/errors.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { sourceIssues } = require("../core/source-policy.js");
 const { REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata,
@@ -16,8 +17,8 @@ function expectedHeaderFailure(caught) {
 
 function failedInspection(caught) {
     const { error, issue } = expectedHeaderFailure(caught);
-    return { problem: issue.code === "damaged" ? "damaged" : headerFailureCode(errorMessage(error)),
-        diagnostic: { ...issue.diagnostic, message: errorMessage(error), command: commandOf(error) } };
+    return { problem: issue.code === "damaged" ? "damaged" : headerFailureCode(diagnosticText(error)),
+        diagnostic: { ...issue.diagnostic, message: diagnosticText(error), command: commandOf(error) } };
 }
 
 function pngFacts(sources, path, facts) {
@@ -29,7 +30,7 @@ function pngFacts(sources, path, facts) {
 function optionalField(app, tool, path, field) {
     try { return app.run(buildFieldArgv(tool, field, [path]), "checking optional image metadata"); }
     catch (error) {
-        if (fieldAbsent(errorMessage(error), field)) { return undefined; }
+        if (fieldAbsent(diagnosticText(error), field)) { return undefined; }
         throw error;
     }
 }
@@ -120,7 +121,7 @@ function inspectCaptured(job, owned, original) {
     const issues = sourceIssues(facts);
     if (issues.length > 0) {
         const issue = { ...issues[0], source: original };
-        const error = new OperationError(`${original}: ${issue.message}`, { issues: [issue] });
+        const error = new OperationError(message("fileIssue", { path: original, reason: issue.message }), { issues: [issue] });
         throw error;
     }
     return { ...owned, ...facts };

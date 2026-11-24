@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { registerArtifact } = require("../core/artifacts.js");
 const { OperationError } = require("../core/errors.js");
 
@@ -38,12 +39,12 @@ function verifyEveryPageArrived(job, stagedPath, expected) {
     ));
 
     if (found === 0) {
-        throw new OperationError("the PDF page count could not be verified");
+        throw new OperationError(message("pdfPageCountUnverified"));
     }
 
     if (found !== expected) {
         throw new OperationError(
-            `the PDF has ${found} pages where ${expected} were imported`
+            message("pdfPageCountMismatch", { found, expected })
         );
     }
 }

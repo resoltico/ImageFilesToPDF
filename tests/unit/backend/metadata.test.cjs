@@ -49,7 +49,7 @@ test("complete raw filenames are removed before inspecting isolated responses", 
     const text = `${path}: 400x200 uchar, 3 bands, srgb, jpegload\nwidth: 400\nheight: 200\nbands: 3\nfilename: ${path}\nvips-loader: jpegload\ninterpretation: srgb\n`;
     assert.deepEqual(readMetadata(text, path), { raw: expected, optional: [] });
     assert.equal(readMetadata(`${path}: no further header`, path).raw.width, 0);
-    assert.throws(() => readMetadata(`${base}width: 99\n`), (error) => error.issues[0].code === "damaged" && error.message === "Duplicate image metadata field: width");
+    assert.throws(() => readMetadata(`${base}width: 99\n`), (error) => error.issues[0].code === "damaged" && error.diagnostic.message === "Duplicate image metadata field: width");
     assert.equal(readMetadata(`ignored: comment\n${base}`).raw.width, 400);
 });
 
@@ -57,9 +57,9 @@ test("batch parsing preserves argv order and rejects incomplete or ambiguous blo
     const paths = ["/a one.png", "/b: two.jpg"];
     assert.deepEqual(readMetadataBatch(`${header(paths[0])}${header(paths[1])}`, paths), [{ raw: expected, optional: [] }, { raw: expected, optional: [] }]);
     assert.deepEqual(readMetadataBatch("", []), []);
-    assert.throws(() => readMetadataBatch(header(paths[1]), paths), /out of order/u);
-    assert.throws(() => readMetadataBatch(header(paths[0]), paths), /incomplete/u);
-    assert.throws(() => readMetadataBatch(`${header(paths[0])}${header(paths[0])}`, paths), /ambiguous/u);
+    assert.throws(() => readMetadataBatch(header(paths[1]), paths), (error) => /out of order/u.test(error.diagnostic.message));
+    assert.throws(() => readMetadataBatch(header(paths[0]), paths), (error) => /incomplete/u.test(error.diagnostic.message));
+    assert.throws(() => readMetadataBatch(`${header(paths[0])}${header(paths[0])}`, paths), (error) => /ambiguous/u.test(error.diagnostic.message));
     const withOptional = readMetadataBatch(header(paths[0], `${base}orientation: 6\nn-pages: 2\nicc-profile-data: 480 bytes\n`), [paths[0]]);
     assert.deepEqual(withOptional[0].optional, ["orientation", "n-pages", "icc-profile-data"]);
     assert.equal(withOptional[0].raw.orientation, 6);
@@ -75,8 +75,8 @@ test("direct optional-field responses override printable-dump claims and restore
     assert.equal(optionalValue(raw, "icc-profile-data", "cHJvZmlsZQ==").icc, true);
     assert.throws(() => optionalValue(raw, "typo", "1"), /Unknown optional/u);
     assert.deepEqual(scalarValues("1\r\n 2 \r\n", 2), ["1", "2"]);
-    assert.throws(() => scalarValues("1\n", 2), /incomplete/u);
-    assert.throws(() => scalarValues("1\n \n2", 3), /ambiguous/u);
+    assert.throws(() => scalarValues("1\n", 2), (error) => /incomplete/u.test(error.diagnostic.message));
+    assert.throws(() => scalarValues("1\n \n2", 3), (error) => /ambiguous/u.test(error.diagnostic.message));
 });
 
 test("only the actual absent-field diagnostic establishes an optional default", () => {

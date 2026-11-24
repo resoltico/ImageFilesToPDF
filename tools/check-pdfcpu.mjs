@@ -1,9 +1,7 @@
 /* Check the installed pdfcpu release before running the expensive CI gates. */
 import { execFileSync } from "node:child_process";
-import {
-    isPdfcpuUsable,
-    describeSetupProblems
-} from "../src/backend/preflight.js";
+import { isPdfcpuUsable } from "../src/backend/preflight.js";
+import { describeSetupProblems } from "../src/core/setup.js";
 import { PDFCPU_PIXEL_LIMIT } from "../src/core/limits.js";
 
 const version = execFileSync("pdfcpu", ["version"], { encoding: "utf8" });

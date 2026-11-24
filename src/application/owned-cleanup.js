@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { ISSUE } = require("../core/outcomes.js");
 const { OperationError, UserCanceled } = require("../core/errors.js");
 
@@ -10,7 +11,7 @@ function removeOwned(job, path) {
 function requireReleasedResources(job) {
     if (job.cleanupIssues.length > 0) {
         const error = job.cleanupIssues.some((issue) => issue.code === ISSUE.canceled)
-            ? new UserCanceled({ issues: job.cleanupIssues.slice() }) : new OperationError("Owned temporary work could not be released; conversion stopped to preserve the resource bound.", { issues: job.cleanupIssues.slice() });
+            ? new UserCanceled({ issues: job.cleanupIssues.slice() }) : new OperationError(message("ownedWorkReleaseFailed"), { issues: job.cleanupIssues.slice() });
         throw error;
     }
 }

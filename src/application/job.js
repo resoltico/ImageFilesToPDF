@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 
 const { OperationError } = require("../core/errors.js");
 const { calculatePageGeometry } = require("../core/geometry.js");
@@ -72,7 +73,7 @@ function documentPorts(job) {
             const { path } = page;
             requireReleasedResources(job);
             const {size} = job.publication.facts(path);
-            if (size < 0) { removeOwned(job, path); throw new OperationError("Page size is unknown."); }
+            if (size < 0) { removeOwned(job, path); throw new OperationError(message("pageSizeUnknown")); }
             return { ...page, size, group: page.placement.relativeScale };
         },
         fits: (staged, pages, placement) => job.operations.fits(buildPdfcpuImportArgv(job.tools.pdfcpu, partPdfPath(staged, job.parts.get(staged).length), pages, { geometry: job.geometry, placement, background: job.settings.background })),

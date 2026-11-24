@@ -3,6 +3,7 @@ const { APP_NAME, VERSION } = require("../core/version.js");
 const { SETTINGS_SCHEMA, DEFAULT_SETTINGS, validateSettings } = require("../core/settings.js");
 const { readTimestamp, TIMESTAMP_FORM } = require("../core/timestamps.js");
 const { OperationError } = require("../core/errors.js");
+const { issueMessage, issueMessages } = require("../core/messages.js");
 const fs = require("node:fs");
 const { TextDecoder } = require("node:util");
 const { localPath } = require("./paths.js");
@@ -19,9 +20,9 @@ function choiceCaption(choice) {
 function settingsHelp() {
     return Object.entries(SETTINGS_SCHEMA).map(([field, rule]) => {
         if (rule.kind === "integer") {
-            return `  ${field} — ${rule.name}: ${rule.minimum}–${rule.maximum}${rule.unit ? ` ${rule.unit}` : ""}${rule.note ? `; ${rule.note}` : ""}`;
+            return `  ${field} — ${rule.name}: ${rule.minimum}–${rule.maximum}${rule.unit ? ` ${rule.unit}` : ""}${rule.description ? `; ${rule.description}` : ""}`;
         }
-        return `  ${field} — ${rule.name}: ${rule.choices.map(choiceCaption).join(" | ")}${rule.hint ? `; ${rule.hint}` : ""}`;
+        return `  ${field} — ${rule.name}: ${rule.choices.map(choiceCaption).join(" | ")}${rule.description ? `; ${rule.description}` : ""}`;
     }).join("\n");
 }
 
@@ -45,26 +46,26 @@ function usageMessage(problem) {
     return `${problem}\nUsage: ${RUN_LINE}\nRun with --help to see the settings.`;
 }
 
-function requestError(code, message, diagnostic = null) {
-    const error = new OperationError(message, { issues: [{ code, stage: "request", message, ...(diagnostic ? { diagnostic } : {}) }] });
+function requestError(issue) {
+    const error = new OperationError(issue.message, { issues: [issue] });
     return error;
 }
 
-function settingsFileError(path, cause, diagnostic = null) {
-    return requestError("settings-file", `Settings file ${cause}: ${path}`, diagnostic);
+function settingsFileError(id, params, diagnostic = null) {
+    return requestError({ ...issueMessage("settings-file", "request", id, params), ...(diagnostic ? { diagnostic } : {}) });
 }
 
 function parsedJSON(text, path) {
     try { return JSON.parse(text); }
     catch (error) {
         const position = /position \d+|line \d+(?: column \d+)?/iu.exec(error.message);
-        throw settingsFileError(path, `is not valid JSON${position ? ` (${position[0]})` : ""}`);
+        throw settingsFileError(position ? "settingsFileInvalidJsonAt" : "settingsFileInvalidJson", { path, position: position?.[0] });
     }
 }
 
 function jsonConfiguration(text, path) {
     const value = parsedJSON(text, path);
-    if (!value || typeof value !== "object" || Array.isArray(value)) { throw settingsFileError(path, "is not an object"); }
+    if (!value || typeof value !== "object" || Array.isArray(value)) { throw settingsFileError("settingsFileNotObject", { path }); }
     return value;
 }
 
@@ -75,10 +76,10 @@ function configurationValues(configuration) {
     let timestamp = "";
     if (Object.hasOwn(configuration, "timestamp")) {
         try { timestamp = readTimestamp(configuration.timestamp); }
-        catch (error) { validated.issues.push({ code: "timestamp", field: "timestamp", stage: "request", message: error.message }); }
+        catch (error) { validated.issues.push({ code: "timestamp", field: "timestamp", stage: "request", params: {}, message: error.message }); }
     }
     if (validated.issues.length > 0) {
-        const error = new OperationError(validated.issues.map((issue) => issue.message).join("\n"), { issues: validated.issues });
+        const error = new OperationError(issueMessages(validated.issues), { issues: validated.issues });
         throw error;
     }
     return { settings: validated.settings, timestamp };
@@ -88,44 +89,44 @@ const DECODER = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 function settingsBytes(path) {
     try {
-        if (!fs.statSync(path).isFile()) { throw settingsFileError(path, "is not a regular file"); }
+        if (!fs.statSync(path).isFile()) { throw settingsFileError("settingsFileNotRegular", { path }); }
         // O_NONBLOCK prevents a replaced FIFO from blocking before fstat.
         // eslint-disable-next-line no-bitwise
         const flags = fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK ?? 0);
         const file = fs.openSync(path, flags);
         try {
-            if (!fs.fstatSync(file).isFile()) { throw settingsFileError(path, "is not a regular file"); }
+            if (!fs.fstatSync(file).isFile()) { throw settingsFileError("settingsFileNotRegular", { path }); }
             return fs.readFileSync(file);
         } finally { fs.closeSync(file); }
     } catch (error) {
         if (error.issues) { throw error; }
-        throw settingsFileError(path, error.code === "ENOENT" ? "not found" : "cannot be read", { message: error.message });
+        throw settingsFileError(error.code === "ENOENT" ? "settingsFileMissing" : "settingsFileUnreadable", { path }, { message: error.message });
     }
 }
 
 function readSettingsFile(path) {
     const data = settingsBytes(path);
-    if (data.length === 0) { throw settingsFileError(path, "is empty"); }
+    if (data.length === 0) { throw settingsFileError("settingsFileEmpty", { path }); }
     try {
         const text = DECODER.decode(data);
-        if (text.startsWith("\uFEFF")) { throw settingsFileError(path, "is not valid JSON (unexpected byte-order mark at position 0)"); }
+        if (text.startsWith("\uFEFF")) { throw settingsFileError("settingsFileBom", { path }); }
         return jsonConfiguration(text, path);
     } catch (error) {
         if (error.issues) { throw error; }
-        throw settingsFileError(path, "is not UTF-8");
+        throw settingsFileError("settingsFileNotUtf8", { path });
     }
 }
 
 function settingsPath(value) {
     try { return localPath(value); }
-    catch (error) { throw settingsFileError(value, "is not a valid local path or file URL", { message: error.message }); }
+    catch (error) { throw settingsFileError("settingsFileNotLocal", { path: value }, { message: error.message }); }
 }
 
 function cliCommand(args) {
     if (args.length === 1 && args[0] === "--help") { return { kind: "help", text: usage() }; }
     if (args.length === 1 && args[0] === "--version") { return { kind: "version", text: `${APP_NAME} ${VERSION}\n` }; }
     if (args[0] !== "--settings" || args[2] !== "--" || args.length <= FIRST_SOURCE || args.includes("")) {
-        throw requestError("usage", usageMessage(usageProblem(args)));
+        throw requestError({ code: "usage", stage: "request", params: {}, message: usageMessage(usageProblem(args)) });
     }
     const path = settingsPath(args[1]);
     return { kind: "run", invocation: { ...configurationValues(readSettingsFile(path)), inputItems: args.slice(FIRST_SOURCE) } };

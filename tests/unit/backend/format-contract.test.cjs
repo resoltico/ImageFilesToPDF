@@ -37,7 +37,7 @@ test("Ultra HDR file and buffer loaders expose JPEG and gain-map facts", () => {
 
 test("unmapped content names its loader without contradicting the extension", () => {
     assert.deepEqual(sourceIssues(rawMetadata({ "vips-loader": "gifload" })), [{
-        code: "unsupported-content", stage: "inspection",
+        code: "unsupported-content", stage: "inspection", params: { formats: "JPEG, PNG, HEIC, TIFF, WebP or AVIF" },
         message: "This file's content is not a supported still image; use JPEG, PNG, HEIC, TIFF, WebP or AVIF.",
         diagnostic: { loader: "gifload" }
     }]);

@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { hostError } = require("./cancellation.js");
 
 const { RM, RMDIR, MKTEMP } = require("./backend-executables.js");
@@ -28,11 +29,11 @@ function runCommand(app, command, label) {
         return app.doShellScript(executing);
     } catch (caught) {
         const error = hostError(caught);
-        const context = label ? ` while ${label}` : "";
+        const params = label ? { label } : {};
 
         const failure = new OperationError(
-            `Command failed${context}.\n\n${errorMessage(error)}`,
-            { cause: error, command: executing }
+            message(label ? "nativeCommandFailedForOperation" : "nativeCommandFailed", params),
+            { cause: error, command: executing, params, diagnostic: { message: errorMessage(error) } }
         );
 
         throw failure;
@@ -53,7 +54,7 @@ function probeImageArgv(app, argumentsList, image) {
 }
 
 function runHeaderArgv(app, argumentsList, label) {
-    if (commandLengthOf(argumentsList) > HEADER_ARGV_BUDGET) { throw new OperationError("The image header command exceeds the argument budget."); }
+    if (commandLengthOf(argumentsList) > HEADER_ARGV_BUDGET) { throw new OperationError(message("headerArgumentBudgetExceeded")); }
     return runArgv(app, argumentsList, label);
 }
 

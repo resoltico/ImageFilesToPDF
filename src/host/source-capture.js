@@ -1,26 +1,27 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { attributesAt, attributeText, identityOf, kindOf } = require("./native-file-attributes.js");
 const { hostError } = require("./cancellation.js");
-const { OperationError, isUserCanceled, errorMessage } = require("../core/errors.js");
+const { OperationError, isUserCanceled, diagnosticText } = require("../core/errors.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { captureIssue, changedSourceIssue } = require("../core/source-policy.js");
 
 function sourceFacts(context, path) {
     const { manager, ns, objc } = context;
     const attributes = attributesAt(manager, ns, path);
-    if (!attributes) { throw new OperationError("Source attributes are unavailable."); }
+    if (!attributes) { throw new OperationError(message("sourceAttributesUnavailable")); }
     const identity = identityOf(objc, ns, attributes);
     const size = attributeText(objc, attributes, ns.NSFileSize);
     const version = [Number(attributes.objectForKey(ns.NSFileModificationDate).timeIntervalSince1970),
         Number(attributes.objectForKey(ns.NSFileCreationDate).timeIntervalSince1970)];
     if (kindOf(objc, ns, attributes) !== "NSFileTypeRegular" || !identity || !/^\d+$/u.test(size) || version.some((value) => !Number.isFinite(value))) {
-        throw new OperationError("Source must be an identifiable regular non-link file with readable version facts.");
+        throw new OperationError(message("sourceIdentityUnverified"));
     }
     return { identity, size, version: [...version, size].join(":") };
 }
 
 function captureFailure(path, issue, cause) {
-    const failure = new OperationError(`${path}: ${issue.message}`, { cause, issues: [issue] });
+    const failure = new OperationError(message("fileIssue", { path, reason: issue.message }), { cause, issues: [issue] });
     return failure;
 }
 
@@ -30,7 +31,7 @@ function captureSource(context, path, destination) {
         const before = sourceFacts(context, path);
         const error = ns();
         if (!manager.copyItemAtPathToPathError(ns(path), ns(destination), error)) {
-            throw new OperationError(String(objc.unwrap(error.localizedDescription)));
+            throw new OperationError(message("sourceCaptureFailed"), { diagnostic: { message: String(objc.unwrap(error.localizedDescription)) } });
         }
         const after = sourceFacts(context, path);
         const captured = sourceFacts(context, destination);
@@ -41,17 +42,17 @@ function captureSource(context, path, destination) {
     } catch (caught) {
         const error = hostError(caught);
         if (isUserCanceled(error) || error.issues || issuesOf(error, "capture")[0].code === ISSUE.fault) { throw error; }
-        throw captureFailure(path, captureIssue(path, { message: errorMessage(error) }), error);
+        throw captureFailure(path, captureIssue(path, { message: diagnosticText(error) }), error);
     }
 }
 
 function pngCount(context, path) {
     const { ns, objc } = context;
     const source = ns.CGImageSourceCreateWithURL(ns.NSURL.fileURLWithPath(path), null);
-    if (!source || objc.castRefToObject(source).isNil()) { throw new OperationError("PNG image count is unavailable."); }
+    if (!source || objc.castRefToObject(source).isNil()) { throw new OperationError(message("pngCountUnavailable")); }
     try {
         const count = Number(ns.CGImageSourceGetCount(source));
-        if (!Number.isInteger(count) || count < 1) { throw new OperationError("Invalid PNG image count."); }
+        if (!Number.isInteger(count) || count < 1) { throw new OperationError(message("pngCountInvalid")); }
         return count;
     } finally { ns.CFRelease(source); }
 }

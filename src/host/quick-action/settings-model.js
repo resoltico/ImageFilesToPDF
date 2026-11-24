@@ -7,7 +7,7 @@ const { formSummary } = require("./output-description.js");
 function controlFor(field) {
     const rule = SETTINGS_SCHEMA[field];
     return { field, label: `${rule.name}:`, prompt: rule.kind === "integer" ? `${rule.name} (${rule.minimum}–${rule.maximum}${rule.unit ? ` ${rule.unit}` : ""}):` : `${rule.name}:`, defaultValue: rule.default,
-        defaultAnswer: String(rule.default), minimum: rule.minimum, maximum: rule.maximum, hint: rule.hint,
+        defaultAnswer: String(rule.default), minimum: rule.minimum, maximum: rule.maximum, hint: rule.formHint,
         choices: (rule.choices ?? []).map((choice) => ({ value: choice.value, label: choice.label ?? `${choice.name} (${choice.value})` })) };
 }
 const CONTROLS = Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, controlFor(field)]));

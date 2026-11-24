@@ -1,4 +1,5 @@
 "use strict";
+const { message, issueMessage } = require("../core/messages.js");
 const { IssueError, isUserCanceled } = require("../core/errors.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 
@@ -26,14 +27,14 @@ function pageQueue(ports, context) {
     const clear = () => {
         const issues = removePages(ports, pages);
         pages = []; bytes = 0;
-        if (issues.length > 0) { const error = new IssueError("Page cleanup failed.", { issues }); throw error; }
+        if (issues.length > 0) { const error = new IssueError(message("pageCleanupFailed"), { issues }); throw error; }
     };
     const flush = () => {
         if (pages.length > 0) {
             context.stage = "import";
             const paths = pages.map((page) => page.path);
             if (!ports.fits(context.artifact.path, paths, pages[0].placement)) {
-                throw new IssueError("The PDF import command exceeds the argument budget.");
+                throw new IssueError(message("pdfImportArgumentBudgetExceeded"));
             }
             ports.import(context.artifact.path, paths, pages[0].placement);
             clear();
@@ -93,7 +94,7 @@ function resolveValidationFailure(context) {
         if (record.issues.every((issue) => issue.code === ISSUE.operation || issue.code === ISSUE.canceled)) {
             artifact.state = "building";
         } else {
-            record.issues.push({ code: ISSUE.fault, stage: "validation", message: `Validation was not confirmed; the candidate PDF remains here:\n${artifact.path}` });
+            record.issues.push(issueMessage(ISSUE.fault, "validation", "validationUnconfirmed", { path: artifact.path }));
         }
     }
 }

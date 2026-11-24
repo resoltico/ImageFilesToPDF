@@ -30,7 +30,7 @@ function convert(status, files, file=config, options={}) {
     const result=command(status,["--settings",file,"--",...files],options);
     assert.equal(result.stdout.trim().split("\n").length,1,"one receipt line");
     const receipt=parseReceipt(result.stdout);
-    assert.ok(["complete","incomplete","invalid","canceled"].includes(receipt.state));
+    assert.ok(["complete","incomplete","invalid-request","setup-failed","canceled"].includes(receipt.state));
     // The stderr report has no version line, no zero counts, and ends with the elapsed time when known.
     assert.doesNotMatch(result.stderr,/Image Files to PDF \d|(?:^|; )0 \w/mu);
     if (receipt.elapsed) {assert.ok(result.stderr.endsWith(`\n\nElapsed: ${receipt.elapsed}\n`),result.stderr);}
@@ -59,7 +59,7 @@ function refusal(receipt, filename, code) {
 function settingsError(filename, contents, cause) {
     if (contents!==undefined) {fs.writeFileSync(at(filename),contents);}
     const receipt=convert(2,["photo.jpg"],filename);
-    assert.equal(receipt.state,"invalid");
+    assert.equal(receipt.state,"invalid-request");
     assert.equal(receipt.documents.length,0);
     assert.ok(receipt.issues.some((issue)=>issue.message.includes(at(filename))&&cause.test(issue.message)),JSON.stringify(receipt.issues));
 }
@@ -180,7 +180,7 @@ function grammar() {
         [["--settings",config],"--settings needs a settings file, the -- separator, and at least one path."],[["--bogus"],"Unknown option: --bogus."],
         [["--help","extra"],"--help and --version take no other arguments."],[["--settings","","--",config],"An argument is empty."]]) {
         const started=Date.now();const result=command(2,args,{timeout:2000});
-        assert.ok(Date.now()-started<2000);assert.equal(parseReceipt(result.stdout).state,"invalid");
+        assert.ok(Date.now()-started<2000);assert.equal(parseReceipt(result.stdout).state,"invalid-request");
         assert.equal(result.stderr,`The request is invalid.\n\n${problem}\n${runLine}\n`,"a usage error is one problem and the run line, not the help");
     }
     const help=command(0,["--help"],{timeout:2000});
@@ -199,7 +199,7 @@ function readerErrors() {
     for(const [filename,changes,cause] of [["invalid.json",{resolutionLimit:1018},/resolutionLimit/u],["calendar.json",{timestamp:"20260230_010203"},/timestamp/u]]) {
         fs.writeFileSync(at(filename),JSON.stringify({...settings,...changes}));
         const receipt=convert(2,["photo.jpg"],filename);
-        assert.equal(receipt.state,"invalid");assert.ok(receipt.issues.some((issue)=>cause.test(issue.message)));
+        assert.equal(receipt.state,"invalid-request");assert.ok(receipt.issues.some((issue)=>cause.test(issue.message)));
     }
 }
 
@@ -251,13 +251,13 @@ function placementAndNaming(pdf) {
 
 function setupRefusals() {
     const setup=convert(3,["photo.jpg"],config,{env:{...process.env,IMAGE_FILES_TO_PDF_VIPS:"/usr/bin/true"}});
-    assert.equal(setup.state,"invalid");
+    assert.equal(setup.state,"setup-failed");
     assert.ok(setup.issues.some((issue)=>issue.stage==="setup"));
     for (const override of ["/usr/bin/false",work,"relative-vipsheader","/no-such-fieldtest-vipsheader"]) {
         const result=command(3,["--settings",config,"--","photo.jpg"],{env:{...process.env,IMAGE_FILES_TO_PDF_VIPSHEADER:override}});
         const receipt=parseReceipt(result.stdout);
-        assert.equal(receipt.state,"invalid");assert.deepEqual(receipt.documents,[]);assert.deepEqual(receipt.rejected,[]);
-        assert.match(result.stderr,/^A required tool is missing or unusable\./u);
+        assert.equal(receipt.state,"setup-failed");assert.deepEqual(receipt.documents,[]);assert.deepEqual(receipt.rejected,[]);
+        assert.match(result.stderr,/^Setup failed\./u);
         assert.ok(result.stderr.includes("IMAGE_FILES_TO_PDF_VIPSHEADER="));
         assert.ok(result.stderr.includes(JSON.stringify(override)));
         assert.doesNotMatch(result.stderr,/brew install|brew upgrade/u);

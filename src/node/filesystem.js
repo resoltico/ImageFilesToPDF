@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const fs = require("node:fs");
 const path = require("node:path");
 const { platform } = require("node:process");
@@ -25,7 +26,7 @@ function identity(stats) {
 
 function fileFacts(stats) {
     const id = stats?.isFile() ? identity(stats) : "";
-    if (!id) { throw new OperationError("Source must be an identifiable regular non-link file with readable version facts."); }
+    if (!id) { throw new OperationError(message("sourceIdentityUnverified")); }
     return { identity: id, size: String(stats.size), version: [stats.mtimeNs, stats.ctimeNs, stats.birthtimeNs, stats.size].join(":") };
 }
 
@@ -51,7 +52,7 @@ function checkedPath(windows, file, { owned = false } = {}) {
     const leaf = prefixes.pop();
     const attributes = windows ? windows.attributes(leaf) : "ordinary";
     if (attributes === "missing" || attributes === "link") { return { kind: attributes }; }
-    if (!["ordinary", "hidden"].includes(attributes)) { throw new OperationError(`Windows file attributes could not be established. Response: ${JSON.stringify(attributes)}`); }
+    if (!["ordinary", "hidden"].includes(attributes)) { throw new OperationError(message("nativeFileAttributesUnavailable"), { diagnostic: { attributes } }); }
     for (const part of prefixes) {
         const stats = fs.lstatSync(part, BIGINT);
         if (stats.isDirectory()) {
@@ -69,23 +70,23 @@ function checkedPath(windows, file, { owned = false } = {}) {
 
 function changedSource(file) {
     const issue = changedSourceIssue(file);
-    return new OperationError(`${file}: ${issue.message}`, { issues: [issue] });
+    return new OperationError(message("fileIssue", { path: file, reason: issue.message }), { issues: [issue] });
 }
 
 function copyHandle(fd, out, size) {
-    if (!Number.isSafeInteger(size)) { throw new OperationError("The source size cannot be represented exactly."); }
+    if (!Number.isSafeInteger(size)) { throw new OperationError(message("sourceSizeUnrepresentable")); }
     const data = Buffer.allocUnsafe(BLOCK_SIZE);
     for (let position = 0; position < size;) {
         const read = fs.readSync(fd, data, 0, Math.min(data.length, size - position), position);
-        if (!read) { throw new OperationError("The source ended while it was being copied."); }
+        if (!read) { throw new OperationError(message("sourceEndedDuringCapture")); }
         for (let offset = 0; offset < read;) {
             const written = fs.writeSync(out, data, offset, read - offset);
-            if (!written) { throw new OperationError("The private copy could not be written."); }
+            if (!written) { throw new OperationError(message("privateCopyUnwritable")); }
             offset += written;
         }
         position += read;
     }
-    if (fs.fstatSync(out, BIGINT).size !== BigInt(size)) { throw new OperationError("The private copy size could not be verified."); }
+    if (fs.fstatSync(out, BIGINT).size !== BigInt(size)) { throw new OperationError(message("privateCopySizeUnverified")); }
 }
 
 function storedNames(directory) {
@@ -127,7 +128,7 @@ function localFilesystem(windows) {
             return fileFacts(found.kind === "file" ? found.stats : null);
         } catch (error) {
             if (error instanceof OperationError) { throw error; }
-            throw new OperationError("Source attributes are unavailable.", { cause: error });
+            throw new OperationError(message("sourceAttributesUnavailable"), { cause: error });
         }
     }
 
@@ -143,7 +144,7 @@ function localFilesystem(windows) {
             if (platform === "darwin") {
                 const head = Buffer.alloc(MAC_ALIAS_MAGIC.length);
                 fs.readSync(fd, head, 0, head.length, 0);
-                if (head.equals(MAC_ALIAS_MAGIC)) { throw new OperationError("Finder aliases must be resolved before conversion."); }
+                if (head.equals(MAC_ALIAS_MAGIC)) { throw new OperationError(message("finderAliasUnresolved")); }
             }
             const result = use(fd, opened);
             if (!sameFile(opened, fileFacts(fs.fstatSync(fd, BIGINT))) || !sameFile(opened, facts(file))) { throw changedSource(file); }
@@ -162,13 +163,13 @@ function localFilesystem(windows) {
         } catch (error) {
             if (error.issues) { throw error; }
             const issue = captureIssue(file, { message: error.message });
-            throw new OperationError(`${file}: ${issue.message}`, { cause: error, issues: [issue] });
+            throw new OperationError(message("fileIssue", { path: file, reason: issue.message }), { cause: error, issues: [issue] });
         }
     }
 
     function directoryIdentity(directory) {
         const found = checked(directory);
-        if (found.kind !== "directory" || !found.identity) { throw new OperationError(`The destination directory could not be verified: ${directory}`); }
+        if (found.kind !== "directory" || !found.identity) { throw new OperationError(message("destinationDirectoryUnverified", { directory })); }
         return found.identity;
     }
 

@@ -1,11 +1,20 @@
 "use strict";
-const { isSetupRefusal } = require("./outcomes.js");
+const { RUN_OUTCOME } = require("./outcomes.js");
 const { dirname, basename } = require("./paths.js");
 
+const FIXED_SUMMARIES = new Map([
+    [RUN_OUTCOME.complete, "all-saved"],
+    [RUN_OUTCOME.incomplete, null],
+    [RUN_OUTCOME.canceled, "stopped"],
+    [RUN_OUTCOME.invalidRequest, "invalid"],
+    [RUN_OUTCOME.setupFailed, "setup"]
+]);
+
 function summaryKind(outcome, counts) {
-    if (outcome.state === "invalid" && outcome.issues.some(isSetupRefusal)) { return "setup"; }
-    if (outcome.state === "invalid") { return "invalid"; }
-    if (outcome.state === "canceled" || counts["not-started"] > 0) { return "stopped"; }
+    const kind = FIXED_SUMMARIES.get(outcome.state);
+    if (kind === undefined) { throw new Error(`Unknown run outcome: ${outcome.state}`); }
+    if (kind) { return kind; }
+    if (counts["not-started"] > 0) { return "stopped"; }
     if (outcome.documents.length === 0 && outcome.issues.every((issue) => issue.code === "no-images")) { return "nothing-to-convert"; }
     if (counts.saved === outcome.documents.length && counts.saved > 0 && outcome.issues.length === 0 &&
         outcome.documents.every((document) => document.issues.length === 0)) { return "all-saved"; }

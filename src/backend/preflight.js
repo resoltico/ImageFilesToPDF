@@ -7,7 +7,7 @@ const { FAIL_ON_DAMAGE } = require("./commands.js");
  * a release floor: version does not load or initialize user configuration.
  */
 
-const MINIMUM_PDFCPU_VERSION = "0.16.4";
+const { MINIMUM_PDFCPU_VERSION } = require("../core/setup.js");
 
 const PROBE_IMAGE = "/nonexistent-image-files-to-pdf-preflight.png";
 const PROBE_OUTPUT = "/nonexistent-image-files-to-pdf-preflight.v";
@@ -73,53 +73,12 @@ function isPdfcpuUsable(probeOutput) {
     return true;
 }
 
-const INSTALL_COMMAND = "brew install vips pdfcpu";
-const HOMEBREW_URL = "https://brew.sh";
-
-function problemReason(problem) {
-    if (problem.kind === "missing") { return `${problem.tool} is not installed.`; }
-    if (problem.tool === "vipsheader") { return "vipsheader could not read the built-in PNG image."; }
-    if (problem.tool === "pdfcpu") {
-        return `pdfcpu could not report a supported stable version. Version ${MINIMUM_PDFCPU_VERSION} or later is required.`;
-    }
-    return `${problem.tool} is installed but too old: it does not accept ${problem.flags}.`;
-}
-
-function describeProblem(problem) {
-    const reason = problemReason(problem);
-    return problem.override
-        ? `- ${problem.override.name}=${JSON.stringify(problem.override.value)} is not usable as ${problem.tool}. ${reason}`
-        : `- ${reason}`;
-}
-
-/*
- * One message lists every problem and the installation or upgrade commands.
- * Reporting only the first problem makes the user install, retry, and discover
- * the next one.
- */
-function describeSetupProblems(problems, hasHomebrew) {
-    const automatic = problems.filter((problem) => !problem.override);
-    const commands = automatic.some((problem) => problem.kind === "unusable")
-        ? `${INSTALL_COMMAND}\nbrew upgrade vips pdfcpu`
-        : INSTALL_COMMAND;
-    const remedies = [];
-    if (problems.some((problem) => problem.override)) { remedies.push("Fix or unset the named tool overrides, then try again."); }
-    if (automatic.length > 0) {
-        remedies.push(hasHomebrew
-            ? `Run this in Terminal:\n\n${commands}`
-            : `Install Homebrew first, from ${HOMEBREW_URL}\n\nthen run:\n\n${commands}`);
-    }
-    return `Setup needed.\n\n${problems.map(describeProblem).join("\n")}\n\n${remedies.join("\n\n")}`;
-}
-
 module.exports = {
-    MINIMUM_PDFCPU_VERSION,
     buildVipsProbeArgv,
     buildVipsheaderProbeArgv,
     VIPSHEADER_PROBE_IMAGE,
     isVipsheaderUsable,
     buildPdfcpuProbeArgv,
     isVipsUsable,
-    isPdfcpuUsable,
-    describeSetupProblems
+    isPdfcpuUsable
 };

@@ -36,7 +36,7 @@ test("a place that cannot be made is not one this run may clear away", () => {
         const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024);
 
         assert.equal(outcome.area, null, "nothing of it is this run's");
-        assert.match(outcome.error.message, /File exists/u);
+        assert.match(outcome.error.diagnostic.message, /File exists/u);
         assert.match(
             outcome.error.message,
             /making a place for the PDF in the output folder/u,
@@ -61,7 +61,7 @@ test("a copy that failed still made the place it was going into", () => {
     const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024);
 
     assert.equal(outcome.area, AREA);
-    assert.match(outcome.error.message, /no space left/u);
+    assert.match(outcome.error.diagnostic.message, /no space left/u);
 });
 
 test("a copy is checked against the size it should have", () => {

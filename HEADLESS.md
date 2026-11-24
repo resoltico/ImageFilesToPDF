@@ -111,7 +111,7 @@ successful conversion can still exit 0.
 
 | Field | Meaning |
 | --- | --- |
-| `state` | `complete`, `incomplete`, `canceled` or `invalid` |
+| `state` | `complete`, `incomplete`, `canceled`, `invalid-request` or `setup-failed` |
 | `documents` | One record per planned PDF, in order |
 | `rejected` | Selected items that were not admitted |
 | `issues` | Problems affecting the request as a whole |
@@ -119,9 +119,9 @@ successful conversion can still exit 0.
 | `elapsed` | Human-readable batch processing time, including output planning, through completion; excludes tool setup, source inspection and dialogs, and is absent before processing |
 
 `complete` requires every PDF saved, nothing rejected and no issues.
-Usage errors and rejected settings have state `invalid` and exit 2; an expected
-tool-setup refusal is also `invalid` and exits 3 with the headline
-"A required tool is missing or unusable." A canceled run exits 1, including a stop during setup. A stop that leaves work undone is `canceled`;
+Usage errors and rejected settings have state `invalid-request` and exit 2.
+Setup failures have state `setup-failed` and exit 3. A canceled run exits 1,
+including a stop during setup. A stop that leaves work undone is `canceled`;
 a stop that arrives after everything was saved does not erase the saved PDFs. An
 abrupt process end, `SIGKILL` or a failed stdout cannot guarantee a receipt.
 
@@ -169,8 +169,8 @@ filename that looks like a URI scheme, such as `photo:one.jpg`, use `./photo:one
 
 Every issue and every `rejected` entry carries a `code`, a `stage` and a message:
 `message` for issues, `reason` for rejected entries, which also carry `path` and
-`name`. An issue may also carry `field`, `source` and `diagnostic`; commands,
-native errors appear in `diagnostic`. Receipts omit every structured `stack` key,
+`name`. An issue carries named message parameters in `params` and may include `field`,
+`source` and `diagnostic`. Commands and native errors appear in `diagnostic`. Receipts omit every structured `stack` key,
 including nested diagnostic objects; user text containing the word “stack” is
 unchanged. Technical diagnostic records carry `code` and `message`, with optional
 `stage` and varying JSON details. An `unsupported-content`

@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("./messages.js");
 const { zeroPad } = require("./numbers.js");
 const TIMESTAMP_FIELD_WIDTH = 2;
 const YEAR_WIDTH = 4;
@@ -23,7 +24,7 @@ function isTimestamp(value) {
 }
 
 function readTimestamp(value) {
-    if (!isTimestamp(value)) { throw new Error(`The timestamp must be a real local date-time in ${TIMESTAMP_FORM} form.`); }
+    if (!isTimestamp(value)) { throw new Error(message("timestampInvalid", { form: TIMESTAMP_FORM })); }
     return value;
 }
 module.exports = { TIMESTAMP_FORM, makeTimestamp, isTimestamp, readTimestamp };

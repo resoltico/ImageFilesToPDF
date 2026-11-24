@@ -32,13 +32,13 @@ test("defaults are domain values independent of popup order",()=>{
 });
 
 test("settings issue records keep stable fields, codes, stages and bounded explanations",()=>{
-    assert.deepEqual(validateSettings(null),{issues:[{code:"object",stage:"settings",message:"Settings must be an object."}]});
+    assert.deepEqual(validateSettings(null),{issues:[{code:"object",stage:"settings",params:{},message:"Settings must be an object."}]});
     const bad={...DEFAULT_SETTINGS,paperSize:"Legal",resolutionLimit:true,background:"purple",typo:1};
     assert.deepEqual(validateSettings(bad).issues,[
-        {field:"typo",code:"unknown",stage:"settings",message:"Unknown setting: typo."},
-        {field:"paperSize",code:"choice",stage:"settings",message:"Paper size must be one of: A4, Letter."},
-        {field:"resolutionLimit",code:"integer",stage:"settings",message:"Maximum resolution must be a whole number from 72 to 1017.",diagnostic:{expectedType:"number",actualType:"boolean"}},
-        {field:"background",code:"color",stage:"settings",message:"Page background must be six hexadecimal digits, for example #C7DAE8. The # is optional, and transparency is not supported."}
+        {field:"typo",code:"unknown",stage:"settings",params:{field:"typo"},message:"Unknown setting: typo."},
+        {field:"paperSize",code:"choice",stage:"settings",params:{subject:"Paper size",choices:"A4, Letter"},message:"Paper size must be one of: A4, Letter."},
+        {field:"resolutionLimit",code:"integer",stage:"settings",params:{subject:"Maximum resolution",minimum:72,maximum:1017},message:"Maximum resolution must be a whole number from 72 to 1017.",diagnostic:{expectedType:"number",actualType:"boolean"}},
+        {field:"background",code:"color",stage:"settings",params:{subject:"Page background"},message:"Page background must be six hexadecimal digits, for example #C7DAE8. The # is optional, and transparency is not supported."}
     ]);
     assert.throws(()=>normalizeSettings(bad),(error)=>error.message===validateSettings(bad).issues.map((issue)=>issue.message).join("\n"));
 });

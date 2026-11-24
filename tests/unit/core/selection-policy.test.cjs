@@ -22,7 +22,7 @@ test("core owns file-selection policy and its receipt codes",()=>{
 test("every selection refusal code reads as a full sentence",()=>{
     assert.deepEqual(Object.keys(SELECTION_REASONS),["folder","unsupported-format","not-a-file","not-a-path","remote-url","not-a-folder",
         "package","link","special-file","unreadable","unexaminable","empty-folder"]);
-    for(const [code,reason] of Object.entries(SELECTION_REASONS)) { assert.match(reason,/^[A-Z].*\.$/u,code); }
+    for(const code of Object.keys(SELECTION_REASONS)) { assert.match(selectionRefusal("/x",code).reason,/^[A-Z].*\.$/u,code); }
 });
 
 for(const format of ["JPEG","PNG","TIFF","HEIF","WebP"]) {
@@ -30,9 +30,9 @@ for(const format of ["JPEG","PNG","TIFF","HEIF","WebP"]) {
 }
 
 test("source inspection issues retain their domain code, stage and explanation",()=>{
-    assert.deepEqual(sourceIssues({format:"SVG",pages:1}),[{code:"not-an-image",stage:"inspection",message:"This file is not a supported still raster image."}]);
-    assert.deepEqual(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages:0}),[{code:"damaged",stage:"inspection",message:"This image is damaged or incomplete."}]);
-    assert.deepEqual(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages:2}),[{code:"multiple-images",stage:"inspection",message:"This file contains 2 images; only single images are supported."}]);
+    assert.deepEqual(sourceIssues({format:"SVG",pages:1}),[{code:"not-an-image",stage:"inspection",params:{},message:"This file is not a supported still raster image."}]);
+    assert.deepEqual(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages:0}),[{code:"damaged",stage:"inspection",params:{},message:"This image is damaged or incomplete."}]);
+    assert.deepEqual(sourceIssues({format:"PNG",width:400,height:200,bands:3,orientation:1,pages:2}),[{code:"multiple-images",stage:"inspection",params:{pages:2},message:"This file contains 2 images; only single images are supported."}]);
 });
 
 test("proven absent and inaccessible paths are classified before extensions", () => {

@@ -1,4 +1,5 @@
 "use strict";
+const { message: wording } = require("./messages.js");
 /* eslint max-classes-per-file: ["error", 3] -- Issue-carrying faults, expected operation failures and cancellation share constructor fields. */
 
 /*
@@ -25,7 +26,7 @@ function errorMessage(error) {
 class IssueError extends Error {
     constructor(message, options = {}) {
         super(message, options);
-        for (const field of ["issues", "recovery", "command", "outcome"]) {
+        for (const field of ["issues", "recovery", "command", "outcome", "diagnostic", "params"]) {
             if (Object.hasOwn(options, field)) { this[field] = options[field]; }
         }
         this.stack = options.stack ?? this.stack;
@@ -41,7 +42,7 @@ class OperationError extends IssueError {
 
 class UserCanceled extends IssueError {
     constructor(options) {
-        super("User canceled.", options);
+        super(wording("userCanceled"), options);
         this.name = "UserCanceled";
     }
 }
@@ -56,6 +57,10 @@ function causes(error) {
         current = current.cause;
     }
     return chain;
+}
+
+function diagnosticText(error) {
+    return error?.diagnostic?.message ?? errorMessage(error);
 }
 
 function isUserCanceled(error) {
@@ -80,6 +85,7 @@ module.exports = {
     OperationError,
     UserCanceled,
     errorMessage,
+    diagnosticText,
     causes,
     commandOf,
     isUserCanceled

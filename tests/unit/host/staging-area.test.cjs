@@ -46,7 +46,7 @@ test("anything already at that name refuses it, whatever kind of thing it is", (
     ]) {
         assert.throws(
             () => openStaging(createFakeHost(settings), area),
-            /File exists/u,
+            (error) => /File exists/u.test(error.diagnostic.message),
             JSON.stringify(settings)
         );
     }

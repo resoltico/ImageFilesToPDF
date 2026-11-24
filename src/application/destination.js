@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { requireOriginal, unconfirmedClaim } = require("./publication-name.js");
 const { OperationError } = require("../core/errors.js");
 const { collisionPath, MAXIMUM_SUFFIX } = require("../core/naming.js");
@@ -11,7 +12,7 @@ function copyBeside(job, staged, area, expected) {
         job.operations.copyBeside(staged, area.file);
         const written = job.publication.facts(area.file);
         if (expected < 0 || written.size !== expected || !written.identity) {
-            throw new OperationError(`the staged file is ${written.size} bytes where ${expected} were expected`);
+            throw new OperationError(message("stagedFileSizeMismatch", { found: written.size, expected }));
         }
         return { state: "copied", area, ...written };
     } catch (error) { return { state: "failed", area, error }; }
@@ -52,9 +53,9 @@ function claimAvailable(context, destination, created, checkpoint) {
             throw unconfirmedClaim(context.job.publication, { staged: context.paths.staged, original: context.facts,
                 path: context.paths.final, claimed: context.claimed, diagnostic: outcome.diagnostic });
         }
-        if (outcome.state !== "exists") { throw new OperationError(`The PDF destination could not be claimed (${outcome.state}).`); }
+        if (outcome.state !== "exists") { throw new OperationError(message("publicationClaimFailed", { state: outcome.state })); }
     }
-    throw new OperationError("Could not create a unique output filename.");
+    throw new OperationError(message("uniqueOutputUnavailable"));
 }
 
 module.exports = { claimAvailable, copyBeside };

@@ -11,7 +11,7 @@ function receipt() {
     return JSON.parse(receiptText({ state: "incomplete", documents: [{ state: "saved", sources: ["/photo.png"], pages: 1, issues: [], output: "/photo.pdf", fatal: false,
         diagnostics: [{ code: "observer-fault", message: "Optional observer failed.", stack: "private" }] }],
     rejected: [{ path: "/vector.png", name: "vector.png", code: "unsupported-content", stage: "inspection", reason: "Unsupported content.", diagnostic: { loader: "svgload", stack: "private" } }],
-    issues: [{ code: "fault", stage: "reporting", message: "Useful message.", diagnostic: { stack: "private", nested: [{ stack: "private", text: "stack is text" }] } }],
+    issues: [{ code: "fault", stage: "reporting", params: {}, message: "Useful message.", diagnostic: { stack: "private", nested: [{ stack: "private", text: "stack is text" }] } }],
     diagnostics: [{ code: "workspace-retained", stage: "workspace", message: "Retained work.", diagnostic: { path: "/tmp/ImageFilesToPDF.A123456789" } }], elapsed: "1 second" }));
 }
 
@@ -34,6 +34,7 @@ test("independent receipt violations are refused rather than silently redefining
         (value) => { value.documents[0].fatal = "yes"; },
         (value) => { value.issues[0].diagnostic.nested[0].stack = "private"; },
         (value) => { value.documents[0].diagnostics[0].stack = "private"; },
+        (value) => { delete value.issues[0].params; },
         (value) => { value.state = "cancelled"; }
     ];
     for (const change of changes) { const value = receipt(); change(value); assert.throws(() => assertReceipt(value)); }

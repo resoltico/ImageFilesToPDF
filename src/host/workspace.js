@@ -1,4 +1,5 @@
 "use strict";
+const { message: wording } = require("../core/messages.js");
 const { MKTEMP, RM, PS } = require("./backend-executables.js");
 const { OperationError } = require("../core/errors.js");
 const { isWorkspaceName, workspaceDisposition, validWorkspaceOwner } = require("../core/workspaces.js");
@@ -22,7 +23,7 @@ function createWorkspace(app, storage) {
     if (!WORKSPACE_PATTERN.test(path)) { throw new Error("mktemp returned an unexpected workspace path."); }
     try {
         const owner = { pid: storage.pid, started: String(processOutput(app, buildProcessStartArgv(PS, storage.pid))).trim() };
-        if (!validWorkspaceOwner(owner)) { throw new OperationError("The workspace owner could not be established."); }
+        if (!validWorkspaceOwner(owner)) { throw new OperationError(wording("workspaceOwnerUnknown")); }
         storage.write(`${path}/${OWNER}`, JSON.stringify(owner));
     } catch (error) { removeWorkspace(app, path); throw error; }
     return path;

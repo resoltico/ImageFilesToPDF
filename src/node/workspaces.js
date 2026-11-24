@@ -1,4 +1,5 @@
 "use strict";
+const { message: wording } = require("../core/messages.js");
 const fs = require("node:fs");
 const os = require("node:os");
 const { getuid, pid, platform, kill } = require("node:process");
@@ -46,15 +47,15 @@ function privateMode(stats) {
 
 function createPrivateRoot(files, windows) {
     const base = windows ? standardize(`${os.homedir()}/AppData/Local`) : standardize(fs.realpathSync.native(os.tmpdir()));
-    if (files.checked(base, { owned: true }).kind !== "directory") { throw new OperationError("The private workspace parent could not be verified."); }
+    if (files.checked(base, { owned: true }).kind !== "directory") { throw new OperationError(wording("workspaceParentUnverified")); }
     const root = `${base}/${TAG}${windows ? "" : `-${getuid()}`}`;
     let created = false;
     try { fs.mkdirSync(root, { mode: 0o700 }); created = true; }
     catch (error) { if (error.code !== "EEXIST") { throw error; } }
     const found = files.checked(root, { owned: true });
-    if (found.kind !== "directory" || !found.identity) { throw new OperationError("The workspace storage could not be verified."); }
+    if (found.kind !== "directory" || !found.identity) { throw new OperationError(wording("workspaceStorageUnverified")); }
     if (windows) { windows.privateDirectory(root, created); }
-    else if (!privateMode(found.stats)) { throw new OperationError("The workspace storage is not private."); }
+    else if (!privateMode(found.stats)) { throw new OperationError(wording("workspaceStorageNotPrivate")); }
     return root;
 }
 
@@ -107,15 +108,15 @@ function workspaceStore(files, commands, windows) {
     function inspect(directory) {
         if (dirname(directory) !== `${root}/` || !NAME.test(directory.slice(root.length + 1)) ||
             rootIdentity !== identity(fs.lstatSync(root, BIGINT))) {
-            throw new OperationError("The workspace namespace changed.");
+            throw new OperationError(wording("workspaceNamespaceChanged"));
         }
         const stats = fs.lstatSync(directory, BIGINT);
-        if (!stats.isDirectory() || (!windows && !privateMode(stats))) { throw new OperationError("The workspace is not private."); }
+        if (!stats.isDirectory() || (!windows && !privateMode(stats))) { throw new OperationError(wording("workspaceNotPrivate")); }
         return stats;
     }
     function release(directory, expected) {
         if (identity(inspect(directory)) !== expected || present(`${directory}/${IN_FLIGHT}`) || present(`${directory}/${RETAIN}`)) {
-            throw new OperationError("The workspace cannot be safely removed.");
+            throw new OperationError(wording("workspaceUnsafeRemoval"));
         }
         fs.rmSync(directory, { recursive: true });
     }
@@ -131,17 +132,17 @@ function workspaceStore(files, commands, windows) {
         remove: (file) => fs.unlinkSync(file),
         create() {
             const started = processStart(pid, commands, windows);
-            if (!started) { throw new OperationError("The workspace owner could not be established."); }
+            if (!started) { throw new OperationError(wording("workspaceOwnerUnknown")); }
             const directory = standardize(fs.mkdtempSync(`${root}/run-`));
             const id = identity(inspect(directory));
-            if (!id) { throw new OperationError("The workspace identity could not be established."); }
+            if (!id) { throw new OperationError(wording("workspaceIdentityUnverified")); }
             writeNew(`${directory}/${OWNER}`, JSON.stringify({ format: TAG, identity: id, pid, started }));
             current = { directory, id };
             return directory;
         },
         removeWorkspace(directory) {
             try {
-                if (current?.directory !== directory) { throw new OperationError("Workspace ownership could not be established."); }
+                if (current?.directory !== directory) { throw new OperationError(wording("workspaceOwnershipUnknown")); }
                 release(directory, current.id);
                 current = null;
                 return { state: "removed" };

@@ -46,7 +46,7 @@ test("a failed retention-marker removal keeps the path, cause and cleanup wordin
     assert.throws(() => clearRetention(job), (failure) => {
         assert.equal(failure.cause, denied);
         assert.deepEqual(failure.issues, [{
-            code: "cleanup", stage: "cleanup", message: "The workspace retention marker could not be cleared.",
+            code: "cleanup", stage: "cleanup", params: {}, message: "The workspace retention marker could not be cleared.",
             diagnostic: { path: "/owned/run" }
         }]);
         return true;

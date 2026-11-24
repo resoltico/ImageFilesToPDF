@@ -5,7 +5,7 @@
   "required": ["state", "documents", "rejected", "issues", "diagnostics"],
   "additionalProperties": false,
   "properties": {
-    "state": { "enum": ["complete", "incomplete", "canceled", "invalid"] },
+    "state": { "enum": ["complete", "incomplete", "canceled", "invalid-request", "setup-failed"] },
     "documents": { "type": "array", "items": { "$ref": "#/definitions/document" } },
     "rejected": { "type": "array", "items": { "$ref": "#/definitions/rejection" } },
     "issues": { "type": "array", "items": { "$ref": "#/definitions/issue" } },
@@ -29,11 +29,11 @@
     },
     "issue": {
       "type": "object",
-      "required": ["code", "stage", "message"],
+      "required": ["code", "stage", "params", "message"],
       "additionalProperties": false,
       "properties": {
         "code": { "type": "string" }, "stage": { "type": "string" }, "message": { "type": "string" },
-        "field": { "type": "string" }, "source": { "type": "string" }, "diagnostic": { "$ref": "#/definitions/value" }
+        "field": { "type": "string" }, "source": { "type": "string" }, "params": { "type": "object" }, "diagnostic": { "$ref": "#/definitions/value" }
       }
     },
     "rejection": {

@@ -3,8 +3,9 @@ const { requireOriginal, unconfirmedClaim } = require("./publication-name.js");
 const { requireValidatedArtifact, isPublished } = require("../core/artifacts.js");
 const { keep } = require("./recovery.js");
 const { confirm } = require("./settling.js");
+const { issueMessage } = require("../core/messages.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
-const { IssueError, errorMessage, isUserCanceled } = require("../core/errors.js");
+const { IssueError, diagnosticText, isUserCanceled } = require("../core/errors.js");
 const { claimAvailable } = require("./destination.js");
 
 function confirmed(context) {
@@ -19,7 +20,7 @@ function confirmed(context) {
         if (Object.hasOwn(error, "recovery")) { throw error; }
         if (outcome.state !== "confirmed") {
             throw unconfirmedClaim(job.publication, { staged: paths.staged, original: context.facts,
-                path: paths.final, claimed, diagnostic: errorMessage(error) });
+                path: paths.final, claimed, diagnostic: diagnosticText(error) });
         }
         return { state: "saved", path: paths.final, issues: issuesOf(error, "cleanup") };
     }
@@ -32,7 +33,7 @@ function publicationCode(error) {
 
 function publicationDiagnostic(context, error) {
     const diagnostic = context.diagnostic ?? issuesOf(error, "publication")[0].diagnostic;
-    const message = typeof diagnostic?.message === "string" && diagnostic.message.trim() ? diagnostic.message : errorMessage(error);
+    const message = typeof diagnostic?.message === "string" && diagnostic.message.trim() ? diagnostic.message : diagnosticText(error);
     return { ...diagnostic, message };
 }
 
@@ -47,9 +48,9 @@ function failedPublication(context, error) {
         return saved;
     }
     requireOriginal(job.publication, { staged: paths.staged, expected: context.facts, cause: error, candidate: area ? { folder: area.directory } : null });
-    const failure = keep(job, paths, { reasons: [errorMessage(error)], staging: area });
-    const issues = [{ code: publicationCode(error), stage: "publication",
-        message: "The PDF could not be saved to its requested destination.", diagnostic: publicationDiagnostic(context, error) }, ...failure.issues.slice(1)];
+    const failure = keep(job, paths, { reasons: [diagnosticText(error)], staging: area });
+    const issues = [{ ...issueMessage(publicationCode(error), "publication", "publicationDestinationFailed"),
+        diagnostic: publicationDiagnostic(context, error) }, ...failure.issues.slice(1)];
     throw new IssueError(failure.message, { cause: failure, recovery: failure.recovery, issues });
 }
 

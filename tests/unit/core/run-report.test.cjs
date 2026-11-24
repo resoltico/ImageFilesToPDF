@@ -39,18 +39,18 @@ test("core classifies pre-work request and settings errors as invalid", () => {
     for (const stage of ["request", "settings"]) {
         const issues = [{ code: "invalid", stage, message: "Correct the setting." }];
         const result = failedRun(new OperationError("Correct the setting.", { issues }));
-        assert.equal(result.state, "invalid");
+        assert.equal(result.state, "invalid-request");
         assert.equal(reportText(result), "The request is invalid.\n\nCorrect the setting.");
         assert.equal(reportText(result, false), "Correct the setting.");
         assert.equal(runOutcome([saved], [], issues).state, "incomplete");
     }
-    assert.equal(runOutcome([], [], [{ code: "operation", stage: "setup", message: "Missing tool." }]).state, "invalid");
+    assert.equal(runOutcome([], [], [{ code: "operation", stage: "setup", message: "Missing tool." }]).state, "setup-failed");
 });
 
 test("expected setup refusal has its own literal headline and no conversion heading", () => {
     const result = failedRun(new OperationError("vipsheader could not read the built-in PNG image."));
-    assert.equal(result.state, "invalid");
-    assert.equal(reportText(result), "A required tool is missing or unusable.\n\nvipsheader could not read the built-in PNG image.");
+    assert.equal(result.state, "setup-failed");
+    assert.equal(reportText(result), "Setup failed.\n\nvipsheader could not read the built-in PNG image.");
     assert.equal(reportText(result, false), "vipsheader could not read the built-in PNG image.");
 });
 

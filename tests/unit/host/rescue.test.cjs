@@ -133,7 +133,7 @@ test("every recovery refusal keeps its active tagged result and diagnostic schem
     assert.throws(() => setAside(app, original, app.publication, { intendedName: "a.pdf", original: app.publication.facts(original) }), (error) => error.recovery === null);
     const mismatch=createFakeHost({files:[original]});const {facts} = mismatch.publication;
     mismatch.publication.facts=(path)=>path===original?facts(path):{identity:"1:9",size:7};
-    assert.deepEqual(setAside(mismatch, original, mismatch.publication, { intendedName: "a.pdf", original: mismatch.publication.facts(original) }),{state:"retained",path:original,issues:[{code:"recovery",stage:"recovery",source:`${RECOVERY}/a.pdf`,message:"The recovery copy could not be confirmed."}]});
+    assert.deepEqual(setAside(mismatch, original, mismatch.publication, { intendedName: "a.pdf", original: mismatch.publication.facts(original) }),{state:"retained",path:original,issues:[{code:"recovery",stage:"recovery",params:{},source:`${RECOVERY}/a.pdf`,message:"The recovery copy could not be confirmed."}]});
 });
 
 test("successful recovery reports no fabricated issues and setup failure remains recoverable",()=>{
@@ -142,7 +142,7 @@ test("successful recovery reports no fabricated issues and setup failure remains
     const denied=createFakeHost({files:[original],failures:[["mktemp",new Error("no space")]]});
     const kept=setAside(denied, original, denied.publication, { intendedName: "a.pdf", original: denied.publication.facts(original) });
     assert.equal(kept.state,"retained");assert.equal(kept.path,original);assert.equal(kept.issues[0].stage,"recovery");
-    assert.match(kept.issues[0].message,/no space/u);
+    assert.match(kept.issues[0].diagnostic.message,/no space/u);
 });
 
 

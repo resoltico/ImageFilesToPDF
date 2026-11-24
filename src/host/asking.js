@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { OperationError } = require("../core/errors.js");
 const { hostError } = require("./cancellation.js");
 
@@ -96,7 +97,7 @@ function isRegularNonEmpty(app, path) {
 function verifyFileWritten(app, path, label) {
     if (!isRegularNonEmpty(app, path)) {
         throw new OperationError(
-            `${label} is not a file with anything in it:\n\n${path}`
+            message("fileEmptyOrInvalid", { label, path })
         );
     }
 }

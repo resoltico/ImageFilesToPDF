@@ -1,7 +1,8 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { isPdfcpuUsable, describeSetupProblems } = require("../../../src/backend/preflight.js");
+const { isPdfcpuUsable } = require("../../../src/backend/preflight.js");
+const { describeSetupProblems } = require("../../../src/core/setup.js");
 const { failedRun, issuesOf } = require("../../../src/core/outcomes.js");
 
 test("supported stable backend versions accept multi-digit components and refuse older releases", () => {

@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const fs = require("node:fs");
 const { execute } = require("../application/workflow.js");
 const { createProgress } = require("../application/progress.js");
@@ -35,12 +36,12 @@ function configure(commands) {
             fileKind: (file) => files.tree.inspect(file).kind,
             verifyFile(file, label) {
                 if (destination.publication.facts(file).size <= 0) {
-                    throw new OperationError(`${label} is not a file with anything in it:\n\n${file}`);
+                    throw new OperationError(message("fileEmptyOrInvalid", { label, path: file }));
                 }
             },
             removeFile(file) {
                 try {
-                    if (!storage.canReleaseFiles()) { throw new OperationError("A native writer may still own the workspace files."); }
+                    if (!storage.canReleaseFiles()) { throw new OperationError(message("workspaceWriterMayBeActive")); }
                     fs.rmSync(file, { force: true });
                     return { state: "removed" };
                 }

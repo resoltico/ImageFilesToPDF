@@ -10,7 +10,7 @@ const destination = "/output/photo.pdf";
 const download = "/downloads/photo.pdf";
 const original = { identity: "device:inode", size: 128 };
 const publicationIssue = {
-    code: "publication", stage: "publication", message: "The PDF could not be saved to its requested destination.",
+    code: "publication", stage: "publication", params: {}, message: "The PDF could not be saved to its requested destination.",
     diagnostic: ["Destination denied."]
 };
 
@@ -47,7 +47,7 @@ function recoveryPort(options = {}) {
 
 function recoveryIssue() {
     return {
-        code: "recovery", stage: "recovery", message: "The PDF could not be recovered to Downloads.",
+        code: "recovery", stage: "recovery", params: {}, message: "The PDF could not be recovered to Downloads.",
         diagnostic: { message: "The PDF destination could not be claimed (denied).", path: download,
             detail: { code: "EACCES", state: "denied" } }
     };

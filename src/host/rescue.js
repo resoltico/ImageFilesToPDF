@@ -1,6 +1,7 @@
 "use strict";
 const { actualPublicationPath, requireOriginal } = require("../application/publication-name.js");
 const { MKTEMP, CP, RMDIR } = require("./backend-executables.js");
+const { issueMessage } = require("../core/messages.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { dirname } = require("../core/paths.js");
 const { runArgv, cleanupArgv, removeFile } = require("./shell.js");
@@ -25,7 +26,7 @@ function copyRecovery(app, { staged, recovered, original }, publication) {
     const candidate = { folder: dirname(recovered), identity: copied.identity, size: copied.size };
     requireOriginal(publication, { staged, expected: original, cause: null, candidate });
     if (!copied.identity || copied.size !== original.size) {
-        return { state: "retained", issues: [{ code: ISSUE.recovery, stage: "recovery", source: recovered, message: "The recovery copy could not be confirmed." }] };
+        return { state: "retained", issues: [{ ...issueMessage(ISSUE.recovery, "recovery", "recoveryCopyUnconfirmed"), source: recovered }] };
     }
     const path = actualPublicationPath(publication, { staged, original, path: recovered, claimed: copied });
     requireOriginal(publication, { staged, expected: original, cause: null, candidate: { path, identity: copied.identity, size: copied.size } });

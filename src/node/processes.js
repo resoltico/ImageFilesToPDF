@@ -1,4 +1,5 @@
 "use strict";
+const { message: wording } = require("../core/messages.js");
 const { Buffer } = require("node:buffer");
 const { spawn } = require("node:child_process");
 const { dirname } = require("node:path");
@@ -100,7 +101,7 @@ function workerCommands(parentPort, { port, shared }) {
     let next = 0;
     const stopped = () => Atomics.load(state, STOP) !== 0;
     return { stopped, fits, request(argv, options = {}) {
-        if (!fits(argv)) { throw new OperationError("The command exceeds the argument budget."); }
+        if (!fits(argv)) { throw new OperationError(wording("commandArgumentBudgetExceeded")); }
         const previous = next;
         next += 1;
         parentPort.postMessage({ id: next, argv, options });
@@ -115,8 +116,8 @@ function workerCommands(parentPort, { port, shared }) {
 
 function commandOutput(result, argv, label) {
     if (result.status === 0 && !result.error) { return result.stdout; }
-    const message = result.error || result.stderr || result.stdout || String(result.signal ?? result.status);
-    throw new OperationError(`Command failed while ${label}.\n\n${message.trim()}`, { command: JSON.stringify(argv) });
+    const detail = result.error || result.stderr || result.stdout || String(result.signal ?? result.status);
+    throw new OperationError(wording("nativeCommandFailedForOperation", { label }), { command: JSON.stringify(argv), params: { label }, diagnostic: { message: detail.trim() } });
 }
 
 module.exports = { startWorker, workerCommands, commandOutput };

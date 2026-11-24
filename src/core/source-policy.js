@@ -1,5 +1,6 @@
 "use strict";
 const { ISSUE } = require("./outcomes.js");
+const { issueMessage } = require("./messages.js");
 const { basename } = require("./paths.js");
 const { SUPPORTED_FORMATS, supportedFormatList } = require("./formats.js");
 const RASTER_FAMILIES = new Set(SUPPORTED_FORMATS.map((format) => format.family));
@@ -8,16 +9,17 @@ const LAST_ORIENTATION = 8;
 
 function sourceIssue(code, facts = {}, diagnostic = null) {
     const messages = {
-        unreadable: facts.unavailable ? "This file cannot be read; check that it still exists and that you have access."
-            : "This file cannot be read (permission denied).",
-        empty: "This file is empty.",
-        "not-an-image": "This file is not a supported still raster image.",
-        "unsupported-content": `This file's content is not a supported still image; use ${supportedFormatList()}.`,
-        "multiple-images": `This file contains ${facts.pages} images; only single images are supported.`,
-        damaged: "This image is damaged or incomplete."
+        unreadable: facts.unavailable ? "sourceUnavailable" : "sourcePermissionDenied",
+        empty: "sourceEmpty",
+        "not-an-image": "sourceNotImage",
+        "unsupported-content": "sourceUnsupportedContent",
+        "multiple-images": "sourceMultipleImages",
+        damaged: "sourceDamaged"
     };
     if (!Object.hasOwn(messages, code)) { throw new Error("Unknown source issue code."); }
-    return { code, stage: "inspection", message: messages[code], ...(diagnostic ? { diagnostic } : {}) };
+    const params = { ...code === "multiple-images" ? { pages: facts.pages } : {},
+        ...code === "unsupported-content" ? { formats: supportedFormatList() } : {} };
+    return { ...issueMessage(code, "inspection", messages[code], params), ...(diagnostic ? { diagnostic } : {}) };
 }
 
 function sourceFileIssue(facts) {
@@ -55,11 +57,10 @@ function matchesAdmission(admission, captured) {
 }
 
 function captureIssue(path, diagnostic) {
-    return { code: ISSUE.operation, stage: "capture", source: path, message: "This file could not be copied for conversion.", diagnostic };
+    return { source: path, ...issueMessage(ISSUE.operation, "capture", "sourceCaptureFailed"), diagnostic };
 }
 
 function changedSourceIssue(path, diagnostic = null) {
-    return { code: ISSUE.operation, stage: "capture", source: path,
-        message: "The source changed after selection; try again when it is stable.", ...(diagnostic ? { diagnostic } : {}) };
+    return { source: path, ...issueMessage(ISSUE.operation, "capture", "sourceChanged"), ...(diagnostic ? { diagnostic } : {}) };
 }
 module.exports = { sourceIssue, sourceFileIssue, sourceIssues, orientedSize, sourceRefusal, matchesAdmission, captureIssue, changedSourceIssue };
