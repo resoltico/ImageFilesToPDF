@@ -14,7 +14,7 @@ test("the command-line dependency graph never imports AppKit", () => {
         visited.add(file);
         const source = readFileSync(file, "utf8");
         assert.doesNotMatch(source, /import\(["']AppKit["']\)/u, file);
-        assert.equal(file.includes("/src/host/"), false, file);
+        assert.equal(file.includes("/src/finder/"), false, file);
         for (const match of source.matchAll(/require\("(?<target>\.[^"]+)"\)/gu)) {
             pending.push(path.resolve(path.dirname(file), match.groups.target));
         }

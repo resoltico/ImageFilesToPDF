@@ -46,7 +46,7 @@ test("core and application boundaries reject host or presenter dependencies", as
     }
     assert.doesNotThrow(() => checkBoundary("src/core/a.js", 'require("./settings.js");'));
     assert.doesNotThrow(() => checkBoundary("src/application/a.js", 'require("./documents.js");'));
-    assert.doesNotThrow(() => checkBoundary("src/host/a.js", 'ObjC.import("AppKit");'));
+    assert.doesNotThrow(() => checkBoundary("src/finder/a.js", 'ObjC.import("AppKit");'));
 });
 
 test("production dependency graph satisfies the enforced boundaries",async()=>{
@@ -79,6 +79,6 @@ test("backend remains pure and supports the portable application", async () => {
     assert.throws(() => checkBoundary("src/entry.js", 'ObjC.import("Foundation");'));
     assert.doesNotThrow(() => checkBoundary("src/backend/a.js", 'require("../core/settings.js");'));
     assert.doesNotThrow(() => checkBoundary("src/backend/a.js", 'require("./commands.js");'));
-    assert.throws(() => checkBoundary("src/host/a.js", 'require("../backend/commands.js");'), /forbidden dependency/u);
+    assert.throws(() => checkBoundary("src/finder/a.js", 'require("../backend/commands.js");'), /forbidden dependency/u);
     assert.doesNotThrow(() => checkBoundary("src/core/a.js", '// Path manipulation\nconst text = "ObjC";'));
 });

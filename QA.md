@@ -35,7 +35,7 @@ record notes and nested stack omission. Actual CLI, naming and recovery receipts
 use the same validator in the native suites, separately from the source gate.
 Schema validity supplements pixel, file and ownership checks.
 
-Core, application, pure backend contracts and `src/host/invocation-syntax.js` require
+Core, application, pure backend contracts and `src/finder/invocation-syntax.js` require
 100% line, branch and function coverage and a mutation score of at least 96. Host
 adapters are checked through focused unit tests and native production-artifact scenarios; a mocked bridge is
 not evidence that macOS rendered or published anything. ESLint rules and deliberate

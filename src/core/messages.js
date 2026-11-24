@@ -123,6 +123,7 @@ const MESSAGES = Object.freeze({
     toolInstallLinux: "Install libvips and a supported stable release of pdfcpu for your Linux distribution.",
     toolInstallWindows: "Install libvips and a supported stable release of pdfcpu for Windows and add their directories to PATH.",
     toolOverrideInvalidName: "{variable}={value} is not an absolute regular executable file.",
+    toolOverridePdfcpuUnusable: "{variable}={value} failed the pdfcpu capability check. Version {minimum} or later is required.",
     toolOverrideUnusableName: "{variable}={value} failed the {tool} capability check.",
     runtimeUnavailable: "Node.js {minimum} or later is required. Run brew install node.",
     engineCacheUnavailable: "The private engine directory could not be verified.",

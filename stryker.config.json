@@ -9,7 +9,7 @@
     "src/core/**/*.js",
     "src/application/**/*.js",
     "src/backend/**/*.js",
-    "src/host/invocation-syntax.js"
+    "src/finder/invocation-syntax.js"
   ],
   "reporters": [
     "html",

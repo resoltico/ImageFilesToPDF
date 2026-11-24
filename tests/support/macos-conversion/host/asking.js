@@ -1,7 +1,7 @@
 "use strict";
 const { message } = require("../../../../src/core/messages.js");
 const { OperationError } = require("../../../../src/core/errors.js");
-const { hostError } = require("../../../../src/host/cancellation.js");
+const { hostError } = require("../../../../src/finder/cancellation.js");
 
 const { TEST } = require("./backend-executables.js");
 const { shellJoin } = require("../backend/shell.js");

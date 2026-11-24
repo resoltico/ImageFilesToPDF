@@ -2,7 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { RUN_OUTCOME, runOutcome } = require("../../src/core/outcomes.js");
-const { completionMessage } = require("../../src/host/quick-action/completion.js");
+const { completionMessage } = require("../../src/finder/quick-action/completion.js");
 const { exitCode } = require("../../src/cli/exit-code.js");
 const receiptSchema = require("../integration/receipt.schema.json");
 

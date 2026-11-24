@@ -1,7 +1,7 @@
 "use strict";
 const { message } = require("../../../../src/core/messages.js");
 const { attributesAt, attributeText, identityOf, kindOf } = require("./native-file-attributes.js");
-const { hostError } = require("../../../../src/host/cancellation.js");
+const { hostError } = require("../../../../src/finder/cancellation.js");
 const { OperationError, isUserCanceled, diagnosticText } = require("../../../../src/core/errors.js");
 const { issuesOf, ISSUE } = require("../../../../src/core/outcomes.js");
 const { captureIssue, changedSourceIssue } = require("../../../../src/core/source-policy.js");

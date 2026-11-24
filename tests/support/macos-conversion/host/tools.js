@@ -6,7 +6,7 @@ const { PRINTENV } = require("./backend-executables.js");
 const { shellQuote } = require("../backend/shell.js");
 const { runArgv } = require("./shell.js");
 const { isUserCanceled } = require("../../../../src/core/errors.js");
-const { hostError } = require("../../../../src/host/cancellation.js");
+const { hostError } = require("../../../../src/finder/cancellation.js");
 const { isExecutable } = require("./asking.js");
 
 /*

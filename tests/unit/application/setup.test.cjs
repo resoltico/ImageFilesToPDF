@@ -57,6 +57,7 @@ test("explicit overrides do not fall back and native stderr stays diagnostic", a
         assert.deepEqual(error.issues.map(({ code }) => code), ["override-invalid", "tool-unusable", "tool-unusable"]);
         assert.match(error.issues[0].message, /IMAGE_FILES_TO_PDF_VIPS="\/overrides\/vips"/u);
         assert.equal(error.issues[1].diagnostic.message, "native diagnostic");
+        assert.match(error.issues[2].message, /Version 0\.16\.4 or later is required/u);
         assert.doesNotMatch(error.message, /native diagnostic|brew install/u);
         return true;
     });

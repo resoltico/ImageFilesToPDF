@@ -41,8 +41,9 @@ function toolInstallHint(platform) {
 
 function setupToolProblem(code, tool, override) {
     if (override) {
-        return issueMessage(code, "setup", code === "override-invalid" ? "toolOverrideInvalidName" : "toolOverrideUnusableName",
-            { variable: override.variable, value: JSON.stringify(override.value), tool });
+        const failure = tool === "pdfcpu" ? "toolOverridePdfcpuUnusable" : "toolOverrideUnusableName";
+        return issueMessage(code, "setup", code === "override-invalid" ? "toolOverrideInvalidName" : failure,
+            { variable: override.variable, value: JSON.stringify(override.value), tool, minimum: MINIMUM_PDFCPU_VERSION });
     }
     if (code === "tool-missing") { return issueMessage(code, "setup", "toolMissingFromPath", { name: tool }); }
     return issueMessage(code, "setup", tool === "pdfcpu" ? "pdfcpuUnusable" : "toolUnusable", { name: tool, minimum: MINIMUM_PDFCPU_VERSION });

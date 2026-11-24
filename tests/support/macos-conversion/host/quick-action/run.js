@@ -1,10 +1,10 @@
 "use strict";
 const { failedRun } = require("../../../../../src/core/outcomes.js");
 const { isUserCanceled } = require("../../../../../src/core/errors.js");
-const { hostError } = require("../../../../../src/host/cancellation.js");
+const { hostError } = require("../../../../../src/finder/cancellation.js");
 const { execute, application } = require("../main.js");
 const { openProgress } = require("./surfaces.js");
-const { showCompletion } = require("../../../../../src/host/quick-action/completion.js");
+const { showCompletion } = require("../../../../../src/finder/quick-action/completion.js");
 const { quickActionInteraction } = require("./interaction.js");
 
 async function run(input) {

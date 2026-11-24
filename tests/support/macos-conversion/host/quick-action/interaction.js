@@ -1,8 +1,8 @@
 "use strict";
-const { collectInvocation } = require("../../../../../src/host/quick-action/input.js");
-const { reviewSelection } = require("../../../../../src/host/quick-action/settings-review.js");
-const { chooseSettings } = require("../../../../../src/host/quick-action/settings-form.js");
-const { reportNoImages, reportResult } = require("../../../../../src/host/quick-action/reporting.js");
+const { collectInvocation } = require("../../../../../src/finder/quick-action/input.js");
+const { reviewSelection } = require("../../../../../src/finder/quick-action/settings-review.js");
+const { chooseSettings } = require("../../../../../src/finder/quick-action/settings-form.js");
+const { reportNoImages, reportResult } = require("../../../../../src/finder/quick-action/reporting.js");
 
 function quickActionInteraction(app, progress) {
     return { progress, collect: (input) => collectInvocation(app, input),

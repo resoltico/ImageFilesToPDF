@@ -3,7 +3,7 @@ const { execute, application } = require("../support/macos-conversion/host/main.
 const { createProgress } = require("../../src/application/progress.js");
 const { failedRun, noImagesOutcome } = require("../../src/core/outcomes.js");
 const { normalizeSettings } = require("../../src/core/settings.js");
-const { hostError } = require("../../src/host/cancellation.js");
+const { hostError } = require("../../src/finder/cancellation.js");
 
 // Integration-only entry to the production JXA adapter for mounted-volume tests.
 function run(input) {

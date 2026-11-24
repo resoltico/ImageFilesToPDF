@@ -1,6 +1,6 @@
 "use strict";
 
-const { hostError } = require("../../../src/host/cancellation.js");
+const { hostError } = require("../../../src/finder/cancellation.js");
 const { createProgress } = require("../../../src/application/progress.js");
 
 /*

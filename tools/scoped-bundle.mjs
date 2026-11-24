@@ -16,6 +16,17 @@ export const BUNDLE_OPTIONS = {
     metafile: true
 };
 
+function compiledGraph(result, base) {
+    const normalize = (file) => file.startsWith("<") || file.startsWith("node:") ? file
+        : path.relative(base, path.resolve(base, file)).split(path.sep).join("/");
+    const files = Object.entries(result.metafile.inputs);
+    return {
+        inputs: files.map(([file]) => normalize(file)),
+        edges: files.flatMap(([file, facts]) => facts.imports.map(({ path: target }) =>
+            ({ from: normalize(file), to: normalize(target) })))
+    };
+}
+
 export async function scopedBundle(entry, base, define = {}) {
     const result = await build({
         ...BUNDLE_OPTIONS,
@@ -27,12 +38,10 @@ export async function scopedBundle(entry, base, define = {}) {
     if (outputs.some((output) => output.imports.length > 0)) {
         throw new Error("external runtime dependency in bundle");
     }
-    const inputs = Object.keys(result.metafile.inputs).map((name) =>
-        path.relative(base, path.resolve(base, name)).split(path.sep).join("/"));
     return {
         source: `${result.outputFiles[0].text
             }\nfunction run(input, parameters) { return ImageFilesToPDF.run(input, parameters); }\n`,
-        inputs
+        ...compiledGraph(result, base)
     };
 }
 
@@ -51,5 +60,5 @@ export async function nodeBundle(entry, base, minimumNode) {
             throw new Error("external runtime dependency in Node bundle");
         }
     }
-    return { source: result.outputFiles[0].text, inputs: Object.keys(result.metafile.inputs) };
+    return { source: result.outputFiles[0].text, ...compiledGraph(result, base) };
 }

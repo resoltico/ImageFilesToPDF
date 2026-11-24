@@ -54,7 +54,7 @@ export default [
 
     {
         // macOS host layer: the same, plus the JavaScriptCore globals.
-        files: ["src/host/**/*.js"],
+        files: ["src/finder/**/*.js"],
         languageOptions: {
             ecmaVersion: JXA_ECMA_VERSION,
             sourceType: "commonjs",

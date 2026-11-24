@@ -45,7 +45,7 @@ Commit both generated bundles and checksums alongside source changes that affect
   recovery sequencing. Its synchronous workflow receives explicit ports.
 - `src/backend/` owns portable native-tool argv builders and output parsers.
   Each process adapter determines whether the full command fits.
-- `src/host/` contains the JXA filesystem bridge and Finder presentation.
+- `src/finder/` contains the JXA filesystem bridge and Finder presentation.
   `src/entry.js` exports the synchronous Shortcuts handler.
 - `src/cli/` owns CLI parsing and receipts. `src/engine/` owns native process, filesystem and platform ports. `src/cli/entry.js` is the sole terminal entry point.
 
@@ -62,7 +62,7 @@ translation. Optional observer failures remain diagnostics.
 
 `src/core/settings.js` owns canonical settings, defaults, names, captions, hints
 and legal choice IDs. The schema declares field kinds and the documented order;
-validation, help, form rows and stepwise dialogs derive from it. `src/host/quick-action/settings-model.js` derives the offered form and
+validation, help, form rows and stepwise dialogs derive from it. `src/finder/quick-action/settings-model.js` derives the offered form and
 stepwise records from that schema. Text fields are parsed at adapter boundaries
 and use the common all-issues validator. `documentPlan` requires complete native
 name-equivalence group facts for separate mode. Both adapters use native probes.
@@ -152,7 +152,7 @@ layer values may serve as fixtures. A repository test enforces placement for
 `require()`, `require.resolve()` and dynamic `import()`. Mutation testing runs unit files. All
 production sources and applicable build rules must remain discoverable by their
 gates. Coverage is 100% for core, application, backend and the pure host invocation
-parser (`src/host/invocation-syntax.js`); mutation is at least 96 for that same scope.
+parser (`src/finder/invocation-syntax.js`); mutation is at least 96 for that same scope.
 Host adapters require the native suites. Keep behavioral expectations independent of implementation calculations.
 
 ESLint uses `js.configs.all`; exceptions and tuned rules are justified in

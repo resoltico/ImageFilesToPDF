@@ -1,6 +1,6 @@
 "use strict";
 const { message } = require("../../../../src/core/messages.js");
-const { hostError } = require("../../../../src/host/cancellation.js");
+const { hostError } = require("../../../../src/finder/cancellation.js");
 
 const { RM, RMDIR, MKTEMP } = require("./backend-executables.js");
 const { COMMAND_BUDGET_BYTES, commandLengthOf } = require("../backend/batching.js");
