@@ -105,7 +105,7 @@ relative to `tests/integration/`.
 | `cli.sh` | CLI grammar/statuses, settings reader, refusal corpus, unusable header overrides, German caller locale, names, JPEG streams, placement, actual INT/TERM/repeats, HEIC/excluded-loader/FIFO refusals and closed/broken stream integrity |
 | `hdr.sh` | Synthetic Ultra HDR in both modes, SDR JPEG streams, ICC conversion, orientations 6/8, damage and unmapped-loader diagnostics |
 | `naming.sh` | Case and normalization namespaces, folder aliases, hard links, raw stored-basename bytes, long-name/collision budgets and occupied-name protection on local, APFS, APFSX, HFS+, HFSX, FAT32 and exFAT volumes |
-| `finder-engine.cjs` | macOS osascript client through the embedded engine, package parity, private cache reuse and tampering, runtime discovery |
+| `finder-engine.cjs` | macOS osascript client through the embedded engine, package parity, private cache reuse and tampering, executable discovery and persistence, and scripted stepwise settings after an unusable form |
 | `finder-pipe.cjs` | Engine SIGKILL during review and progress, exit and stderr diagnostics, restored SIGPIPE state, helper exit |
 | `native-cli.cjs` | Native CLI format, strict PDF, collision race, source integrity and receipt checks |
 | `posix-process.py` | Native Stop, crash, writer guard, helper exit, source replacement and argv batching |

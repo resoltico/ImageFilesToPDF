@@ -40,13 +40,16 @@ async function buildHarness(folder, engineBundle, plugins = []) {
         const { engineSession } = require("./src/finder/quick-action/engine-client.js");
         const { collectInvocation } = require("./src/finder/quick-action/input.js");
         const { executableMemory } = require("./src/finder/quick-action/executable-choice.js");
+        const { answerSettings } = require("./tests/integration/lib/settings-answers.js");
         const { DEFAULT_SETTINGS } = require("./src/core/settings.js");
         const bundle = ${JSON.stringify(engineBundle)};
         function run([home, photos, refused, configuration]) {
-            const { node, alternate, domain, choices = {}, directories } = JSON.parse(configuration);
+            const { node, alternate, domain, choices = {}, directories, settingsScenario } = JSON.parse(configuration);
             const events = [];
             const progressEvents = [];
             const offers = [];
+            const settingsProbe = { forms: 0, lists: 0, prompts: [], confirmed: 0 };
+            let engineReceipt = null;
             let receipt = null;
             const progress = { diagnostics: [], pause() {}, close() {},
                 progress(event) {
@@ -57,9 +60,13 @@ async function buildHarness(folder, engineBundle, plugins = []) {
             const ports = {
                 application: () => null, openProgress: () => progress, collect: collectInvocation,
                 review(app, context) { events.push(["review", context.rejected.length]); },
-                settings(app, context) { events.push(["settings", context.count]); return DEFAULT_SETTINGS; },
+                settings(app, context) {
+                    events.push(["settings", context.count]);
+                    return settingsScenario ? answerSettings(settingsScenario, context, settingsProbe) : DEFAULT_SETTINGS;
+                },
                 runEngine(items, hooks, chosen) {
-                    return engineSession(selected, items, hooks, { chosen: node ? { node, ...chosen } : chosen, directories, home });
+                    engineReceipt = engineSession(selected, items, hooks, { chosen: node ? { node, ...chosen } : chosen, directories, home });
+                    return engineReceipt;
                 },
                 result(app, result) { receipt = result; }
             };
@@ -70,9 +77,10 @@ async function buildHarness(folder, engineBundle, plugins = []) {
                     return choices[name];
                 };
             }
-            const returned = runQuickAction([[photos, refused], {}], ports);
+            const items = settingsScenario ? [photos + "/visible.png"] : [photos, refused];
+            const returned = runQuickAction([items, {}], ports);
             if (returned !== undefined) throw new Error("The Finder handler returned a Shortcuts result.");
-            return JSON.stringify({ receipt, events, progressEvents, offers });
+            return JSON.stringify({ receipt, events, progressEvents, offers, engineReceipt, settingsProbe });
         }
         module.exports = { run };
     `;
@@ -248,6 +256,44 @@ async function verifyChosenDiscovery(folder, fixture) {
     }
 }
 
+function verifySettingsFallback(probe, fixture) {
+    const run = (settingsScenario) => invoke(probe, fixture, { settingsScenario });
+    const expectedSettings = { mode: "separate", paperSize: "Letter", orientation: "Landscape",
+        resolutionLimit: 360, quality: 74, background: "#8E79E0" };
+    const source = path.join(fixture.photos, "visible.png");
+    const checkSaved = ({ engineReceipt, settingsProbe }) => {
+        assertReceipt(engineReceipt);
+        assert.equal(engineReceipt.state, "complete");
+        assert.equal(engineReceipt.documents.length, 1);
+        const [{ state, pages, sources, issues, output }] = engineReceipt.documents;
+        assert.deepEqual({ state, pages, sources, issues }, { state: "saved", pages: 1, sources: [source], issues: [] });
+        assert.deepEqual(settingsProbe.remembered, expectedSettings);
+        const pdf = execFileSync("pdfinfo", [output], { encoding: "utf8" });
+        assert.match(pdf, /^Page size:\s+792 x 612 pts/mu);
+        fs.unlinkSync(output);
+    };
+    const form = run("form");
+    checkSaved(form);
+    assert.deepEqual([form.settingsProbe.forms, form.settingsProbe.lists, form.settingsProbe.confirmed], [1, 0, 0]);
+    const dialogs = run("valid");
+    checkSaved(dialogs);
+    assert.deepEqual([dialogs.settingsProbe.forms, dialogs.settingsProbe.lists, dialogs.settingsProbe.confirmed], [1, 4, 1]);
+    assert.equal(dialogs.settingsProbe.prompts.length, 3);
+    const corrected = run("corrected");
+    checkSaved(corrected);
+    assert.deepEqual([corrected.settingsProbe.forms, corrected.settingsProbe.lists, corrected.settingsProbe.confirmed], [1, 4, 1]);
+    assert.equal(corrected.settingsProbe.prompts.length, 4);
+    assert.match(corrected.settingsProbe.prompts[1].text, /72.*1017/u);
+    assert.equal(corrected.settingsProbe.prompts[1].opening, "1018");
+    const canceled = run("cancel");
+    assert.equal(canceled.receipt, null);
+    assert.equal(canceled.engineReceipt.state, "canceled");
+    assert.deepEqual(canceled.engineReceipt.documents, []);
+    assert.deepEqual(canceled.settingsProbe, { forms: 1, lists: 1, prompts: [], confirmed: 0 });
+    assert.equal(fs.existsSync(path.join(fixture.photos, "visible.pdf")), false);
+    process.stdout.write("Unusable settings form: stepwise answers, correction and cancellation passed through the real Finder engine.\n");
+}
+
 async function main() {
     const { embeddedEngineIn } = await import("../../tools/embedded-engine.mjs");
     const artifact = fs.readFileSync(path.join(root, "dist/Image-Files-to-PDF.jxa"), "utf8");
@@ -263,6 +309,7 @@ async function main() {
     verifyRejectedRuntimes(probe, fixture);
     await verifySystemDiscovery(work.path, fixture);
     await verifyChosenDiscovery(work.path, fixture);
+    verifySettingsFallback(probe, fixture);
     const mismatch = 'process.stdout.write(JSON.stringify({type:"hello",version:"0.0.0",runtime:process.versions.node})+"\\n");process.stdin.resume();';
     const { receipt: wrong, events } = invoke(probe, fixture, { alternate: mismatch });
     assert.equal(wrong.state, "setup-failed");
