@@ -104,10 +104,9 @@ are converted as standard-range images without their gain maps.
 A JPEG that is embedded unchanged keeps its metadata, including any location,
 inside the PDF.
 
-If saving fails, the action attempts verified recovery in Downloads or private
-temporary storage. Completion reports the actual recovery location, retained
-work or any remaining uncertainty. Move needed temporary work somewhere permanent
-promptly: macOS can clear temporary storage.
+If saving fails, the action attempts verified recovery in Downloads. It keeps
+the verified PDF in a private durable workspace when Downloads recovery cannot
+be confirmed. Completion reports the actual location or any remaining uncertainty.
 
 README.md in the repository describes the settings, supported images and output
 in full. HEADLESS.md describes command-line use.

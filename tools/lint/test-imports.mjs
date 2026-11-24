@@ -26,6 +26,21 @@ const REPOSITORY_TEST_INPUTS = new Set([
     "tools/banner.mjs",
     "tools/dependency-rules.mjs",
     "tools/javascript.mjs",
+    "tools/lint/boundaries.mjs",
+    "tools/lint/consistency.mjs",
+    "tools/lint/discovery.mjs",
+    "tools/lint/document-references.mjs",
+    "tools/lint/document-rules.mjs",
+    "tools/lint/ignore-rules.mjs",
+    "tools/lint/language-target.mjs",
+    "tools/lint/notes.mjs",
+    "tools/lint/production-exports.mjs",
+    "tools/lint/settings-docs.mjs",
+    "tools/lint/shell-rules.mjs",
+    "tools/lint/source-rules.mjs",
+    "tools/lint/test-imports.mjs",
+    "tools/lint/toolchain.mjs",
+    "tools/lint/workflow-rules.mjs",
     "tools/node-boot.mjs",
     "tools/pure-modules.mjs",
     "tools/release.mjs",
@@ -36,8 +51,7 @@ const REPOSITORY_TEST_INPUTS = new Set([
 function permittedPath(test, file) {
     if (/^(?:src\/|tests\/unit\/(?:ports\/|(?:[^/]+\/)*fixture[^/]*$)|tests\/integration\/lib\/)/u.test(file)) { return true; }
     if (test.startsWith("tests/integration/")) { return NATIVE_BUILD_ENTRIES.has(file); }
-    return test.startsWith("tools/tests/") &&
-        (REPOSITORY_TEST_INPUTS.has(file) || /^tools\/lint\/[^/]+\.mjs$/u.test(file));
+    return test.startsWith("tools/tests/") && REPOSITORY_TEST_INPUTS.has(file);
 }
 
 async function checkModule(test, node, base, dependencies) {

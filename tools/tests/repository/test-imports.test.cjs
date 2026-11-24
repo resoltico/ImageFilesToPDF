@@ -33,9 +33,11 @@ test("only the declared build entry is available to native harnesses and moving 
     const file = (relative) => path.join(fixture.path, relative);
     mkdirSync(file("tests/integration"), { recursive: true });
     mkdirSync(file("tools/tests"), { recursive: true });
+    mkdirSync(file("tools/lint"), { recursive: true });
     writeFileSync(file("package.json"), '{"devDependencies":{}}');
     writeFileSync(file("tools/embedded-engine.mjs"), "export {};");
     writeFileSync(file("tools/adapter.mjs"), "export {};");
+    writeFileSync(file("tools/lint/adapter.mjs"), "export {};");
     writeFileSync(file("tools/tests/adapter.cjs"), "module.exports = {};");
     const native = file("tests/integration/harness.cjs");
     writeFileSync(native, 'import("../../tools/embedded-engine.mjs");');
@@ -45,4 +47,6 @@ test("only the declared build entry is available to native harnesses and moving 
     writeFileSync(native, 'import("../../tools/embedded-engine.mjs");');
     writeFileSync(file("tools/tests/harness.cjs"), 'require("./adapter.cjs");');
     await assert.rejects(checkTestImports(fixture.path), /tools\/tests\/harness\.cjs: forbidden test import .*adapter\.cjs/u);
+    writeFileSync(file("tools/tests/harness.cjs"), 'import("../lint/adapter.mjs");');
+    await assert.rejects(checkTestImports(fixture.path), /tools\/tests\/harness\.cjs: forbidden test import .*adapter\.mjs/u);
 });

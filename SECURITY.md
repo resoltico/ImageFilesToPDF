@@ -62,20 +62,25 @@ metadata before sharing it when location or camera details are sensitive. Every
 other image is re-encoded without its metadata. Ultra HDR JPEGs are normalized to
 their SDR base image; the gain map is excluded from pass-through and from the PDF.
 
-Remembered settings, under `com.resoltico.ImageFilesToPDF`, hold page settings only.
+Finder preferences under `com.resoltico.ImageFilesToPDF` hold page settings and
+the executable locations chosen by the user.
 
 ## Commands and trust
 
 The Node engine passes native arguments directly to the installed executable.
-The Finder client uses a fixed directory search with explicit tool overrides.
-Executable discovery and overrides select trusted installed tools. `IMAGE_FILES_TO_PDF_VIPS`,
-`IMAGE_FILES_TO_PDF_VIPSHEADER` and `IMAGE_FILES_TO_PDF_PDFCPU` can name explicit
-executables; they select trusted tools and are not a sandbox.
+Finder checks the chosen executable locations and uses the
+[macOS directory search](README.md#macos) for automatic discovery. It reads
+the system path files as data. The CLI searches `PATH` and accepts
+`IMAGE_FILES_TO_PDF_VIPS`, `IMAGE_FILES_TO_PDF_VIPSHEADER` and
+`IMAGE_FILES_TO_PDF_PDFCPU` for explicit executable paths. Both entry points
+trust the installed or chosen tools and verify their required capabilities.
 
 The action runs with your user permissions and trusts the installed `vips`,
 `pdfcpu` and supporting system tools. pdfcpu runs with `--conf disable`, so it reads
-no personal configuration, fonts or certificate stores. The action makes no network
-requests; installing tools and verifying attestations need network access.
+no personal configuration, fonts or certificate stores. Image Files to PDF makes
+no network requests. Windows can ask a selected placeholder's registered Cloud
+Files provider to supply its bytes before admission. Installing tools and
+verifying attestations need network access.
 Diagnostics can contain source and output paths and the underlying commands; review
 them before sharing.
 
@@ -86,10 +91,9 @@ bytes, verifies checksums and build attestations before publication, and checks
 that the tag still names the commit being released. Both bundles, the checksum manifest,
 installation instructions and license are attestation subjects.
 
-The Finder client discovers Node in fixed absolute locations. It checks the
-embedded engine's bytes in its private Application Support directory before
-launching it. Cleanup of older engine files is restricted to owned regular
-files.
+Finder verifies the discovered or chosen Node runtime and checks the embedded
+engine's bytes in its private Application Support directory before launching it.
+Cleanup of older engine files is restricted to owned regular files.
 
 [README.md](README.md#verify-a-download) describes download verification.
 Checksums and attestations do not verify a copy pasted into Shortcuts; replace it
