@@ -21,7 +21,6 @@ const SETTINGS_SCHEMA = Object.freeze({
 });
 const SETTINGS_FIELDS = Object.keys(SETTINGS_SCHEMA);
 const DEFAULT_SETTINGS = Object.freeze(Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, SETTINGS_SCHEMA[field].default])));
-const SETTING_CHOICES = Object.freeze(Object.fromEntries(SETTINGS_FIELDS.filter((field) => SETTINGS_SCHEMA[field].kind === "choice").map((field) => [field, SETTINGS_SCHEMA[field].choices.map((choice) => choice.value)])));
 
 function settingValueIssue(field, value, naming) {
     const rule = SETTINGS_SCHEMA[field];
@@ -78,4 +77,4 @@ function normalizeSettings(input) {
 }
 
 function isSeparateMode(settings) { return settings.mode === PDF_MODE.separate; }
-module.exports = { PDF_MODE, SETTINGS_SCHEMA, SETTING_CHOICES, DEFAULT_SETTINGS, SETTINGS_FIELDS, settingIssue, validateSettings, normalizeSettings, isSeparateMode };
+module.exports = { PDF_MODE, SETTINGS_SCHEMA, DEFAULT_SETTINGS, SETTINGS_FIELDS, settingIssue, validateSettings, normalizeSettings, isSeparateMode };

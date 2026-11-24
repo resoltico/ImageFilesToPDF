@@ -117,7 +117,7 @@ the sibling repository.
 ## Tests and build
 
 Tests that inject ports/fixtures belong in `tests/unit/`; tests that inspect the
-real checkout belong in `tests/repo/`. Unit test directories follow the outermost
+real checkout belong in `tools/tests/repository/`. Unit test directories follow the outermost
 production layer they import (`core`, `backend`, `application`, then `engine`, `cli`, `serve` or `finder`); inner
 layer values may serve as fixtures. A repository test enforces placement for
 `require()`, `require.resolve()` and dynamic `import()`. Mutation testing runs unit files. All

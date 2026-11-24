@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
@@ -81,6 +82,6 @@ test("each refusal names the item, its reason and the folder it is in", () => {
 });
 
 test("a refusal at the root is in the root folder", () => {
-    const { refusalLines } = require("../../../src/finder/quick-action/settings-review.js");
+    const { refusalLines } = inspectModule(require.resolve("../../../src/finder/quick-action/settings-review.js"), ["refusalLines"]);
     assert.equal(refusalLines({ path: "/a.png", reason: "Gone." }), "a.png: Gone.\nin /");
 });

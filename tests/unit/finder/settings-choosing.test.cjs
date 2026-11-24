@@ -1,10 +1,11 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { collectSettings } = require("../../../src/finder/quick-action/settings-form.js");
+const { collectSettings } = inspectModule(require.resolve("../../../src/finder/quick-action/settings-form.js"), ["collectSettings"]);
 const { defaultAnswers } = require("../../../src/finder/quick-action/settings-model.js");
-const { createFakeHost } = require("../ports/fake-host.cjs");
+const { createFakeApp } = require("../ports/fake-app.cjs");
 
 const BRIDGE = { objc: {}, ns: {} };
 
@@ -28,7 +29,8 @@ function scripted(outcomes) {
 test("without AppKit the stepwise dialogs still collect the settings", () => {
     // The fallback exists because the form displaying is a fact about this
     // macOS, not a promise about the next one.
-    const host = createFakeHost({});
+    const host = createFakeApp();
+    host.nextAnswer = "92";
     const attempts = [];
     const refuse = () => {
         attempts.push("presented");
@@ -45,14 +47,16 @@ test("without AppKit the stepwise dialogs still collect the settings", () => {
 });
 
 test("a form that cannot present falls back rather than failing the run", () => {
-    const host = createFakeHost({});
+    const host = createFakeApp();
+    host.nextAnswer = "92";
 
     assert.ok(collectSettings(host, {}, BRIDGE, scripted([null])).paperSize);
     assert.ok(host.listPrompts.length > 0);
 });
 
 test("a form coding fault remains identifiable", () => {
-    const host = createFakeHost({});
+    const host = createFakeApp();
+    host.nextAnswer = "92";
     const broken = () => {
         throw new Error("NSAlert exploded");
     };
@@ -64,7 +68,8 @@ test("a form coding fault remains identifiable", () => {
 test("but a cancellation is honored, not turned into dialogs", () => {
     // Falling back here would ask a person who just said no to answer six
     // more questions.
-    const host = createFakeHost({});
+    const host = createFakeApp();
+    host.nextAnswer = "92";
 
     assert.throws(
         () => collectSettings(host, {}, BRIDGE, scripted([{ canceled: true }])),
@@ -74,7 +79,8 @@ test("but a cancellation is honored, not turned into dialogs", () => {
 });
 
 test("the form is preferred when it works", () => {
-    const host = createFakeHost({});
+    const host = createFakeApp();
+    host.nextAnswer = "92";
     const settings = collectSettings(
         host,
         {},
@@ -91,7 +97,7 @@ test("the image count reaches the form that asks the questions", () => {
     // decision, and Cancel is the escape hatch.
     const present = scripted([{ answers: defaultAnswers() }]);
 
-    collectSettings(createFakeHost({}), { context: { count: 231 } }, BRIDGE, present);
+    collectSettings(createFakeApp(), { context: { count: 231 } }, BRIDGE, present);
 
     assert.match(present.seen[0].fullDetail, /^231 images →/u);
 });

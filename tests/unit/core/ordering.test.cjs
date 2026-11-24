@@ -1,8 +1,10 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { naturalCompare, sortImageRecords } = require("../../../src/core/ordering.js");
+const { sortImageRecords } = require("../../../src/core/ordering.js");
+const { naturalCompare } = inspectModule(require.resolve("../../../src/core/ordering.js"), ["naturalCompare"]);
 
 test("naturalCompare orders numbers by value, not by digit", () => {
     assert.ok(naturalCompare("page2", "page10") < 0);

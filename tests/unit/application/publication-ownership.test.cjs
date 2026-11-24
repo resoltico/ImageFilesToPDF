@@ -23,23 +23,26 @@ test("a claimed PDF with an unverifiable name preserves the validated original w
         });
         assert.ok(app.files.has(staged)); assert.ok(app.files.has(target));
         assert.equal(job.artifacts.get(staged).state, "validated");
-        assert.equal([...app.files].some((path) => path.startsWith("/Downloads/")), false);
+        assert.equal([...app.files.keys()].some((path) => path.startsWith("/Downloads/")), false);
         assert.equal(app.commands.some((command) => command.includes("ImageFilesToPDF-recovered")), false);
     }
 });
 
-test("unverifiable Downloads and private-copy names never delete or duplicate their validated originals", async () => {
-    for (const downloads of [true, false]) {
+test("unverifiable Downloads names do not delete or duplicate their validated originals", async () => {
+    for (const copied of [false, true]) {
         const { app, job } = fixture();
         const { link } = job.publication;
-        job.publication.link = (from, to) => downloads && to.startsWith("/Downloads/") ? link(from, to) : { state: "denied" };
+        job.publication.link = (from, to) => {
+            if (!to.startsWith("/Downloads/")) { return { state: "denied" }; }
+            return copied && from === staged ? { state: "cross-device" } : link(from, to);
+        };
         job.publication.actualPath = () => { throw new OperationError("Canonical recovery name unavailable."); };
         // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         await assert.rejects(() => publishPdf(job, staged, target), (error) => error.recovery === staged);
         assert.ok(app.files.has(staged)); assert.equal(job.artifacts.get(staged).state, "validated");
-        const claims = [...app.files].filter((path) => path !== staged);
+        const claims = [...app.files.keys()].filter((path) => path === "/Downloads/result.pdf");
         assert.equal(claims.length, 1, "one claimed copy is left untouched; no duplicate fallback");
-        assert.ok(claims[0].startsWith(downloads ? "/Downloads/" : "/var/folders/"));
+        assert.equal(app.events.filter(([event]) => event === "copyBeside").length, copied ? 1 : 0);
     }
 });
 
@@ -48,7 +51,7 @@ test("publication results use the authoritative stored path instead of the inten
     const actual = "/out/résult.pdf";
     job.publication.actualPath = (path, expected) => {
         assert.equal(path, target); assert.deepEqual(expected, app.publication.facts(path));
-        app.files.add(actual);
+        app.files.set(actual, { ...job.publication.facts(path) });
         return actual;
     };
     assert.equal((await publishPdf(job, staged, target)).path, actual);
@@ -80,14 +83,14 @@ test("changed, missing or uninspectable originals cannot enter generic recovery 
         assert.ok(app.files.has(staged)); assert.ok(app.files.has(target));
         assert.equal(job.artifacts.get(staged).state, "validated");
         assert.equal(app.commands.some((command) => /keeping the validated|ImageFilesToPDF-recovered|\/bin\/cp/u.test(command)), false);
-        assert.equal([...app.files].some((path) => path.startsWith("/Downloads/")), false);
+        assert.equal([...app.files.keys()].some((path) => path.startsWith("/Downloads/")), false);
     }
 });
 
 
 test("the actual publication refusal with no verified original produces failed application output without a recovery path", async () => {
     const { executeDocuments } = require("../../../src/application/documents.js");
-    const { fixture: documentFixture } = require("../application/document-fixture.cjs");
+    const { fixture: documentFixture } = require("../application/fixture-documents.cjs");
     const { job } = fixture();
     const { facts } = job.publication;
     let changed = false;
@@ -117,17 +120,17 @@ test("a changed original is refused before destination-stage copying", async () 
     job.publication.link = () => { changed = true; return { state: "cross-device" }; };
     job.publication.facts = (path) => changed && path === staged ? { identity: "1:99", size: facts(path).size } : facts(path);
     await assert.rejects(() => publishPdf(job, staged, target), (error) => error.recovery === null && error.issues[0].code === "fault");
-    assert.equal(app.commands.some((command) => command.includes("/bin/cp")), false);
+    assert.equal(app.events.some(([event]) => event === "copyBeside"), false);
     assert.ok(app.files.has(staged)); assert.ok(!app.files.has(target));
 });
 
 test("same-size original replacement during destination copying cannot publish or delete either candidate", async () => {
     const { app, job } = fixture();
-    const execute = app.doShellScript, read = job.publication.facts;
+    const { copyBeside } = job.operations, read = job.publication.facts;
     const original = read(staged);
     let changed = false, claims = 0;
     job.publication.link = () => { claims += 1; return { state: "cross-device" }; };
-    app.doShellScript = (command) => { const result = execute(command); if (command.includes("/bin/cp")) { changed = true; } return result; };
+    job.operations.copyBeside = (from, to) => { copyBeside(from, to); changed = true; };
     job.publication.facts = (path) => changed && path === staged ? { identity: "9:9", size: original.size } : read(path);
     await assert.rejects(() => publishPdf(job, staged, target), (error) => {
         assert.equal(error.recovery, null); assert.equal(error.issues[0].code, "fault");
@@ -135,13 +138,13 @@ test("same-size original replacement during destination copying cannot publish o
         assert.ok(error.issues[0].diagnostic.candidate.identity); return true;
     });
     assert.equal(claims, 1); assert.ok(!app.files.has(target)); assert.ok(app.files.has(staged));
-    assert.equal([...app.files].filter((path) => path.endsWith("/ready.pdf") && path !== staged).length, 1);
+    assert.equal([...app.files.keys()].filter((path) => path.endsWith("/ready.pdf") && path !== staged).length, 1);
     assert.equal(job.artifacts.get(staged).state, "validated");
 });
 
 test("confirmed public output survives original replacement during name lookup with a fatal cleanup issue", async () => {
     const { executeDocuments } = require("../../../src/application/documents.js");
-    const { fixture: documentFixture } = require("../application/document-fixture.cjs");
+    const { fixture: documentFixture } = require("../application/fixture-documents.cjs");
     const { app, job } = fixture();
     const read = job.publication.facts;
     const original = read(staged);
@@ -156,7 +159,7 @@ test("confirmed public output survives original replacement during name lookup w
     assert.deepEqual(records[0].issues[0].diagnostic.candidate, { path: target, identity: original.identity, size: original.size });
     assert.equal(records[1].state, "not-started");
     assert.ok(app.files.has(staged)); assert.ok(app.files.has(target)); assert.equal(job.artifacts.get(staged).state, "validated");
-    assert.equal(app.commands.some((command) => command.includes("'/bin/rm' '-f' '/work/ready.pdf'")), false);
+    assert.equal(app.events.some(([event, path]) => event === "removeFile" && path === staged), false);
 });
 
 test("original replacement before Downloads release preserves its named candidate without claiming recovery", async () => {
@@ -191,14 +194,18 @@ test("the human recovery report keeps creation/name uncertainty and the native l
 
 test("name-readback programming faults retain the original exactly once and stay fatal through application", async () => {
     const { executeDocuments } = require("../../../src/application/documents.js");
-    const { fixture: documentFixture } = require("../application/document-fixture.cjs");
+    const { fixture: documentFixture } = require("../application/fixture-documents.cjs");
     for (const Failure of [TypeError, ReferenceError]) {
-        for (const location of ["public", "downloads", "private"]) {
+        for (const location of ["public", "downloads", "staged-downloads"]) {
             const { app, job } = fixture();
             const { link } = job.publication;
             const cause = new Failure("Name readback implementation failed.");
             let lookups = 0;
-            job.publication.link = (from, to) => location === "public" || (location === "downloads" && to.startsWith("/Downloads/")) ? link(from, to) : { state: "denied" };
+            job.publication.link = (from, to) => {
+                if (location === "public") { return link(from, to); }
+                if (!to.startsWith("/Downloads/")) { return { state: "denied" }; }
+                return location === "staged-downloads" && from === staged ? { state: "cross-device" } : link(from, to);
+            };
             job.publication.actualPath = () => { lookups += 1; throw cause; };
             const sample = documentFixture(2, { mode: "separate", ports: { publish: async () => (await publishPdf(job, staged, target)) } });
             // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
@@ -206,7 +213,7 @@ test("name-readback programming faults retain the original exactly once and stay
             assert.equal(records[0].state, "recovered"); assert.equal(records[0].recovery, staged); assert.equal(records[0].fatal, true);
             assert.equal(records[0].issues[0].code, "fault"); assert.equal(records[1].state, "not-started");
             assert.equal(lookups, 1, "no reconfirmation or duplicate fallback lookup");
-            assert.equal(app.commands.filter((command) => command.includes("/bin/cp")).length, location === "private" ? 1 : 0);
+            assert.equal(app.events.filter(([event]) => event === "copyBeside").length, location === "staged-downloads" ? 1 : 0);
             assert.ok(app.files.has(staged)); assert.equal(job.artifacts.get(staged).state, "validated");
         }
     }
@@ -215,7 +222,7 @@ test("name-readback programming faults retain the original exactly once and stay
 test("typed cancellation during name readback keeps its meaning and explicit recovery without reconfirmation", async () => {
     const { executeDocuments } = require("../../../src/application/documents.js");
     const { runOutcome } = require("../../../src/core/outcomes.js");
-    const { fixture: documentFixture } = require("../application/document-fixture.cjs");
+    const { fixture: documentFixture } = require("../application/fixture-documents.cjs");
     const { job } = fixture();
     const cause = new UserCanceled();
     let lookups = 0;

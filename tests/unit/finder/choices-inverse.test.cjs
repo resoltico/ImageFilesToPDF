@@ -11,14 +11,13 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
+const { CONTROLS,
     PAPER_SIZE,
-    ORIENTATION,
-    OUTPUT_MODE,
     BACKGROUND,
     labelOfValue,
     valueOfLabel
 } = require("../../../src/finder/quick-action/settings-model.js");
+const { orientation: ORIENTATION, mode: OUTPUT_MODE } = CONTROLS;
 
 test("a value that is offered under no label is refused, not guessed at", () => {
     // The inverse of choosing: it is only ever asked about a value that came

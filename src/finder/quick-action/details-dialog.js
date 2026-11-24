@@ -125,4 +125,4 @@ function showDetails(app, spec, bridge = appkitBridge(globalThis.ObjC, globalThi
     const response = runDetailsModal(bridge, alert, [alert.accessoryView]);
     return response === MODAL_UNAVAILABLE ? showDetailPages(app, spec) : response - FIRST_BUTTON;
 }
-module.exports = { makeDetails, detailsAlert, layoutDetails, runDetailsModal, showDetails, detailPages, DETAIL_HEIGHT, DETAIL_WIDTH };
+module.exports = { makeDetails, detailsAlert, layoutDetails, runDetailsModal, showDetails, DETAIL_HEIGHT };

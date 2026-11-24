@@ -2,7 +2,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { purePatterns } from "./pure-modules.mjs";
 
-const tests = ["tests/unit/**/*.test.cjs", "tests/repo/**/*.test.cjs"];
+const tests = ["tests/unit/**/*.test.cjs", "tools/tests/**/*.test.cjs"];
 const coverage = [
     "--test", "--experimental-test-coverage",
     ...purePatterns.map((pattern) => `--test-coverage-include=${pattern}`),

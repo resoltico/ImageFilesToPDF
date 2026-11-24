@@ -1,10 +1,12 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test=require("node:test");
 const assert=require("node:assert/strict");
 const { runOutcome, issuesOf }=require("../../../src/core/outcomes.js");
 const { sourceIssues }=require("../../../src/core/source-policy.js");
-const { completionMessage }=require("../../../src/finder/quick-action/completion.js");
-const { showDetails,detailPages }=require("../../../src/finder/quick-action/details-dialog.js");
+const { completionMessage }=inspectModule(require.resolve("../../../src/finder/quick-action/completion.js"), ["completionMessage"]);
+const { showDetails } = require("../../../src/finder/quick-action/details-dialog.js");
+const { detailPages } = inspectModule(require.resolve("../../../src/finder/quick-action/details-dialog.js"), ["detailPages"]);
 const { createFakeObjC }=require("../ports/fake-objc.cjs");
 const { createFakeApp }=require("../ports/fake-app.cjs");
 

@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * The controls a person types into.
@@ -14,7 +15,7 @@ const test = require("node:test");
 const {
     makeField,
     makeColorCombo
-} = require("../../../src/finder/quick-action/appkit.js");
+} = inspectModule(require.resolve("../../../src/finder/quick-action/appkit.js"), ["makeField", "makeColorCombo"]);
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 const RECT = { left: 10, bottom: 20, width: 100, height: 24 };

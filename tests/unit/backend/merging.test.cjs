@@ -1,7 +1,8 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { commandLengthOf } = require("../../support/macos-conversion/backend/batching.js");
+const { Buffer } = require("node:buffer");
+const commandLengthOf = (argv) => argv.reduce((bytes, value) => bytes + Buffer.byteLength(value) + 1, 0);
 const { mergeGroups: groupMerge } = require("../../../src/backend/merging.js");
 const { buildPdfcpuMergeArgv } = require("../../../src/backend/pdfcpu.js");
 
@@ -21,7 +22,7 @@ test("merge levels preserve order within bounded groups", () => {
 
 test("argv byte budget is enforced independently of the page bound", () => {
     assert.throws(() => mergeGroups("pdfcpu", "/out.pdf", ["/a.pdf"], 1), /argument exceeds/u);
-    const groups = mergeGroups("pdfcpu", "/out.pdf", ["/a.pdf", "/b.pdf"], 81);
+    const groups = mergeGroups("pdfcpu", "/out.pdf", ["/a.pdf", "/b.pdf"], 65);
     assert.deepEqual(groups, [["/a.pdf"], ["/b.pdf"]]);
 });
 

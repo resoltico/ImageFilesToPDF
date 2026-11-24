@@ -135,4 +135,4 @@ async function imagesInFolder(tree, folder, taken) {
     };
 }
 
-module.exports = { imagesInFolder, isHidden };
+module.exports = { imagesInFolder };

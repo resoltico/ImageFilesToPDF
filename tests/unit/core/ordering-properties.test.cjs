@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * The laws a comparator has to obey, which no example can establish.
@@ -14,7 +15,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const fc = require("fast-check");
-const { naturalCompare } = require("../../../src/core/ordering.js");
+const { naturalCompare } = inspectModule(require.resolve("../../../src/core/ordering.js"), ["naturalCompare"]);
 
 /*
  * Any text at all, and text shaped the way this is decided -- runs of digits

@@ -17,7 +17,7 @@ const { normalizeSettings } = require("../../../src/core/settings.js");
 const { defaultAnswers } = require("../../../src/finder/quick-action/settings-model.js");
 const { readAnswers } = require("../../../src/finder/quick-action/settings-model.js");
 const { boundedDialog } = require("../ports/fake-dialogs.cjs");
-const { createFakeHost } = require("../ports/fake-host.cjs");
+const { createFakeApp } = require("../ports/fake-app.cjs");
 
 const LAST_RUN = normalizeSettings({
     paperSize: "Letter",
@@ -54,7 +54,7 @@ function memoryHolding(text) {
 // A host whose dialogs answer with whatever they are offered first, so what a
 // run opens on is what it ends up with.
 function acceptingHost() {
-    const host = createFakeHost({});
+    const host = createFakeApp();
 
     host.chooseFromList = (choices, options) => options.defaultItems;
     host.displayDialog = boundedDialog((message, options) => ({

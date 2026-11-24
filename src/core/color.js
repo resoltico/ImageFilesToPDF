@@ -40,4 +40,4 @@ function rgbOf(value) {
     };
 }
 
-module.exports = { COLOR_ERROR, normalizeColor, rgbOf };
+module.exports = { normalizeColor, rgbOf };

@@ -48,4 +48,4 @@ function showCompletion(app, result, reveal = revealOutputs) {
     }
 }
 
-module.exports = { completionMessage, showCompletion };
+module.exports = { showCompletion };

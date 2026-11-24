@@ -37,4 +37,4 @@ function recoveryDestination(downloads, intended, workspacePdf) {
         : { kind: "workspace", path: workspacePdf };
 }
 
-module.exports = { recoveryDestination, isPublished, registerArtifact, retainsArtifact, hasRetainedArtifacts, requireValidatedArtifact, releaseArtifact };
+module.exports = { recoveryDestination, isPublished, registerArtifact, hasRetainedArtifacts, requireValidatedArtifact, releaseArtifact };

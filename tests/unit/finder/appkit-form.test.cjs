@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
@@ -9,7 +10,7 @@ const {
     NUMBER_WIDTH,
     COLOR_WIDTH,
     PADDING
-} = require("../../../src/finder/quick-action/appkit.js");
+} = inspectModule(require.resolve("../../../src/finder/quick-action/appkit.js"), ["FORM_WIDTH", "ROW_HEIGHT", "NUMBER_WIDTH", "COLOR_WIDTH", "PADDING"]);
 const { WIDGETS } = require("../../../src/finder/quick-action/appkit.js");
 const { formSpec, defaultAnswers } = require("../../../src/finder/quick-action/settings-model.js");
 const { createFakeObjC } = require("../ports/fake-objc.cjs");

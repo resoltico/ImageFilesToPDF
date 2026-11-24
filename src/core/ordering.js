@@ -103,4 +103,4 @@ function sortImageRecords(records) {
     );
 }
 
-module.exports = { naturalCompare, sortImageRecords };
+module.exports = { sortImageRecords };

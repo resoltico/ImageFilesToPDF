@@ -70,13 +70,6 @@ const MESSAGES = Object.freeze({
     folderPackageStatusUnreadable: "The folder's package status could not be read.",
     publishedPdfNameUnverified: "The published PDF's stored filename could not be uniquely verified from its directory entries.",
     publishedPdfIdentityChanged: "The published PDF identity changed while reading its stored filename.",
-    directoryStreamAbiUnavailable: "The native directory stream ABI could not be established.",
-    directoryEntryInvalidLengths: "A native directory entry has invalid lengths.",
-    directoryEntryMissingNull: "A native directory entry has no terminating NUL.",
-    directoryEntryEmbeddedNull: "A native directory entry contains an embedded NUL.",
-    directoryEntryNotUtf8: "A native directory entry is not exact UTF-8 text.",
-    directoryEntriesRequireBridge: "Native directory entry names require the Objective-C bridge.",
-    directoryEntriesUnavailable: "Native directory entry names are unavailable.",
     workspaceOwnerUnknown: "The workspace owner could not be established.",
     headerArgumentBudgetExceeded: "The image header command exceeds the argument budget.",
     outputComparisonRemovalFailed: "Temporary output-name comparisons could not be removed.",
@@ -106,8 +99,6 @@ const MESSAGES = Object.freeze({
     workspaceOwnershipUnknown: "Workspace ownership could not be established.",
     fileIssue: "{path}: {reason}",
     fileEmptyOrInvalid: "{label} is not a file with anything in it:\n\n{path}",
-    directoryEntriesUnreadable: "Directory entry names could not be read ({operation}, errno {code}).",
-    directoryStreamCloseFailed: "The native directory stream could not be closed.",
     destinationComparisonUnavailableAtPath: "Output names could not be compared in this destination: {folder}",
     destinationDirectoryUnverified: "The destination directory could not be verified: {directory}",
     privateWorkspaceInspectionFailed: "The private working folder could not be inspected.",
@@ -132,17 +123,6 @@ const MESSAGES = Object.freeze({
     toolMissingFromPath: "{name} is not installed on the absolute executable search path.",
     toolUnusable: "{name} failed its capability check.",
     pdfcpuUnusable: "{name} failed its capability check. Version {minimum} or later is required.",
-    setupMissing: "{tool} is not installed.",
-    setupVipsheaderUnusable: "vipsheader could not read the built-in PNG image.",
-    setupPdfcpuUnusable: "pdfcpu could not report a supported stable version. Version {minimum} or later is required.",
-    setupVipsUnusable: "{tool} is installed but too old: it does not accept {flags}.",
-    setupOverrideUnusable: "{override} is not usable as {tool}.",
-    setupFixOverrides: "Fix or unset the named tool overrides, then try again.",
-    setupRunInTerminal: "Run this in Terminal:\n\n{commands}",
-    setupInstallHomebrew: "Install Homebrew first, from {url}\n\nthen run:\n\n{commands}",
-    setupNeeded: "Setup needed.",
-    homebrewToolInstall: "brew install vips pdfcpu",
-    homebrewToolUpgrade: "brew upgrade vips pdfcpu",
     settingsFileInvalidJson: "Settings file is not valid JSON: {path}",
     settingsFileInvalidJsonAt: "Settings file is not valid JSON ({position}): {path}",
     settingsFileNotObject: "Settings file is not an object: {path}",
@@ -258,4 +238,4 @@ function publicationFailureDetails(reasons, recovery) {
     return [message("publicationFailure"), ...reasons, message("publicationWhereabouts", { path: recovery })].join("\n\n");
 }
 
-module.exports = { MESSAGES, message, issueMessage, issueMessages, publicationFailureDetails };
+module.exports = { message, issueMessage, issueMessages, publicationFailureDetails };

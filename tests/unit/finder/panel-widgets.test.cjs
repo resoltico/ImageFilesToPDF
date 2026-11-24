@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * The AppKit objects the progress panel is made of.
@@ -22,8 +23,8 @@ const {
     makeHeadline,
     makeDetail,
     makeBar
-} = require("../../../src/finder/quick-action/panel.js");
-const { PANEL_RECT, TRACK_RECT } = require("../../../src/finder/quick-action/panel.js");
+} = inspectModule(require.resolve("../../../src/finder/quick-action/panel.js"), ["PANEL_STYLE", "perform", "rectOf", "makePanel", "makeContent", "makeHeadline", "makeDetail", "makeBar"]);
+const { PANEL_RECT, TRACK_RECT } = inspectModule(require.resolve("../../../src/finder/quick-action/panel.js"), ["PANEL_RECT", "TRACK_RECT"]);
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 const STYLE_TITLED = 1;

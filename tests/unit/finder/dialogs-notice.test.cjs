@@ -11,7 +11,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { promptInteger } = require("../../../src/finder/quick-action/prompts.js");
-const { RESOLUTION } = require("../../../src/finder/quick-action/settings-model.js");
+const { CONTROLS } = require("../../../src/finder/quick-action/settings-model.js");
+const { resolutionLimit: RESOLUTION } = CONTROLS;
 const { readAnswers } = require("../../../src/finder/quick-action/settings-model.js");
 const { defaultAnswers } = require("../../../src/finder/quick-action/settings-model.js");
 const { createFakeApp } = require("../ports/fake-app.cjs");

@@ -86,7 +86,6 @@ module.exports = {
     UserCanceled,
     errorMessage,
     diagnosticText,
-    causes,
     commandOf,
     isUserCanceled
 };

@@ -20,8 +20,13 @@ import { checkDocumentReferences } from "./lint/document-references.mjs";
 import { checkSettingsDocs } from "./lint/settings-docs.mjs";
 import { checkBoundaries } from "./lint/boundaries.mjs";
 
+import { checkExportConsumers } from "./lint/production-exports.mjs";
+import { checkTestImports } from "./lint/test-imports.mjs";
+
 await checkBoundaries();
+await checkTestImports();
 const sources = await Promise.all((await sourceFiles()).map(async (file) => [file, await readFile(file, "utf8")]));
+await checkExportConsumers(new Map(sources));
 checkPureModules(new Map(sources));
 await checkSettingsDocs();
 const files = await lintableFiles();

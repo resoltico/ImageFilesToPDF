@@ -41,4 +41,4 @@ function selectionContext(selection) {
     };
 }
 
-module.exports = { SELECTION_REASONS, selectionReason, selectionRefusal, selectionContext };
+module.exports = { selectionReason, selectionRefusal, selectionContext };

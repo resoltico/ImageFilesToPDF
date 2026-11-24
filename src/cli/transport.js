@@ -33,4 +33,4 @@ async function report(result, output = stdout, errors = stderr) {
     return prose && receipt ? exitCode(result) : 1;
 }
 
-module.exports = { receiptText, report, write };
+module.exports = { report, write };

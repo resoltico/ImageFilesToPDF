@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * How a name is cut into segments, and what each segment is taken to be. The
@@ -8,7 +9,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { naturalCompare } = require("../../../src/core/ordering.js");
+const { naturalCompare } = inspectModule(require.resolve("../../../src/core/ordering.js"), ["naturalCompare"]);
 
 test("a segment counts as numeric only when it is entirely digits", () => {
     // An unanchored test would treat "a1" or "1a" as a number and compare by

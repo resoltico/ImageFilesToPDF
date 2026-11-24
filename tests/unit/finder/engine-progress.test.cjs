@@ -1,8 +1,9 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { progressObserver } = require("../../../src/finder/quick-action/main.js");
+const { progressObserver } = inspectModule(require.resolve("../../../src/finder/quick-action/main.js"), ["progressObserver"]);
 
 test("Finder pairs phase and progress frames before rendering the panel", () => {
     const events = [];
@@ -26,4 +27,17 @@ test("Finder pairs phase and progress frames before rendering the panel", () => 
         [0, "Preparing", "1 of 3 — first.png"],
         [3, "Creating PDF", ""]
     ]);
+});
+
+test("Finder records panel factory failures and continues accepting engine progress", () => {
+    for (const fault of [new TypeError("broken factory"), null]) {
+        const observer = progressObserver(() => {
+            throw fault;
+        });
+        observer.progress({ type: "phase", phase: "Preparing" });
+        observer.progress({ type: "progress", done: 0, total: 1 });
+        assert.equal(observer.stopped(), false);
+        observer.close();
+        assert.deepEqual(observer.diagnostics, [{ code: "observer-fault", message: String(fault), stack: fault?.stack ?? "" }]);
+    }
 });

@@ -12,9 +12,8 @@ const { unconfirmedClaim } = require("../../../src/application/publication-name.
 const { createProgress } = require("../../../src/application/progress.js");
 const { OperationError } = require("../../../src/core/errors.js");
 const { treeOf } = require("../ports/fake-tree.cjs");
-const { runOperations } = require("../../support/macos-conversion/host/run-operations.js");
-const { fixture } = require("../application/document-fixture.cjs");
-const { createFakeHost } = require("../ports/fake-host.cjs");
+const { fixture } = require("../application/fixture-documents.cjs");
+const { createConversionFixture } = require("../ports/fake-conversion.cjs");
 const { makeJob, imageOf, preparePage } = require("../ports/fake-job.cjs");
 
 test("a drive root already supplies its directory separator and a trailing slash requires a directory", async () => {
@@ -40,7 +39,7 @@ test("one oversized page fails explicitly before import and releases the queue",
 
 test("merge assembles multiple levels and rejects a budget that cannot reduce even a pair", async () => {
     const parts = Array.from({ length: 33 }, (unused, index) => `/work/part-${index}.pdf`);
-    const host = createFakeHost({ files: parts });
+    const host = createConversionFixture({ files: parts });
     const job = makeJob(host);
     const staged = "/work/ready.pdf";
     job.parts.set(staged, []);
@@ -68,27 +67,28 @@ test("merge assembles multiple levels and rejects a budget that cannot reduce ev
 });
 
 test("eligible JPEG passes through only after full decode; a native issue without argv becomes damage", async () => {
-    const host = createFakeHost({ files: ["/source.jpg"] });
+    const host = createConversionFixture({ files: ["/source.jpg"] });
     Object.assign(host, { loader: "jpegload", width: 64, height: 48 });
     const source = imageOf("/source.jpg");
     Object.assign(source.admission.image, { loader: "jpegload", format: "JPEG", width: 64, height: 48, gainMap: false });
     const job = makeJob(host);
     assert.match((await preparePage(job, source, 0)).path, /0-page\.jpg$/u);
-    assert.ok(host.commands.some((command) => command.includes("'avg'")));
-    job.operations.run = (argv) => { if (argv.includes("avg")) { throw new OperationError("Unreadable scan."); } return runOperations(host).run(argv); };
+    assert.ok(host.commands.some((command) => command.includes("avg")));
+    const { run } = job.operations;
+    job.operations.run = (argv, label) => { if (argv.includes("avg")) { throw new OperationError("Unreadable scan."); } return run(argv, label); };
     await assert.rejects(() => preparePage(job, source, 1), (error) => error.issues[0].code === "damaged" && error.issues[0].diagnostic.command === "");
 });
 
 test("PNG count faults and damaged headers remain visible on the original source", async () => {
     const source = imageOf("/source.png");
-    const host = createFakeHost({ files: [source.path] });
+    const host = createConversionFixture({ files: [source.path] });
     const { tools } = makeJob(host);
     const progress = createProgress([]);
     const selection = { images: [source], rejected: [] };
     for (const error of [new OperationError("Cannot count"), new OperationError("Bad PNG", { issues: [{ code: "damaged", message: "Bad PNG", diagnostic: { detail: "test" } }] })]) {
         const sources = { ...host.sources, pngCount() { throw error; } };
         // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
-        const result = (await inspectCandidates(runOperations(host), selection, { tools, sources, progress }));
+        const result = (await inspectCandidates(host.operations, selection, { tools, sources, progress }));
         assert.equal(result.rejected[0].code, "damaged");
         assert.equal(result.rejected[0].path, source.path);
     }
@@ -104,7 +104,7 @@ test("an ambiguous claim with no verified original yields no recovery path", () 
 
 function publicationFixture() {
     const staged = "/work/ready.pdf";
-    const host = createFakeHost({ files: [staged] });
+    const host = createConversionFixture({ files: [staged] });
     const job = makeJob(host);
     job.artifacts.set(staged, { path: staged, state: "validated" });
     return { host, job, staged, target: "/public/out.pdf" };
@@ -135,8 +135,8 @@ test("recovery checks destination sizes and retains the private original on ambi
 
 test("ambiguous batched vips headers are confirmed individually", async () => {
     const files = ["/first.png", "/second.png"];
-    const host = createFakeHost({ files });
-    const operations = runOperations(host);
+    const host = createConversionFixture({ files });
+    const { operations } = host;
     const { run } = operations;
     operations.run = (argv, label) => {
         if (argv[1] === "-a" && argv.length > 3) { throw new OperationError("Ambiguous combined response."); }
@@ -146,7 +146,7 @@ test("ambiguous batched vips headers are confirmed individually", async () => {
     const result = (await inspectCandidates(operations, { images: files.map(imageOf), rejected: [] },
         { tools, sources: host.sources, progress: createProgress([]) }));
     assert.deepEqual(result.images.map((image) => image.path), files);
-    assert.equal(host.commands.filter((command) => command.includes("'-a'")).length, 2);
+    assert.equal(host.commands.filter((command) => command.includes("-a")).length, 2);
 });
 
 test("cross-device Downloads recovery reports its native cause and any cleanup failure", async () => {
@@ -176,22 +176,25 @@ test("a blank native destination detail falls back to the operation error", asyn
 });
 
 test("missing an individual native operation fails before reclamation or selection", async () => {
-    const { execute } = require("../../support/macos-conversion/host/main.js");
-    const host = createFakeHost();
+    const { execute } = require("../../../src/application/workflow.js");
+    const host = createConversionFixture();
     const { storage, publication, sources, destinationNames } = host;
     const tree = treeOf({});
     const invocation = { inputItems: ["/source.png"] };
     const progress = createProgress([]);
     const capabilities = { tree, storage, publication, sources, destinationNames };
     const interaction = { progress, collect: () => invocation };
+    const { tools } = makeJob(host);
+    let reclaimed = false;
+    const run = (ports) => execute(invocation, { interaction, capabilities: ports, operations: host.operations, checkTools: () => tools, reclaim() { reclaimed = true; return []; } });
     for (const field of ["facts", "readable", "capture", "pngCount"]) {
         const incomplete = { ...capabilities, sources: { ...sources, [field]: undefined } };
         // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
-        await assert.rejects(() => execute(host, invocation, { interaction, capabilities: incomplete }), /Required filesystem\/source capabilities/u);
+        await assert.rejects(() => run(incomplete), /Required filesystem\/source capabilities/u);
     }
-    await assert.rejects(() => execute(host, invocation, { interaction, capabilities: { ...capabilities, destinationNames: {} } }),
+    await assert.rejects(() => run({ ...capabilities, destinationNames: {} }),
         /Required filesystem\/source capabilities/u);
-    assert.ok(!host.commands.some((command) => command.includes("'/bin/ps'")));
+    assert.equal(reclaimed, false);
 });
 
 test("a mixed resource cleanup error keeps cancellation and takes an independent diagnostic snapshot", () => {

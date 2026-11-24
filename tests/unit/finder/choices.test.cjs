@@ -2,17 +2,14 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
+const { CONTROLS,
     PAPER_SIZE,
-    ORIENTATION,
-    OUTPUT_MODE,
     BACKGROUND,
-    RESOLUTION,
-    QUALITY,
     labelsOf,
-    defaultLabelOf,
+    labelOfValue,
     valueOfLabel
 } = require("../../../src/finder/quick-action/settings-model.js");
+const { orientation: ORIENTATION, mode: OUTPUT_MODE, resolutionLimit: RESOLUTION, quality: QUALITY } = CONTROLS;
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 const LISTS = [PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND];
@@ -92,10 +89,10 @@ test("each background label carries the value it selects", () => {
 });
 
 test("the common case is offered first", () => {
-    assert.equal(defaultLabelOf(OUTPUT_MODE), "One PDF — one image per page");
-    assert.equal(defaultLabelOf(PAPER_SIZE), "A4");
-    assert.equal(defaultLabelOf(ORIENTATION), "Portrait");
-    assert.equal(defaultLabelOf(BACKGROUND), "White (#FFFFFF)");
+    assert.equal(labelOfValue(OUTPUT_MODE, OUTPUT_MODE.defaultValue), "One PDF — one image per page");
+    assert.equal(labelOfValue(PAPER_SIZE, PAPER_SIZE.defaultValue), "A4");
+    assert.equal(labelOfValue(ORIENTATION, ORIENTATION.defaultValue), "Portrait");
+    assert.equal(labelOfValue(BACKGROUND, BACKGROUND.defaultValue), "White (#FFFFFF)");
 });
 
 test("an unknown label is refused rather than passed through", () => {

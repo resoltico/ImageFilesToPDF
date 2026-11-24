@@ -3,17 +3,16 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const {Buffer}=require("node:buffer");
 const {createJob,runJob,unitsOf}=require("../../../src/application/job.js");
-const {createFakeHost}=require("../ports/fake-host.cjs");
+const {createConversionFixture}=require("../ports/fake-conversion.cjs");
 const {imageOf}=require("../ports/fake-job.cjs");
 const {createProgress}=require("../../../src/application/progress.js");
-const {runOperations}=require("../../support/macos-conversion/host/run-operations.js");
 const settings={paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:85,background:"#FFFFFF"};
 const tools={vips:"/v/vips",vipsheader:"/v/vipsheader",pdfcpu:"/v/pdfcpu"};
 const stamp="20261029_070000";
 
-async function jobFixture(mode="combined",failures=[]) {
-    const app=createFakeHost({files:["/a/1.png","/a/2.png"],failures});
-    const job=(await createJob(runOperations(app),{...settings,mode},stamp,{tools,storage:app.storage,destinationNames:app.destinationNames}));
+async function jobFixture(mode="combined",faults={}) {
+    const app=createConversionFixture({files:["/a/1.png","/a/2.png"],faults});
+    const job=(await createJob(app.operations,{...settings,mode},stamp,{tools,storage:app.storage,destinationNames:app.destinationNames}));
     const events=[];
     job.sources=app.sources;job.publication=app.publication;
     job.progress=createProgress([{start:(units)=>events.push(["expect",units]),report:(done,text,detail)=>events.push([done,text,detail])}]);
@@ -43,49 +42,49 @@ for(const mode of ["combined","separate"]) {
         assert.equal(events.at(-1)[0],mode==="combined"?3:2);
         assert.equal(events.at(-1)[1],"Saved");
         assert.deepEqual(result.documents.map((document)=>document.output),mode==="combined"?["/a/Images 2026-10-29 at 07.00.00.pdf"]:["/a/1.pdf","/a/2.pdf"]);
-        assert.ok(app.commands.some((command)=>command.includes("'/bin/rm' '-rf'")));
+        assert.ok(app.events.some(([event]) => event === "removeWorkspace"));
     });
 }
 
 test("ordinary separate failures advance attempted-work progress and continue",async ()=>{
-    const {job,events}=(await jobFixture("separate",[["'thumbnail'",new Error("damage")]]));
+    const {job,events}=(await jobFixture("separate",{run: ([, operation]) => operation === "thumbnail" ? new Error("damage") : undefined}));
     const result=(await runJob(job,[imageOf("/a/1.png"),imageOf("/a/2.png")]));
     assert.deepEqual(result.documents.map((document)=>document.state),["failed","failed"]);
     assert.equal(events.at(-1)[0],2);assert.equal(events.at(-1)[1],"Finished");
 });
 
 test("unconfirmed validated work keeps the workspace even after unexpected publication faults",async ()=>{
-    const {job,app}=(await jobFixture("combined",[["'/bin/cp'",new Error("recovery denied")]]));
+    const {job,app}=(await jobFixture("combined",{copyBeside: new Error("recovery denied")}));
     job.publication.link=()=>{throw new TypeError("bridge fault");};
     const result=(await runJob(job,[imageOf("/a/1.png")]));
     assert.equal(result.documents[0].state,"recovered");
     assert.equal(job.artifacts.size,1);
-    assert.ok(!app.commands.some((command)=>command.includes("'/bin/rm' '-rf'")));
+    assert.ok(!app.events.some(([event]) => event === "removeWorkspace"));
 });
 
 test("a default job has an inert progress capability, not a malformed sink",async ()=>{
-    const app=createFakeHost();
-    const job=(await createJob(runOperations(app),settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames}));
+    const app=createConversionFixture();
+    const job=(await createJob(app.operations,settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames}));
     job.progress.phase("Checking");assert.deepEqual(job.progress.diagnostics,[]);
 });
 
 async function longPathFixture() {
     const sources=Array.from({length:35},(unused,index)=>`/a/${index}.png`);
-    const app=createFakeHost({files:sources});
-    const job=(await createJob(runOperations(app),settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames}));
+    const app=createConversionFixture({files:sources});
+    const job=(await createJob(app.operations,settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames}));
     Object.assign(job,{sources:app.sources,publication:app.publication,tools:{...tools,pdfcpu:"/opt/homebrew/Cellar/pdfcpu/0.16.4/bin/pdfcpu"}});
     job.workspace=`/${[246,246,246,245].map((width)=>"'".repeat(width)).join("/")}/ImageFilesToPDF.x`;
-    const counts=[];const original=app.doShellScript;
-    app.doShellScript=(command)=>{if(command.includes("'thumbnail'")){counts.push([...app.files].filter((path)=>path.endsWith("-page.jpg")).length);}return original(command);};
+    const counts=[];const original=job.operations.run;
+    job.operations.run=(command, label)=>{if(command.includes("thumbnail")){counts.push([...app.files.keys()].filter((path)=>path.endsWith("-page.jpg")).length);}return original(command, label);};
     return {app,job,counts,sources};
 }
 
-test("page staging stays bounded across real adapter imports, including quote-heavy valid paths",async ()=>{
+test("page staging stays bounded across imports with long paths",async ()=>{
     const {app,job,counts,sources}=(await longPathFixture());
     const result=(await runJob(job,sources.map(imageOf)));
     assert.equal(result.state,"complete");assert.ok(Math.max(...counts)<=32);
-    const imports=app.commands.filter((command)=>command.includes("'import'"));
-    assert.equal(imports.length,2);assert.ok(imports.every((command)=>Buffer.byteLength(command,"utf8")+1<=131072));
+    const imports=app.commands.filter((command)=>command.includes("import"));
+    assert.equal(imports.length,2);assert.ok(imports.every((command)=>command.reduce((bytes, argument) => bytes + Buffer.byteLength(argument) + 1, 0) <= 122880));
 });
 
 test("job accumulator outlives executor and workspace teardown faults",async ()=>{
@@ -109,8 +108,8 @@ test("name-planning faults release the owned workspace before any PDF bytes",asy
     const result=(await runJob(job,[imageOf("/a/1.png"),imageOf("/a/2.png")]));
     assert.equal(result.state,"incomplete");assert.deepEqual(result.documents,[]);
     assert.ok(result.issues.some(issue=>issue.code==="fault"));
-    assert.ok(app.commands.some(command=>command.includes("'/bin/rm' '-rf'")));
-    assert.ok(!app.commands.some(command=>command.includes("'thumbnail'")));
+    assert.ok(app.events.some(([event]) => event === "removeWorkspace"));
+    assert.ok(!app.commands.some(command=>command.includes("thumbnail")));
 });
 
 
@@ -150,7 +149,7 @@ test("queue, validation and cleanup keep their progress and ownership boundaries
     assert.ok(events.some(([done, description]) => done === 1 && description === "Prepared"));
     assert.deepEqual(outcome.issues, []);
     assert.deepEqual(outcome.documents[0].issues, []);
-    assert.ok(app.commands.some((command) => command.includes("'/bin/rm' '-rf'")));
+    assert.ok(app.events.some(([event]) => event === "removeWorkspace"));
 });
 
 test("capture and ordered encoding each have a Stop checkpoint and truthful progress", async () => {
@@ -177,10 +176,10 @@ test("the initial setup reports prior workspace observations before showing a se
     const { execute } = require("../../../src/application/workflow.js");
     const { treeOf } = require("../ports/fake-tree.cjs");
     const { noImagesOutcome } = require("../../../src/core/outcomes.js");
-    const host = createFakeHost(), progress = createProgress([]);
+    const host = createConversionFixture(), progress = createProgress([]);
     const observation = { code: "workspace-reclaimed", stage: "workspace", message: "A stale workspace was reclaimed." };
     const options = {
-        operations: runOperations(host), checkTools: () => tools,
+        operations: host.operations, checkTools: () => tools,
         capabilities: { tree: treeOf({}), sources: host.sources, publication: host.publication, storage: host.storage, destinationNames: host.destinationNames },
         reclaim: () => [observation], now: () => new Date(),
         interaction: { progress, collect: () => ({ inputItems: [] }), noImages: noImagesOutcome }
@@ -196,7 +195,7 @@ test("a failed owned-page release stops before another native write and is inclu
     const result = await runJob(job, [imageOf("/a/1.png")]);
     assert.equal(result.documents[0].fatal, true);
     assert.deepEqual(result.diagnostics, [prior]);
-    assert.ok(!app.commands.some((command) => command.includes("'thumbnail'")));
+    assert.ok(!app.commands.some((command) => command.includes("thumbnail")));
 });
 
 test("empty prepared output cannot reach import and is removed", async () => {
@@ -206,8 +205,8 @@ test("empty prepared output cannot reach import and is removed", async () => {
     const result = await runJob(job, [imageOf("/a/1.png")]);
     assert.equal(result.documents[0].state, "failed");
     assert.match(result.documents[0].issues[0].message, /Page size is unknown/u);
-    assert.ok(![...app.files].some((file) => file.endsWith("-page.png")));
-    assert.ok(!app.commands.some((command) => command.includes("'import'")));
+    assert.ok(![...app.files.keys()].some((file) => file.endsWith("-page.png")));
+    assert.ok(!app.commands.some((command) => command.includes("import")));
 });
 
 test("mandatory cleanup failure immediately before validation prevents the validator from writing", async () => {
@@ -218,7 +217,7 @@ test("mandatory cleanup failure immediately before validation prevents the valid
     const result = await runJob(job, [imageOf("/a/1.png")]);
     assert.equal(result.documents[0].state, "failed");
     assert.ok(result.documents[0].issues.some((issue) => issue.message === failure.message));
-    assert.ok(!app.commands.some((command) => command.includes("'validate'")));
+    assert.ok(!app.commands.some((command) => command.includes("validate")));
 });
 
 test("a marker inspection fault remains visible and prevents workspace removal", async () => {
@@ -228,5 +227,5 @@ test("a marker inspection fault remains visible and prevents workspace removal",
     assert.deepEqual(result.issues.map(({ code, stage, message }) => [code, stage, message]), [
         ["fault", "cleanup", "Workspace marker inspection failed."]
     ]);
-    assert.ok(!app.commands.some((command) => command.includes("'/bin/rm' '-rf'")));
+    assert.ok(!app.events.some(([event]) => event === "removeWorkspace"));
 });

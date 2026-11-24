@@ -1,10 +1,12 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { finderSelection, collectInvocation } = require("../../../src/finder/quick-action/input.js");
+const { collectInvocation } = require("../../../src/finder/quick-action/input.js");
+const { finderSelection } = inspectModule(require.resolve("../../../src/finder/quick-action/input.js"), ["finderSelection"]);
 const { collectImageFiles } = require("../ports/fake-selection.cjs");
-const { createFakeApp, failing } = require("../ports/fake-app.cjs");
+const { createFakeApp } = require("../ports/fake-app.cjs");
 
 /*
  * Application() is a JavaScriptCore host global, supplied here so the
@@ -21,7 +23,7 @@ test("what cannot be converted is reported, not dropped", async () => {
     // A silent filter turned a GIF selected alongside a photo into a report
     // that nothing had failed, so the count described the surviving subset
     // rather than what was asked for.
-    const app = createFakeApp([["'/a/missing.png'", failing("1")]]);
+    const app = { unavailable: ["/a/missing.png"] };
     const { images, rejected } = (await collectImageFiles(app, [
         "/a/photo.JPG",
         "/a/notes.txt",
@@ -35,7 +37,7 @@ test("what cannot be converted is reported, not dropped", async () => {
 });
 
 test("collectImageFiles keeps only supported, regular files", async () => {
-    const app = createFakeApp([["'/a/missing.png'", failing("1")]]);
+    const app = { unavailable: ["/a/missing.png"] };
     const { images: records } = (await collectImageFiles(app, [
         "/a/photo.JPG",
         "/a/notes.txt",
@@ -99,7 +101,7 @@ test("an interactive invocation defers its settings", () => {
 test("every rejection is retained for the bounded detail surface", () => {
     // A selection can be large, and a dialog listing forty reasons is not a
     // dialog anyone reads.
-    const { describeRejections } = require("../../../src/core/run-report.js");
+    const { describeRejections } = inspectModule(require.resolve("../../../src/core/run-report.js"), ["describeRejections"]);
     const many = Array.from({ length: 15 }, (ignored, index) => ({
         name: `file${index}.gif`,
         reason: "not a supported format"

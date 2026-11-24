@@ -1,18 +1,19 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { receiptText } = require("../../../src/cli/transport.js");
+const { receiptText } = inspectModule(require.resolve("../../../src/cli/transport.js"), ["receiptText"]);
 const { assertReceipt } = require("../../integration/lib/receipt.cjs");
-const schema = require("../../integration/receipt.schema.json");
+const schema = require("../../integration/lib/receipt.schema.json");
 
 function receipt() {
     return JSON.parse(receiptText({ state: "incomplete", documents: [{ state: "saved", sources: ["/photo.png"], pages: 1, issues: [], output: "/photo.pdf", fatal: false,
         diagnostics: [{ code: "observer-fault", message: "Optional observer failed.", stack: "private" }] }],
     rejected: [{ path: "/vector.png", name: "vector.png", code: "unsupported-content", stage: "inspection", reason: "Unsupported content.", diagnostic: { loader: "svgload", stack: "private" } }],
     issues: [{ code: "fault", stage: "reporting", params: {}, message: "Useful message.", diagnostic: { stack: "private", nested: [{ stack: "private", text: "stack is text" }] } }],
-    diagnostics: [{ code: "workspace-retained", stage: "workspace", message: "Retained work.", diagnostic: { path: "/tmp/ImageFilesToPDF.A123456789" } }], elapsed: "1 second" }));
+    diagnostics: [{ code: "workspace-retained", stage: "workspace", message: "Retained work.", diagnostic: { path: "/tmp/run-A12345" } }], elapsed: "1 second" }));
 }
 
 test("the actual serialized receipt and documented receipt example satisfy the same schema", () => {

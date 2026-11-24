@@ -1,8 +1,9 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { collectSettings } = require("../../../src/finder/quick-action/settings-form.js");
+const { collectSettings } = inspectModule(require.resolve("../../../src/finder/quick-action/settings-form.js"), ["collectSettings"]);
 const { defaultAnswers } = require("../../../src/finder/quick-action/settings-model.js");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 

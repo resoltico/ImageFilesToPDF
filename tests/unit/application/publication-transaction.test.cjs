@@ -19,8 +19,8 @@ for (const options of [{ files: [staged, target] }, { directories: [target] }, {
         const { app, job } = fixture(options);
         const result = (await publishPdf(job, staged, target));
         assert.equal(result.path, "/out/result 2.pdf");
-        assert.ok(![...app.files].some((path) => path.startsWith(`${target}/`)));
-        assert.ok(!app.commands.some((command) => command.includes("'/bin/ln'")));
+        assert.ok(![...app.files.keys()].some((path) => path.startsWith(`${target}/`)));
+        assert.ok(!app.events.some(([event]) => event === "copyBeside"));
     });
 }
 
@@ -28,7 +28,12 @@ for (const state of ["denied", "unknown"]) {
     test(`${state} is a publication failure, not a collision retry`, async () => {
         const { job } = fixture();
         let calls = 0;
-        job.publication.link = (from, to) => { if (to.startsWith("/out/")) { calls += 1; } return { state, diagnostic: { code: 13 } }; };
+        const { link } = job.publication;
+        job.publication.link = (from, to) => {
+            if (!to.startsWith("/out/")) { return link(from, to); }
+            calls += 1;
+            return { state, diagnostic: { code: 13 } };
+        };
         await assert.rejects(() => publishPdf(job, staged, target), (error) => {
             assert.equal(error.recovery === staged, state === "unknown");
             assert.equal(error.issues[0].code, "publication");
@@ -45,7 +50,7 @@ for (const state of ["cross-device", "unsupported"]) {
         const {link} = job.publication;
         job.publication.link = (from, to) => { calls += 1; return calls === 1 ? { state } : link(from, to); };
         assert.equal((await publishPdf(job, staged, target)).path, target);
-        assert.ok(app.commands.some((command) => command.includes("'/bin/cp'")));
+        assert.ok(app.events.some(([event]) => event === "copyBeside"));
         assert.ok([...job.artifacts.values()].every(artifact=>artifact.state==="released"));
     });
 }
@@ -86,7 +91,7 @@ test("stop before claim preserves the validated PDF rather than deleting it", as
 });
 
 test("failed recovery preserves the validated workspace and ownership", async () => {
-    const { job, app } = fixture({ failures: [["'/bin/cp'", new Error("denied")]] });
+    const { job, app } = fixture({ faults: { copyBeside: new Error("denied") } });
     job.publication.link = () => ({ state: "denied" });
     await assert.rejects(() => publishPdf(job, staged, target), (error) => error.recovery === staged);
     assert.ok(job.artifacts.has(staged));
@@ -94,7 +99,7 @@ test("failed recovery preserves the validated workspace and ownership", async ()
 });
 
 test("unknown original identity fails before any claim", async () => {
-    const { job } = fixture({ failures: [["'/usr/bin/stat'", new Error("unknown")]] });
+    const { job } = fixture();
     job.publication.facts = () => ({ identity: "", size: -1 });
     let called = false;
     job.publication.link = () => { called = true; return { state: "created" }; };
@@ -111,7 +116,7 @@ test("exhausted collision search is bounded and preserves validated work",async 
 });
 
 test("stop during destination copy retains recovery and clears only the owned area",async ()=>{
-    const {job}=fixture({failures:[["'/bin/cp'",new UserCanceled()]]});
+    const {job}=fixture({faults: { copyBeside: new UserCanceled() }});
     job.publication.link=()=>({state:"unsupported"});
     await assert.rejects(()=>publishPdf(job,staged,target),(error)=>error.issues[0].code==="canceled");
 });
@@ -134,7 +139,8 @@ test("publication cannot acquire ownership merely from a pathname",async ()=>{
 });
 
 test("recovery releases ownership only after confirmation and retains classified failure details",async ()=>{
-    const {job}=fixture();job.publication.link=()=>({state:"denied",diagnostic:{code:13,domain:"NSPOSIXErrorDomain"}});
+    const {job}=fixture(), { link } = job.publication;
+    job.publication.link=(from, to)=>to === target ? {state:"denied",diagnostic:{code:13,domain:"NSPOSIXErrorDomain"}} : link(from, to);
     await assert.rejects(()=>publishPdf(job,staged,target),(error)=>{
         assert.match(error.message,/The PDF could not be saved where it was meant to go\.\n\n/u);
         assert.match(error.message,/The finished PDF has been kept here:\n\n/u);
@@ -146,7 +152,7 @@ test("recovery releases ownership only after confirmation and retains classified
 
 test("a same-identity size mismatch cannot release the validated original",async ()=>{
     const {job,app}=fixture();const {link} = job.publication;
-    job.publication.link=(from,to)=>{const result=link(from,to);app.sizes.set(to,7);return result;};
+    job.publication.link=(from,to)=>{const result=link(from,to);app.files.set(to, { ...job.publication.facts(to), size: 7 });return result;};
     await assert.rejects(()=>publishPdf(job,staged,target),(error)=>error.issues[0].code==="publication"&&error.issues[0].diagnostic.path===target&&error.recovery===staged);
     assert.ok(app.files.has(target));
     assert.ok(app.files.has(staged));
@@ -160,7 +166,7 @@ test("a native stop after the claim is acknowledged only after commit and before
 });
 
 test("destination staging cleanup is observed without unmaking a saved output",async ()=>{
-    const {job,app}=fixture({failures:[["'/bin/rmdir'",new UserCanceled()]]});
+    const {job,app}=fixture({faults: { closeStaging: new UserCanceled() }});
     let calls=0;const {link} = job.publication;
     job.publication.link=(from,to)=>{calls+=1;return calls===1?{state:"cross-device"}:link(from,to);};
     assert.equal((await publishPdf(job,staged,target)).path,target);assert.ok(app.files.has(target));
@@ -179,8 +185,9 @@ test("an unexpected null native fault preserves the validated PDF as a fatal dia
 
 test("recovery cleanup and cancellation issues survive the publication outcome",async ()=>{
     for(const fault of [new Error("denied"),new UserCanceled()]){
-        const {job}=fixture({failures:[["'/bin/rm' '-f' '/work/ready.pdf'",fault]]});
-        job.publication.link=()=>({state:"denied"});
+        const {job}=fixture({faults: { removeFile: (path) => path === staged ? fault : undefined }});
+        const { link } = job.publication;
+    job.publication.link=(from, to)=>to === target ? {state:"denied"} : link(from, to);
         // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         await assert.rejects(()=>publishPdf(job,staged,target),(error)=>{
             assert.equal(error.issues[0].code,"publication");assert.equal(error.issues[1].code,fault instanceof UserCanceled?"canceled":"cleanup");
@@ -190,7 +197,7 @@ test("recovery cleanup and cancellation issues survive the publication outcome",
 });
 
 test("stop while releasing the confirmed private copy cannot erase the committed result",async ()=>{
-    const {job,app}=fixture({failures:[["'/bin/rm' '-f' '/work/ready.pdf'",new UserCanceled()]]});
+    const {job,app}=fixture({faults: { removeFile: (path) => path === staged ? new UserCanceled() : undefined }});
     assert.equal((await publishPdf(job,staged,target)).path,target);assert.ok(app.files.has(target));
     assert.equal(job.cleanupIssues[0].code,"canceled");assert.throws(()=>job.progress.phase("Next document"),/User canceled/u);
 });
@@ -211,7 +218,8 @@ test("post-confirmation release fault preserves the saved result and retains wor
 test("recovery release fault cannot erase the confirmed external recovery location",async ()=>{
     const {job,app}=fixture();const artifact=job.artifacts.get(staged);
     Object.defineProperty(artifact,"state",{get:()=>"validated",set(){throw new TypeError("recovery release fault");}});
-    job.publication.link=()=>({state:"denied"});
+    const { link } = job.publication;
+    job.publication.link=(from, to)=>to === target ? {state:"denied"} : link(from, to);
     await assert.rejects(()=>publishPdf(job,staged,target),error=>app.files.has(error.recovery)&&error.issues.some(issue=>issue.message==="recovery release fault"));
 });
 
@@ -223,7 +231,7 @@ test("diagnostic assembly faults after confirmation preserve the actual publishe
 });
 
 test("a later staging failure reports its current cause instead of an earlier collision", async () => {
-    const { job, app } = fixture({ files: [staged, target], failures: [["'/bin/mkdir'", new Error("Current destination copy is denied.")]] });
+    const { job, app } = fixture({ files: [staged, target], faults: { openStaging: new Error("Current destination copy is denied.") } });
     const { link } = job.publication;
     let attempts = 0;
     job.publication.link = (from, to) => {

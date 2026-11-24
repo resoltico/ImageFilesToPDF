@@ -81,4 +81,4 @@ function collectDialogSettings(app, answers = defaultAnswers(), context = {}) {
     return confirmSettings(app, normalizeSettings(settings), context);
 }
 
-module.exports = { chooseColor, collectDialogSettings };
+module.exports = { collectDialogSettings };

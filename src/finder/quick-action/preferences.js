@@ -82,4 +82,4 @@ function createMemory(objc, ns) {
     }
 }
 
-module.exports = { DOMAIN, KEY, encode, rememberedAnswers, createMemory };
+module.exports = { encode, rememberedAnswers, createMemory };

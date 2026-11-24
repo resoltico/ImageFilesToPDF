@@ -4,7 +4,7 @@ const assert=require("node:assert/strict");
 const {executeDocuments}=require("../../../src/application/documents.js");
 const {OperationError,UserCanceled}=require("../../../src/core/errors.js");
 const {runOutcome}=require("../../../src/core/outcomes.js");
-const {fixture}=require("./document-fixture.cjs");
+const {fixture}=require("./fixture-documents.cjs");
 
 for (const thrown of [null, undefined, new TypeError("publication fault")]) {
     test(`saved outputs survive second publication throwing ${String(thrown)}`, async () => {

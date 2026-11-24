@@ -347,4 +347,4 @@ function presentForm(bridge, spec, widgets = WIDGETS) {
         : { canceled: true };
 }
 
-module.exports = { ROW_HEIGHT, PADDING, COLOR_WIDTH, NUMBER_WIDTH, FORM_WIDTH, formSize, labelRect, controlRect, hintRect, makeView, makeLabel, makeHint, makePopup, addPopupItem, markInvalid, markHintInvalid, makeAlert, makeField, makeColorCombo, buildForm, presentForm, WIDGETS };
+module.exports = { buildForm, presentForm, WIDGETS };

@@ -1,9 +1,10 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { buildForm } = require("../../../src/finder/quick-action/appkit.js");
-const { FORM_WIDTH } = require("../../../src/finder/quick-action/appkit.js");
+const { FORM_WIDTH } = inspectModule(require.resolve("../../../src/finder/quick-action/appkit.js"), ["FORM_WIDTH"]);
 const { WIDGETS } = require("../../../src/finder/quick-action/appkit.js");
 const { formSpec } = require("../../../src/finder/quick-action/settings-model.js");
 const { createFakeObjC } = require("../ports/fake-objc.cjs");

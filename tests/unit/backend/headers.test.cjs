@@ -1,7 +1,8 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { commandLengthOf } = require("../../support/macos-conversion/backend/batching.js");
+const { Buffer } = require("node:buffer");
+const commandLengthOf = (argv) => argv.reduce((bytes, value) => bytes + Buffer.byteLength(value) + 1, 0);
 const { buildHeaderArgv, buildFieldArgv, headerGroups: groupHeaders } = require("../../../src/backend/headers.js");
 
 const headerGroups = (tool, paths, budget = 131072) => groupHeaders(tool, paths, (args) => commandLengthOf(args) <= budget);
@@ -20,12 +21,11 @@ test("ordinary paths share a batch, while newline/CR names are isolated", () => 
 
 test("header budgeting covers optional-field prefixes and refuses an oversized argument", () => {
     assert.throws(() => headerGroups("header", ["/a.png"], 1), /exceeds the command budget/u);
-    // Quoted `header -f icc-profile-data` costs 33 bytes including separators;
-    // each quoted /a.png argument costs 9. One fits in 42; two do not.
-    assert.deepEqual(headerGroups("header", ["/a.png", "/b.png"], 42), [["/a.png"], ["/b.png"]]);
+    // Include the longest optional-field prefix and the argument terminators.
+    assert.deepEqual(headerGroups("header", ["/a.png", "/b.png"], 34), [["/a.png"], ["/b.png"]]);
 });
 
 test("a command exactly at the byte budget stays grouped and one oversized path is refused", () => {
-    assert.deepEqual(headerGroups("header", ["/a.png", "/b.png"], 51), [["/a.png", "/b.png"]]);
-    assert.throws(() => headerGroups("header", ["/long.png"], 42), /exceeds/u);
+    assert.deepEqual(headerGroups("header", ["/a.png", "/b.png"], 41), [["/a.png", "/b.png"]]);
+    assert.throws(() => headerGroups("header", ["/long.png"], 34), /exceeds/u);
 });

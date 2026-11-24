@@ -92,4 +92,4 @@ function describeNoImages(rejected, includeHeadline = true) {
     return includeHeadline ? `${noImagesHeadline(rejected)}\n\n${detail}` : detail;
 }
 
-module.exports = { describeRejections, headline, summaryText, reportText, noImagesHeadline, describeNoImages };
+module.exports = { headline, reportText, noImagesHeadline, describeNoImages };

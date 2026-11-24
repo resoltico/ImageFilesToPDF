@@ -2,14 +2,11 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
+const { CONTROLS,
     PAPER_SIZE,
-    ORIENTATION,
-    OUTPUT_MODE,
-    BACKGROUND,
-    RESOLUTION,
-    QUALITY
+    BACKGROUND
 } = require("../../../src/finder/quick-action/settings-model.js");
+const { orientation: ORIENTATION, mode: OUTPUT_MODE, resolutionLimit: RESOLUTION, quality: QUALITY } = CONTROLS;
 
 /*
  * What each control is called, in each of the two places it appears.

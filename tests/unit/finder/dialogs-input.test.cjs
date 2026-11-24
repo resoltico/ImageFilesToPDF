@@ -3,7 +3,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { promptInteger } = require("../../../src/finder/quick-action/prompts.js");
-const { RESOLUTION } = require("../../../src/finder/quick-action/settings-model.js");
+const { CONTROLS } = require("../../../src/finder/quick-action/settings-model.js");
+const { resolutionLimit: RESOLUTION } = CONTROLS;
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
 test("promptInteger accepts a value inside the range", () => {

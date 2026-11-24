@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * Where the three things in the progress panel sit. AppKit's origin is the
@@ -14,7 +15,7 @@ const {
     DETAIL_RECT,
     TRACK_RECT,
     fillRect
-} = require("../../../src/finder/quick-action/panel.js");
+} = inspectModule(require.resolve("../../../src/finder/quick-action/panel.js"), ["PANEL_RECT", "HEADLINE_RECT", "DETAIL_RECT", "TRACK_RECT", "fillRect"]);
 
 function top(rect) {
     return rect.bottom + rect.height;

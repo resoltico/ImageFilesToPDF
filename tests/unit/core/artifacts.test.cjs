@@ -1,6 +1,8 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test=require("node:test");const assert=require("node:assert/strict");
-const {registerArtifact,retainsArtifact,hasRetainedArtifacts,requireValidatedArtifact,releaseArtifact}=require("../../../src/core/artifacts.js");
+const { registerArtifact, hasRetainedArtifacts, requireValidatedArtifact, releaseArtifact } = require("../../../src/core/artifacts.js");
+const { retainsArtifact } = inspectModule(require.resolve("../../../src/core/artifacts.js"), ["retainsArtifact"]);
 
 test("ownership is registered before creation and duplicate paths cannot replace an owner",()=>{
     const owned=new Map();const artifact=registerArtifact(owned,"/pdf");

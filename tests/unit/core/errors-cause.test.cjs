@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * The failing command is carried by the innermost error alone, and every
@@ -8,11 +9,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    UserCanceled,
-    causes,
-    commandOf
-} = require("../../../src/core/errors.js");
+const { UserCanceled, commandOf } = require("../../../src/core/errors.js");
+const { causes } = inspectModule(require.resolve("../../../src/core/errors.js"), ["causes"]);
 
 function wrap(error, layers) {
     let wrapped = error;

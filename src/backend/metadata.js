@@ -119,4 +119,4 @@ function headerFailureCode(text) {
     if (/(?:^|\n)(?:vipsheader:[ \t]*)?(?:VipsJpeg|VipsPng|VipsTiff|VipsHeif|VipsWebP|webp|heif):/u.test(diagnostic)) { return "damaged"; }
     return "unexaminable";
 }
-module.exports = { LOADERS, REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata, optionalValue, scalarValues, fieldAbsent, headerFailureCode };
+module.exports = { REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata, optionalValue, scalarValues, fieldAbsent, headerFailureCode };

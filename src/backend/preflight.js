@@ -39,20 +39,6 @@ function buildPdfcpuProbeArgv(pdfcpuPath) {
     return [pdfcpuPath, "version"];
 }
 
-/*
- * vips reports an unrecognized flag as "Unknown option --x" and a missing
- * input as a load failure, so only the former means the build is too old.
- */
-/*
- * Asserted rather than assumed: vips names the loader it reached for before
- * complaining that the file is not there, and it only gets that far once it
- * has accepted the flags. Asking instead that a particular complaint is
- * absent passes a vips that printed nothing at all because it crashed.
- */
-function isVipsUsable(probeOutput) {
-    return /VipsForeignLoad/u.test(String(probeOutput));
-}
-
 /* Stable releases only; an unrecognized or prerelease version fails closed. */
 function isPdfcpuUsable(probeOutput) {
     const match = /^version: v?(?<version>\d+\.\d+\.\d+)[ \t]*$/mu.exec(String(probeOutput));
@@ -79,6 +65,5 @@ module.exports = {
     VIPSHEADER_PROBE_IMAGE,
     isVipsheaderUsable,
     buildPdfcpuProbeArgv,
-    isVipsUsable,
     isPdfcpuUsable
 };

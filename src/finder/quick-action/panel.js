@@ -322,4 +322,4 @@ function openPanel(bridge = appkitBridge(globalThis.ObjC, globalThis.$), now = D
     return panelSink(view, bridge.ns, now, allowWindows(bridge.ns));
 }
 
-module.exports = { BAR_RADIUS, PANEL_RECT, HEADLINE_RECT, DETAIL_RECT, TRACK_RECT, fillRect, PANEL_STYLE, perform, rectOf, makePanel, makeContent, makeHeadline, makeDetail, makeBar, PAINT_SECONDS, POLICY_ACCESSORY, POLICY_PROHIBITED, policyOf, setPolicy, allowWindows, paint, show, hide, closeWindow, setFrame, setHidden, APPEARANCE_DELAY, build, panelSink, openPanel };
+module.exports = { allowWindows, build, openPanel };

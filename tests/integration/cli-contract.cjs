@@ -186,7 +186,7 @@ function grammar() {
     const help=command(0,["--help"],{timeout:2000});
     assert.equal(command(0,["-h"],{timeout:2000}).stdout,help.stdout);
     for(const name of ["PDF files","Paper size","Orientation","Page background","Maximum resolution","JPEG quality"]) {assert.ok(help.stdout.includes(name));}
-    const {version}=require("../../package.json");
+    const {version}=JSON.parse(fs.readFileSync(path.join(__dirname,"../../package.json"),"utf8"));
     assert.equal(command(0,["--version"],{timeout:2000}).stdout,`Image Files to PDF ${version}\n`);
 }
 

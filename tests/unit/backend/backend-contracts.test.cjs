@@ -2,7 +2,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { isPdfcpuUsable } = require("../../../src/backend/preflight.js");
-const { describeSetupProblems } = require("../../../src/core/setup.js");
 const { failedRun, issuesOf } = require("../../../src/core/outcomes.js");
 
 test("supported stable backend versions accept multi-digit components and refuse older releases", () => {
@@ -12,13 +11,6 @@ test("supported stable backend versions accept multi-digit components and refuse
     for (const text of ["version: v0.15.99", "prefixversion: v1.0.0", "version: v0.16.3"]) {
         assert.equal(isPdfcpuUsable(text), false);
     }
-});
-
-test("setup instructions upgrade when any installed backend is unusable", () => {
-    const missing = { kind: "missing", tool: "vips" };
-    const unusable = { kind: "unusable", tool: "pdfcpu" };
-    assert.match(describeSetupProblems([missing, unusable], true), /brew upgrade vips pdfcpu/u);
-    assert.doesNotMatch(describeSetupProblems([missing], true), /brew upgrade/u);
 });
 
 test("failure reporting preserves prior refusals and diagnostic observations", () => {

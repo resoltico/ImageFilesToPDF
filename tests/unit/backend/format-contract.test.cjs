@@ -1,7 +1,9 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { LOADERS, rawMetadata } = require("../../../src/backend/metadata.js");
+const { rawMetadata } = require("../../../src/backend/metadata.js");
+const { LOADERS } = inspectModule(require.resolve("../../../src/backend/metadata.js"), ["LOADERS"]);
 const { SUPPORTED_FORMATS } = require("../../../src/core/formats.js");
 const { sourceIssues } = require("../../../src/core/source-policy.js");
 

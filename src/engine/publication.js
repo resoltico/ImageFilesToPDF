@@ -208,4 +208,4 @@ function destinationOperations(files, mac, windows) {
     };
 }
 
-module.exports = { destinationOperations, cleanupIssue };
+module.exports = { destinationOperations };

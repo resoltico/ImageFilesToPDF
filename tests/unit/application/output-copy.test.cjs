@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * Copying the PDF into the output folder, which happens when it cannot be
@@ -13,8 +14,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { publishPdf } = require("../../../src/application/publish.js");
-const { copyBeside } = require("../../../src/application/destination.js");
-const { createFakeHost } = require("../ports/fake-host.cjs");
+const { copyBeside } = inspectModule(require.resolve("../../../src/application/destination.js"), ["copyBeside"]);
+const { createConversionFixture } = require("../ports/fake-conversion.cjs");
 const { makeJob } = require("../ports/fake-job.cjs");
 
 const AREA = {
@@ -32,7 +33,7 @@ test("a place that cannot be made is not one this run may clear away", () => {
         { files: ["/a/p.pdf"], directories: [AREA.directory] },
         { files: ["/a/p.pdf"], danglingLinks: [AREA.directory] }
     ]) {
-        const host = createFakeHost(settings);
+        const host = createConversionFixture(settings);
         const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024);
 
         assert.equal(outcome.area, null, "nothing of it is this run's");
@@ -43,7 +44,7 @@ test("a place that cannot be made is not one this run may clear away", () => {
             "and which step it was"
         );
         assert.equal(
-            host.commands.filter((command) => command.includes("/bin/cp")).length,
+            host.events.filter(([event]) => event === "copyBeside").length,
             0,
             "and nothing was written into it"
         );
@@ -54,20 +55,19 @@ test("a copy that failed still made the place it was going into", () => {
     // cp leaves the destination in place after an error and can fail after
     // writing part of the file or all of it. The place was made before it
     // ran, so it is this attempt's to clear away either way.
-    const host = createFakeHost({
+    const host = createConversionFixture({
         files: ["/a/p.pdf"],
-        failures: [["/bin/cp", new Error("cp: no space left on device")]]
+        faults: { copyBeside: new Error("No space left on device.") }
     });
     const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024);
 
     assert.equal(outcome.area, AREA);
-    assert.match(outcome.error.diagnostic.message, /no space left/u);
+    assert.match(outcome.error.diagnostic.message, /no space left/iu);
 });
 
 test("a copy is checked against the size it should have", () => {
-    const host = createFakeHost({
-        files: ["/a/p.pdf"],
-        failures: [[`stat' '-f%d:%i:%z' '${AREA.file}'`, "16777232:5:7"]]
+    const host = createConversionFixture({
+        files: ["/a/p.pdf"]
     });
     const {facts} = host.publication;
     host.publication.facts=(path)=>path===AREA.file?{identity:"16777232:5",size:7}:facts(path);
@@ -78,7 +78,7 @@ test("a copy is checked against the size it should have", () => {
 });
 
 test("a source that could not be measured is never copied successfully", () => {
-    const host = createFakeHost({ files: ["/a/p.pdf"] });
+    const host = createConversionFixture({ files: ["/a/p.pdf"] });
     const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, -1);
 
     assert.match(outcome.error.message, /-1 were expected/u);
@@ -87,9 +87,8 @@ test("a source that could not be measured is never copied successfully", () => {
 test("neither file being measurable is not a match", () => {
     // Two unknown sizes are equal to each other. Without the explicit check
     // for an unknown expectation, a copy nobody could measure would pass.
-    const host = createFakeHost({
-        files: ["/a/p.pdf"],
-        failures: [["/usr/bin/stat", new Error("stat: denied")]]
+    const host = createConversionFixture({
+        files: ["/a/p.pdf"]
     });
     host.publication.facts=()=>({identity:"",size:-1});
     const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, -1);
@@ -98,10 +97,8 @@ test("neither file being measurable is not a match", () => {
 });
 
 test("a truncated copy never wears the finished PDF's name", async () => {
-    const host = createFakeHost({
-        files: ["/a/p.pdf"],
-        failures: [
-        ]
+    const host = createConversionFixture({
+        files: ["/a/p.pdf"]
     });
 
     const {facts} = host.publication;
@@ -115,14 +112,14 @@ test("a truncated copy never wears the finished PDF's name", async () => {
     );
     assert.ok(!host.files.has("/a/out.pdf"), "and nothing is at the output name");
     assert.deepEqual(
-        [...host.files].filter((file) => file.includes(".ImageFilesToPDF")),
+        [...host.files.keys()].filter((file) => file.includes(".ImageFilesToPDF")),
         [],
         "and the place it was copied into is gone"
     );
 });
 
 test("a faulted facts reader retains destination-area ownership and the original exception",()=>{
-    const host=createFakeHost({files:["/a/p.pdf"]});host.publication.facts=()=>{throw new TypeError("facts failed");};
+    const host=createConversionFixture({files:["/a/p.pdf"]});host.publication.facts=()=>{throw new TypeError("facts failed");};
     const outcome=copyBeside(makeJob(host),"/a/p.pdf",AREA,1024);
     assert.equal(outcome.state,"failed");assert.equal(outcome.area,AREA);assert.ok(outcome.error instanceof TypeError);
 });

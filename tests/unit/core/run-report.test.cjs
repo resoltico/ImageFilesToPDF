@@ -1,7 +1,9 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { reportText, describeNoImages, describeRejections } = require("../../../src/core/run-report.js");
+const { reportText, describeNoImages } = require("../../../src/core/run-report.js");
+const { describeRejections } = inspectModule(require.resolve("../../../src/core/run-report.js"), ["describeRejections"]);
 const { runOutcome, failedRun } = require("../../../src/core/outcomes.js");
 const { OperationError } = require("../../../src/core/errors.js");
 const saved = { state: "saved", sources: ["/photos/a.jpg"], pages: 1, issues: [], output: "/photos/a.pdf" };
@@ -97,7 +99,7 @@ test("recovery prefers the actual publication failure and keeps every other issu
 
 
 test("only meaningful diagnostics for actual retained, reclaimed or unreadable workspaces are human-visible", () => {
-    const path = "/tmp/ImageFilesToPDF.A123456789";
+    const path = "/tmp/run-A12345";
     for (const code of ["workspace-retained", "workspace-reclaimed", "workspace-unreadable"]) {
         const note = { code, stage: "workspace", message: "Workspace note.", diagnostic: { path } };
         assert.equal(reportText({ ...runOutcome([saved], [], [], [note]), elapsed: "1 second" }),
@@ -114,9 +116,9 @@ test("multiple failed documents and workspace notes retain separate copyable pat
     const failed = ["/first.jpg", "/second.png"].map((path) => ({ state: "failed", sources: [path], pages: 0,
         issues: [{ code: "damaged", stage: "preparation", message: "This image is damaged." }] }));
     const diagnostics = [
-        { code: "workspace-retained", stage: "workspace", message: "Retained work.", diagnostic: { path: "/tmp/ImageFilesToPDF.A123456789" } },
-        { code: "workspace-reclaimed", stage: "workspace", message: "Reclaimed work.", diagnostic: { path: "/tmp/ImageFilesToPDF.B123456789" } }
+        { code: "workspace-retained", stage: "workspace", message: "Retained work.", diagnostic: { path: "/tmp/run-A12345" } },
+        { code: "workspace-reclaimed", stage: "workspace", message: "Reclaimed work.", diagnostic: { path: "/tmp/run-B12345" } }
     ];
     assert.equal(reportText(runOutcome(failed, [], [], diagnostics)),
-        "Finished with issues.\nNo PDF was created.\n\n2 failed.\n\nCould not convert:\n/first.jpg: This image is damaged.\n/second.png: This image is damaged.\n\nTemporary work:\nRetained work.\n/tmp/ImageFilesToPDF.A123456789\n\nReclaimed work.\n/tmp/ImageFilesToPDF.B123456789");
+        "Finished with issues.\nNo PDF was created.\n\n2 failed.\n\nCould not convert:\n/first.jpg: This image is damaged.\n/second.png: This image is damaged.\n\nTemporary work:\nRetained work.\n/tmp/run-A12345\n\nReclaimed work.\n/tmp/run-B12345");
 });

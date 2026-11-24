@@ -3,18 +3,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { utf8Length, truncateToBytes } = require("../../../src/core/utf8.js");
-const { fixed2, zeroPad } = require("../../../src/core/numbers.js");
+const { zeroPad } = require("../../../src/core/numbers.js");
 const { plural, formatDuration } = require("../../../src/core/formatting.js");
-
-test("fixed2 trims insignificant trailing zeros only", () => {
-    assert.equal(fixed2(595.2756), "595.28");
-    assert.equal(fixed2(841.8898), "841.89");
-    assert.equal(fixed2(595.4), "595.4");
-    assert.equal(fixed2(612), "612");
-    assert.equal(fixed2(792), "792");
-    assert.equal(fixed2(0), "0");
-    assert.equal(fixed2(100), "100", "the decimal point must guard the integer part");
-});
 
 test("zeroPad pads to width and never truncates", () => {
     assert.equal(zeroPad(1, 6), "000001");

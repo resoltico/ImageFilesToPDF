@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const { getuid, pid, platform, kill } = require("node:process");
 const { OperationError, isUserCanceled } = require("../core/errors.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
-const { validWorkspaceOwner } = require("../core/workspaces.js");
+const { WORKSPACE_PREFIX, isWorkspaceName, validWorkspaceOwner } = require("../core/workspaces.js");
 const { dirname } = require("../core/paths.js");
 const { standardize } = require("./paths.js");
 const { identity, BIGINT } = require("./filesystem.js");
@@ -12,7 +12,6 @@ const { locations } = require("./workspace-locations.js");
 const { MAC_PS } = require("./executables.js");
 
 const TAG = "image-files-to-pdf-workspace";
-const NAME = /^run-[a-zA-Z0-9]{6}$/u;
 const OWNER = "owner.json";
 const IN_FLIGHT = "command-in-flight";
 const RETAIN = "retain";
@@ -126,7 +125,7 @@ async function workspaceStore(files, commands, windows) {
     let writers = 0;
     let unsettled = false;
     function inspect(directory) {
-        if (dirname(directory) !== `${root}/` || !NAME.test(directory.slice(root.length + 1)) ||
+        if (dirname(directory) !== `${root}/` || !isWorkspaceName(directory.slice(root.length + 1)) ||
             rootIdentity !== identity(fs.lstatSync(root, BIGINT))) {
             throw new OperationError(wording("workspaceNamespaceChanged"));
         }
@@ -153,7 +152,7 @@ async function workspaceStore(files, commands, windows) {
         async create() {
             const started = await processStart(pid, commands, windows);
             if (!started) { throw new OperationError(wording("workspaceOwnerUnknown")); }
-            const directory = standardize(fs.mkdtempSync(`${root}/run-`));
+            const directory = standardize(fs.mkdtempSync(`${root}/${WORKSPACE_PREFIX}`));
             const id = identity(inspect(directory));
             if (!id) { throw new OperationError(wording("workspaceIdentityUnverified")); }
             writeNew(`${directory}/${OWNER}`, JSON.stringify({ format: TAG, identity: id, pid, started }));
@@ -174,7 +173,7 @@ async function workspaceStore(files, commands, windows) {
         async reclaim() {
             const ports = { commands, inspect, release, windows };
             const diagnostics = [];
-            for (const name of fs.readdirSync(root).filter((entry) => NAME.test(entry))) {
+            for (const name of fs.readdirSync(root).filter(isWorkspaceName)) {
                 // eslint-disable-next-line no-await-in-loop -- Verify each owner before the next removal.
                 const item = await reclaimCandidate(`${root}/${name}`, ports, files);
                 if (item) { diagnostics.push(item); }

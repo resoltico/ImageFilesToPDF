@@ -88,7 +88,7 @@ export default [
     },
 
     {
-        files: ["tests/**/*.cjs", "tests/**/*.js"],
+        files: ["tests/**/*.cjs", "tests/**/*.js", "tools/tests/**/*.cjs"],
         languageOptions: {
             ecmaVersion: "latest",
             sourceType: "commonjs",

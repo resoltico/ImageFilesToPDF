@@ -63,4 +63,4 @@ async function claimAvailable(context, destination, created, checkpoint) {
     throw new OperationError(message("uniqueOutputUnavailable"));
 }
 
-module.exports = { claimAvailable, copyBeside };
+module.exports = { claimAvailable };

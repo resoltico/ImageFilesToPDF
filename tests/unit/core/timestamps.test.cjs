@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * The stamp that tells one run's output from another's.
@@ -11,12 +12,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    TIMESTAMP_FORM,
-    makeTimestamp,
-    isTimestamp,
-    readTimestamp
-} = require("../../../src/core/timestamps.js");
+const { TIMESTAMP_FORM, makeTimestamp, readTimestamp } = require("../../../src/core/timestamps.js");
+const { isTimestamp } = inspectModule(require.resolve("../../../src/core/timestamps.js"), ["isTimestamp"]);
 
 test("whatever is produced is accepted", () => {
     // The rule and the thing it describes live in one file so they cannot

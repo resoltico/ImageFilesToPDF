@@ -12,18 +12,10 @@ function controlFor(field) {
 }
 const CONTROLS = Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, controlFor(field)]));
 const PAPER_SIZE = CONTROLS.paperSize;
-const ORIENTATION = CONTROLS.orientation;
-const OUTPUT_MODE = CONTROLS.mode;
 const BACKGROUND = CONTROLS.background;
-const RESOLUTION = CONTROLS.resolutionLimit;
-const QUALITY = CONTROLS.quality;
 
 function labelsOf(control) {
     return control.choices.map((choice) => choice.label);
-}
-
-function defaultValueOf(control) {
-    return control.defaultValue;
 }
 
 function labelOfValue(control, value) {
@@ -34,10 +26,6 @@ function labelOfValue(control, value) {
     }
 
     return chosen.label;
-}
-
-function defaultLabelOf(control) {
-    return labelOfValue(control, control.defaultValue);
 }
 
 function valueOfLabel(control, label) {
@@ -158,4 +146,4 @@ function formSpec(answers = defaultAnswers(), problems = [], context = {}) {
     };
 }
 
-module.exports = { CONTROLS, PAPER_SIZE, ORIENTATION, OUTPUT_MODE, BACKGROUND, RESOLUTION, QUALITY, labelsOf, defaultLabelOf, defaultValueOf, valueOfLabel, labelOfValue, CHOICE_ROWS, COLOR_ROW, NUMBER_ROWS, defaultAnswers, formRows, readAnswers, answersFromSettings, readNumber, readColor, invitation, CREATE_BUTTON, CANCEL_BUTTON, formSpec };
+module.exports = { CONTROLS, PAPER_SIZE, BACKGROUND, labelsOf, valueOfLabel, labelOfValue, defaultAnswers, readAnswers, answersFromSettings, readNumber, readColor, CREATE_BUTTON, CANCEL_BUTTON, formSpec };

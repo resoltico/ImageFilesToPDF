@@ -118,7 +118,7 @@ test("receipt serialization drops every structured stack key and preserves messa
         diagnostic: { stack: "private issue trace", command: "keep", details: [{ stack: "private nested trace", message: "keep" }] } };
     const result = runOutcome([{ ...document, diagnostics: [{ code: "observer-fault", message: "details", stack: "private document trace" }] }],
         [{ path: "/stack/vector.png", name: "vector.png", reason: "The stack string stays.", code: "unsupported-content", stage: "inspection", diagnostic: { stack: "private refusal trace", loader: "svgload" } }], [fault],
-        [{ code: "workspace-retained", stage: "workspace", message: "stack kept as text", stack: "private top diagnostic", diagnostic: { path: "/tmp/ImageFilesToPDF.A123456789", nested: [{ stack: "private nested diagnostic", keep: true }] } }]);
+        [{ code: "workspace-retained", stage: "workspace", message: "stack kept as text", stack: "private top diagnostic", diagnostic: { path: "/tmp/run-A12345", nested: [{ stack: "private nested diagnostic", keep: true }] } }]);
     result.stack = "private top trace";
     const before = JSON.stringify(result), writes = [];
     await reportHeadless(result, (text) => writes.push(text));
@@ -127,7 +127,7 @@ test("receipt serialization drops every structured stack key and preserves messa
     assert.deepEqual(printed.issues[0].diagnostic, { command: "keep", details: [{ message: "keep" }] });
     assert.deepEqual(printed.documents[0].diagnostics, [{ code: "observer-fault", message: "details" }]);
     assert.deepEqual(printed.rejected[0].diagnostic, { loader: "svgload" });
-    assert.deepEqual(printed.diagnostics[0].diagnostic, { path: "/tmp/ImageFilesToPDF.A123456789", nested: [{ keep: true }] });
+    assert.deepEqual(printed.diagnostics[0].diagnostic, { path: "/tmp/run-A12345", nested: [{ keep: true }] });
     assert.equal(Object.hasOwn(printed.diagnostics[0], "stack"), false);
     assert.equal(printed.issues[0].message, fault.message); assert.equal(printed.rejected[0].reason, "The stack string stays.");
     assert.equal(printed.rejected[0].path, "/stack/vector.png"); assert.equal(printed.diagnostics[0].message, "stack kept as text");

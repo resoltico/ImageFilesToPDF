@@ -8,7 +8,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { collectInvocation } = require("../../../src/finder/quick-action/input.js");
-const { inputItemToPosixPath } = require("../../support/macos-conversion/host/input.js");
 const { collectImageFiles } = require("../ports/fake-selection.cjs");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
@@ -34,34 +33,9 @@ async function quickAction(app, paths) {
     return (await collectImageFiles(app, inputItems)).images;
 }
 
-test("an item that stringifies to nothing cannot reach Path()", async () => {
-    // Measured: Path("") does not throw, it raises an ObjC exception that no
-    // JavaScript try/catch can intercept, killing the action outright with no
-    // dialog. Nothing may hand an empty value to it.
+test("an empty envelope reaches the production Finder fallback without an image", async () => {
     const app = createFakeApp();
-
-    await assert.doesNotReject(() => quickAction(app, []));
-
-    for (const empty of ["", { toString: () => "" }]) {
-        assert.equal(inputItemToPosixPath(empty), "");
-    }
-});
-
-test("a relative name is not resolved into a plausible absolute path", () => {
-    // Path() would have turned "photo.jpg" into "<cwd>/photo.jpg", which
-    // looks resolved and points nowhere the user chose.
-    assert.equal(inputItemToPosixPath("photo.jpg"), "");
-    assert.equal(inputItemToPosixPath("Downloads/photo.jpg"), "");
-});
-
-test("only a leading file:// makes an item a URL", () => {
-    // Unanchored, a name that merely contains the scheme would be decoded as
-    // though it were one, quietly changing the path.
-    assert.equal(
-        inputItemToPosixPath("/a/notes-about-file://urls.png"),
-        "/a/notes-about-file://urls.png"
-    );
-    assert.equal(inputItemToPosixPath("file:///a/b%20c.png"), "/a/b c.png");
+    assert.deepEqual(await quickAction(app, []), []);
 });
 
 test("a Quick Action reports the files it will not convert", async () => {
@@ -78,22 +52,6 @@ test("a Quick Action reports the files it will not convert", async () => {
         !rejected.some((entry) => entry.name.includes("object Object")),
         "host metadata is not a rejection"
     );
-});
-
-test("a value that mentions a file URL is not a file URL", () => {
-    // A file URL is what the value is, not something it contains. Matching it
-    // anywhere turns a description of a file into a path: "alias
-    // file:///a/b.png" was accepted whole, and the run went looking for a file
-    // whose name began with the word alias.
-    for (const value of [
-        "alias file:///a/b.png",
-        "document file://localhost/a/b.png",
-        "see file:// for details"
-    ]) {
-        assert.equal(inputItemToPosixPath(value), "", value);
-    }
-
-    assert.equal(inputItemToPosixPath("file:///a/b.png"), "/a/b.png");
 });
 
 test("interactive envelopes produce an explicitly interactive request", () => {

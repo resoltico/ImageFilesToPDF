@@ -1,8 +1,9 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { nativeWindowsPath } = require("../../../src/cli/paths.js");
-const { receiptText } = require("../../../src/cli/transport.js");
+const { receiptText } = inspectModule(require.resolve("../../../src/cli/transport.js"), ["receiptText"]);
 const { reportText } = require("../../../src/core/run-report.js");
 const { runOutcome } = require("../../../src/core/outcomes.js");
 const { assertReceipt } = require("../../integration/lib/receipt.cjs");

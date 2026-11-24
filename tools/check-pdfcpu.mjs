@@ -1,16 +1,14 @@
 /* Check the installed pdfcpu release before running the expensive CI gates. */
 import { execFileSync } from "node:child_process";
 import { isPdfcpuUsable } from "../src/backend/preflight.js";
-import { describeSetupProblems } from "../src/core/setup.js";
+import { setupToolProblem } from "../src/core/setup.js";
 import { PDFCPU_PIXEL_LIMIT } from "../src/core/limits.js";
 
 const version = execFileSync("pdfcpu", ["version"], { encoding: "utf8" });
 process.stdout.write(version);
 
 if (!isPdfcpuUsable(version)) {
-    throw new Error(describeSetupProblems([
-        { tool: "pdfcpu", kind: "unusable" }
-    ], true));
+    throw new Error(setupToolProblem("tool-unusable", "pdfcpu").message);
 }
 
 const configuration = JSON.parse(execFileSync("pdfcpu", [

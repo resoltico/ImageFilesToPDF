@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * A selected folder means "convert the images in here", not "convert
@@ -9,7 +10,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { imagesInFolder, isHidden } = require("../../../src/application/expand.js");
+const { imagesInFolder } = require("../../../src/application/expand.js");
+const { isHidden } = inspectModule(require.resolve("../../../src/application/expand.js"), ["isHidden"]);
 const { treeOf } = require("../ports/fake-tree.cjs");
 
 test("images are found through every subfolder, in one list", async () => {

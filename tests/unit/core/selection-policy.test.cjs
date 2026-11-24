@@ -1,7 +1,9 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test=require("node:test");
 const assert=require("node:assert/strict");
-const {SELECTION_REASONS,selectionReason,selectionRefusal}=require("../../../src/core/selection-policy.js");
+const { selectionReason, selectionRefusal } = require("../../../src/core/selection-policy.js");
+const { SELECTION_REASONS } = inspectModule(require.resolve("../../../src/core/selection-policy.js"), ["SELECTION_REASONS"]);
 const {sourceIssues}=require("../../../src/core/source-policy.js");
 
 test("core owns file-selection policy and its receipt codes",()=>{

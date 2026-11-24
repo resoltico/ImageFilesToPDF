@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * What is done to the panel once it exists, and what has to be true of the
@@ -12,21 +13,9 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    PAINT_SECONDS,
-    POLICY_ACCESSORY,
-    POLICY_PROHIBITED,
-    policyOf,
-    setPolicy,
-    allowWindows,
-    paint,
-    show,
-    hide,
-    closeWindow,
-    setFrame,
-    setHidden
-} = require("../../../src/finder/quick-action/panel.js");
-const { TRACK_RECT } = require("../../../src/finder/quick-action/panel.js");
+const { allowWindows } = require("../../../src/finder/quick-action/panel.js");
+const { PAINT_SECONDS, POLICY_ACCESSORY, POLICY_PROHIBITED, policyOf, setPolicy, paint, show, hide, closeWindow, setFrame, setHidden } = inspectModule(require.resolve("../../../src/finder/quick-action/panel.js"), ["PAINT_SECONDS", "POLICY_ACCESSORY", "POLICY_PROHIBITED", "policyOf", "setPolicy", "paint", "show", "hide", "closeWindow", "setFrame", "setHidden"]);
+const { TRACK_RECT } = inspectModule(require.resolve("../../../src/finder/quick-action/panel.js"), ["TRACK_RECT"]);
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 function panelOf(ns) {

@@ -104,4 +104,4 @@ function runQuickAction(input, ports = finder) {
     }
 }
 
-module.exports = { runQuickAction, progressObserver };
+module.exports = { runQuickAction };

@@ -2,7 +2,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { DEFAULT_SETTINGS, validateSettings, normalizeSettings } = require("../../../src/core/settings.js");
-const { PAPER_SIZE, defaultValueOf, defaultLabelOf } = require("../../../src/finder/quick-action/settings-model.js");
+const { PAPER_SIZE, labelOfValue } = require("../../../src/finder/quick-action/settings-model.js");
 
 for (const field of ["resolutionLimit","quality","paperSize","orientation","mode","background"]) {
     for (const value of [null,true,false,[],{},[300]]) {
@@ -26,8 +26,8 @@ test("quoted and hexadecimal numeric strings and unknown fields are errors",()=>
 
 test("defaults are domain values independent of popup order",()=>{
     const reordered={...PAPER_SIZE,choices:[...PAPER_SIZE.choices].reverse()};
-    assert.equal(defaultValueOf(reordered),"A4");
-    assert.equal(defaultLabelOf(reordered),"A4");
+    assert.equal(reordered.defaultValue,"A4");
+    assert.equal(labelOfValue(reordered, reordered.defaultValue),"A4");
     assert.deepEqual(normalizeSettings(DEFAULT_SETTINGS),DEFAULT_SETTINGS);
 });
 

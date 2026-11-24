@@ -4,7 +4,8 @@ const test = require("node:test");
 const { readAnswers, answersFromSettings, readNumber } = require("../../../src/finder/quick-action/settings-model.js");
 const { defaultAnswers, formSpec } = require("../../../src/finder/quick-action/settings-model.js");
 const { DEFAULT_SETTINGS, validateSettings } = require("../../../src/core/settings.js");
-const { RESOLUTION, QUALITY } = require("../../../src/finder/quick-action/settings-model.js");
+const { CONTROLS } = require("../../../src/finder/quick-action/settings-model.js");
+const { resolutionLimit: RESOLUTION, quality: QUALITY } = CONTROLS;
 
 test("GUI and canonical JSON share values and issue codes", () => {
     assert.deepEqual(readAnswers(defaultAnswers()).settings, DEFAULT_SETTINGS);

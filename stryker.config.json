@@ -35,7 +35,8 @@
       "--test-reporter=tap"
     ],
     "testFiles": [
-      "tests/unit/**/*.test.cjs"
+      "tests/unit/**/*.test.cjs",
+      "tools/tests/unit/**/*.test.cjs"
     ]
   }
 }

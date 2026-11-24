@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { executeDocuments } = require("../../../src/application/documents.js");
@@ -6,7 +7,7 @@ const { OperationError, UserCanceled, IssueError } = require("../../../src/core/
 const { documentPlan } = require("../../../src/core/document-plan.js");
 const { runOutcome } = require("../../../src/core/outcomes.js");
 
-const {fixture}=require("./document-fixture.cjs");
+const {fixture}=require("./fixture-documents.cjs");
 
 test("plan groups ordered sources and chooses per-source destinations", () => {
     const combined = fixture(2);
@@ -137,7 +138,7 @@ test("fault mixtures and recovered cancellation stop subsequent work without los
 });
 
 test("an empty defensive document cannot issue an empty import",async ()=>{
-    const {executeDocument}=require("../../../src/application/documents.js");
+    const {executeDocument}=inspectModule(require.resolve("../../../src/application/documents.js"), ["executeDocument"]);
     const sample=fixture(0,{ports:{validate:()=>{throw new OperationError("empty document");}}});
     const result=(await executeDocument(sample.ports,{sources:[],destination:"/out.pdf"},0));
     assert.equal(result.state,"failed");

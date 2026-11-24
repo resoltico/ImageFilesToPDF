@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * Where the record is kept.
@@ -11,7 +12,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createMemory } = require("../../../src/finder/quick-action/preferences.js");
-const { DOMAIN, KEY } = require("../../../src/finder/quick-action/preferences.js");
+const { DOMAIN, KEY } = inspectModule(require.resolve("../../../src/finder/quick-action/preferences.js"), ["DOMAIN", "KEY"]);
 
 function suiteFor(state, settings) {
     return {

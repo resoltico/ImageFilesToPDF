@@ -1,7 +1,7 @@
 "use strict";
 const assert = require("node:assert/strict");
 const Ajv = require("ajv");
-const schema = require("../receipt.schema.json");
+const schema = require("./receipt.schema.json");
 const validate = new Ajv({ allErrors: true }).compile(schema);
 
 // This checks transport shape, not decoded pixels, publication or ownership.

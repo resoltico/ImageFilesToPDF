@@ -1,7 +1,9 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { MESSAGES, message } = require("../../../src/core/messages.js");
+const { message } = require("../../../src/core/messages.js");
+const { MESSAGES } = inspectModule(require.resolve("../../../src/core/messages.js"), ["MESSAGES"]);
 
 test("every catalog form supplies visible wording and replaces its declared placeholders", () => {
     for (const [id, forms] of Object.entries(MESSAGES)) {

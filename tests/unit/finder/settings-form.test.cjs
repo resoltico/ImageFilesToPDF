@@ -1,8 +1,9 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { collectViaForm } = require("../../../src/finder/quick-action/settings-form.js");
+const { collectViaForm } = inspectModule(require.resolve("../../../src/finder/quick-action/settings-form.js"), ["collectViaForm"]);
 const { defaultAnswers } = require("../../../src/finder/quick-action/settings-model.js");
 
 const BRIDGE = { objc: {}, ns: {} };

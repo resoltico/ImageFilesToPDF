@@ -27,4 +27,4 @@ function readTimestamp(value) {
     if (!isTimestamp(value)) { throw new Error(message("timestampInvalid", { form: TIMESTAMP_FORM })); }
     return value;
 }
-module.exports = { TIMESTAMP_FORM, makeTimestamp, isTimestamp, readTimestamp };
+module.exports = { TIMESTAMP_FORM, makeTimestamp, readTimestamp };

@@ -121,4 +121,4 @@ function cliCommand(args) {
     return { kind: "run", invocation: { ...configurationValues(readSettingsFile(path)), inputItems: parsed.inputItems } };
 }
 
-module.exports = { cliCommand, jsonConfiguration, configurationValues, usage };
+module.exports = { cliCommand };

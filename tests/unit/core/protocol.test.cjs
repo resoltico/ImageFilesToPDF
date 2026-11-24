@@ -1,7 +1,9 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { validateMessage, encodeMessage, decodeMessage, requireHello } = require("../../../src/core/protocol.js");
+const { encodeMessage, decodeMessage, requireHello } = require("../../../src/core/protocol.js");
+const { validateMessage } = inspectModule(require.resolve("../../../src/core/protocol.js"), ["validateMessage"]);
 
 const settings = { mode: "combined" };
 const context = { count: 1, selectedFolders: 0, folders: ["/photos"], rejected: [] };

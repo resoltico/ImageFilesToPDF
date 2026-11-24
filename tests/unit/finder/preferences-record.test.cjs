@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * What a run remembers of the last one.
@@ -11,12 +12,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    DOMAIN,
-    KEY,
-    encode,
-    rememberedAnswers
-} = require("../../../src/finder/quick-action/preferences.js");
+const { encode, rememberedAnswers } = require("../../../src/finder/quick-action/preferences.js");
+const { DOMAIN, KEY } = inspectModule(require.resolve("../../../src/finder/quick-action/preferences.js"), ["DOMAIN", "KEY"]);
 const { readAnswers } = require("../../../src/finder/quick-action/settings-model.js");
 const { normalizeSettings } = require("../../../src/core/settings.js");
 

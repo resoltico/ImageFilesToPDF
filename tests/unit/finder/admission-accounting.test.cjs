@@ -11,6 +11,24 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { collectImageFiles } = require("../ports/fake-selection.cjs");
 const { createFakeApp } = require("../ports/fake-app.cjs");
+const { treeOf } = require("../ports/fake-tree.cjs");
+const { collectInvocation } = require("../../../src/finder/quick-action/input.js");
+const { runQuickAction } = require("../../../src/finder/quick-action/main.js");
+
+function engineInputs(items) {
+    let received = null;
+    runQuickAction(items, {
+        application: createFakeApp,
+        openProgress: () => ({ diagnostics: [], close: () => undefined }),
+        collect: collectInvocation,
+        runEngine(inputs) {
+            received = inputs;
+            return { state: "complete", issues: [], diagnostics: [] };
+        },
+        result: () => undefined
+    });
+    return received;
+}
 
 test("an input that named itself and did not resolve is reported", async () => {
     // It used to fall between the resolution and the admission: no image
@@ -18,20 +36,20 @@ test("an input that named itself and did not resolve is reported", async () => {
     const app = createFakeApp();
     const { images, rejected } = (await collectImageFiles(app, [
         "/a/good.png",
-        "./second.jpg",
-        "~/Pictures/third.png"
-    ]));
+        "/a/second.jpg",
+        "/a/third.png"
+    ], treeOf({}, { "/a/second.jpg": "missing", "/a/third.png": "missing" })));
 
     assert.deepEqual(images.map((image) => image.originalName), ["good.png"]);
     assert.deepEqual(rejected, [
         {
-            path: "",
-            name: "./second.jpg",
+            path: "/a/second.jpg",
+            name: "second.jpg",
             reason: "No file or folder exists at this path.", code: "not-a-path", stage: "selection"
         },
         {
-            path: "",
-            name: "~/Pictures/third.png",
+            path: "/a/third.png",
+            name: "third.png",
             reason: "No file or folder exists at this path.", code: "not-a-path", stage: "selection"
         }
     ]);
@@ -42,7 +60,7 @@ test("the parameters object Shortcuts appends is not a rejection", async () => {
     // and the user never asked for it. Reporting it would put a rejection on
     // every single interactive run.
     const app = createFakeApp();
-    const { images, rejected } = (await collectImageFiles(app, ["/a/good.png", {}]));
+    const { images, rejected } = (await collectImageFiles(app, engineInputs([["/a/good.png"], {}])));
 
     assert.equal(images.length, 1);
     assert.deepEqual(rejected, []);
@@ -52,9 +70,7 @@ test("a Finder item that cannot say where it is is still reported", async () => 
     // An object is not automatically host metadata: this one named a place,
     // it just was not one that could be used.
     const app = createFakeApp();
-    const { rejected } = (await collectImageFiles(app, [
-        { url: () => "https://example.com/photo.png" }
-    ]));
+    const { rejected } = (await collectImageFiles(app, engineInputs([{ url: () => "https://example.com/photo.png", toString: () => "remote Finder selection" }])));
 
     assert.deepEqual(rejected.map((entry) => entry.name), [
         "https://example.com/photo.png"
@@ -66,17 +82,15 @@ test("a folder is reported as a folder, whatever it is called", async () => {
     // called album.png for not being readable. Neither says what it is.
     const app = createFakeApp();
 
-    app.directories = ["/a/album", "/a/album.png"];
-
     const { images, rejected } = (await collectImageFiles(app, [
         "/a/album",
         "/a/album.png",
         "/a/photo.png"
-    ]));
+    ], treeOf({ "/a/album": [], "/a/album.png": [] })));
 
     assert.deepEqual(images.map((image) => image.originalName), ["photo.png"]);
     assert.deepEqual(rejected.map((entry) => `${entry.name}: ${entry.reason}`), [
-        "album: This is a folder; select the images inside it.",
-        "album.png: This is a folder; select the images inside it."
+        "album: This folder contains no supported images.",
+        "album.png: This folder contains no supported images."
     ]);
 });

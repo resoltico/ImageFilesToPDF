@@ -12,4 +12,4 @@ function collectInvocation(app, input) {
     const selected = normalizeInvocationInput(input).filter((item) => !isParametersRecord(item));
     return { timestamp: "", inputItems: selected.length > 0 ? selected : finderSelection() };
 }
-module.exports = { finderSelection, collectInvocation };
+module.exports = { collectInvocation };

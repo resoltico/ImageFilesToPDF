@@ -80,4 +80,4 @@ function confirmSettings(app, settings, context) {
     return settings;
 }
 
-module.exports = { refusalLines, reviewSelection, confirmSettings };
+module.exports = { reviewSelection, confirmSettings };

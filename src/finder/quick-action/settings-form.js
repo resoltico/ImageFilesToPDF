@@ -117,4 +117,4 @@ function chooseSettings(app, context, injected = {}) {
     return settings;
 }
 
-module.exports = { collectViaForm, collectSettings, chooseSettings };
+module.exports = { chooseSettings };

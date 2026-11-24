@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * What counts as a page background.
@@ -12,11 +13,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    COLOR_ERROR,
-    normalizeColor,
-    rgbOf
-} = require("../../../src/core/color.js");
+const { normalizeColor, rgbOf } = require("../../../src/core/color.js");
+const { COLOR_ERROR } = inspectModule(require.resolve("../../../src/core/color.js"), ["COLOR_ERROR"]);
 
 test("a color is kept in one spelling, whatever it arrived in", () => {
     for (const written of ["#C7DAE8", "#c7dae8", "c7DaE8", "  #C7DAE8  ", "c7dae8"]) {

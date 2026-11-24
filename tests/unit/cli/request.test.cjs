@@ -1,11 +1,13 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { cliCommand, jsonConfiguration, configurationValues, usage } = require("../../../src/cli/request.js");
+const { cliCommand } = require("../../../src/cli/request.js");
+const { jsonConfiguration, configurationValues, usage } = inspectModule(require.resolve("../../../src/cli/request.js"), ["jsonConfiguration", "configurationValues", "usage"]);
 const { DEFAULT_SETTINGS } = require("../../../src/core/settings.js");
 const settings = { ...DEFAULT_SETTINGS };
 

@@ -83,4 +83,4 @@ function requireHello(event, version) {
     if (event?.type !== "hello" || event.version !== version || !supportsNode(event.runtime)) { throw new Error(message("engineVersionMismatch")); }
 }
 
-module.exports = { validateMessage, encodeMessage, decodeMessage, requireHello };
+module.exports = { encodeMessage, decodeMessage, requireHello };

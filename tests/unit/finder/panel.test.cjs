@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * What the panel is built from, when it appears, and what it says.
@@ -12,12 +13,9 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const {
-    APPEARANCE_DELAY,
-    build,
-    panelSink
-} = require("../../../src/finder/quick-action/panel.js");
-const { TRACK_RECT } = require("../../../src/finder/quick-action/panel.js");
+const { build } = require("../../../src/finder/quick-action/panel.js");
+const { APPEARANCE_DELAY, panelSink } = inspectModule(require.resolve("../../../src/finder/quick-action/panel.js"), ["APPEARANCE_DELAY", "panelSink"]);
+const { TRACK_RECT } = inspectModule(require.resolve("../../../src/finder/quick-action/panel.js"), ["TRACK_RECT"]);
 const { createFakeObjC } = require("../ports/fake-objc.cjs");
 
 /*

@@ -206,4 +206,4 @@ async function executeDocuments(ports, plans, records = []) {
     }
     return records;
 }
-module.exports = { executeDocument, executeDocuments, MAX_QUEUED_PAGES, MAX_QUEUED_BYTES };
+module.exports = { executeDocuments };

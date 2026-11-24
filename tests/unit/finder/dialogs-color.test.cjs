@@ -1,4 +1,5 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 /*
  * Choosing a page background where there is no form.
@@ -10,7 +11,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { chooseColor } = require("../../../src/finder/quick-action/dialogs.js");
+const { chooseColor } = inspectModule(require.resolve("../../../src/finder/quick-action/dialogs.js"), ["chooseColor"]);
 const { createFakeApp } = require("../ports/fake-app.cjs");
 
 test("the fallback offers the four presets and a color of your own", () => {

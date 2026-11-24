@@ -1,8 +1,9 @@
 "use strict";
+const { inspectModule } = require("../ports/inspect-module.cjs");
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { backgroundVector } = require("../../../src/backend/commands.js");
+const { backgroundVector } = inspectModule(require.resolve("../../../src/backend/commands.js"), ["backgroundVector"]);
 const { normalizeSettings } = require("../../../src/core/settings.js");
 
 function settings(overrides) {

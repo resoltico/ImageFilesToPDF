@@ -4,30 +4,30 @@ const assert = require("node:assert/strict");
 const { beginPagePreparation } = require("../../../src/application/pages.js");
 const { OperationError } = require("../../../src/core/errors.js");
 const { issuesOf } = require("../../../src/core/outcomes.js");
-const { createFakeHost } = require("../ports/fake-host.cjs");
+const { createConversionFixture } = require("../ports/fake-conversion.cjs");
 const { makeJob, imageOf, preparePage } = require("../ports/fake-job.cjs");
 
 test("normalization reads only the captured input and returns an image-sized page", async () => {
-    const app = createFakeHost({ files: ["/source.png"] });
+    const app = createConversionFixture({ files: ["/source.png"] });
     const job = makeJob(app);
     const page = (await preparePage(job, imageOf("/source.png"), 0));
     assert.equal(page.path, "/tmp/ImageFilesToPDF.X/0-page.png");
     assert.deepEqual([page.placement.widthPixels, page.placement.heightPixels], [595, 396]);
-    const thumbnail = app.commands.find((command) => command.includes("'thumbnail'") && !command.includes("nonexistent"));
-    assert.ok(thumbnail.includes("'/tmp/ImageFilesToPDF.X/input-0'"));
-    assert.ok(!app.commands.some((command) => command.includes("'gravity'")));
+    const thumbnail = app.commands.find((command) => command.includes("thumbnail") && !command.some((argument) => argument.includes("nonexistent")));
+    assert.ok(thumbnail.includes("/tmp/ImageFilesToPDF.X/input-0"));
+    assert.ok(!app.commands.some((command) => command.includes("gravity")));
     assert.ok(app.files.has("/source.png"));
     assert.ok(!app.files.has("/tmp/ImageFilesToPDF.X/input-0"));
 });
 
 test("programming faults during normalization retain fault meaning", async () => {
-    const app = createFakeHost({ files: ["/source.png"], failures: [["'thumbnail'", new TypeError("adapter bug")]] });
+    const app = createConversionFixture({ files: ["/source.png"], faults: { run: ([, operation]) => operation === "thumbnail" ? new TypeError("adapter bug") : undefined } });
     await assert.rejects(() => preparePage(makeJob(app), imageOf("/source.png"), 0), (error) => issuesOf(error, "preparation")[0].code === "fault");
 });
 
 test("captured facts that differ from admission refuse before rendering", async () => {
     for (const patch of [{ width: 601 }, { orientation: 6 }, { loader: "jpegload" }]) {
-        const app = createFakeHost({ files: ["/source.png"] });
+        const app = createConversionFixture({ files: ["/source.png"] });
         Object.assign(app, patch);
         // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         await assert.rejects(() => preparePage(makeJob(app), imageOf("/source.png"), 0), (error) => {
@@ -35,13 +35,13 @@ test("captured facts that differ from admission refuse before rendering", async 
             assert.match(error.issues[0].message, /changed after selection/u);
             return true;
         });
-        assert.ok(!app.commands.some((command) => command.includes("'thumbnail'") || command.includes("'avg'")));
+        assert.ok(!app.commands.some((command) => command.includes("thumbnail") || command.includes("avg")));
         assert.ok(!app.files.has("/tmp/ImageFilesToPDF.X/input-0"));
     }
 });
 
 test("missing admission is a contract fault and changed native identity is refused", async () => {
-    const app = createFakeHost({ files: ["/source.png"] });
+    const app = createConversionFixture({ files: ["/source.png"] });
     const source = imageOf("/source.png");
     await assert.rejects(() => preparePage(makeJob(app), { ...source, admission: undefined }, 0), /admission facts are required/u);
     const { capture } = app.sources;
@@ -50,7 +50,7 @@ test("missing admission is a contract fault and changed native identity is refus
 });
 
 test("transparency uses an owned intermediate and reports each native operation", async () => {
-    const host = createFakeHost({ files: ["/source.png"], bands: 4 });
+    const host = createConversionFixture({ files: ["/source.png"], bands: 4 });
     const job = makeJob(host);
     const source = imageOf("/source.png");
     source.admission.image.bands = 4;
@@ -70,7 +70,7 @@ test("transparency uses an owned intermediate and reports each native operation"
 });
 
 test("successful pass-through owns a verified private JPEG copy after full decoding", async () => {
-    const host = createFakeHost({ files: ["/source.jpg"] });
+    const host = createConversionFixture({ files: ["/source.jpg"] });
     Object.assign(host, { loader: "jpegload", width: 64, height: 48 });
     const job = makeJob(host);
     const source = imageOf("/source.jpg");
@@ -87,12 +87,12 @@ test("successful pass-through owns a verified private JPEG copy after full decod
 });
 
 test("decoder failure abandons the incomplete page and reports source and stage", async () => {
-    const host = createFakeHost({ files: ["/source.png"] });
+    const host = createConversionFixture({ files: ["/source.png"] });
     const job = makeJob(host);
     const { run } = job.operations;
     const draft = `${job.workspace}/0-page.png`;
     job.operations.run = (argv, label) => {
-        if (argv[1] === "thumbnail") { host.files.add(draft); throw new OperationError("Decoder refused data.", { command: "thumbnail" }); }
+        if (argv[1] === "thumbnail") { host.files.set(draft, { identity: "partial", size: 1 }); throw new OperationError("Decoder refused data.", { command: "thumbnail" }); }
         return run(argv, label);
     };
     const source = imageOf("/source.png");
@@ -109,22 +109,22 @@ test("decoder failure abandons the incomplete page and reports source and stage"
 });
 
 test("encoded output type and alpha determine whether a lossless intermediate is needed", async () => {
-    const opaque = createFakeHost({ files: ["/plain.png"] });
+    const opaque = createConversionFixture({ files: ["/plain.png"] });
     const plain = await preparePage(makeJob(opaque), imageOf("/plain.png"), 0);
     assert.ok(plain.path.endsWith(".png"));
-    assert.ok(!opaque.commands.some((command) => command.includes("-page.png.v")));
-    const transparent = createFakeHost({ files: ["/source.webp"], bands: 4 });
+    assert.ok(!opaque.commands.some((command) => command.some((argument) => argument.includes("-page.png.v"))));
+    const transparent = createConversionFixture({ files: ["/source.webp"], bands: 4 });
     transparent.loader = "webpload";
     const source = imageOf("/source.webp");
     Object.assign(source.admission.image, { format: "WebP", loader: "webpload", bands: 4 });
     const page = await preparePage(makeJob(transparent), source, 0);
     assert.ok(page.path.endsWith(".jpg"));
-    assert.ok(!transparent.commands.some((command) => command.includes("-page.jpg.v") || command.includes("'flatten'")));
+    assert.ok(!transparent.commands.some((command) => command.some((argument) => argument.includes("-page.jpg.v")) || command.includes("flatten")));
 });
 
 test("capture refusal names the original file and records the compared facts", async () => {
     const source = imageOf("/source.png");
-    const host = createFakeHost({ files: [source.path] });
+    const host = createConversionFixture({ files: [source.path] });
     host.width = 601;
     await assert.rejects(() => preparePage(makeJob(host), source, 0), (error) => {
         assert.match(error.message, /^\/source\.png: The source changed after selection/u);
@@ -137,7 +137,7 @@ test("capture refusal names the original file and records the compared facts", a
 
 
 test("closing a captured source twice releases its owned file only once", async () => {
-    const host = createFakeHost({ files: ["/source.png"] });
+    const host = createConversionFixture({ files: ["/source.png"] });
     const job = makeJob(host);
     const work = beginPagePreparation(job, imageOf("/source.png"), 0);
     const { captured } = await work.ready;
