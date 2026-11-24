@@ -3,6 +3,8 @@ const { OperationError } = require("../../core/errors.js");
 const { message } = require("../../core/messages.js");
 
 const POLL_SECONDS = 0.05;
+const SIGPIPE = 13;
+const SIG_IGN = 1;
 
 function watchPipe(ns, handle) {
     const { defaultCenter: center } = ns.NSNotificationCenter;
@@ -54,18 +56,23 @@ function taskFor(ns, executable, args) {
 function startChild(executable, args) {
     ObjC.import("Foundation");
     const ns = $;
+    ObjC.bindFunction("signal", ["long", ["int", "long"]]);
     const task = taskFor(ns, executable, args);
     if (!task.launchAndReturnError(ns())) { throw new OperationError(message("engineLaunchFailed")); }
     const input = task.standardInput.fileHandleForWriting;
     const output = watchPipe(ns, task.standardOutput.fileHandleForReading);
     const errors = watchPipe(ns, task.standardError.fileHandleForReading);
+    const previous = ns.signal(SIGPIPE, SIG_IGN);
     let diagnostic = "";
     let inputClosed = false;
+    let broken = false;
     function finishInput() {
         if (!inputClosed) {
             inputClosed = true;
-            // eslint-disable-next-line no-unused-expressions -- Node observes Stop on stdin EOF.
-            input.closeFile;
+            try {
+                // eslint-disable-next-line no-unused-expressions -- Node observes Stop on stdin EOF.
+                input.closeFile;
+            } catch { broken = true; }
         }
     }
     function tick() {
@@ -74,7 +81,12 @@ function startChild(executable, args) {
         return output.take();
     }
     return {
-        send(text) { input.writeData(ns(text).dataUsingEncoding(ns.NSUTF8StringEncoding)); },
+        send(text) {
+            if (inputClosed || broken) { return; }
+            try { input.writeData(ns(text).dataUsingEncoding(ns.NSUTF8StringEncoding)); }
+            catch { broken = true; }
+        },
+        inputBroken: () => broken,
         finishInput, tick,
         closed: () => output.ended() && errors.ended() && !task.running,
         result: () => ({ status: Number(task.terminationStatus), diagnostic }),
@@ -82,7 +94,13 @@ function startChild(executable, args) {
             try {
                 finishInput();
                 while (task.running) { tick(); }
-            } finally { output.close(); errors.close(); }
+            } finally {
+                try { output.close(); }
+                finally {
+                    try { errors.close(); }
+                    finally { ns.signal(SIGPIPE, previous); }
+                }
+            }
         }
     };
 }

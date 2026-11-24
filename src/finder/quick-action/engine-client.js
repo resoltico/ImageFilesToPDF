@@ -51,7 +51,7 @@ function wire(child, pulse) {
                 newline = buffered.indexOf("\n");
             }
             if (newline === -1) {
-                if (buffered.length > 0) { throw new OperationError(message("engineMessageIncomplete")); }
+                if (buffered.length > 0 && !child.inputBroken() && child.result().status === 0) { throw new OperationError(message("engineMessageIncomplete")); }
                 return null;
             }
             const event = decodeMessage("engine", buffered.slice(0, newline));
@@ -85,8 +85,15 @@ function routeEvent(event, hooks, session, messages) {
     messages.send(response);
 }
 
+function sessionFailure(child, outcome = undefined) {
+    const { status, diagnostic } = child.result();
+    return new OperationError(message("engineSessionFailed"), { diagnostic: { message: diagnostic, status }, outcome });
+}
+
 function complete(child, messages, items, state) {
-    requireHello(messages.receive(), VERSION);
+    const hello = messages.receive();
+    if (!hello) { throw sessionFailure(child); }
+    requireHello(hello, VERSION);
     messages.send({ type: "start", inputItems: items });
     const { hooks, session } = state;
     let event = messages.receive();
@@ -97,9 +104,8 @@ function complete(child, messages, items, state) {
     session.stopping = true;
     child.finishInput();
     if (messages.receive()) { throw new OperationError(message("engineMessageOrder")); }
-    const { status, diagnostic } = child.result();
-    if (status !== 0 || event?.type !== "outcome") {
-        throw new OperationError(message("engineSessionFailed"), { diagnostic: { message: diagnostic, status } });
+    if (child.inputBroken() || child.result().status !== 0 || event?.type !== "outcome") {
+        throw sessionFailure(child, event?.receipt);
     }
     return event.receipt;
 }
