@@ -79,10 +79,13 @@ the Python standard library.
 The same 16-byte PNG prefix produces a VIPS `not enough data` warning on
 macOS and Windows (libvips 8.18.7), and `pngload: end of stream` on Debian
 (libvips 8.16.1). The truncated TIFF reports a TIFF directory read error on
-macOS and Debian. Windows reports `is not a known file format` for those TIFF
-bytes, the same diagnostic as text supplied as PNG. Windows classifies both
-as `not-an-image`. The native fixture asserts this measured behavior and verifies
-that the source bytes remain unchanged.
+macOS and Debian. Windows can report `is not a known file format` for the same
+TIFF bytes. For that diagnostic the engine distinguishes damaged PNG, JPEG,
+TIFF and WebP by a complete format signature in the first 12 bytes. Admission
+reads that prefix through an identity- and version-checked read-only handle.
+Preparation uses the bytes collected while making the private copy. The native
+fixture requires `damaged` for all four truncated formats and `not-an-image`
+for plain text named as PNG. It also checks the original bytes.
 
 ## Required native checks
 

@@ -127,7 +127,7 @@ async function verifyDamage(folder) {
     const result = parseReceipt(await cli(["--settings", config(folder), "--", ...Object.keys(samples)], folder, 1));
     assert.deepEqual(result.documents, []);
     assert.deepEqual(Object.fromEntries(result.rejected.map(({ name, code }) => [name, code])), {
-        "cut.jpg": "damaged", "cut.png": "damaged", "cut.tif": windows ? "not-an-image" : "damaged",
+        "cut.jpg": "damaged", "cut.png": "damaged", "cut.tif": "damaged",
         "cut.webp": "damaged", "text.png": "not-an-image"
     });
     for (const [file, contents] of Object.entries(samples)) { assert.deepEqual(fs.readFileSync(file), contents); }

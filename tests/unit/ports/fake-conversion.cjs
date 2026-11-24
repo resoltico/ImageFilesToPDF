@@ -186,8 +186,8 @@ function createConversionFixture(options = {}) {
     const sources = {
         facts: (path) => ({ identity: path, version: "1", size: String(facts(path).size) }),
         readable: (path) => files.has(path),
-        capture(from, path) { copy(from, path); return { path, identity: from, version: "1" }; },
-        pngCount: () => fixture.pages ?? 1
+        capture(from, path) { copy(from, path); return { path, identity: from, version: "1", prefix: [] }; },
+        prefix: () => [], pngCount: () => fixture.pages ?? 1
     };
     return Object.assign(fixture, { operations, storage, publication, sources, destinationNames: { groups: nameGroups } });
 }
