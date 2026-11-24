@@ -55,7 +55,7 @@ function isVipsUsable(probeOutput) {
 
 /* Stable releases only; an unrecognized or prerelease version fails closed. */
 function isPdfcpuUsable(probeOutput) {
-    const match = /^version: v(?<version>\d+\.\d+\.\d+)[ \t]*$/mu.exec(String(probeOutput));
+    const match = /^version: v?(?<version>\d+\.\d+\.\d+)[ \t]*$/mu.exec(String(probeOutput));
 
     if (!match) {
         return false;
@@ -113,6 +113,7 @@ function describeSetupProblems(problems, hasHomebrew) {
 }
 
 module.exports = {
+    MINIMUM_PDFCPU_VERSION,
     buildVipsProbeArgv,
     buildVipsheaderProbeArgv,
     VIPSHEADER_PROBE_IMAGE,

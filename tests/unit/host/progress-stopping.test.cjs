@@ -17,7 +17,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { UserCanceled, isUserCanceled } = require("../../../src/core/errors.js");
-const { createProgress } = require("../../../src/host/progress.js");
+const { hostError } = require("../../../src/host/cancellation.js");
+const { createProgress } = require("../../../src/application/progress.js");
 
 function hostCancellation() {
     const error = new Error("User canceled.");
@@ -78,7 +79,7 @@ test("a surface that cannot show a report is still not news", () => {
 test("the report that discovers a stop is the one that acts on it", () => {
     // A host raises at the assignment after the button, so checking before
     // saying would miss it and carry on into the work being announced.
-    const progress = createProgress([stoppingOnce()]);
+    const progress = createProgress([stoppingOnce()], undefined, hostError);
 
     assert.throws(() => progress.phase("Creating PDF"), isUserCanceled);
 });
@@ -89,7 +90,7 @@ test("every way of saying what is about to happen stops the run", () => {
         (progress) => progress.about("2 images prepared"),
         (progress) => progress.beginning(1, "x.png")
     ]) {
-        const progress = createProgress([stoppingOnce()]);
+        const progress = createProgress([stoppingOnce()], undefined, hostError);
 
         assert.throws(() => say(progress), isUserCanceled, String(say));
     }
@@ -99,7 +100,7 @@ test("saying what has happened does not, whatever has been recorded", () => {
     // The work is finished. Unwinding past it would throw away the account of
     // it, and every one of these is followed by the end of the run or by a
     // report that does stop.
-    const progress = createProgress([stoppingOnce()]);
+    const progress = createProgress([stoppingOnce()], undefined, hostError);
 
     assert.doesNotThrow(() => progress.finished("Saved"));
     assert.doesNotThrow(() => progress.finished("Saved"), "and still does not");
@@ -109,7 +110,7 @@ test("saying what has happened does not, whatever has been recorded", () => {
 test("the lifecycle calls never stop the run", () => {
     // close() is called from a finally, where an escape would mask the error
     // already on its way out.
-    const progress = createProgress([stoppingOnce()]);
+    const progress = createProgress([stoppingOnce()], undefined, hostError);
 
     progress.finished("Saved");
     assert.doesNotThrow(() => {
@@ -127,7 +128,7 @@ test("our own cancellation is recognized as well as the host's", () => {
 
 test("a stop wrapped in context is still a stop", () => {
     const wrapped = new Error("while drawing", { cause: hostCancellation() });
-    const progress = createProgress([throwing(wrapped)]);
+    const progress = createProgress([throwing(wrapped)], undefined, hostError);
 
     assert.throws(() => progress.phase("Preparing"), isUserCanceled);
 });

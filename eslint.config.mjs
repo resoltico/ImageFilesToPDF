@@ -63,6 +63,14 @@ export default [
     },
 
     {
+        files: ["src/node/**/*.js"],
+        languageOptions: {
+            ecmaVersion: "latest",
+            sourceType: "commonjs",
+            globals: commonjsGlobals
+        }
+    },
+    {
         // Build and QA tooling: ESM on Node.
         files: ["tools/**/*.mjs", "eslint.config.mjs"],
         languageOptions: {

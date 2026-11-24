@@ -6,7 +6,9 @@
  */
 
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
-const { createProgress } = require("../../../src/host/progress.js");
+const { createProgress } = require("../../../src/application/progress.js");
+
+const { runOperations } = require("../../../src/host/run-operations.js");
 
 const geometry = calculatePageGeometry({
     paperSize: "A4",
@@ -19,7 +21,7 @@ const geometry = calculatePageGeometry({
 
 function makeJob(app) {
     return {
-        app,
+        operations: runOperations(app),
         geometry,
         settings: { quality: 85, background: "#FFFFFF" },
         timestamp: "20260904_010203",

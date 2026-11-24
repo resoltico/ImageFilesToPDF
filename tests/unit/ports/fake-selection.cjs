@@ -1,5 +1,6 @@
 "use strict";
-const { collectImageFiles: collect } = require("../../../src/host/admission.js");
+const { collectImageFiles: collect } = require("../../../src/application/admission.js");
 const { treeOf } = require("./fake-tree.cjs");
-function collectImageFiles(app, items, tree = treeOf({})) { return collect(app, items, tree); }
+const { runOperations } = require("../../../src/host/run-operations.js");
+function collectImageFiles(app, items, tree = treeOf({})) { const ports = runOperations(app); return collect(ports, items.map(ports.resolve), tree); }
 module.exports = { collectImageFiles };

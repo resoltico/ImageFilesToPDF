@@ -34,3 +34,21 @@ export async function scopedBundle(entry, base) {
         inputs
     };
 }
+
+export async function nodeBundle(entry, base, minimumNode) {
+    const result = await build({
+        ...BUNDLE_OPTIONS,
+        platform: "node",
+        format: "cjs",
+        globalName: undefined,
+        target: `node${minimumNode}`,
+        absWorkingDir: base,
+        entryPoints: [entry]
+    });
+    for (const output of Object.values(result.metafile.outputs)) {
+        if (output.imports.some(({ path: name }) => !name.startsWith("node:"))) {
+            throw new Error("external runtime dependency in Node bundle");
+        }
+    }
+    return { source: result.outputFiles[0].text, inputs: Object.keys(result.metafile.inputs) };
+}

@@ -22,18 +22,19 @@ const SETTINGS_FIELDS = Object.keys(SETTINGS_SCHEMA);
 const DEFAULT_SETTINGS = Object.freeze(Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, SETTINGS_SCHEMA[field].default])));
 const SETTING_CHOICES = Object.freeze(Object.fromEntries(SETTINGS_FIELDS.filter((field) => SETTINGS_SCHEMA[field].kind === "choice").map((field) => [field, SETTINGS_SCHEMA[field].choices.map((choice) => choice.value)])));
 
-function settingValueIssue(field, value) {
+function settingValueIssue(field, value, naming) {
     const rule = SETTINGS_SCHEMA[field];
+    const subject = naming === "keys" ? `\`${field}\`` : rule.name;
     if (rule.kind === "color") {
         try { normalizeColor(value); return null; }
-        catch { return { field, code: "color", stage: "settings", message: `${rule.name} ${COLOR_ERROR}` }; }
+        catch { return { field, code: "color", stage: "settings", message: `${subject} ${COLOR_ERROR}` }; }
     }
     if (rule.kind === "choice") {
         return typeof value === "string" && rule.choices.some((choice) => choice.value === value) ? null
-            : { field, code: "choice", stage: "settings", message: `${rule.name} must be one of: ${rule.choices.map((choice) => choice.value).join(", ")}.` };
+            : { field, code: "choice", stage: "settings", message: `${subject} must be one of: ${rule.choices.map((choice) => choice.value).join(", ")}.` };
     }
     return typeof value === "number" && Number.isInteger(value) && value >= rule.minimum && value <= rule.maximum ? null
-        : { field, code: "integer", stage: "settings", message: `${rule.name} must be a whole number from ${rule.minimum} to ${rule.maximum}.` };
+        : { field, code: "integer", stage: "settings", message: `${subject} must be a whole number from ${rule.minimum} to ${rule.maximum}.` };
 }
 
 function settingType(value) {
@@ -41,23 +42,25 @@ function settingType(value) {
     return Array.isArray(value) ? "array" : typeof value;
 }
 
-function settingIssue(field, value) {
-    const issue = settingValueIssue(field, value);
+function settingIssue(field, value, naming) {
+    const issue = settingValueIssue(field, value, naming);
     if (!issue) { return null; }
-    if (value === undefined) { return { ...issue, diagnostic: { missing: true } }; }
+    if (value === undefined) { return { ...issue, ...(naming === "keys" ? { message: `\`${field}\` is missing.` } : {}), diagnostic: { missing: true } }; }
     const expectedType = SETTINGS_SCHEMA[field].kind === "integer" ? "number" : "string";
     const actualType = settingType(value);
-    return actualType === expectedType ? issue : { ...issue, diagnostic: { expectedType, actualType } };
+    if (actualType === expectedType) { return issue; }
+    const description = actualType === "null" ? "null" : `${["array", "object"].includes(actualType) ? "an" : "a"} ${actualType}`;
+    return { ...issue, ...(naming === "keys" ? { message: `\`${field}\` must be a JSON ${expectedType}, not ${description}.` } : {}), diagnostic: { expectedType, actualType } };
 }
 
-function validateSettings(input) {
+function validateSettings(input, naming) {
     if (!input || typeof input !== "object" || Array.isArray(input)) {
         return { issues: [{ code: "object", stage: "settings", message: "Settings must be an object." }] };
     }
     const issues = Object.keys(input).filter((key) => !SETTINGS_FIELDS.includes(key))
-        .map((field) => ({ field, code: "unknown", stage: "settings", message: `Unknown setting: ${field}.` }));
+        .map((field) => ({ field, code: "unknown", stage: "settings", message: naming === "keys" ? `${JSON.stringify(field)} is not a recognized setting.` : `Unknown setting: ${field}.` }));
     for (const field of SETTINGS_FIELDS) {
-        const issue = settingIssue(field, input[field]);
+        const issue = settingIssue(field, input[field], naming);
         if (issue) { issues.push(issue); }
     }
     return issues.length > 0 ? { issues } : { issues: [], settings: Object.fromEntries(SETTINGS_FIELDS.map((field) =>

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- The macOS terminal command now needs Node 26.13.1+. Download the CJS bundle and use `node Image-Files-to-PDF.cjs --settings settings.json -- photo.jpg`. See [HEADLESS.md](HEADLESS.md).
+- The same headless bundle targets Linux, Windows PowerShell and macOS with libvips and stable pdfcpu 0.16.4 or later. Finder uses its own JXA script.
+- The CLI uses hard links to publish PDFs without overwriting. It retains verified private work after an uncertain claim or an unacknowledged native command.
+- Windows runs accept local drive paths and Ctrl+C in a PowerShell console. The installed libvips build determines codec support.
+
 ## [4.0.0] - 2026-11-15
 
 - Licensed under AGPL-3.0-only instead of MPL-2.0: distributing the script or a modified version requires offering its corresponding source; see [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md).

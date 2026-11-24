@@ -1,26 +1,8 @@
 "use strict";
 
-const { selectionReason, selectionRefusal } = require("../core/selection-policy.js");
-const { isRegularFile, isDirectory } = require("./asking.js");
+const { selectionRefusal } = require("../core/selection-policy.js");
 const { isRemoteUrl } = require("./invocation-syntax.js");
 const { pathCandidates } = require("./input.js");
-
-/*
- * Why something the user asked for will not be converted.
- *
- * A rejection is a stated reason rather than the absence of an entry in a
- * list: a silent filter turned a GIF selected alongside two photos into a
- * report that nothing had failed.
- */
-
-/*
- * The refusal code for a resolved path this action cannot convert, or "" when it
- * is. Kept apart from the filtering so that a rejection is a stated reason
- * rather than the absence of an entry in a list.
- */
-function rejectionReason(app, path) {
-    return selectionReason(isDirectory(app, path) ? "directory" : "file", path, isRegularFile(app, path));
-}
 
 /*
  * Both what will be converted and what was asked for and will not be.
@@ -44,4 +26,4 @@ function describeUnresolved(item) {
     return selectionRefusal("", remote ? "remote-url" : "not-a-path", named);
 }
 
-module.exports = { rejectionReason, describeUnresolved };
+module.exports = { describeUnresolved };

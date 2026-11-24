@@ -10,7 +10,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-SCRIPT="$ROOT/dist/Image-Files-to-PDF.jxa"
+SCRIPT="$ROOT/dist/Image-Files-to-PDF.cjs"
 WORK=$(mktemp -d -t ImageFilesToPDF-damaged)
 trap 'rm -rf "$WORK"' EXIT
 
@@ -26,7 +26,7 @@ require_tools
 # Returns the exit status rather than failing the script: a refusal is the
 # expected outcome here, so the status is the assertion.
 run_headless() {
-    osascript -l JavaScript "$SCRIPT" -- --headless "$@" >"$WORK/receipt" 2>"$WORK/stderr"
+    node "$SCRIPT" --settings "$1" -- "${@:2}" >"$WORK/receipt" 2>"$WORK/stderr"
 }
 
 # truncate_file <source> <destination> <percent>
@@ -76,7 +76,7 @@ assert.equal(failed?.state, 'failed');
 assert.equal(failed.issues[0].code, 'damaged');
 assert.equal(failed.issues[0].stage, 'preparation');
 const operation = process.argv[4] === '300' ? "'avg'" : "'thumbnail'";
-assert.ok(failed.issues[0].diagnostic.command.includes(operation));
+assert.ok(JSON.parse(failed.issues[0].diagnostic.command).includes(operation.replace(/'/gu, "")));
 JS
     test ! -e "$WORK/entropy.pdf" || fail "a damaged entropy scan was published"
 done

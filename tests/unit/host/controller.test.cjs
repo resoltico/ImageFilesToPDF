@@ -2,12 +2,15 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { execute: executeUseCase } = require("../../../src/host/main.js");
-const { createProgress } = require("../../../src/host/progress.js");
-const { reportHeadless } = require("../../../src/host/command-line/reporting.js");
-const { isCompleteSuccess } = require("../../../src/host/command-line/receipt.js");
+const { createProgress } = require("../../../src/application/progress.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 const { treeOf } = require("../ports/fake-tree.cjs");
-const { commandLineInteraction } = require("../../../src/host/command-line/interaction.js");
+
+const { noImagesOutcome } = require("../../../src/core/outcomes.js");
+function commandLineInteraction(invocation) {
+    return { progress: createProgress([]), collect: () => invocation, settings: () => invocation.settings,
+        noImages: noImagesOutcome, present: (result) => result };
+}
 
 function execute(app, invocation, options) {
     const interaction = commandLineInteraction(invocation);
@@ -28,9 +31,6 @@ test("controller converts through real adapters and derives a complete receipt",
     assert.equal(result.state,"complete");
     assert.equal(result.documents[0].state,"saved");
     assert.equal(result.documents[0].pages,1);
-    assert.equal(isCompleteSuccess(result),true);
-    const lines=[]; assert.equal(reportHeadless(result,(text)=>lines.push(text),(code)=>code),0);
-    assert.equal(JSON.parse(lines[1]).documents.length,1);
 });
 
 test("refused selection and conversion failures remain incomplete", () => {
@@ -39,10 +39,6 @@ test("refused selection and conversion failures remain incomplete", () => {
     assert.equal(result.state,"incomplete");
     assert.equal(result.documents[0].state,"failed");
     assert.equal(result.rejected.length,1);
-    const lines=[];
-    assert.equal(reportHeadless(result,(text)=>lines.push(text),(code)=>code),1);
-    assert.equal(lines.length,2);
-    assert.equal(JSON.parse(lines[1]).documents[0].issues[0].stage,"preparation");
 });
 
 test("missing mandatory source capabilities refuse direct files at setup", () => {
@@ -80,7 +76,7 @@ const { describeNoImages } = require("../../../src/core/run-report.js");
 });
 
 test("an unidentifiable selected source is refused before conversion",()=>{
-    const {collectImageFiles}=require("../../../src/host/admission.js");
+    const {collectImageFiles}=require("../ports/fake-selection.cjs");
     const tree=treeOf({}, {}, {"/source.png":""});
     const result=collectImageFiles(createFakeHost({files:["/source.png"]}),["/source.png"],tree);
     assert.equal(result.images.length,0);

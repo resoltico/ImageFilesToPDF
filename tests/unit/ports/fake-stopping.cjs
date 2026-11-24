@@ -1,6 +1,7 @@
 "use strict";
 
-const { createProgress } = require("../../../src/host/progress.js");
+const { hostError } = require("../../../src/host/cancellation.js");
+const { createProgress } = require("../../../src/application/progress.js");
 
 /*
  * A run that is asked to stop at a chosen moment.
@@ -44,7 +45,7 @@ function stoppingSink(asked, said) {
 function stoppingWhen(asked) {
     const said = [];
 
-    return { said, progress: createProgress([stoppingSink(asked, said)]) };
+    return { said, progress: createProgress([stoppingSink(asked, said)], undefined, hostError) };
 }
 
 const atPhase = (name) => (description) => description === name;

@@ -1,4 +1,4 @@
-IMAGE FILES TO PDF 4.0.0 - SHORTCUTS INSTALLATION
+IMAGE FILES TO PDF 4.0.0 - INSTALLATION
 
 Source, releases and build attestation:
 
@@ -21,11 +21,25 @@ To upgrade it:
 Verify a download
 =================
 
-The release workflow attests the JXA, checksum manifest, installation
+The release workflow attests both scripts, the checksum manifest, installation
 instructions and license. With GitHub CLI installed, from the download folder:
 
     gh attestation verify Image-Files-to-PDF.jxa --repo resoltico/ImageFilesToPDF
+    gh attestation verify Image-Files-to-PDF.cjs --repo resoltico/ImageFilesToPDF
     shasum --check SHA256SUMS
+
+Install the CLI
+===============
+
+Keep Image-Files-to-PDF.cjs as a file and install Node.js 26.13.1 or later, libvips
+and stable pdfcpu 0.16.4 or later. Put vips, vipsheader and pdfcpu on PATH.
+On Windows use their executable distributions and PowerShell 7.4 or later for
+UTF-8 stdout redirection. See HEADLESS.md in the repository for settings and
+platform prerequisites.
+
+    node Image-Files-to-PDF.cjs --settings settings.json -- "photo 1.jpg" folder
+
+macOS terminal users must replace the old osascript command with this command.
 
 Install the Quick Action
 ========================
@@ -91,7 +105,7 @@ Image Files to PDF is licensed under the GNU Affero General Public License,
 version 3 only (AGPL-3.0-only). The complete terms are in LICENSE and at
 https://www.gnu.org/licenses/agpl-3.0.html. It comes without any warranty.
 Keep license and source notices and make the corresponding source available as
-the license requires when you distribute the script or a modified version. The
-JXA header names the source for its version. Dependencies retain their own
+the license requires when you distribute the script or a modified version. Each
+script header names the source for its version. Dependencies retain their own
 licenses. No separate commercial license is currently offered through this
 repository; see LICENSE-COMMERCIAL.md in the source repository.

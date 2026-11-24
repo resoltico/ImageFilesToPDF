@@ -30,8 +30,7 @@ vips icc_transform "$WORK/photo.jpg" "$WORK/tagged.jpg" "$P3_PROFILE" --input-pr
 mkdir "$WORK/german"
 cp "$WORK/photo.jpg" "$WORK/german/photo.jpg"
 write_config "$WORK/german/settings.json" A4 Portrait separate "#FFFFFF" 20261029_010203
-LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 osascript -l JavaScript \
-    "$ROOT/dist/Image-Files-to-PDF.jxa" -- --headless "$WORK/german/settings.json" \
+LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 node "$ROOT/dist/Image-Files-to-PDF.cjs" --settings "$WORK/german/settings.json" -- \
     "$WORK/german/photo.jpg" >"$WORK/german/receipt" 2>"$WORK/german/stderr"
 node - "$WORK/german/receipt" <<'JS'
 const assert = require('node:assert/strict');
@@ -41,6 +40,6 @@ assert.equal(receipt.state, 'complete');
 assert.equal(receipt.documents[0].state, 'saved');
 JS
 assert_valid_pdf "$WORK/german/photo.pdf"
-node "$ROOT/tests/integration/cli-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.jxa" "$WORK"
+node "$ROOT/tests/integration/cli-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.cjs" "$WORK"
 
-node "$ROOT/tests/integration/cli-transport.cjs" "$ROOT/dist/Image-Files-to-PDF.jxa" "$WORK"
+node "$ROOT/tests/integration/cli-transport.cjs" "$ROOT/dist/Image-Files-to-PDF.cjs" "$WORK"

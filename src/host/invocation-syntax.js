@@ -1,13 +1,6 @@
 "use strict";
 
-/*
- * osascript may forward its own "--" argument separator into run(). Leading
- * separators are removed before either front end reads the remaining input:
- *
- *     osascript -l JavaScript script.jxa -- <args…>
- *     osascript -l JavaScript script.jxa    <args…>
- */
-
+// osascript may forward its separator to the Shortcuts run handler.
 const ARGUMENT_SEPARATOR = "--";
 
 /*
@@ -38,10 +31,6 @@ function normalizeInvocationInput(input) {
     }
 
     return items;
-}
-
-function isCliInput(input) {
-    return Array.isArray(input) && input.every((argument) => typeof argument === "string");
 }
 
 /*
@@ -100,4 +89,4 @@ function decodeFileUrl(value) {
     return decodePath(match.groups.path);
 }
 
-module.exports = { normalizeInvocationInput, isCliInput, decodeFileUrl, hasUrlScheme, isRemoteUrl };
+module.exports = { normalizeInvocationInput, decodeFileUrl, hasUrlScheme, isRemoteUrl };

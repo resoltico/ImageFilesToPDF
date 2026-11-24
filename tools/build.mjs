@@ -1,19 +1,14 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import {
-    artifactName,
-    artifactPath,
-    digestOf,
-    manifestPath,
-    renderManifest,
-    renderRelease
-} from "./release.mjs";
+import { manifestPath, renderManifest, renderArtifacts } from "./release.mjs";
 import { root } from "./repository.mjs";
 
-const release = await renderRelease();
-await mkdir(path.join(root, "dist"), { recursive: true });
-await writeFile(artifactPath, release, "utf8");
-
-const digest = digestOf(release);
-await writeFile(manifestPath, renderManifest(digest), "utf8");
-console.log(`${digest}  dist/${artifactName}`);
+const artifacts = await renderArtifacts();
+const dist = path.join(root, "dist");
+await mkdir(dist, { recursive: true });
+for (const [name, source] of Object.entries(artifacts)) {
+    await writeFile(path.join(dist, name), source, "utf8");
+}
+const manifest = renderManifest(artifacts);
+await writeFile(manifestPath, manifest, "utf8");
+process.stdout.write(manifest);

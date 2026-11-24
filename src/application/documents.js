@@ -31,7 +31,11 @@ function pageQueue(ports, context) {
     const flush = () => {
         if (pages.length > 0) {
             context.stage = "import";
-            ports.import(context.artifact.path, pages.map((page) => page.path), pages[0].placement);
+            const paths = pages.map((page) => page.path);
+            if (!ports.fits(context.artifact.path, paths, pages[0].placement)) {
+                throw new IssueError("The PDF import command exceeds the argument budget.");
+            }
+            ports.import(context.artifact.path, paths, pages[0].placement);
             clear();
         }
     };

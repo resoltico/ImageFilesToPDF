@@ -35,36 +35,39 @@ brew install vips pdfcpu qpdf poppler libtiff exiftool shellcheck actionlint
 ```
 
 See [QA.md](QA.md) for verification requirements and live-host checks.
-Commit generated JXA and checksums alongside source changes that affect them.
+Commit both generated bundles and checksums alongside source changes that affect them.
 
 ## Source and ownership boundaries
 
 - `src/core/` owns portable settings, source policy, planning, ordering, naming,
   geometry, artifact-retention policy and outcome vocabulary.
-- `src/application/` owns controller decisions and document/resource sequencing
-  through explicit ports. Core and application import no native/UI adapters.
-- `src/backend/` owns pure backend argv builders, parsers and command budgeting.
-- `src/host/` owns shared setup and native/platform operations. Its
-  `quick-action/` and `command-line/` front ends supply interaction ports to one
-  use case; neither imports the other, and shared host imports neither.
-  Host globals and Apple Event cancellation translation belong here.
-- `src/entry.js` exports the production `run` capability.
+- `src/application/` owns selection, inspection, conversion, publication and
+  recovery sequencing. Its synchronous workflow receives explicit ports.
+- `src/backend/` owns portable native-tool argv builders and output parsers.
+  Each process adapter determines whether the full command fits.
+- `src/host/` contains the JXA filesystem bridge and Finder presentation.
+  `src/entry.js` exports the synchronous Shortcuts handler.
+- `src/node/` contains CLI parsing, native process and filesystem ports and
+  receipt transport. `src/node/entry.js` is the sole terminal entry point.
 
-`tools/lint/boundaries.mjs` enforces import direction and host-global boundaries.
-Required source/filesystem/publication capabilities fail setup when absent.
-Optional UI/progress observers and preferences can be unavailable; required CLI
-Stop polling runs outside optional observer broadcasts. Programming faults must
-remain diagnosable rather than silently triggering fallback. Native signal-action
-snapshots have one owner shared by cooperative Stop monitoring and transport-only
-broken-pipe protection; transport must restore prior dispositions after each
-synchronous write without changing processing or child-process signals.
+`tools/lint/boundaries.mjs` enforces import direction. The build also checks
+each entry point's full dependency graph and requires every source module to be
+reachable. Node built-ins are available only to the Node adapter.
+
+The Node main thread owns native child processes, signal handling and streams.
+A worker runs the shared synchronous workflow. Requests and replies correlate
+each child settlement, with bounded process output and a shared Stop latch.
+Workspace markers protect an unacknowledged writer across process death. The
+Quick Action supplies its progress observer and Apple Event cancellation
+translation. Optional observer failures remain diagnostics.
 
 `src/core/settings.js` owns canonical settings, defaults, names, captions, hints
 and legal choice IDs. The schema declares field kinds and the documented order;
 validation, help, form rows and stepwise dialogs derive from it. `src/host/quick-action/settings-model.js` derives the offered form and
 stepwise records from that schema. Text fields are parsed at adapter boundaries
 and use the common all-issues validator. `documentPlan` requires complete native
-name-equivalence group facts for separate mode. `src/host/destination-names.js` obtains them from
+name-equivalence group facts for separate mode. Both adapters use native probes.
+For the Finder action, `src/host/destination-names.js` obtains these facts from
 native folder identity and actual namespace probes; coarse search buckets only
 limit fallback lookups and never establish equality. Comparison probes use the
 owned workspace or an OS-created temporary directory on the destination volume,
@@ -145,7 +148,7 @@ the sibling repository.
 
 Tests that inject ports/fixtures belong in `tests/unit/`; tests that inspect the
 real checkout belong in `tests/repo/`. Unit test directories follow the outermost
-production layer they import (`core`, `backend`, `application`, then `host`); inner
+production layer they import (`core`, `backend`, `application`, then `host` or `node`); inner
 layer values may serve as fixtures. A repository test enforces placement for
 `require()`, `require.resolve()` and dynamic `import()`. Mutation testing runs unit files. All
 production sources and applicable build rules must remain discoverable by their
@@ -162,25 +165,21 @@ Alpha PNG/TIFF normalization uses an image-sized lossless `.v` intermediate
 between thumbnail and flatten: one source decode and one final PNG encode.
 JPEG re-encoding uses the quality setting; pass-through JPEGs keep their bytes.
 
-`tools/scoped-bundle.mjs` uses the exact esbuild development pin from
-`package.json`: neutral IIFE bundling, Safari 15.4 target, compact whitespace,
-readable identifiers and a top-level `run(input, parameters)` bridge. Built-in
-availability is checked separately; the compiler supplies no polyfills. The build
-rejects omitted source files and external runtime imports.
+`tools/scoped-bundle.mjs` uses the pinned esbuild to build both distributions.
+JXA is a Safari 15.4 IIFE and exports `run(input, parameters)`. The CJS target
+is Node 26.13.1 and external imports are limited to its built-ins. The two artifacts
+have a shared checksum manifest.
 
-Native probes use explicit entry files importing production modules through
-`tools/build-probe.mjs`. They must not append private global calls to the
-production bundle or expose private production APIs. Production end-to-end tests
-invoke the actual generated script. `tests/integration/cli.sh` is part of the
-native gate and CI; its Node driver orchestrates real osascript processes and
-independent PDF inspection. It does not substitute a fake host. Temporary
-workspace cleanup must identify this run's ownership; recovery cleanup removes
-only the confirmed test file, never its Downloads parent.
+Native JXA probes import production modules through `tools/build-probe.mjs`.
+The terminal tests invoke the committed CJS and validate its PDFs independently.
+Tests use owned fixtures, temporary workspaces and test-only tool overrides.
+See the native test commands and required environments in [QA.md](QA.md).
 
 Qualify build/toolchain changes with independent clean Linux/macOS restores and
 compare bytes. The Node pin is mirrored in `.node-version`, `mise.toml` and
 `package.json` engines and checked for agreement. CI installs the declared npm
-pin. Homebrew tools are deliberately unpinned and refreshed in CI.
+pin. CI exercises the CLI runtime floor separately from the development pin.
+Native CI pins Linux and Windows conversion tools. Homebrew remains a compatibility probe.
 
 ## Documentation and releases
 
@@ -194,15 +193,15 @@ artifact hashes, audit narratives and superseded evidence outside these guides.
 `tools/banner.mjs` derives version, repository and license notices from metadata
 and refuses a license other than `AGPL-3.0-only`, which its notice states.
 First-party source, tests, tools and docs are covered by the canonical root
-`LICENSE` (`AGPL-3.0-only`). Preserve third-party notices. Generated JXA retains
+`LICENSE` (`AGPL-3.0-only`). Preserve third-party notices. Each generated artifact retains
 its license and corresponding-source notice, and releases include the complete
 license.
 
 Release publication requires separate authorization. An authorized `v<version>`
 tag must match the repository's version declarations and dated release notes.
-Pushing it triggers `.github/workflows/release.yml`, which qualifies source on
-macOS, verifies committed artifact freshness, rebuilds and compares bytes, then
-attests and publishes the JXA, checksum manifest, `INSTALL.txt` and `LICENSE`.
+Pushing it triggers `.github/workflows/release.yml`, which requires macOS and
+native CLI qualification, verifies both committed artifacts, rebuilds and
+compares bytes, then attests both bundles, the manifest, `INSTALL.txt` and `LICENSE`.
 The publish job rechecks checksums, attestations and tag identity. Its release
 helpers remain dependency-free and it does not restore an npm cache.
 

@@ -1,7 +1,7 @@
 "use strict";
 const { hostError } = require("../cancellation.js");
 
-const { createProgress } = require("../progress.js");
+const { createProgress } = require("../../application/progress.js");
 const { openPanel } = require("./panel.js");
 
 // Optional progress surfaces contribute diagnostics when unavailable.
@@ -17,7 +17,7 @@ function progressSurfaces(build) {
 
 function openProgress(build = [openPanel]) {
     const { sinks, diagnostics } = progressSurfaces(build);
-    const progress = createProgress(sinks);
+    const progress = createProgress(sinks, undefined, hostError);
     progress.diagnostics.push(...diagnostics);
     return progress;
 }

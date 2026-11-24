@@ -2,12 +2,12 @@
 #
 # macOS integration gate.
 #
-# Runs the generated JXA artifact through osascript exactly as a caller would,
+# Runs the distributed Node CLI exactly as a caller would,
 # then checks the produced PDFs with pdfcpu, qpdf and Poppler.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-SCRIPT="$ROOT/dist/Image-Files-to-PDF.jxa"
+SCRIPT="$ROOT/dist/Image-Files-to-PDF.cjs"
 WORK=$(mktemp -d -t ImageFilesToPDF-integration)
 trap 'rm -rf "$WORK"' EXIT
 
@@ -32,9 +32,8 @@ grep -q "configuration reset required" "$WORK/config.err" ||
     fail "configuration schema check not reached: $(cat "$WORK/config.err")"
 
 # run_headless <config> <image>...
-# osascript forwards "--" into run(); --headless must still be recognized.
 run_headless() {
-    osascript -l JavaScript "$SCRIPT" -- --headless "$@" >/dev/null
+    node "$SCRIPT" --settings "$1" -- "${@:2}" >/dev/null
 }
 
 # ---------------------------------------------------------------------------
@@ -52,7 +51,7 @@ printf 'version: v0.16.3\n'
 SH
 chmod +x "$WORK/pdfcpu-old"
 if IMAGE_FILES_TO_PDF_PDFCPU="$WORK/pdfcpu-old" \
-    osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/combined.json" \
+    node "$SCRIPT" --settings "$WORK/combined.json" -- \
     "$WORK/page 2.png" >"$WORK/old.out" 2>"$WORK/old.err"; then
     fail "an unsupported pdfcpu release was accepted"
 fi
@@ -125,7 +124,7 @@ write_config "$WORK/heic.json" A4 Portrait "combined" "#FFFFFF" 20260904_070809
 run_headless "$WORK/heic.json" "$WORK/from iphone.heic"
 assert_valid_pdf "$WORK/from iphone.pdf"
 
-if osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/heic.json" \
+if node "$SCRIPT" --settings "$WORK/heic.json" -- \
     "$WORK/two page scan.tif" >"$WORK/multipage.receipt" 2>"$WORK/multipage.err"
 then
     fail "a two-page TIFF was accepted; page two would have been lost silently"
@@ -141,12 +140,11 @@ assert.equal(receipt.rejected[0].code, "multiple-images");
 NODE
 
 # ---------------------------------------------------------------------------
-# The runtime must accept the invocation without osascript's "--" as well
+# Single-image naming in combined mode
 # ---------------------------------------------------------------------------
 
 write_config "$WORK/plain.json" A4 Portrait "combined" "#FFFFFF" 20260904_050607
-osascript -l JavaScript "$SCRIPT" \
-    --headless "$WORK/plain.json" "$WORK/page 2.png" >/dev/null
+node "$SCRIPT" --settings "$WORK/plain.json" -- "$WORK/page 2.png" >/dev/null
 test -s "$WORK/page 2.pdf"
 
 # The source images must be untouched.
@@ -154,4 +152,4 @@ test "$(vipsheader -f width "$WORK/tiny.png")" = 64
 test "$(vipsheader -f width "$WORK/page 2.png")" = 900
 
 cmp "$WORK/config-before.yml" "$PDFCPU_CONFIG_ROOT/pdfcpu/config.yml"
-printf 'macOS JXA integration passed\n'
+printf 'Node image/PDF integration passed\n'

@@ -13,7 +13,6 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-SCRIPT="$ROOT/dist/Image-Files-to-PDF.jxa"
 WORK=$(mktemp -d -t ImageFilesToPDF-cards)
 # A FAT label is eleven characters at most; a longer one is dropped and
 # the volume mounts as NO NAME.
@@ -32,6 +31,8 @@ cleanup() {
     rm -rf "$WORK"
 }
 trap cleanup EXIT
+SCRIPT="$WORK/workflow-probe.jxa"
+node "$ROOT/tools/build-probe.mjs" tests/integration/jxa-workflow-probe.js "$SCRIPT"
 
 # shellcheck source=tests/integration/lib/assert.sh
 source "$ROOT/tests/integration/lib/assert.sh"
@@ -49,8 +50,11 @@ run() {
     shift 2
     write_config "$WORK/config.json" A4 Portrait "$mode" "#FFFFFF" "$stamp"
     RUN_STATUS=0
-    osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$@" \
+    osascript -l JavaScript "$SCRIPT" "$WORK/config.json" "$@" \
         >"$WORK/receipt.json" 2>"$WORK/error.txt" || RUN_STATUS=$?
+    if [ "$RUN_STATUS" = 0 ]; then
+        node -e 'process.exit(JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).state === "complete" ? 0 : 1)' "$WORK/receipt.json" || RUN_STATUS=$?
+    fi
 }
 
 # The place a publication makes for itself is hidden and named for the attempt

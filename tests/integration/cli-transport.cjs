@@ -13,7 +13,7 @@ function fixture(name) {
     fs.copyFileSync(path.join(work, "photo.jpg"), source);
     const configuration = path.join(folder, "settings.json");
     fs.writeFileSync(configuration, JSON.stringify({ mode: "combined", paperSize: "A4", orientation: "Portrait", resolutionLimit: 300, quality: 92, background: "#FFFFFF" }));
-    return { source, output, bytes: fs.readFileSync(source), args: [artifact, "--headless", configuration, source] };
+    return { source, output, bytes: fs.readFileSync(source), args: [artifact, "--settings", configuration, "--", source] };
 }
 
 function verified(result, sample) {
@@ -46,21 +46,24 @@ function withBrokenPipe(name, use) {
 }
 
 const closed = fixture("closed-stdout");
-const closedResult = spawnSync("/bin/sh", ["-c", 'exec 1>&-; exec /usr/bin/osascript -l JavaScript "$@"', "closed-stdout", ...closed.args],
+const closedResult = spawnSync("/bin/sh", ["-c", 'exec 1>&-; exec "$@"', "closed-stdout", process.execPath, ...closed.args],
     { encoding: "utf8", timeout: 30000, killSignal: "SIGKILL" });
-failedOutput(closedResult, closed); assert.equal(closedResult.stdout, "");
+// Node 26 opens a writable standard descriptor when the caller passes it closed.
+verified(closedResult, closed);
+assert.equal(closedResult.status, 0, closedResult.stderr);
+assert.equal(closedResult.stdout, "");
 
 const pipe = fixture("broken-stdout");
-const pipeResult = withBrokenPipe("output-pipe", (descriptor) => spawnSync("/usr/bin/osascript", ["-l", "JavaScript", ...pipe.args],
+const pipeResult = withBrokenPipe("output-pipe", (descriptor) => spawnSync(process.execPath, pipe.args,
     { encoding: "utf8", stdio: ["ignore", descriptor, "pipe"], timeout: 30000, killSignal: "SIGKILL" }));
 failedOutput(pipeResult, pipe);
 
 const prose = fixture("broken-stderr");
-const proseResult = withBrokenPipe("report-pipe", (descriptor) => spawnSync("/usr/bin/osascript", ["-l", "JavaScript", ...prose.args],
+const proseResult = withBrokenPipe("report-pipe", (descriptor) => spawnSync(process.execPath, prose.args,
     { encoding: "utf8", stdio: ["ignore", "pipe", descriptor], timeout: 30000, killSignal: "SIGKILL" }));
 verified(proseResult, prose);
 assert.ok(proseResult.status !== 0 || proseResult.signal !== null, "the first transport refusal remains nonzero");
 const receipt = parseReceipt(proseResult.stdout);
 assert.equal(receipt.state, "complete"); assert.equal(receipt.documents[0].output, prose.output);
 // eslint-disable-next-line no-console
-console.log("macOS CLI transport passed: closed output, prebroken output pipe, prebroken report pipe and published/source integrity");
+console.log("macOS CLI transport passed: closed-descriptor normalization, prebroken output pipe, prebroken report pipe and published/source integrity");

@@ -2,11 +2,10 @@
 
 ## Scope and limits
 
-The target is macOS 12.3 or later, using JavaScriptCore through osascript or
-Shortcuts. Source syntax is ES2022; esbuild targets Safari 15.4. A separate
-built-in check rejects features unavailable at that floor. These checks do not
-establish native interaction on every supported macOS release. Automated native CI
-runs on macOS 26.
+The Finder action targets macOS 12.3 and later with the Shortcuts JavaScript
+action. The JXA bundle has an ES2022 syntax ceiling, a Safari 15.4 target, and a
+separate built-in compatibility check. The terminal bundle targets Node 26.13.1 and
+later. The runtime floor is independent of the locked development toolchain.
 
 Unit tests establish portable rules, application sequencing and adapter calls.
 Native suites establish behavior for the actual generated artifact and host used.
@@ -45,6 +44,30 @@ exceptions are recorded in `tools/eslint/rules.mjs`. Dependency and toolchain pi
 live in package.json, package-lock.json, .node-version and mise.toml; clean restores
 use `npm ci --ignore-scripts` with the declared npm version.
 
+## Native platform matrix
+
+| Target | Native tools and filesystem | Required checks |
+| --- | --- | --- |
+| macOS arm64 | macOS 26 CI and current macOS, local APFS, Homebrew libvips and pdfcpu | Committed Node bundle, APFS variants, a second volume, Apple-only HFS+/FAT/exFAT and JXA native probes, live Shortcuts |
+| Linux arm64 | Debian 13, ext4, libvips 8.16.1 with HEIF plugins, pdfcpu 0.16.4 | Committed Node bundle, ext4 and a distinct tmpfs device, terminal and crash lifecycle |
+| Windows arm64 | Windows 11 ARM runner, NTFS, PowerShell 7, libvips 8.18.7 ARM64 all, pdfcpu 0.16.4 x64 under emulation | Node 26.13.1, PowerShell argv and encoding, console Ctrl+C, NTFS ownership and publication, a second NTFS volume |
+
+The pinned Windows variant lacks HEVC. Its negative HEIC case must keep the
+source intact and publish no PDF. The Linux variant lacks the Ultra HDR loader.
+The HDR and orientation
+fixture suite runs on macOS. Additional architectures and filesystem combinations
+need their own native evidence. The Windows artifact job mounts a fresh
+NTFS test VHD to verify cross-volume publication. The Windows PowerShell console test creates a
+separate console and emits a native Ctrl+C event to it.
+
+`native-cli.cjs` invokes the committed artifact with strict pdfcpu validation,
+qpdf structure and page counts, source-byte checks, occupied names, 12
+two-process races for each PDF mode, invalid requests, bad overrides and a
+broken receipt stream. Set `IFTP_SECOND_VOLUME` to exercise another device.
+`posix-process.py` checks terminal Ctrl+C, a writer surviving SIGKILL, dead idle
+reclamation, source replacement and native header-argument batching, using
+the Python standard library.
+
 ## Required native checks
 
 `npm run test:integration:macos` runs these scripts under `tests/integration/` in
@@ -56,11 +79,11 @@ sequence:
 | `background.sh` | Alpha flattening, page background and color-profile behavior |
 | `selection.sh` | Folder traversal, overlap, identity, links, packages, explicit selections and refusal codes |
 | `publication.sh` | Occupied entries, permissions, ownership and recoverable failures |
-| `volumes.sh` | Cross-volume APFS and HFS+ publication in both modes |
+| `volumes.sh` | Production JXA adapter across APFS and HFS+ in both modes |
 | `cards.sh` | FAT32 independent rename probe, publication/collisions or validated recovery, and exFAT recovery, in both modes |
 | `damaged.sh` | Damaged-source refusal, JPEG entropy warnings in pass-through/re-encode, and combined/separate behavior |
 | `form.sh` | Production-renderer probe, native geometry/accessibility, shown modal scrollers at zero without fighting later scrolling, Stop button role/feedback and invalid-control pixel/negative controls in both appearances, PNG previews |
-| `cli.sh` | CLI grammar/statuses, settings reader, refusal corpus, unusable header overrides, German caller locale, names, JPEG streams, placement, actual INT/TERM/repeats, SIGKILL stale reclamation, HEIC/excluded-loader/FIFO refusals and closed/broken stream integrity |
+| `cli.sh` | CLI grammar/statuses, settings reader, refusal corpus, unusable header overrides, German caller locale, names, JPEG streams, placement, actual INT/TERM/repeats, HEIC/excluded-loader/FIFO refusals and closed/broken stream integrity |
 | `hdr.sh` | Synthetic Ultra HDR in both modes, SDR JPEG streams, ICC conversion, orientations 6/8, damage and unmapped-loader diagnostics |
 | `naming.sh` | Case and normalization namespaces, folder aliases, hard links, raw stored-basename bytes, long-name/collision budgets and occupied-name protection on local, APFS, APFSX, HFS+, HFSX, FAT32 and exFAT volumes |
 

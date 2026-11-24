@@ -10,7 +10,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-SCRIPT="$ROOT/dist/Image-Files-to-PDF.jxa"
+SCRIPT="$ROOT/dist/Image-Files-to-PDF.cjs"
 WORK=$(mktemp -d -t ImageFilesToPDF-selection)
 # The locked folder has to be openable again before it can be removed.
 trap 'chmod -R u+rwx "$WORK" 2>/dev/null; rm -rf "$WORK"' EXIT
@@ -32,7 +32,7 @@ run() {
     local stamp=$1
     shift
     write_config "$WORK/config.json" A4 Portrait "combined" "#FFFFFF" "$stamp"
-    osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$@" \
+    node "$SCRIPT" --settings "$WORK/config.json" -- "$@" \
         2>"$WORK/error.txt" || true
 }
 

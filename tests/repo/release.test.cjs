@@ -14,14 +14,19 @@ function checkBanner(release) {
 }
 
 test("artifact is standalone, scoped, licensed, deterministic, and current", async () => {
-    const { renderRelease, artifactPath, manifestPath, digestOf, renderManifest } = await import("../../tools/release.mjs");
+    const { renderArtifacts, artifactName, nodeArtifactName, nodeArtifactPath, artifactPath, manifestPath, renderManifest } = await import("../../tools/release.mjs");
     const { parseScript, commentsIn } = await import("../../tools/javascript.mjs");
-    const release = await renderRelease();
+    const artifacts = await renderArtifacts();
+    const release = artifacts[artifactName];
     checkBanner(release);
     const tree = parseScript(release, 2022);
     assert.ok(tree.body.some((node) => node.type === "FunctionDeclaration" && node.id.name === "run"));
     assert.equal(commentsIn(release, 2022).length, 1);
-    assert.equal(await renderRelease(), release);
+    assert.deepEqual(await renderArtifacts(), artifacts);
+    assert.equal(await readFile(nodeArtifactPath, "utf8"), artifacts[nodeArtifactName]);
+    const { MINIMUM_NODE_VERSION } = require("../../src/node/runtime.js");
+    assert.equal((await readFile(require("node:path").resolve(__dirname, "../../.node-version"), "utf8")).trim(), MINIMUM_NODE_VERSION);
+    assert.match(artifacts[nodeArtifactName], /Requires Node\.js 26\.13\.1 or later/u);
     assert.equal(await readFile(artifactPath, "utf8"), release);
-    assert.equal(await readFile(manifestPath, "utf8"), renderManifest(digestOf(release)));
+    assert.equal(await readFile(manifestPath, "utf8"), renderManifest(artifacts));
 });

@@ -1,7 +1,10 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { buildHeaderArgv, buildFieldArgv, headerGroups } = require("../../../src/backend/headers.js");
+const { commandLengthOf } = require("../../../src/backend/batching.js");
+const { buildHeaderArgv, buildFieldArgv, headerGroups: groupHeaders } = require("../../../src/backend/headers.js");
+
+const headerGroups = (tool, paths, budget = 131072) => groupHeaders(tool, paths, (args) => commandLengthOf(args) <= budget);
 
 test("header commands preserve complete paths and field requests", () => {
     assert.deepEqual(buildHeaderArgv("header", ["/a b.png", "/c.jpg"]), ["header", "-a", "/a b.png", "/c.jpg"]);

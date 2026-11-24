@@ -4,7 +4,6 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { commandLineInteraction } = require("../../../src/host/command-line/interaction.js");
 const { openProgress } = require("../../../src/host/quick-action/surfaces.js");
 
 function reportsNowhere(progress) {
@@ -21,12 +20,6 @@ function reportsNowhere(progress) {
     return true;
 }
 
-test("a headless run builds nothing and reports nothing", () => {
-    // No AppKit, no activation policy, nothing to tear down: a caller reading
-    // a receipt is not looking at a window.
-    const { progress } = commandLineInteraction({ settings: {} });
-    assert.ok(reportsNowhere(progress));
-});
 
 test("the surfaces that can be established are the ones written to", () => {
     const said = [];
