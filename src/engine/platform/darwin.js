@@ -42,20 +42,11 @@ function run() {
 }
 `;
 
-const RADIX = 16;
-const ESCAPE_DIGITS = 4;
-
-function encode(request) {
-    // Escaped UTF-16 code units are valid ASCII on the helper's UTF-8 wire.
-    return JSON.stringify(request).replace(/[^\p{ASCII}]/gu, (point) => point.split("").map((unit) =>
-        `\\u${unit.charCodeAt(0).toString(RADIX).padStart(ESCAPE_DIGITS, "0")}`).join(""));
-}
-
 function darwinHelper() {
     let native = null;
     return {
         request(request) {
-            native ??= helperSession(MAC_OSASCRIPT, ["-l", "JavaScript", "-e", HELPER], { detached: true, encode });
+            native ??= helperSession(MAC_OSASCRIPT, ["-l", "JavaScript", "-e", HELPER], { detached: true, ascii: true });
             return native.request(request);
         },
         close() { return native?.close(); }

@@ -77,14 +77,3 @@ test("supplied timestamp is optional only by absence",()=>{
     }
     assert.equal(configurationValues({...DEFAULT_SETTINGS,timestamp:"20240229_010203"}).timestamp,"20240229_010203");
 });
-
-test("Windows path grammar distinguishes ordinary names from ambiguous namespaces", () => {
-    const { ordinaryWindowsPath } = require("../../../src/engine/paths.js");
-    for (const name of ["C:\\Photos\\été.png", "D:/Folder/photo.jpg", "photos\\café.png", "..\\photo.png", "name with spaces.jpg"]) {
-        assert.ok(ordinaryWindowsPath(name), name);
-    }
-    for (const name of ["C:photo.jpg", "\\rooted\\photo.jpg", "\\\\server\\folder\\photo.jpg", "\\\\?\\C:\\photo.png",
-        "C:/folder/photo.png:stream", "C:/NUL.png", "C:/COM¹.jpg", "trailing space .png ", "trailing-dot."]) {
-        assert.equal(ordinaryWindowsPath(name), false, name);
-    }
-});

@@ -13,10 +13,10 @@ Install its command-line tools in Terminal:
     brew install node vips pdfcpu
 
 vipsheader comes with vips. pdfcpu must be a stable release, 0.16.4 or later.
-To upgrade it:
+If Node.js or pdfcpu is below the required version, upgrade them:
 
     brew update
-    brew upgrade pdfcpu
+    brew upgrade node pdfcpu
 
 Verify a download
 =================
@@ -38,8 +38,6 @@ UTF-8 stdout redirection. See HEADLESS.md in the repository for settings and
 platform prerequisites.
 
     node Image-Files-to-PDF.cjs --settings settings.json -- "photo 1.jpg" folder
-
-macOS terminal users must replace the old osascript command with this command.
 
 Install the Quick Action
 ========================

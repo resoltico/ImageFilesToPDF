@@ -4,6 +4,7 @@ const { env } = require("node:process");
 const path = require("node:path");
 const { OperationError, UserCanceled } = require("../../core/errors.js");
 const { helperSession } = require("../line-helper.js");
+const { windowsReply } = require("./helper-codec.js");
 const { windowsHelperArgs } = require("./windows-helper.js");
 
 function windowsNative(commands) {
@@ -16,9 +17,7 @@ function windowsNative(commands) {
     async function ask(type, values = {}) {
         try {
             native ??= helperSession(executable, windowsHelperArgs(), { detached: false });
-            const reply = await native.request({ type, ...values });
-            if (!reply || typeof reply.ok !== "boolean") { throw new Error("The Windows platform helper returned an invalid response."); }
-            return reply;
+            return windowsReply(await native.request({ type, ...values }));
         } catch (error) {
             if (commands.stopped()) { throw new UserCanceled(); }
             throw error;

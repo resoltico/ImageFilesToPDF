@@ -38,3 +38,15 @@ test("test placement recognizes mixed contracts and misplaced adapters", () => {
     assert.equal(testedLayer('require("../../../src/core/errors.js"); require.resolve("../../../src/finder/main.js")', file), "finder");
     assert.equal(testedLayer('require("../../../tools/build.mjs")', file), undefined);
 });
+
+test("the coverage scope rejects an undeclared pure adapter module", async () => {
+    const { checkPureModules } = await import("../../tools/pure-modules.mjs");
+    const pure = "src/cli/pure.js";
+    const undeclared = "src/engine/undeclared.js";
+    const native = "src/serve/native.js";
+    const sources = new Map([[pure, "module.exports = 1;"], [undeclared, "module.exports = 2;"],
+        [native, 'module.exports = require("node:fs");']]);
+    assert.throws(() => checkPureModules(sources, [pure]), /Unlisted pure modules: src\/engine\/undeclared\.js/u);
+    assert.doesNotThrow(() => checkPureModules(sources, [pure, undeclared]));
+    assert.throws(() => checkPureModules(sources, [pure, undeclared, native]), /require native I\/O/u);
+});

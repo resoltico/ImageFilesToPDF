@@ -7,7 +7,8 @@ const { Buffer } = require("node:buffer");
 const { TextDecoder } = require("node:util");
 const { OperationError, isUserCanceled } = require("../core/errors.js");
 const { captureIssue, changedSourceIssue } = require("../core/source-policy.js");
-const { WINDOWS, standardize, ordinaryWindowsPath } = require("./paths.js");
+const { ordinaryWindowsPath } = require("./path-syntax.js");
+const { WINDOWS, standardize } = require("./paths.js");
 const { countPng } = require("../core/png-count.js");
 const { crc32 } = require("node:zlib");
 

@@ -2,9 +2,11 @@
 
 ## Scope and limits
 
-The Finder action targets macOS 13.5 and later with the Shortcuts JavaScript action and Node.js 26.13.1 or later. The JXA bundle has an ES2022 syntax ceiling, a Safari 15.4 target, and a
-separate built-in compatibility check. The terminal bundle targets Node 26.13.1 and
-later. The runtime floor is independent of the locked development toolchain.
+The Finder action requires macOS 13.5 or later and Node.js 26.13.1 or later.
+The JXA client has an ES2022 syntax ceiling and a Safari 15.4 target. Its
+built-in check applies to the client code. The embedded engine runs in Node.
+The [Node.js platform requirements](https://github.com/nodejs/node/blob/v26.13.1/BUILDING.md#platform-list)
+set the macOS floor. The CLI also requires Node.js 26.13.1 or later.
 
 Unit tests establish portable rules, application sequencing and adapter calls.
 Native suites establish behavior for the actual generated artifact and host used.
@@ -35,10 +37,10 @@ record notes and nested stack omission. Actual CLI, naming and recovery receipts
 use the same validator in the native suites, separately from the source gate.
 Schema validity supplements pixel, file and ownership checks.
 
-Core, application, pure backend contracts and `src/finder/invocation-syntax.js` require
-100% line, branch and function coverage and a mutation score of at least 96. Host
-adapters are checked through focused unit tests and native production-artifact scenarios; a mocked bridge is
-not evidence that macOS rendered or published anything. ESLint rules and deliberate
+The [pure module declaration](tools/pure-modules.mjs) supplies the coverage
+and mutation scopes. The gate requires 100% line, branch and function coverage
+and a mutation score of at least 96. Adapter checks exercise the production
+artifacts and native tools on each host. ESLint rules and deliberate
 exceptions are recorded in `tools/eslint/rules.mjs`. Dependency and toolchain pins
 live in package.json, package-lock.json, .node-version and mise.toml; clean restores
 use `npm ci --ignore-scripts` with the declared npm version.
@@ -49,15 +51,16 @@ use `npm ci --ignore-scripts` with the declared npm version.
 | --- | --- | --- |
 | macOS arm64 | macOS 26 CI and current macOS, local APFS, Homebrew libvips and pdfcpu | Committed Node bundle, APFS variants, a second volume, Apple-only HFS+/FAT/exFAT and JXA native probes, live Shortcuts |
 | Linux arm64 | Debian 13, ext4, libvips 8.16.1 with HEIF plugins, pdfcpu 0.16.4 | Committed Node bundle, ext4 and a distinct tmpfs device, terminal and crash lifecycle |
-| Windows arm64 | Windows 11 ARM runner, NTFS, PowerShell 7, libvips 8.18.7 ARM64 all, pdfcpu 0.16.4 x64 under emulation | Node 26.13.1, PowerShell argv and encoding, console Ctrl+C, NTFS ownership and publication, a second NTFS volume |
+| Windows arm64 | Windows 11 ARM runner, NTFS, PowerShell 7, libvips 8.18.7 ARM64 all, pdfcpu 0.16.4 x64 under emulation | Node 26.13.1, PowerShell argv and encoding, console Ctrl+C, NTFS ownership and publication, cross-volume NTFS, FAT32 and exFAT publication |
 
 The pinned Windows variant lacks HEVC. Its negative HEIC case must keep the
 source intact and publish no PDF. The Linux variant lacks the Ultra HDR loader.
 The HDR and orientation
 fixture suite runs on macOS. Additional architectures and filesystem combinations
 need their own native evidence. The Windows artifact job mounts a fresh
-NTFS test VHD to verify cross-volume publication. The Windows PowerShell console test creates a
-separate console and emits a native Ctrl+C event to it.
+NTFS test VHD to verify cross-volume publication. A separate job formats fresh
+FAT32 and exFAT VHDs. The console test starts a new console and emits a native
+Ctrl+C event to it.
 
 `native-cli.cjs` invokes the committed artifact with strict pdfcpu validation,
 qpdf structure and page counts, source-byte checks, occupied names, 12
@@ -78,13 +81,16 @@ sequence:
 | `background.sh` | Alpha flattening, page background and color-profile behavior |
 | `selection.sh` | Folder traversal, overlap, identity, links, packages, explicit selections and refusal codes |
 | `publication.sh` | Occupied entries, permissions, ownership and recoverable failures |
-| `volumes.sh` | Production JXA adapter across APFS and HFS+ in both modes |
-| `cards.sh` | FAT32 independent rename probe, publication/collisions or validated recovery, and exFAT recovery, in both modes |
+| `volumes.sh` | CLI across APFS and HFS+ in both modes |
+| `cards.sh` | Independent FAT32 and exFAT rename probes, occupied-name protection, and publication or validated recovery in both modes |
 | `damaged.sh` | Damaged-source refusal, JPEG entropy warnings in pass-through/re-encode, and combined/separate behavior |
 | `form.sh` | Production-renderer probe, native geometry/accessibility, shown modal scrollers at zero without fighting later scrolling, Stop button role/feedback and invalid-control pixel/negative controls in both appearances, PNG previews |
 | `cli.sh` | CLI grammar/statuses, settings reader, refusal corpus, unusable header overrides, German caller locale, names, JPEG streams, placement, actual INT/TERM/repeats, HEIC/excluded-loader/FIFO refusals and closed/broken stream integrity |
 | `hdr.sh` | Synthetic Ultra HDR in both modes, SDR JPEG streams, ICC conversion, orientations 6/8, damage and unmapped-loader diagnostics |
 | `naming.sh` | Case and normalization namespaces, folder aliases, hard links, raw stored-basename bytes, long-name/collision budgets and occupied-name protection on local, APFS, APFSX, HFS+, HFSX, FAT32 and exFAT volumes |
+| `finder-engine.cjs` | macOS osascript client through the embedded engine, package parity, private cache reuse and tampering, runtime discovery |
+| `native-cli.cjs` | Native CLI format, strict PDF, collision race, source integrity and receipt checks |
+| `posix-process.py` | Native Stop, crash, writer guard, helper exit, source replacement and argv batching |
 
 ExifTool edits only synthetic HDR fixture metadata; the action does not use it.
 
@@ -93,11 +99,10 @@ need permission to create and attach disk images. `cards.sh` and `volumes.sh`
 report unavailable volume checks as skipped; `naming.sh` requires every listed
 volume and fails if one cannot attach. A skip is an unperformed environment check,
 never a passing filesystem result. `cards.sh` and
-`naming.sh` independently probe FAT32 exclusive rename with free and occupied
+`naming.sh` compare card publication with the native rename probes for free and occupied
 destinations. Supported drivers must pass publication and collision checks;
 unsupported drivers must leave final names untouched and produce validated
 recoveries matching the primitive's error. Unexpected probe errors fail the suite.
-Recovery is a tested outcome, not a skipped publication assertion.
 
 Volume cleanup resolves the owned image's current whole device through DiskImages,
 including when its mount path is gone. It verifies image detachment after bounded
@@ -111,8 +116,9 @@ source and check dimensions and corner positions for each. Source hashes must
 remain unchanged.
 
 Probe entrypoints import production modules and are built by
-`tools/build-probe.mjs` using the production scoped bundler. Ordinary end-to-end
-tests invoke `dist/Image-Files-to-PDF.jxa` itself. Use independent fixtures,
+`tools/build-probe.mjs` using the production scoped bundler. Conversion tests invoke the CLI. The
+native Finder harness drives the run handler with synthetic inputs and the
+actual embedded engine. Use independent fixtures,
 expected results and positive controls, and assert that every fault injection ran.
 
 Required lifecycle cases:
@@ -144,6 +150,33 @@ Inspect normal, correction, deep-path, multiple-destination and large-detail sta
 in Aqua and Dark Aqua. Controls and actions must fit within 744 points; complete
 variable detail must be selectable and scrollable.
 
+## Platform helpers and recovery
+
+The engine uses one persistent PowerShell helper on Windows and one persistent
+osascript helper on macOS. The Windows process-budget check counts process
+starts during a 20-image separate run. A representative Windows ARM run
+completed 20 documents in 7.42 seconds with one PowerShell process. Native
+lifecycle checks cover Ctrl+C, helper exit and workspace retention after a
+forced termination.
+
+The durable workspace root is `~/Library/Application Support/Image Files to PDF/Workspaces`
+on macOS, `${XDG_STATE_HOME:-$HOME/.local/state}/image-files-to-pdf/workspaces`
+on Linux, and `%LOCALAPPDATA%\Image Files to PDF\Workspaces` on Windows.
+Recovery uses the system Downloads folder when available. The engine keeps
+verified private work when Downloads is absent.
+
+Linux uses hard links for exclusive claims. macOS and Windows can also use
+exclusive rename from an owned staging copy. The native FAT32 and exFAT probes
+compare the engine result with the observed driver capability and confirm
+recovery when the driver refuses an exclusive rename. The macOS 27.2.1 arm64
+driver returned errno 45 on both filesystems, and both PDF modes recovered
+valid PDFs. Windows uses a no-replace, same-volume move. On FAT32 and exFAT
+the native move changes the stored file ID, so the engine checks that an open
+handle to the staging file identifies the entry at the destination. The card
+suite exercises an occupied name and a same-byte replacement.
+
+OneDrive Files On-Demand placeholders on Windows remain unverified.
+
 ## Preparation measurements
 
 On macOS 27.2.1 arm64 with Node.js 26.13.1, libvips 8.18.7 and pdfcpu 0.16.4,
@@ -162,6 +195,10 @@ The workspace writer guard remains until every in-flight command settles.
 
 ## Live Shortcuts acceptance
 
+Verification in Shortcuts with the owner present remains pending. The osascript
+harness and native form suite exercise the same client and engine outside
+ShortcutsMacHelper.
+
 Use an isolated test Shortcut containing the complete current artifact and
 synthetic inputs. Preserve the production Shortcut and restore only preferences
 changed by the test. Check Finder selection and running without files, the
@@ -175,10 +212,14 @@ and Show in Finder revealing every saved and recovered PDF. Repeat with no image
 only refused items and a mixed selection. Confirm no text-result files are returned
 to Shortcuts.
 
-Force an unwritable destination inside the actual Shortcuts helper and independently
-inspect the reported recovery bytes in Downloads, or the temporary copy when
-Downloads is unavailable. Test fallback where native form capability is truly
-unavailable; coding faults must be diagnosed. Remove disposable test Shortcuts, or
+During a long vips command, time Stop feedback. The button must show
+“Stopping…” within 250 milliseconds. Confirm the engine starts its macOS
+osascript helper inside ShortcutsMacHelper, and check that the run's Node and
+osascript processes have exited after completion and after Stop.
+
+Force an unwritable destination inside the Shortcuts helper and verify the
+reported PDF in the system Downloads folder or durable workspace. Test the
+form fallback where native form capability is unavailable. Remove disposable test Shortcuts, or
 retain a clearly named harness with its inputs for repeatable retesting. A helper
 access timeout is an unperformed check, not a pass. Record artifact hash, host,
 commands, statuses, full failures and skips outside operational documentation.

@@ -18,8 +18,9 @@ Source and releases: https://github.com/resoltico/ImageFilesToPDF
 brew install node vips pdfcpu
 ```
 
-To upgrade pdfcpu, run `brew update` and then `brew upgrade pdfcpu`. The Quick Action is a single JavaScript for Automation (JXA) file with the
-embedded conversion engine. Setup checks all three backend commands before
+If an installed Node.js or pdfcpu is below the required version, run `brew update`
+and then `brew upgrade node pdfcpu`. The Quick Action is a single JavaScript for
+Automation (JXA) file with the embedded conversion engine. Setup checks all three backend commands before
 inspecting images; missing or unusable tools are reported as setup problems.
 
 ## Install in Shortcuts
@@ -134,24 +135,15 @@ what could not be verified. [SECURITY.md](SECURITY.md) describes the file-safety
 
 ## Command line
 
-Both interfaces use the same selection, conversion and saving rules.
-
-| Behavior | Finder Quick Action | Command line |
-| --- | --- | --- |
-| Input | Files or folders from Shortcuts; Finder selection when no files are supplied | Explicit file or folder paths |
-| Settings | Interactive form with remembered page settings | Required JSON settings file; no remembered settings |
-| Feedback | Progress panel and completion dialog | Plain-language stderr report, JSON receipt attempt and exit status |
-| Stop | **Stop** button | `SIGINT` or `SIGTERM` on POSIX, Ctrl+C in Windows PowerShell |
+Download the standalone CJS bundle to run the same engine from macOS, Linux or
+Windows PowerShell. Install Node.js 26.13.1 or later, libvips and stable
+pdfcpu 0.16.4 or later.
 
 ```sh
-node Image-Files-to-PDF.cjs --settings settings.json -- photo.jpg folder
+node Image-Files-to-PDF.cjs --settings settings.json photo.jpg folder
 ```
 
-The standalone CLI targets macOS, Linux and Windows PowerShell. Install Node 26.13.1
-or later, libvips and stable pdfcpu 0.16.4 or later. macOS terminal
-users must switch to the CJS command above. Each run uses its settings file.
-[HEADLESS.md](HEADLESS.md) specifies the settings file, the JSON receipt and the
-exit statuses.
+See [HEADLESS.md](HEADLESS.md) for platform setup, settings and receipts.
 
 ## Verify a download
 

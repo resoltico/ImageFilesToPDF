@@ -3,12 +3,13 @@ const { spawn } = require("node:child_process");
 const { createInterface } = require("node:readline");
 const { once } = require("node:events");
 const process = require("node:process");
+const { encodeHelperRequest, readHelperReply } = require("./platform/helper-codec.js");
 const { setTimeout, clearTimeout } = require("node:timers");
 
 const REQUEST_LIMIT_MS = 900000;
 const OUTPUT_LIMIT = 8388608;
 
-function helperSession(file, args, { detached, encode = JSON.stringify }) {
+function helperSession(file, args, { detached, ascii = false }) {
     const child = spawn(file, args, { stdio: ["pipe", "pipe", "pipe"], detached, windowsHide: true });
     const output = createInterface({ input: child.stdout, crlfDelay: Infinity });
     const lines = output[Symbol.asyncIterator]();
@@ -27,10 +28,10 @@ function helperSession(file, args, { detached, encode = JSON.stringify }) {
     async function exchange(request) {
         const deadline = setTimeout(terminate, REQUEST_LIMIT_MS);
         try {
-            child.stdin.write(`${encode(request)}\n`);
+            child.stdin.write(`${encodeHelperRequest(request, ascii)}\n`);
             const { value, done } = await lines.next();
             if (done) { throw new Error(stderr.trim() || "The platform helper ended before answering."); }
-            return JSON.parse(value);
+            return readHelperReply(value);
         } catch (error) {
             terminate();
             await closed.catch(() => undefined);

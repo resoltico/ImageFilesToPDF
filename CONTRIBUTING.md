@@ -39,68 +39,39 @@ Commit both generated bundles and checksums alongside source changes that affect
 
 ## Source and ownership boundaries
 
-- `src/core/` owns portable settings, source policy, planning, ordering, naming,
-  geometry, artifact-retention policy and outcome vocabulary.
-- `src/application/` owns selection, inspection, conversion, publication and
-  recovery sequencing. Its synchronous workflow receives explicit ports.
-- `src/backend/` owns portable native-tool argv builders and output parsers.
-  Each process adapter determines whether the full command fits.
-- `src/finder/` contains the JXA filesystem bridge and Finder presentation.
-  `src/entry.js` exports the synchronous Shortcuts handler.
-- `src/cli/` owns CLI parsing and receipts. `src/engine/` owns native process, filesystem and platform ports. `src/cli/entry.js` is the sole terminal entry point.
+- `src/core/` declares portable settings, source and output rules, outcome
+  kinds, wording, and the engine's message fields.
+- `src/application/` sequences setup, inspection, conversion, publication and
+  recovery through asynchronous ports.
+- `src/backend/` builds native arguments and parses vips and pdfcpu responses.
+- `src/engine/` provides Node filesystem, process, platform and workspace ports.
+- `src/cli/` owns terminal grammar, reports, native path rendering and receipts.
+  `src/serve/` runs the engine's UTF-8 JSON-lines session.
+- `src/finder/` collects Shortcuts and Finder input, presents AppKit interfaces,
+  remembers page settings, and invokes the embedded engine.
 
-`tools/lint/boundaries.mjs` enforces import direction. The build also checks
-each entry point's full dependency graph and requires every source module to be
-reachable. Node built-ins are available only to the Node adapter.
+The lint and compiled dependency graph checks reject Finder access to
+conversion adapters, peer CLI and serve imports, and outer dependencies from
+core. Node built-ins belong to the Node adapters. The Finder client communicates
+with the engine over the protocol.
 
-The Node main thread owns native child processes, signal handling and streams.
-A worker runs the shared synchronous workflow. Requests and replies correlate
-each child settlement, with bounded process output and a shared Stop latch.
-Workspace markers protect an unacknowledged writer across process death. The
-Quick Action supplies its progress observer and Apple Event cancellation
-translation. Optional observer failures remain diagnostics.
+The macOS helper reads native package and alias properties and performs
+exclusive rename. The Windows helper supplies hidden attributes, drive type,
+known Downloads, workspace ACLs, process start times and exclusive move.
+Helper lifetimes follow the process and its input stream. Linux needs
+no platform helper.
 
-`src/core/settings.js` owns canonical settings, defaults, names, captions, hints
-and legal choice IDs. The schema declares field kinds and the documented order;
-validation, help, form rows and stepwise dialogs derive from it. `src/finder/quick-action/settings-model.js` derives the offered form and
-stepwise records from that schema. Text fields are parsed at adapter boundaries
-and use the common all-issues validator. `documentPlan` requires complete native
-name-equivalence group facts for separate mode. Both adapters use native probes.
-The Node engine obtains these facts from
-native folder identity and actual namespace probes; coarse search buckets only
-limit fallback lookups and never establish equality. Comparison probes use the
-owned workspace or an OS-created temporary directory on the destination volume,
-with ownership metadata copied before names. Normal and caught-failure paths
-remove every allocated probe before encoding. Unicode lookup fallback requires
-reliable persistent identities and hard-link support; missing facts stop planning. See
-[SECURITY.md](SECURITY.md) for the abrupt-termination boundary. Requested
-destination spellings remain unchanged for publication. Numeric RGB components belong to color policy; vips
-comma-separated vectors belong to the backend adapter.
+The workspace guard exists before the engine starts a native writer. It stays
+until the writer and its streams close. During parallel source work it
+covers all active commands, and uncertain settlement leaves the guard in place.
+Retention and release follow the artifact rules in `src/core/artifacts.js`.
+Published and recovered paths become authoritative after exclusive claim
+and verification of identity, size and stored basename.
 
-`src/core/artifacts.js` owns retention policy. Each artifact is registered before
-PDF creation, and executor/publication/workspace cleanup consult that same record.
-`building` is disposable; `validating` and `validated` retain unresolved work;
-`released` means confirmed publication or recovery permits release. Unknown facts
-fail closed. Do not insert fallible owner registration after validation, infer
-ownership from filenames, or discard a confirmed destination after a reporting fault.
-The engine reads literal directory-entry names: Foundation
-can normalize its returned names for entries created by POSIX calls on FAT32. The native naming suite
-checks an ordinary C rename independently of exclusive-claim support, then
-compares the reported basename with raw directory bytes. Stored-name verification
-couples a unique exact
-or canonical-equivalent candidate to the claimed regular-file identity and size;
-normalization is for candidate selection, never for the returned spelling. The
-canonical API used for name-equivalence grouping is not a stored-name authority.
-Denied or ambiguous listings use the existing original-preservation path. A native
-stream close failure carries an explicit `cleanup` issue through publication
-context and stops the executor. Preserve all secondary issues and the original
-cause/stack; replacing the primary presentation must not discard mandatory cleanup.
-
-The document/run outcomes own source mappings, counts and actual saved/recovery
-locations. An explicit verified recovery path remains distinct from a producer
-refusal to claim any trustworthy recovery. Progress counters do not establish publication. Shared report text belongs to the pure core run-report module; completion
-dialog controls, Details and CLI transport stay in their front ends. Keep issue
-meaning separate from interface wording and technical diagnostics.
+Name equivalence probes use the actual destination namespace and directory
+identity. Source capture verifies the handle and the named path before and
+after copying. Inspection and rendering work from the same private bytes.
+See [SECURITY.md](SECURITY.md) for the file-safety boundary.
 
 ## Interface wording
 
@@ -147,13 +118,13 @@ the sibling repository.
 
 Tests that inject ports/fixtures belong in `tests/unit/`; tests that inspect the
 real checkout belong in `tests/repo/`. Unit test directories follow the outermost
-production layer they import (`core`, `backend`, `application`, then `host` or `node`); inner
+production layer they import (`core`, `backend`, `application`, then `engine`, `cli`, `serve` or `finder`); inner
 layer values may serve as fixtures. A repository test enforces placement for
 `require()`, `require.resolve()` and dynamic `import()`. Mutation testing runs unit files. All
 production sources and applicable build rules must remain discoverable by their
-gates. Coverage is 100% for core, application, backend and the pure host invocation
-parser (`src/finder/invocation-syntax.js`); mutation is at least 96 for that same scope.
-Host adapters require the native suites. Keep behavioral expectations independent of implementation calculations.
+gates. Coverage is 100% and mutation is at least 96 for the
+[pure module declaration](tools/pure-modules.mjs). I/O adapters require the
+native suites. Keep behavioral expectations independent of implementation calculations.
 
 ESLint uses `js.configs.all`; exceptions and tuned rules are justified in
 `tools/eslint/rules.mjs`. Group modules by responsibility and lifetime, respecting
@@ -165,8 +136,10 @@ between thumbnail and flatten: one source decode and one final PNG encode.
 JPEG re-encoding uses the quality setting; pass-through JPEGs keep their bytes.
 
 `tools/scoped-bundle.mjs` uses the pinned esbuild to build both distributions.
-JXA is a Safari 15.4 IIFE and exports `run(input, parameters)`. The CJS target
-is Node 26.13.1 and external imports are limited to its built-ins. The two artifacts
+JXA is a Safari 15.4 IIFE that exports `run(input, parameters)` and embeds the
+engine as text. Both entry points require Node.js 26.13.1 or later. The CLI
+preamble checks the runtime before parsing the Node bundle, whose external
+imports are limited to Node built-ins. The two artifacts
 have a shared checksum manifest.
 
 Native JXA probes import production modules through `tools/build-probe.mjs`.

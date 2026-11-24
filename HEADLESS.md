@@ -1,17 +1,31 @@
 # Command line
 
-Run the standalone Node.js distribution with Node 26.13.1 or later, libvips
-(`vips` and `vipsheader`), and stable pdfcpu 0.16.4 or later. For macOS,
-`brew install vips pdfcpu` installs the native tools. On Linux, use a build of
-libvips with the image codecs you need and an official pdfcpu release for your
-architecture. On Windows, extract the libvips **all** distribution and pdfcpu
-for your Windows architecture or supported emulation. Put the directories
-containing the actual executables on `PATH`. Windows PowerShell 5.1 is used
-internally to query filesystem and process properties on Windows.
+Download `Image-Files-to-PDF.cjs` and install Node.js 26.13.1 or later, libvips
+(`vips` and `vipsheader`), and stable pdfcpu 0.16.4 or later.
 
-See [the platform matrix](QA.md#native-platform-matrix) for tested combinations
-and open qualification checks. The CLI delivers one platform-independent CJS
-file. [Finder installation](INSTALL.txt) uses the standalone JXA file.
+## Install the tools
+
+### macOS
+
+```sh
+brew install node vips pdfcpu
+```
+
+### Linux
+
+Install Node.js 26.13.1 or later, libvips with the image codecs you need, and
+an official stable pdfcpu release for your architecture. Put the directories
+containing the executables on `PATH`.
+
+### Windows
+
+Install Node.js 26.13.1 or later. Extract the libvips **all** distribution and
+pdfcpu for your architecture or supported emulation. Put the directories
+containing the actual executables on `PATH`. The engine uses the built-in
+Windows PowerShell 5.1 helper for platform queries.
+
+See [the platform matrix](QA.md#native-platform-matrix) for tested combinations.
+For Finder, follow [the shortcut installation instructions](INSTALL.txt).
 
 ## Run syntax
 
@@ -93,9 +107,7 @@ A transport failure exits nonzero even when a complete processing receipt was
 delivered; it does not remove confirmed PDFs or change their processing state.
 With working stderr, failed stdout completion adds one plain line:
 `Standard output could not be completed.` If stderr fails, the JSON receipt is
-still attempted. Node can reopen a descriptor the parent passed closed as a
-writable null sink. In that case the shell receives no receipt bytes and a
-successful conversion can still exit 0.
+still attempted. Use working stdout and stderr streams to receive both outputs.
 
 | Exit | Meaning |
 | --- | --- |
@@ -124,10 +136,10 @@ including a stop during setup. A stop that leaves work undone is `canceled`;
 a stop that arrives after everything was saved does not erase the saved PDFs. An
 abrupt process end, `SIGKILL` or a failed stdout cannot guarantee a receipt.
 
-On macOS and Linux, `SIGINT` and `SIGTERM` request cooperative Stop. On Windows, use Ctrl+C in a PowerShell console. PowerShell can close its redirected pipeline when it handles Ctrl+C. A
-receipt on cancellation requires writable streams. The Windows verification
-launches the foreground console process with direct file redirection to
-observe its receipt and exit code. Forced process termination is abrupt. A running native command finishes before the next safe checkpoint observes the request; publication and recovery protections remain in force. Signal monitoring stays active through receipt transport. Normal process exit lets the OS reclaim its resources.
+On macOS and Linux, `SIGINT` and `SIGTERM` request Stop. On Windows, use
+Ctrl+C in a PowerShell console. A running native command finishes before the
+next safe checkpoint. Stop keeps confirmed PDFs and preserves recoverable work.
+A cancellation receipt requires writable streams.
 
 The stderr report is the headline, then sections separated by one blank line.
 Output and recovery basenames are read back as literal directory-entry names after identity and size confirmation; chosen parent-folder spelling is preserved. If a claim's name cannot be verified, a verified workspace PDF stays in place and the issue reports that uncertainty rather than guessing a public output path. If that workspace PDF cannot be verified either, the PDF is failed with a fatal issue and no recovery path; existing files remain untouched. The destination folder needs read/search access for this verification. An unavailable or ambiguous directory listing reports the same claim uncertainty and preserves existing files; a canonicalized path is not used as a guessed stored name.
@@ -182,7 +194,7 @@ keep the setting's display name.
 | --- | --- |
 | `request` | `usage`, `settings-file`, `timestamp` |
 | `settings` | `unknown`, `choice`, `integer`, `color`; `object` belongs to the core validator, not the CLI root check |
-| `setup` | `operation` when a required tool or capability is missing or unusable |
+| `setup` | `tool-missing`, `tool-unusable`, `override-invalid`, `runtime-unsupported`, `runtime-unavailable`, `fault`, `canceled` |
 | `selection` | `folder`, `unsupported-format`, `not-a-file`, `not-a-path`, `remote-url`, `not-a-folder`, `package`, `link`, `special-file`, `unreadable`, `unexaminable`, `empty-folder`, and the run issue `no-images` |
 | `inspection` | `unreadable`, `unexaminable`, `empty`, `not-an-image`, `unsupported-content`, `multiple-images`, `damaged` |
 | `allocation`, `planning`, `capture`, `preparation`, `execution`, `validation`, `publication`, `recovery`, `cleanup`, `workspace`, `reporting` | `operation`, `fault`, `canceled`, `damaged`, `publication`, `recovery`, `cleanup` |

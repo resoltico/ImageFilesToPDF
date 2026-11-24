@@ -54,6 +54,7 @@ const MESSAGES = Object.freeze({
     pdfImportArgumentBudgetExceeded: "The PDF import command exceeds the argument budget.",
     workspaceParentUnverified: "The private workspace parent could not be verified.",
     workspaceLocalAppDataUnavailable: "LOCALAPPDATA must name an absolute Windows drive path.",
+    windowsHelperInvalidReply: "The Windows platform helper returned an invalid response.",
     windowsPlatformFactUnavailable: "The Windows platform helper could not complete {type}.",
     workspaceStorageUnverified: "The workspace storage could not be verified.",
     workspaceStorageNotPrivate: "The workspace storage is not private.",

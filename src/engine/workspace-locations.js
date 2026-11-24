@@ -5,12 +5,13 @@ const { env, platform } = require("node:process");
 const { OperationError } = require("../core/errors.js");
 const { message } = require("../core/messages.js");
 const { standardize } = require("./paths.js");
-const { absoluteOr, linuxDownloads } = require("./platform/linux.js");
+const { absoluteOr } = require("./platform/linux-paths.js");
+const { linuxDownloads } = require("./platform/linux.js");
 
-const DRIVE_ABSOLUTE = /^[A-Za-z]:[/\\]/u;
+const { isDriveAbsolute } = require("./path-syntax.js");
 function workspaceRoot(home) {
     if (platform === "win32") {
-        if (!DRIVE_ABSOLUTE.test(env.LOCALAPPDATA ?? "")) { throw new OperationError(message("workspaceLocalAppDataUnavailable")); }
+        if (!isDriveAbsolute(env.LOCALAPPDATA ?? "")) { throw new OperationError(message("workspaceLocalAppDataUnavailable")); }
         return standardize(path.join(env.LOCALAPPDATA, "Image Files to PDF", "Workspaces"));
     }
     if (platform === "darwin") { return standardize(path.join(home, "Library", "Application Support", "Image Files to PDF", "Workspaces")); }
@@ -25,7 +26,7 @@ function posixDownloads(home) {
 async function locations(files, windows) {
     const home = os.homedir();
     const configured = windows ? await windows.downloads() : posixDownloads(home);
-    const absolute = windows ? DRIVE_ABSOLUTE.test(configured ?? "") : typeof configured === "string" && path.posix.isAbsolute(configured);
+    const absolute = windows ? isDriveAbsolute(configured ?? "") : typeof configured === "string" && path.posix.isAbsolute(configured);
     const directory = absolute ? standardize(configured) : null;
     let downloads = null;
     if (directory) {

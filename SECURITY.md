@@ -86,6 +86,11 @@ bytes, verifies checksums and build attestations before publication, and checks
 that the tag still names the commit being released. Both bundles, the checksum manifest,
 installation instructions and license are attestation subjects.
 
+The Finder client discovers Node in fixed absolute locations. It checks the
+embedded engine's bytes in its private Application Support directory before
+launching it. Cleanup of older engine files is restricted to owned regular
+files.
+
 [README.md](README.md#verify-a-download) describes download verification.
 Checksums and attestations do not verify a copy pasted into Shortcuts; replace it
 with the complete verified file when installing a build.

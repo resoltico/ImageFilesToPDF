@@ -4,6 +4,9 @@
  * Each family of checks lives in its own module under tools/lint/; this file
  * only sequences them.
  */
+import { readFile } from "node:fs/promises";
+import { sourceFiles } from "./release.mjs";
+import { checkPureModules } from "./pure-modules.mjs";
 import { lintableFiles } from "./lint/discovery.mjs";
 import { checkSourceFile } from "./lint/source-rules.mjs";
 import { checkShellScripts } from "./lint/shell-rules.mjs";
@@ -18,6 +21,8 @@ import { checkSettingsDocs } from "./lint/settings-docs.mjs";
 import { checkBoundaries } from "./lint/boundaries.mjs";
 
 await checkBoundaries();
+const sources = await Promise.all((await sourceFiles()).map(async (file) => [file, await readFile(file, "utf8")]));
+checkPureModules(new Map(sources));
 await checkSettingsDocs();
 const files = await lintableFiles();
 
