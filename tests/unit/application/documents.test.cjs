@@ -25,9 +25,9 @@ for (const [count, size, argv, expected, output] of [
     [2, 65 * 1024 * 1024, 100, [1, 1], "/out/Images 2026-10-29 at 12.34.56.pdf.actual"],
     [5, 1, 2, [2, 2, 1], "/out/Images 2026-10-29 at 12.34.56.pdf.actual"]
 ]) {
-    test(`bounded import: ${count} pages of ${size} bytes, argv ${argv}`, () => {
+    test(`bounded import: ${count} pages of ${size} bytes, argv ${argv}`, async () => {
         const sample = fixture(count, { size, argv });
-        const result = executeDocuments(sample.ports, sample.plans);
+        const result = (await executeDocuments(sample.ports, sample.plans));
         assert.equal(result[0].state, "saved");
         assert.equal(result[0].output, output);
         assert.equal(result[0].pages, count);
@@ -38,26 +38,26 @@ for (const [count, size, argv, expected, output] of [
     });
 }
 
-test("a combined source failure cannot publish a surviving subset", () => {
+test("a combined source failure cannot publish a surviving subset", async () => {
     const sample = fixture(3, { fail: 1 });
-    const [result] = executeDocuments(sample.ports, sample.plans);
+    const [result] = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(result.state, "failed");
     assert.equal(result.pages, 1);
     assert.ok(!sample.events.some(([kind]) => kind === "publish"));
     assert.equal(sample.owned.size, 0);
 });
 
-test("separate source failures continue other documents", () => {
+test("separate source failures continue other documents", async () => {
     const sample = fixture(3, { mode: "separate" });
     const {prepare} = sample.ports;
     sample.ports.prepare = (source, index) => { if (source.path === "/source/1.png") { throw new OperationError("damage"); } return prepare(source, index); };
-    assert.deepEqual(executeDocuments(sample.ports, sample.plans).map((record) => record.state), ["saved", "failed", "saved"]);
+    assert.deepEqual((await executeDocuments(sample.ports, sample.plans)).map((record) => record.state), ["saved", "failed", "saved"]);
 });
 
 for (const operation of ["beginning", "prepare", "import", "validate"]) {
-    test(`${operation} stop removes only disposable work`, () => {
+    test(`${operation} stop removes only disposable work`, async () => {
         const sample = fixture(2, { mode: "separate", ports: { [operation]: () => { throw new UserCanceled(); } } });
-        const records = executeDocuments(sample.ports, sample.plans);
+        const records = (await executeDocuments(sample.ports, sample.plans));
         assert.deepEqual(records.map((record) => record.state), ["canceled", "not-started"]);
         assert.equal(runOutcome(records).state, "canceled");
         assert.equal(sample.owned.size, 0);
@@ -65,140 +65,143 @@ for (const operation of ["beginning", "prepare", "import", "validate"]) {
 }
 
 for (const operation of ["import", "validate"]) {
-    test(`${operation} failure never publishes`, () => {
+    test(`${operation} failure never publishes`, async () => {
         const sample = fixture(1, { ports: { [operation]: () => { throw new OperationError("backend"); } } });
-        assert.equal(executeDocuments(sample.ports, sample.plans)[0].state, "failed");
+        assert.equal((await executeDocuments(sample.ports, sample.plans))[0].state, "failed");
         assert.equal(sample.owned.size, 0);
     });
 }
 
-test("validated PDFs survive publication faults and carry structured recovery", () => {
+test("validated PDFs survive publication faults and carry structured recovery", async () => {
     const error = new Error("save failed"); error.recovery = "/recovery/kept.pdf";
     const sample = fixture(2, { ports: { publish: () => { throw error; } } });
-    const [result] = executeDocuments(sample.ports, sample.plans);
+    const [result] = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(result.state, "recovered");
     assert.equal(result.recovery, "/recovery/kept.pdf");
     assert.ok(!sample.events.some(([kind, path]) => kind === "remove" && path.endsWith(".pdf")));
 });
 
-test("unknown faults retain validated workspace and stop subsequent documents", () => {
+test("unknown faults retain validated workspace and stop subsequent documents", async () => {
     const sample = fixture(2, { mode: "separate", ports: { publish: () => { throw new TypeError("bug"); } } });
-    const records = executeDocuments(sample.ports, sample.plans);
+    const records = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(records[0].state, "recovered");
     assert.equal(records[0].recovery, "/work/0.pdf");
     assert.equal(records[0].issues[0].code, "fault");
     assert.equal(records[1].state, "not-started");
 });
 
-test("a saved result survives a faulted observer", () => {
+test("a saved result survives a faulted observer", async () => {
     const sample = fixture(1, { ports: { completed: () => { throw new Error("observer"); } } });
-    const [result] = executeDocuments(sample.ports, sample.plans);
+    const [result] = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(result.state, "saved");
     assert.equal(runOutcome([result]).state, "complete");
     assert.ok(result.diagnostics.length > 0);
 });
 
-test("empty plan has no imports and produces an incomplete run", () => {
+test("empty plan has no imports and produces an incomplete run", async () => {
     const sample = fixture(0);
-    assert.deepEqual(executeDocuments(sample.ports, sample.plans), []);
+    assert.deepEqual((await executeDocuments(sample.ports, sample.plans)), []);
     assert.equal(runOutcome([]).state, "incomplete");
 });
 
-test("a failed flush also releases the just-prepared page outside the queued batch", () => {
+test("a failed flush also releases the just-prepared page outside the queued batch", async () => {
     const sample=fixture(33,{ports:{import:()=>{throw new OperationError("disk full");}}});
-    const [record]=executeDocuments(sample.ports,sample.plans);
+    const [record]=(await executeDocuments(sample.ports,sample.plans));
     assert.equal(record.state,"failed");
     assert.equal(record.issues[0].stage,"import");
     assert.equal(sample.owned.size,0);
 });
 
-test("source mappings, ordered page arguments and semantic failure stages are retained",()=>{
-    const sample=fixture(3);const records=executeDocuments(sample.ports,sample.plans);
+test("source mappings, ordered page arguments and semantic failure stages are retained",async ()=>{
+    const sample=fixture(3);const records=(await executeDocuments(sample.ports,sample.plans));
     assert.deepEqual(records,[{state:"saved",sources:["/source/0.png","/source/1.png","/source/2.png"],pages:3,issues:[],output:"/out/Images 2026-10-29 at 12.34.56.pdf.actual"}]);
     assert.deepEqual(sample.events.find(([kind])=>kind==="import")[1],["/work/0.jpg","/work/1.jpg","/work/2.jpg"]);
     for(const stage of ["validate","publish"]) {
         const failed=fixture(1,{ports:{[stage]:()=>{throw new OperationError("refused");}}});
-        const [record]=executeDocuments(failed.ports,failed.plans);
+        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
+        const [record]=(await executeDocuments(failed.ports,failed.plans));
         assert.equal(record.issues[0].stage,stage==="validate"?"validation":"publication");
     }
 });
 
-test("fault mixtures and recovered cancellation stop subsequent work without losing source mappings",()=>{
+test("fault mixtures and recovered cancellation stop subsequent work without losing source mappings",async ()=>{
     for(const code of ["fault","canceled"]) {
         const error=new Error("failure");error.issues=[{code:"operation"},{code}];
         const sample=fixture(2,{mode:"separate",ports:{publish:()=>{throw error;}}});
-        const records=executeDocuments(sample.ports,sample.plans);
+        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
+        const records=(await executeDocuments(sample.ports,sample.plans));
         assert.equal(records[0].state,"recovered");
         assert.equal(Boolean(records[0].fatal),code==="fault");
         assert.deepEqual(records[1],{state:"not-started",sources:["/source/1.png"],pages:0,issues:[]});
     }
 });
 
-test("an empty defensive document cannot issue an empty import",()=>{
+test("an empty defensive document cannot issue an empty import",async ()=>{
     const {executeDocument}=require("../../../src/application/documents.js");
     const sample=fixture(0,{ports:{validate:()=>{throw new OperationError("empty document");}}});
-    const result=executeDocument(sample.ports,{sources:[],destination:"/out.pdf"},0);
+    const result=(await executeDocument(sample.ports,{sources:[],destination:"/out.pdf"},0));
     assert.equal(result.state,"failed");
     assert.ok(!sample.events.some(([kind])=>kind==="import"));
 });
 
-test("a combined source failure names the responsible original input",()=>{
-    const sample=fixture(3,{fail:1});const [result]=executeDocuments(sample.ports,sample.plans);
+test("a combined source failure names the responsible original input",async ()=>{
+    const sample=fixture(3,{fail:1});const [result]=(await executeDocuments(sample.ports,sample.plans));
     assert.deepEqual(result.sources,["/source/0.png","/source/1.png","/source/2.png"]);
     assert.equal(result.issues[0].source,"/source/1.png");
     assert.equal(result.issues[0].stage,"preparation");
 });
 
-test("malformed issue arrays cannot discard earlier confirmed outputs",()=>{
+test("malformed issue arrays cannot discard earlier confirmed outputs",async ()=>{
     const sample=fixture(3,{mode:"separate"});const {publish} = sample.ports;
     sample.ports.publish=(staged,path)=>{if(path.endsWith("/1.pdf")){const error=new Error("bug");error.issues=[null];throw error;}return publish(staged,path);};
-    const result=executeDocuments(sample.ports,sample.plans);
+    const result=(await executeDocuments(sample.ports,sample.plans));
     assert.deepEqual(result.map((record)=>record.state),["saved","recovered","not-started"]);
     assert.equal(result[1].issues[0].code,"fault");assert.equal(result[0].output,"/out/0.pdf.actual");
 });
 
 
-test("consecutive placement groups flush separately before assembly and validation", () => {
+test("consecutive placement groups flush separately before assembly and validation", async () => {
     const sample = fixture(4);
     const { prepare } = sample.ports;
     sample.ports.prepare = (source, index) => ({ ...prepare(source, index), group: index < 2 ? "large" : "small", placement: { relativeScale: index < 2 ? 1 : 0.5 } });
     const groups = [];
     const imported = sample.ports.import;
     sample.ports.import = (staged, pages, placement) => { groups.push(placement.relativeScale); imported(staged, pages); };
-    assert.equal(executeDocuments(sample.ports, sample.plans)[0].state, "saved");
+    assert.equal((await executeDocuments(sample.ports, sample.plans))[0].state, "saved");
     assert.deepEqual(groups, [1, 0.5]);
     const kinds = sample.events.map(([kind]) => kind);
     assert.ok(kinds.indexOf("assemble") < kinds.indexOf("validate"));
     assert.ok(kinds.indexOf("validate") < kinds.indexOf("publish"));
 });
 
-test("assembly failure leaves the candidate disposable and prevents validation", () => {
+test("assembly failure leaves the candidate disposable and prevents validation", async () => {
     const sample = fixture(1, { ports: { assemble() { throw new OperationError("merge failed"); } } });
-    const [record] = executeDocuments(sample.ports, sample.plans);
+    const [record] = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(record.state, "failed");
     assert.equal(record.issues[0].stage, "assembly");
     assert.equal(sample.artifacts.get("/work/0.pdf").state, "building");
     assert.ok(!sample.events.some(([kind]) => kind === "validate"));
 });
 
-test("retain is established before validation and a retention failure prevents validation", () => {
+test("retain is established before validation and a retention failure prevents validation", async () => {
     const sample = fixture(1);
-    executeDocuments(sample.ports, sample.plans);
+    (await executeDocuments(sample.ports, sample.plans));
     const kinds = sample.events.map(([kind]) => kind);
     assert.ok(kinds.indexOf("retain") < kinds.indexOf("validate"));
     const failed = fixture(1, { ports: { beforeValidation() { throw new OperationError("retain write failed"); } } });
-    const [record] = executeDocuments(failed.ports, failed.plans);
+    const [record] = (await executeDocuments(failed.ports, failed.plans));
     assert.equal(record.state, "failed");
     assert.equal(failed.artifacts.get("/work/0.pdf").state, "building");
     assert.ok(!failed.events.some(([kind]) => kind === "validate"));
 });
 
 
-test("explicitly unavailable recovery never invents the registered artifact as a recovered path", () => {
+test("explicitly unavailable recovery never invents the registered artifact as a recovered path", async () => {
     for (const code of ["fault", "publication"]) {
         const error = new IssueError("Original no longer verified.", { recovery: null, issues: [{ code, stage: "publication", message: "Original no longer verified." }] });
         const sample = fixture(2, { mode: "separate", ports: { publish: () => { throw error; } } });
-        const records = executeDocuments(sample.ports, sample.plans);
+        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
+        const records = (await executeDocuments(sample.ports, sample.plans));
         assert.equal(records[0].state, "failed"); assert.equal(records[0].fatal, true);
         assert.equal(Object.hasOwn(records[0], "recovery"), false);
         assert.equal(records[1].state, "not-started");
@@ -208,9 +211,9 @@ test("explicitly unavailable recovery never invents the registered artifact as a
 });
 
 
-test("an inherited null recovery is not an explicit producer refusal", () => {
+test("an inherited null recovery is not an explicit producer refusal", async () => {
     const prototype = new Error("Unclassified publication failure."); prototype.recovery = null;
     const sample = fixture(1, { ports: { publish: () => { throw Object.create(prototype); } } });
-    const [result] = executeDocuments(sample.ports, sample.plans);
+    const [result] = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(result.state, "recovered"); assert.equal(result.recovery, "/work/0.pdf");
 });

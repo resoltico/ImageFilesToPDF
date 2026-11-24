@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { commandLengthOf } = require("../../../src/backend/batching.js");
+const { commandLengthOf } = require("../../support/macos-conversion/backend/batching.js");
 const { buildHeaderArgv, buildFieldArgv, headerGroups: groupHeaders } = require("../../../src/backend/headers.js");
 
 const headerGroups = (tool, paths, budget = 131072) => groupHeaders(tool, paths, (args) => commandLengthOf(args) <= budget);

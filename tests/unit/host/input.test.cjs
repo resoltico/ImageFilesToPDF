@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { inputItemToPosixPath } = require("../../../src/host/input.js");
+const { inputItemToPosixPath } = require("../../support/macos-conversion/host/input.js");
 
 /*
  * Turning a selected item into a path, or deciding it is not one.

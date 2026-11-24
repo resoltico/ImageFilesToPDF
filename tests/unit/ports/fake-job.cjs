@@ -8,7 +8,7 @@
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
 const { createProgress } = require("../../../src/application/progress.js");
 
-const { runOperations } = require("../../../src/host/run-operations.js");
+const { runOperations } = require("../../support/macos-conversion/host/run-operations.js");
 
 const geometry = calculatePageGeometry({
     paperSize: "A4",

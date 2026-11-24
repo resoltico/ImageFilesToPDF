@@ -6,6 +6,7 @@ const { dirname } = require("node:path");
 const { setTimeout, clearTimeout } = require("node:timers");
 const { platform, env } = require("node:process");
 const { MessageChannel, Worker, receiveMessageOnPort } = require("node:worker_threads");
+const { darwinHelper } = require("./darwin.js");
 const { OperationError, UserCanceled } = require("../core/errors.js");
 
 const CHILD_LIMIT_MS = 900000;
@@ -55,12 +56,13 @@ function runChild(argv, options) {
     });
 }
 
-function startWorker(file, invocation) {
+function startWorker(file, invocation, observer = {}) {
     const { port1, port2 } = new MessageChannel();
     const shared = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * (STOP + 1));
     const state = new Int32Array(shared);
     const latchStop = () => Atomics.store(state, STOP, 1);
     let active = null;
+    let darwin = null;
     for (const signal of SIGNALS) { process.on(signal, latchStop); }
     const close = () => {
         port1.close();
@@ -71,9 +73,11 @@ function startWorker(file, invocation) {
         let fault = null, outcome = null;
         const done = new Promise((resolve, reject) => {
             worker.on("message", (message) => {
+                if (message.event) { observer.event?.(message.event); return; }
                 if (message.outcome) { ({ outcome } = message); return; }
-                const { id, argv, options } = message;
-                active = runChild(argv, options).catch((error) => ({ error: error.message })).then((result) => {
+                const { id, argv, options, native } = message;
+                if (native) { darwin ??= darwinHelper(); }
+                active = (native ? darwin.request(native) : runChild(argv, options)).catch((error) => ({ error: error.message })).then((result) => {
                     port1.postMessage({ id, result });
                     Atomics.store(state, REPLY, id);
                     Atomics.notify(state, REPLY);
@@ -83,12 +87,13 @@ function startWorker(file, invocation) {
             worker.on("exit", async (code) => {
                 try {
                     await active;
+                    if (darwin) { await darwin.close(); }
                     if (fault || code !== 0 || !outcome) { throw fault ?? new Error("The conversion worker did not complete."); }
                     resolve(outcome);
                 } catch (error) { reject(error); }
             });
         });
-        return { close, done };
+        return { close, done, requestStop: latchStop, send: (message) => worker.postMessage(message) };
     } catch (error) {
         port2.close();
         close();
@@ -100,18 +105,26 @@ function workerCommands(parentPort, { port, shared }) {
     const state = new Int32Array(shared);
     let next = 0;
     const stopped = () => Atomics.load(state, STOP) !== 0;
-    return { stopped, fits, request(argv, options = {}) {
-        if (!fits(argv)) { throw new OperationError(wording("commandArgumentBudgetExceeded")); }
+    function exchange(payload) {
         const previous = next;
         next += 1;
-        parentPort.postMessage({ id: next, argv, options });
+        parentPort.postMessage({ id: next, ...payload });
         if (Atomics.wait(state, REPLY, previous, REPLY_LIMIT_MS) === "timed-out") {
             throw new Error("The native process owner did not acknowledge settlement.");
         }
         const reply = receiveMessageOnPort(port)?.message;
         if (Atomics.load(state, REPLY) !== next || reply?.id !== next) { throw new Error("The native process reply could not be matched."); }
         return reply.result;
-    }, checkpoint() { if (stopped()) { throw new UserCanceled(); } } };
+    }
+    return {
+        stopped, fits,
+        request(argv, options = {}) {
+            if (!fits(argv)) { throw new OperationError(wording("commandArgumentBudgetExceeded")); }
+            return exchange({ argv, options });
+        },
+        darwin(request) { return exchange({ native: request }); },
+        checkpoint() { if (stopped()) { throw new UserCanceled(); } }
+    };
 }
 
 function commandOutput(result, argv, label) {

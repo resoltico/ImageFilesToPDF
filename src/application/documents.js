@@ -29,60 +29,63 @@ function pageQueue(ports, context) {
         pages = []; bytes = 0;
         if (issues.length > 0) { const error = new IssueError(message("pageCleanupFailed"), { issues }); throw error; }
     };
-    const flush = () => {
+    const flush = async () => {
         if (pages.length > 0) {
             context.stage = "import";
             const paths = pages.map((page) => page.path);
             if (!ports.fits(context.artifact.path, paths, pages[0].placement)) {
                 throw new IssueError(message("pdfImportArgumentBudgetExceeded"));
             }
-            ports.import(context.artifact.path, paths, pages[0].placement);
+            await ports.import(context.artifact.path, paths, pages[0].placement);
             clear();
         }
     };
-    return { clear, flush, add(page) {
+    return { clear, flush, async add(page) {
         try {
             if (pages.length > 0 && (pages[0].group !== page.group || bytes + page.size > MAX_QUEUED_BYTES ||
-                !ports.fits(context.artifact.path, [...pages, page].map((entry) => entry.path), page.placement))) { flush(); }
+                !ports.fits(context.artifact.path, [...pages, page].map((entry) => entry.path), page.placement))) { await flush(); }
             pages.push(page);
             bytes += page.size;
         } catch (error) { failedHandoff(ports, context, page, error); }
-        if (bytes >= MAX_QUEUED_BYTES || pages.length >= MAX_QUEUED_PAGES) { flush(); }
+        if (bytes >= MAX_QUEUED_BYTES || pages.length >= MAX_QUEUED_PAGES) { await flush(); }
     } };
 }
 
-function prepareDocument(ports, plan, context, queue) {
+async function prepareDocument(ports, plan, context, queue) {
     for (const [index, source] of plan.sources.entries()) {
         context.stage = "preparation";
         context.source = source.path;
         ports.beginning(source, index, context.documentIndex);
-        const page = ports.prepare(source, index);
+        // eslint-disable-next-line no-await-in-loop -- The sequential preparation port hands off one completed page at a time.
+        const page = await ports.prepare(source, index);
         context.record.pages += 1;
-        queue.add(page);
+        // eslint-disable-next-line no-await-in-loop -- Complete any queue import before preparing another page.
+        await queue.add(page);
         ports.prepared();
     }
 }
 
-function validateDocument(ports, plan, context) {
+async function validateDocument(ports, plan, context) {
     context.stage = "validation";
-    ports.beforeValidation(context.artifact.path);
-    context.artifact.state = "validating";
-    ports.validate(context.artifact.path, plan.sources.length);
-    context.record.state = "validated";
-    context.artifact.state = "validated";
+    const { artifact, record } = context;
+    ports.beforeValidation(artifact.path);
+    artifact.state = "validating";
+    await ports.validate(artifact.path, plan.sources.length);
+    record.state = "validated";
+    artifact.state = "validated";
 }
 
 function markFatal(record) {
     if (record.issues.some((issue) => [ISSUE.fault, ISSUE.cleanup].includes(issue.code))) { record.fatal = true; }
 }
 
-function finishDocument(ports, plan, context, queue) {
-    queue.flush();
+async function finishDocument(ports, plan, context, queue) {
+    await queue.flush();
     context.stage = "assembly";
-    ports.assemble(context.artifact.path);
-    validateDocument(ports, plan, context);
-    context.stage = "publication";
-    const saved = ports.publish(context.artifact.path, plan.destination);
+    await ports.assemble(context.artifact.path);
+    await validateDocument(ports, plan, context);
+    Object.assign(context, { stage: "publication" });
+    const saved = await ports.publish(context.artifact.path, plan.destination);
     Object.assign(context.record, { state: "saved", output: saved.path });
     context.record.issues.push(...saved.issues);
     markFatal(context.record);
@@ -139,14 +142,14 @@ function handleDocumentFailure(context, error) {
 }
 
 /** Ports own native values and bytes. This executor owns document/resource sequencing. */
-function executeDocument(ports, plan, documentIndex) {
+async function executeDocument(ports, plan, documentIndex) {
     const context = { documentIndex, artifact: null, stage: "allocation",
         record: { state: "building", sources: plan.sources.map((source) => source.path), pages: 0, issues: [] } };
     const queue = pageQueue(ports, context);
     try {
         context.artifact = ports.allocate(documentIndex);
-        prepareDocument(ports, plan, context, queue);
-        finishDocument(ports, plan, context, queue);
+        await prepareDocument(ports, plan, context, queue);
+        await finishDocument(ports, plan, context, queue);
     } catch (error) {
         handleDocumentFailure(context, error);
     }
@@ -155,11 +158,12 @@ function executeDocument(ports, plan, documentIndex) {
     return context.record;
 }
 
-function executeDocuments(ports, plans, records = []) {
+async function executeDocuments(ports, plans, records = []) {
     let stopped = false;
     for (const [index, plan] of plans.entries()) {
         const record = stopped ? { state: "not-started", sources: plan.sources.map((source) => source.path), pages: 0, issues: [] }
-            : executeDocument(ports, plan, index);
+            // eslint-disable-next-line no-await-in-loop -- Publication and retention decisions remain in plan order.
+            : await executeDocument(ports, plan, index);
         records.push(record);
         stopped ||= record.state === "canceled" || record.fatal || record.issues.some((issue) => issue.code === ISSUE.canceled);
     }

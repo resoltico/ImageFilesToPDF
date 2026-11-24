@@ -10,7 +10,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { setAside } = require("../../../src/host/rescue.js");
+const { setAside } = require("../../support/macos-conversion/host/rescue.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 
 const RECOVERY = "/var/folders/xx/T/ImageFilesToPDF-recovered.Fake01";

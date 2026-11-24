@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { TOOL_NAMES, findTool } = require("../../../src/host/tools.js");
+const { TOOL_NAMES, findTool } = require("../../support/macos-conversion/host/tools.js");
 const { createFakeApp, failing } = require("../ports/fake-app.cjs");
 
 const HOMEBREW = "/opt/homebrew/bin/vips";

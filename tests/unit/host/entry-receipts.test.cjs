@@ -1,7 +1,7 @@
 "use strict";
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { run } = require("../../../src/entry.js");
+const { run } = require("../../support/macos-conversion/host/quick-action/run.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 const { installPlatform } = require("../ports/fake-platform.cjs");
 const config = JSON.stringify({paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:85,background:"#FFFFFF"});
@@ -14,9 +14,9 @@ function fixture(overrides={}) {
 
 
 
-test("interactive Create produces no return value or stray text output",()=>{
+test("interactive Create produces no return value or stray text output",async ()=>{
     const {app,output,state}=fixture();
-    assert.equal(run([["/source.png"],{}]),undefined);
+    assert.equal((await run([["/source.png"],{}])),undefined);
     assert.equal(output.length,0);
     assert.ok([...app.files].some((path)=>path.endsWith(".pdf")));
     assert.equal(state.alerts.length,2,"settings and completion");
@@ -26,23 +26,23 @@ test("interactive Create produces no return value or stray text output",()=>{
     assert.match(completion.accessoryView.documentView.string,/^1 saved\.$/mu);
 });
 
-test("interactive errors are presented and cancellation stays silent",()=>{
+test("interactive errors are presented and cancellation stays silent",async ()=>{
     const {state}=fixture({executables:[]});
-    assert.equal(run([["/source.png"],{}]),undefined);
+    assert.equal((await run([["/source.png"],{}])),undefined);
     assert.equal(state.alerts.length,1);
     const canceled=fixture();
     canceled.state.responses.push(1001);
-    assert.equal(run([["/source.png"],{}]),undefined);
+    assert.equal((await run([["/source.png"],{}])),undefined);
     assert.equal(canceled.state.alerts.length,1);
 });
 
 
 
 
-test("setup failure closes every progress surface before presenting its structured diagnostic",()=>{
+test("setup failure closes every progress surface before presenting its structured diagnostic",async ()=>{
     const {state}=fixture({executables:[]});
     const closed=[];globalThis.Progress={get totalUnitCount(){return closed.at(-1);},set totalUnitCount(value){closed.push(value);}};
-    assert.equal(run([["/source.png"],{}]),undefined);
+    assert.equal((await run([["/source.png"],{}])),undefined);
     const [alert]=state.alerts;
     assert.deepEqual([alert.messageText,alert.informativeText],["Image Files to PDF","Setup failed."]);
     assert.deepEqual(alert.buttons,["OK", "Details"]);
@@ -51,9 +51,9 @@ test("setup failure closes every progress surface before presenting its structur
     assert.deepEqual(closed,[]);delete globalThis.Progress;
 });
 
-test("the production controller reviews refusals before asking settings",()=>{
+test("the production controller reviews refusals before asking settings",async ()=>{
     const context=fixture({files:["/source.png","/notes.txt"]});context.state.responses.push(1000,1001);
-    assert.equal(run([["/source.png","/notes.txt"],{}]),undefined);
+    assert.equal((await run([["/source.png","/notes.txt"],{}])),undefined);
     assert.deepEqual(context.state.alerts[0].buttons,["Continue","Cancel"]);
     assert.match(context.state.alerts[0].accessoryView.documentView.string,/notes\.txt/u);
     assert.equal(context.state.alerts[0].informativeText,"1 item in your selection cannot be included.");
@@ -62,10 +62,10 @@ test("the production controller reviews refusals before asking settings",()=>{
     assert.ok(![...context.app.files].some((path)=>path.endsWith(".pdf")));
 });
 
-test("a failed completion surface retains the saved outcome in its error report",()=>{
+test("a failed completion surface retains the saved outcome in its error report",async ()=>{
     const context=fixture();
     context.state.duringModal=(alert)=>{if(alert.informativeText==="Created 1 PDF."){throw new TypeError("completion view failed");}};
-    assert.equal(run([["/source.png"],{}]),undefined);
+    assert.equal((await run([["/source.png"],{}])),undefined);
     const details=context.state.alerts.at(-1).accessoryView.documentView.string;
     assert.match(details,/completion view failed/u);
     assert.match(details,/Saved to:/u);
@@ -89,16 +89,16 @@ test("no-image native dialogs show one headline and retain actionable details",(
 });
 
 
-test("Quick Action consent precedes settings and cancellation starts no conversion", () => {
+test("Quick Action consent precedes settings and cancellation starts no conversion", async () => {
     const accepted = fixture();
-    assert.equal(run([["/source.png", "/notes.txt"], {}]), undefined);
+    assert.equal((await run([["/source.png", "/notes.txt"], {}])), undefined);
     assert.equal(accepted.state.alerts.length, 3);
     assert.equal(accepted.state.alerts[0].informativeText, "1 item in your selection cannot be included.");
     assert.equal(accepted.state.alerts[1].informativeText, "Choose the page settings, then Create.");
     assert.equal(accepted.state.alerts[2].informativeText, "Created 1 PDF.");
     const canceled = fixture();
     canceled.state.responses.push(1001);
-    assert.equal(run([["/source.png", "/notes.txt"], {}]), undefined);
+    assert.equal((await run([["/source.png", "/notes.txt"], {}])), undefined);
     assert.equal(canceled.state.alerts.length, 1);
     assert.equal([...canceled.app.files].some((file) => file.endsWith(".pdf")), false);
     assert.equal(canceled.app.commands.some((command) => command.includes("'thumbnail'") && !command.includes("nonexistent-image")), false);

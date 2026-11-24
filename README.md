@@ -2,25 +2,24 @@
 
 A Finder Quick Action for macOS that turns images into PDFs, one image on each
 page: one PDF for the whole selection, or one PDF per image. Images are centered
-without cropping or enlargement, and originals are never modified. The same script
-also runs from the command line, with a JSON settings file and a JSON receipt; see
+without cropping or enlargement, and originals are never modified. The command-line distribution uses the same conversion engine, with a JSON
+settings file and a JSON receipt; see
 [HEADLESS.md](HEADLESS.md).
 
 Source and releases: https://github.com/resoltico/ImageFilesToPDF
 
 ## Requirements
 
-- macOS 12.3 or later; Shortcuts is needed for the Finder Quick Action.
+- macOS 13.5 or later with Shortcuts and Node.js 26 or later.
 - `vips` (which includes `vipsheader`) and stable `pdfcpu` 0.16.4 or later,
   installed with Homebrew:
 
 ```sh
-brew install vips pdfcpu
+brew install node vips pdfcpu
 ```
 
-To upgrade pdfcpu, run `brew update` and then `brew upgrade pdfcpu`. The Quick
-Action is one standalone JavaScript for Automation (JXA) file. Node.js and npm are
-needed only for development. Setup checks all three backend commands before
+To upgrade pdfcpu, run `brew update` and then `brew upgrade pdfcpu`. The Quick Action is a single JavaScript for Automation (JXA) file with the
+embedded conversion engine. Setup checks all three backend commands before
 inspecting images; missing or unusable tools are reported as setup problems.
 
 ## Install in Shortcuts

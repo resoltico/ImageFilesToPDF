@@ -6,7 +6,7 @@ const {
     createWorkspace,
     removeWorkspace,
     nonce
-} = require("../../../src/host/workspace.js");
+} = require("../../support/macos-conversion/host/workspace.js");
 const { createFakeApp, failing } = require("../ports/fake-app.cjs");
 
 const { workspacePort } = require("../ports/fake-workspace.cjs");

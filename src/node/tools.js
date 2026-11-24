@@ -1,81 +1,54 @@
 "use strict";
-const { message } = require("../core/messages.js");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { Buffer } = require("node:buffer");
-const { env } = require("node:process");
-const { OperationError } = require("../core/errors.js");
-const {
-    buildVipsProbeArgv, buildVipsheaderProbeArgv, isVipsheaderUsable, VIPSHEADER_PROBE_IMAGE,
-    buildPdfcpuProbeArgv, isPdfcpuUsable
-} = require("../backend/preflight.js");
+const { env, platform } = require("node:process");
+const { checkRequiredTools } = require("../application/setup.js");
+const { VIPSHEADER_PROBE_IMAGE } = require("../backend/preflight.js");
 const { WINDOWS, localPath, standardize } = require("./paths.js");
 
-const { MINIMUM_PDFCPU_VERSION } = require("../core/setup.js");
-
-const TOOL_NAMES = ["vips", "vipsheader", "pdfcpu"];
-
-function isExecutable(file) {
+function executableFile(value) {
     try {
-        if (!path.isAbsolute(file) || (WINDOWS && path.extname(file).toLowerCase() !== ".exe") || !fs.statSync(file).isFile()) { return false; }
-        if (!WINDOWS) { fs.accessSync(file, fs.constants.X_OK); }
-        return true;
-    } catch { return false; }
-}
-
-function fileAt(value) {
-    try {
-        if (!path.isAbsolute(value)) { return null; }
+        if (!path.isAbsolute(value) || WINDOWS && path.extname(value).toLowerCase() !== ".exe") { return null; }
         const file = localPath(value);
-        return isExecutable(file) ? file : null;
+        if (!fs.statSync(file).isFile()) { return null; }
+        if (!WINDOWS) { fs.accessSync(file, fs.constants.X_OK); }
+        return file;
     } catch { return null; }
 }
 
-function executable(name) {
-    const override = `IMAGE_FILES_TO_PDF_${name.toUpperCase()}`;
-    if (Object.hasOwn(env, override)) {
-        const value = env[override];
-        const file = fileAt(value);
-        if (!file) { throw new OperationError(message("toolOverrideInvalid", { override: `${override}=${JSON.stringify(value)}` })); }
-        return { file, override };
-    }
+function inheritedSearch() {
     const search = WINDOWS ? Object.entries(env).find(([key]) => key.toUpperCase() === "PATH")?.[1] : env.PATH;
+    return (search ?? "").split(path.delimiter);
+}
+
+function locate(name, directories) {
+    const variable = `IMAGE_FILES_TO_PDF_${name.toUpperCase()}`;
+    if (Object.hasOwn(env, variable)) {
+        const value = env[variable];
+        return { file: executableFile(value), override: { variable, value } };
+    }
     const filename = WINDOWS ? `${name}.exe` : name;
-    for (const directory of (search ?? "").split(path.delimiter).filter((entry) => path.isAbsolute(entry))) {
-        const file = fileAt(path.join(directory, filename));
-        if (file) { return { file, override: null }; }
+    for (const directory of directories.filter((entry) => path.isAbsolute(entry))) {
+        const file = executableFile(path.join(directory, filename));
+        if (file) { return { file }; }
     }
-    throw new OperationError(message("toolMissingFromPath", { name }));
+    return { file: null };
 }
 
-function validateTool(commands, argv, usable, { name, file, override }) {
-    commands.checkpoint();
-    const result = commands.request(argv);
-    if (result.status !== 0 || result.error || !usable(result.stdout)) {
-        const selected = override ? `${override}=${JSON.stringify(file)}` : name;
-        const wording = message(name === "pdfcpu" ? "pdfcpuUnusable" : "toolUnusable", { name: selected, minimum: MINIMUM_PDFCPU_VERSION });
-        throw new OperationError(wording, { diagnostic: { message: (result.error || result.stderr || result.stdout || "").trim() } });
-    }
-}
-
-function checkTools(commands) {
-    const found = Object.fromEntries(TOOL_NAMES.map((name) => [name, { name, ...executable(name) }]));
-    const tools = Object.fromEntries(Object.entries(found).map(([name, tool]) => [name, tool.file]));
-    commands.checkpoint();
-    validateTool(commands, buildPdfcpuProbeArgv(tools.pdfcpu), isPdfcpuUsable, found.pdfcpu);
+async function withSample(inspect) {
     const directory = fs.mkdtempDisposableSync(path.join(os.tmpdir(), "iftp-check-"));
     try {
-        const probe = standardize(path.join(directory.path, "test é.png"));
+        const input = standardize(path.join(directory.path, "test é.png"));
         const output = standardize(path.join(directory.path, "output.png"));
         const octal = [...VIPSHEADER_PROBE_IMAGE.matchAll(/\\0(?<byte>[0-7]{3})/gu)].map((match) => Number.parseInt(match.groups.byte, 8));
-        fs.writeFileSync(probe, Buffer.from(octal), { flag: "wx", mode: 0o600 });
-        const args = buildVipsProbeArgv(tools.vips);
-        const firstPath = 2, pathCount = 2;
-        args.splice(firstPath, pathCount, probe, output);
-        validateTool(commands, args, () => fs.statSync(output, { throwIfNoEntry: false })?.isFile(), found.vips);
-        validateTool(commands, [...buildVipsheaderProbeArgv(tools.vipsheader), probe], isVipsheaderUsable, found.vipsheader);
+        fs.writeFileSync(input, Buffer.from(octal), { flag: "wx", mode: 0o600 });
+        return await inspect({ input, output, outputExists: () => fs.statSync(output, { throwIfNoEntry: false })?.isFile() });
     } finally { directory.remove(); }
-    return tools;
+}
+
+function checkTools(commands, directories = inheritedSearch()) {
+    return checkRequiredTools({ platform, checkpoint: commands.checkpoint, locate: (name) => locate(name, directories), run: commands.request, withSample });
 }
 module.exports = { checkTools };

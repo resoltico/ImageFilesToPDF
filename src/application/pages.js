@@ -9,15 +9,15 @@ const { sourceIssue, matchesAdmission, changedSourceIssue } = require("../core/s
 const { buildThumbnailArgv, buildFlattenArgv, buildDecodeArgv, hasAlphaBand } = require("../backend/commands.js");
 const { removeOwned } = require("./owned-cleanup.js");
 
-function normalizeImage(job, captured, source, page) {
+async function normalizeImage(job, captured, source, page) {
     const { path, placement } = page;
     const intermediate = path.endsWith(".png") && hasAlphaBand(source.bands, source.interpretation);
     const prepared = `${path}.v`;
     try {
-        job.operations.run(buildThumbnailArgv(job.tools.vips, captured.path, intermediate ? prepared : path,
+        await job.operations.run(buildThumbnailArgv(job.tools.vips, captured.path, intermediate ? prepared : path,
             { placement, source, intermediate, background: job.settings.background, quality: job.settings.quality }), "normalizing the image");
         if (intermediate) {
-            job.operations.run(buildFlattenArgv(job.tools.vips, prepared, path, job.settings.background), "flattening transparency");
+            await job.operations.run(buildFlattenArgv(job.tools.vips, prepared, path, job.settings.background), "flattening transparency");
         }
         job.operations.verifyFile(path, "prepared image");
     } finally { if (intermediate) { removeOwned(job, prepared); } }
@@ -38,13 +38,13 @@ function requireAdmission(imageFile, captured) {
 }
 
 /** Capture, inspect and render identical owned bytes; the queue then owns the result. */
-function preparePage(job, imageFile, index) {
+async function preparePage(job, imageFile, index) {
     if (!imageFile.admission) { throw new TypeError("Source admission facts are required before capture."); }
     const capturedPath = `${job.workspace}/input-${index}`;
     let made = false, pagePath = "";
     try {
         const captured = job.sources.capture(imageFile.path, capturedPath);
-        const source = inspectCaptured(job, captured, imageFile.path);
+        const source = await inspectCaptured(job, captured, imageFile.path);
         requireAdmission(imageFile, source);
         const placement = calculatePlacement(job.geometry, source);
         const pass = canPassThrough(source, placement);
@@ -52,9 +52,9 @@ function preparePage(job, imageFile, index) {
         pagePath = `${job.workspace}/${index}-page.${extension}`;
         try {
             if (pass) {
-                job.operations.run(buildDecodeArgv(job.tools.vips, captured.path), "checking image data");
+                await job.operations.run(buildDecodeArgv(job.tools.vips, captured.path), "checking image data");
                 job.sources.capture(captured.path, pagePath);
-            } else { normalizeImage(job, captured, source, { path: pagePath, placement }); }
+            } else { await normalizeImage(job, captured, source, { path: pagePath, placement }); }
         } catch (error) { if (isUserCanceled(error) || issuesOf(error, "preparation")[0].code === ISSUE.fault) { throw error; } throw damaged(error, imageFile.path); }
         made = true;
         return { path: pagePath, placement };

@@ -103,9 +103,9 @@ function collectSettings(
 
 /* Interactive collection returns the canonical record supplied by the common validator. */
 function chooseSettings(app, context, injected = {}) {
-    const { openMemory = defaultMemory, bridge, present } = injected;
+    const { openMemory = defaultMemory, bridge, present, problems } = injected;
     const memory = openMemory();
-    const opening = { context, answers: rememberedAnswers(memory.recall()) };
+    const opening = { context, problems, answers: rememberedAnswers(memory.recall()) };
     const settings = bridge || present
         ? collectSettings(app, opening, bridge, present) : collectSettings(app, opening);
 

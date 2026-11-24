@@ -8,7 +8,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { collectInvocation } = require("../../../src/host/quick-action/input.js");
-const { inputItemToPosixPath } = require("../../../src/host/input.js");
+const { inputItemToPosixPath } = require("../../support/macos-conversion/host/input.js");
 const { collectImageFiles } = require("../ports/fake-selection.cjs");
 const { createFakeApp } = require("../ports/fake-app.cjs");
 

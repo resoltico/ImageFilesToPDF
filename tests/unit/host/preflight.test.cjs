@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { checkTools } = require("../../../src/host/preflight.js");
+const { checkTools } = require("../../support/macos-conversion/host/preflight.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 
 const ALL_TOOLS = [

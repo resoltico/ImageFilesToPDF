@@ -17,11 +17,11 @@ const {
 
 function partPdfPath(staged, index) { return `${staged}.part-${index}.pdf`; }
 
-function importBatch(job, stagedPath, pages, placement) {
+async function importBatch(job, stagedPath, pages, placement) {
     const parts = job.parts.get(stagedPath);
     const path = partPdfPath(stagedPath, parts.length);
     registerArtifact(job.artifacts, path);
-    job.operations.run(buildPdfcpuImportArgv(job.tools.pdfcpu, path, pages,
+    await job.operations.run(buildPdfcpuImportArgv(job.tools.pdfcpu, path, pages,
         { geometry: job.geometry, placement, background: job.settings.background }), "creating PDF pages");
     job.operations.verifyFile(path, "PDF pages");
     parts.push(path);
@@ -32,8 +32,8 @@ function importBatch(job, stagedPath, pages, placement) {
  * including a single-page or single-batch import, must contain exactly the
  * prepared pages before publication can claim an output filename.
  */
-function verifyEveryPageArrived(job, stagedPath, expected) {
-    const found = readPageCountFrom(job.operations.run(
+async function verifyEveryPageArrived(job, stagedPath, expected) {
+    const found = readPageCountFrom(await job.operations.run(
         buildPdfcpuInfoArgv(job.tools.pdfcpu, stagedPath),
         "counting the pages"
     ));
@@ -49,11 +49,11 @@ function verifyEveryPageArrived(job, stagedPath, expected) {
     }
 }
 
-function validatePdf(job, stagedPath, expected) {
+async function validatePdf(job, stagedPath, expected) {
     job.operations.verifyFile(stagedPath, "partial PDF");
-    verifyEveryPageArrived(job, stagedPath, expected);
+    await verifyEveryPageArrived(job, stagedPath, expected);
     job.progress.phase("Validating PDF");
-    job.operations.run(buildPdfcpuValidateArgv(job.tools.pdfcpu, stagedPath), "validating PDF");
+    await job.operations.run(buildPdfcpuValidateArgv(job.tools.pdfcpu, stagedPath), "validating PDF");
 }
 
 module.exports = { partPdfPath, importBatch, validatePdf };

@@ -1,5 +1,5 @@
 "use strict";
-const { nativeDestinationNames } = require("../../src/host/destination-names.js");
+const { nativeDestinationNames } = require("../support/macos-conversion/host/destination-names.js");
 const { fileStem, dirname } = require("../../src/core/paths.js");
 function details(path) {
     ObjC.import("Foundation");

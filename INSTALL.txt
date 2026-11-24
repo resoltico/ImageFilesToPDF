@@ -7,10 +7,10 @@ Source, releases and build attestation:
 Requirements
 ============
 
-macOS 12.3 or later, with Shortcuts. The Quick Action needs no Node.js runtime.
+macOS 13.5 or later with Shortcuts and Node.js 26 or later.
 Install its command-line tools in Terminal:
 
-    brew install vips pdfcpu
+    brew install node vips pdfcpu
 
 vipsheader comes with vips. pdfcpu must be a stable release, 0.16.4 or later.
 To upgrade it:

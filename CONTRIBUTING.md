@@ -67,7 +67,7 @@ validation, help, form rows and stepwise dialogs derive from it. `src/host/quick
 stepwise records from that schema. Text fields are parsed at adapter boundaries
 and use the common all-issues validator. `documentPlan` requires complete native
 name-equivalence group facts for separate mode. Both adapters use native probes.
-For the Finder action, `src/host/destination-names.js` obtains these facts from
+The Node engine obtains these facts from
 native folder identity and actual namespace probes; coarse search buckets only
 limit fallback lookups and never establish equality. Comparison probes use the
 owned workspace or an OS-created temporary directory on the destination volume,
@@ -84,7 +84,7 @@ PDF creation, and executor/publication/workspace cleanup consult that same recor
 `released` means confirmed publication or recovery permits release. Unknown facts
 fail closed. Do not insert fallible owner registration after validation, infer
 ownership from filenames, or discard a confirmed destination after a reporting fault.
-`src/host/directory-entry-names.js` reads literal POSIX directory entries: Foundation
+The engine reads literal directory-entry names: Foundation
 can normalize its returned names for entries created by POSIX calls on FAT32. The native naming suite
 checks an ordinary C rename independently of exclusive-claim support, then
 compares the reported basename with raw directory bytes. Stored-name verification

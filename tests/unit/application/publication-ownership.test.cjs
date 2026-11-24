@@ -82,7 +82,7 @@ test("changed, missing or uninspectable originals cannot enter generic recovery 
 });
 
 
-test("the actual publication refusal with no verified original produces failed application output without a recovery path", () => {
+test("the actual publication refusal with no verified original produces failed application output without a recovery path", async () => {
     const { executeDocuments } = require("../../../src/application/documents.js");
     const { fixture: documentFixture } = require("../application/document-fixture.cjs");
     const { job } = fixture();
@@ -91,7 +91,7 @@ test("the actual publication refusal with no verified original produces failed a
     job.publication.actualPath = () => { changed = true; throw new OperationError("Name query refused."); };
     job.publication.facts = (path) => changed && path === staged ? { identity: "", size: -1 } : facts(path);
     const sample = documentFixture(2, { mode: "separate", ports: { publish: () => publishPdf(job, staged, target) } });
-    const records = executeDocuments(sample.ports, sample.plans);
+    const records = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(records[0].state, "failed"); assert.equal(records[0].fatal, true);
     assert.equal(records[0].issues[0].code, "fault"); assert.equal(Object.hasOwn(records[0], "recovery"), false);
     assert.equal(records[1].state, "not-started"); assert.equal(job.artifacts.get(staged).state, "validated");
@@ -136,7 +136,7 @@ test("same-size original replacement during destination copying cannot publish o
     assert.equal(job.artifacts.get(staged).state, "validated");
 });
 
-test("confirmed public output survives original replacement during name lookup with a fatal cleanup issue", () => {
+test("confirmed public output survives original replacement during name lookup with a fatal cleanup issue", async () => {
     const { executeDocuments } = require("../../../src/application/documents.js");
     const { fixture: documentFixture } = require("../application/document-fixture.cjs");
     const { app, job } = fixture();
@@ -146,10 +146,11 @@ test("confirmed public output survives original replacement during name lookup w
     job.publication.actualPath = (path) => { changed = true; return path; };
     job.publication.facts = (path) => changed && path === staged ? { identity: "9:9", size: original.size } : read(path);
     const sample = documentFixture(2, { mode: "separate", ports: { publish: () => publishPdf(job, staged, target) } });
-    const records = executeDocuments(sample.ports, sample.plans);
+    const records = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(records[0].state, "saved"); assert.equal(records[0].output, target); assert.equal(records[0].fatal, true);
     assert.equal(records[0].issues[0].code, "fault"); assert.equal(records[0].issues[0].stage, "cleanup");
     assert.equal(records[0].issues[0].message, "The original PDF could not be verified and was not removed.");
+    assert.deepEqual(records[0].issues[0].diagnostic.candidate, { path: target, identity: original.identity, size: original.size });
     assert.equal(records[1].state, "not-started");
     assert.ok(app.files.has(staged)); assert.ok(app.files.has(target)); assert.equal(job.artifacts.get(staged).state, "validated");
     assert.equal(app.commands.some((command) => command.includes("'/bin/rm' '-f' '/work/ready.pdf'")), false);
@@ -185,7 +186,7 @@ test("the human recovery report keeps creation/name uncertainty and the native l
 });
 
 
-test("name-readback programming faults retain the original exactly once and stay fatal through application", () => {
+test("name-readback programming faults retain the original exactly once and stay fatal through application", async () => {
     const { executeDocuments } = require("../../../src/application/documents.js");
     const { fixture: documentFixture } = require("../application/document-fixture.cjs");
     for (const Failure of [TypeError, ReferenceError]) {
@@ -197,7 +198,8 @@ test("name-readback programming faults retain the original exactly once and stay
             job.publication.link = (from, to) => location === "public" || (location === "downloads" && to.startsWith("/Downloads/")) ? link(from, to) : { state: "denied" };
             job.publication.actualPath = () => { lookups += 1; throw cause; };
             const sample = documentFixture(2, { mode: "separate", ports: { publish: () => publishPdf(job, staged, target) } });
-            const records = executeDocuments(sample.ports, sample.plans);
+            // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
+            const records = (await executeDocuments(sample.ports, sample.plans));
             assert.equal(records[0].state, "recovered"); assert.equal(records[0].recovery, staged); assert.equal(records[0].fatal, true);
             assert.equal(records[0].issues[0].code, "fault"); assert.equal(records[1].state, "not-started");
             assert.equal(lookups, 1, "no reconfirmation or duplicate fallback lookup");
@@ -207,7 +209,7 @@ test("name-readback programming faults retain the original exactly once and stay
     }
 });
 
-test("typed cancellation during name readback keeps its meaning and explicit recovery without reconfirmation", () => {
+test("typed cancellation during name readback keeps its meaning and explicit recovery without reconfirmation", async () => {
     const { executeDocuments } = require("../../../src/application/documents.js");
     const { runOutcome } = require("../../../src/core/outcomes.js");
     const { fixture: documentFixture } = require("../application/document-fixture.cjs");
@@ -216,7 +218,7 @@ test("typed cancellation during name readback keeps its meaning and explicit rec
     let lookups = 0;
     job.publication.actualPath = () => { lookups += 1; throw cause; };
     const sample = documentFixture(2, { mode: "separate", ports: { publish: () => publishPdf(job, staged, target) } });
-    const records = executeDocuments(sample.ports, sample.plans);
+    const records = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(records[0].state, "recovered"); assert.equal(records[0].recovery, staged);
     assert.equal(records[0].issues[0].code, "canceled"); assert.equal(records[1].state, "not-started");
     assert.equal(runOutcome(records).state, "canceled"); assert.equal(lookups, 1);

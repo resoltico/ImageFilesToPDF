@@ -9,7 +9,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const executables = require("../../../src/host/backend-executables.js");
+const executables = require("../../support/macos-conversion/host/backend-executables.js");
 
 const { EXECUTABLES, ...tools } = executables;
 

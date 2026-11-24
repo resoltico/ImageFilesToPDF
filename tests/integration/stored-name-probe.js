@@ -1,5 +1,5 @@
 "use strict";
-const { nativePublication } = require("../../src/host/native-publication.js");
+const { nativePublication } = require("../support/macos-conversion/host/native-publication.js");
 
 /** Ordinary rename isolates filename readback even where exclusive claims are unsupported. */
 function run(argv) {

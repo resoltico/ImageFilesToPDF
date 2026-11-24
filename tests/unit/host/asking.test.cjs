@@ -11,7 +11,7 @@ const {
     isExecutable,
     pathIsTaken,
     verifyFileWritten
-} = require("../../../src/host/asking.js");
+} = require("../../support/macos-conversion/host/asking.js");
 const { createFakeApp, failing } = require("../ports/fake-app.cjs");
 
 test("the file predicates report true when test succeeds", () => {

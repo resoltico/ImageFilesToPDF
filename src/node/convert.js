@@ -1,6 +1,7 @@
 "use strict";
 const { message } = require("../core/messages.js");
 const fs = require("node:fs");
+const { platform } = require("node:process");
 const { execute } = require("../application/workflow.js");
 const { createProgress } = require("../application/progress.js");
 const { OperationError } = require("../core/errors.js");
@@ -15,8 +16,9 @@ const { checkTools } = require("./tools.js");
 
 function configure(commands) {
     const windows = WINDOWS ? windowsNative(commands) : null;
-    const files = localFilesystem(windows);
-    const destination = destinationOperations(files);
+    const mac = platform === "darwin" ? commands.darwin : null;
+    const files = localFilesystem(windows, mac);
+    const destination = destinationOperations(files, mac);
     let storage = null;
 
     return {
@@ -57,13 +59,13 @@ function configure(commands) {
     };
 }
 
-function convert(invocation, commands) {
-    const progress = createProgress([], commands.stopped);
+async function convert(invocation, commands, { session, directories } = {}) {
+    const progress = createProgress(session ? [session.sink] : [], commands.stopped);
     try {
         const configured = configure(commands);
-        return execute(invocation, {
-            ...configured, checkTools: () => checkTools(commands), reclaim: (storage) => storage.reclaim(), now: () => new Date(),
-            interaction: { progress, collect: (input) => input, settings: () => invocation.settings,
+        return await execute(invocation, {
+            ...configured, checkTools: () => checkTools(commands, directories), reclaim: (storage) => storage.reclaim(), now: () => new Date(),
+            interaction: { progress, collect: (input) => input, settings: session?.settings ?? (() => invocation.settings),
                 noImages: noImagesOutcome, present: (result) => result }
         });
     } catch (error) {

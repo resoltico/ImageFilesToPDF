@@ -22,9 +22,9 @@ function fixture(count = 2, overrides = {}) {
     return { ports, selection, events };
 }
 
-test("inspection preserves ordered valid source records with structured admission facts", () => {
+test("inspection preserves ordered valid source records with structured admission facts", async () => {
     const sample = fixture();
-    const result = inspectSelection(sample.ports, sample.selection);
+    const result = (await inspectSelection(sample.ports, sample.selection));
     assert.equal(result.selectedFolders, 1);
     assert.equal(result.images.length, 2);
     assert.equal(result.images[0].admission.image, image);
@@ -34,16 +34,16 @@ test("inspection preserves ordered valid source records with structured admissio
     assert.deepEqual(sample.events, [["begin", 2], ["access", 0, 2], ["checked", 0], ["batch", ["/source/0.png", "/source/1.png"]], ["checked", 2]]);
 });
 
-test("access and empty-file refusals are omitted from header batches", () => {
+test("access and empty-file refusals are omitted from header batches", async () => {
     const sample = fixture(3, { fileFacts: (source) => ({ identity: source.path, version: "v1", size: source.path.includes("1.png") ? "0" : "100", readable: !source.path.includes("0.png") }) });
-    const result = inspectSelection(sample.ports, sample.selection);
+    const result = (await inspectSelection(sample.ports, sample.selection));
     assert.deepEqual(result.images.map((source) => source.path), ["/source/2.png"]);
     assert.deepEqual(result.rejected.slice(1).map((refusal) => refusal.code), ["unreadable", "empty"]);
     assert.deepEqual(sample.events.find(([kind]) => kind === "batch"), ["batch", ["/source/2.png"]]);
     assert.equal(sample.selection.rejected.length, 1);
 });
 
-test("a failed batch is reinspected per file and every content refusal names its source", () => {
+test("a failed batch is reinspected per file and every content refusal names its source", async () => {
     const sample = fixture(3, {
         inspect() { throw new OperationError("batch failed"); },
         inspectOne(entry) {
@@ -51,7 +51,7 @@ test("a failed batch is reinspected per file and every content refusal names its
             return entry.source.path.includes("1.png") ? { ...image, pages: 2 } : image;
         }
     });
-    const result = inspectSelection(sample.ports, sample.selection);
+    const result = (await inspectSelection(sample.ports, sample.selection));
     assert.deepEqual(result.images.map((source) => source.path), ["/source/2.png"]);
     assert.deepEqual(result.rejected.slice(1).map((refusal) => [refusal.path, refusal.code]), [["/source/0.png", "not-an-image"], ["/source/1.png", "multiple-images"]]);
     assert.equal(result.rejected[1].diagnostic.message, "backend text");
@@ -59,9 +59,9 @@ test("a failed batch is reinspected per file and every content refusal names its
     assert.deepEqual(sample.events.filter(([kind]) => kind === "checked"), [["checked", 0], ["checked", 0], ["checked", 1], ["checked", 2], ["checked", 3]]);
 });
 
-test("unavailable source facts are refusals with a separate diagnostic", () => {
+test("unavailable source facts are refusals with a separate diagnostic", async () => {
     const sample = fixture(1, { fileFacts() { throw new OperationError("attributes at /private/work unavailable"); } });
-    const result = inspectSelection(sample.ports, sample.selection);
+    const result = (await inspectSelection(sample.ports, sample.selection));
     assert.equal(result.images.length, 0);
     assert.equal(result.rejected[1].code, "unreadable");
     assert.equal(result.rejected[1].reason, "This file cannot be read; check that it still exists and that you have access.");
@@ -72,22 +72,22 @@ test("unavailable source facts are refusals with a separate diagnostic", () => {
 
 for (const operation of ["fileFacts", "inspect"]) {
     for (const error of [new UserCanceled(), new TypeError("adapter fault"), new OperationError("wrapped fault", { cause: new TypeError("bridge fault") })]) {
-        test(`${operation} does not relabel ${error.name} as a source refusal`, () => {
+        test(`${operation} does not relabel ${error.name} as a source refusal`, async () => {
             const sample = fixture(1, { [operation]() { throw error; } });
-            assert.throws(() => inspectSelection(sample.ports, sample.selection), (caught) => caught === error);
+            await assert.rejects(() => inspectSelection(sample.ports, sample.selection), (caught) => caught === error);
         });
     }
 }
 
-test("missing batch results fail the use case before consent", () => {
+test("missing batch results fail the use case before consent", async () => {
     const sample = fixture(1, { inspect: () => [] });
-    assert.throws(() => inspectSelection(sample.ports, sample.selection), /account for every source/u);
+    await assert.rejects(() => inspectSelection(sample.ports, sample.selection), /account for every source/u);
 });
 
-test("empty selections need no inspection capability and access checkpoints stay bounded", () => {
+test("empty selections need no inspection capability and access checkpoints stay bounded", async () => {
     const empty = fixture(0);
-    assert.equal(inspectSelection({}, empty.selection), empty.selection);
+    assert.equal((await inspectSelection({}, empty.selection)), empty.selection);
     const sample = fixture(65);
-    assert.equal(inspectSelection(sample.ports, sample.selection).images.length, 65);
+    assert.equal((await inspectSelection(sample.ports, sample.selection)).images.length, 65);
     assert.deepEqual(sample.events.filter(([kind]) => kind === "access"), [["access", 0, 65], ["access", 32, 65], ["access", 64, 65]]);
 });

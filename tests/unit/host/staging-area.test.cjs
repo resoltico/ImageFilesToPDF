@@ -17,7 +17,7 @@ const {
     stagingArea,
     openStaging,
     closeStaging
-} = require("../../../src/host/staging-area.js");
+} = require("../../support/macos-conversion/host/staging-area.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 
 test("the place is hidden, beside the destination, and named for this run", () => {

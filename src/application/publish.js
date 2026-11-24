@@ -65,7 +65,7 @@ function publishPdf(job, staged, destination) {
     const facts = originalFacts(job.publication, staged);
     const paths = { staged, final: destination, intended: destination, original: facts };
     if (!facts.identity || facts.size <= 0) {
-        throw keep(job, paths, { reasons: ["The validated PDF identity could not be measured."], staging: null });
+        return requireOriginal(job.publication, { staged, expected: facts, cause: null });
     }
     const context = { job, paths, facts, area: null, from: staged, claimed: facts, diagnostic: null };
     try { return claimAvailable(context, destination, confirmed, () => job.progress.phase("Saving PDF")); }

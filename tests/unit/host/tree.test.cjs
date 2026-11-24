@@ -12,7 +12,7 @@
 const { nativeAttributes } = require("../ports/fake-attributes.cjs");
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { createTree, kindFrom } = require("../../../src/host/tree.js");
+const { createTree, kindFrom } = require("../../support/macos-conversion/host/tree.js");
 
 function bridgeOf(world = {}, imports = []) {
     const ns = (value) => ({

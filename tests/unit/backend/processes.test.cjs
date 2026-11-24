@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { buildProcessStartArgv, buildProcessListArgv, readProcessList } = require("../../../src/backend/processes.js");
+const { buildProcessStartArgv, buildProcessListArgv, readProcessList } = require("../../support/macos-conversion/backend/processes.js");
 
 test("process probes request PID/start data without interpreting command strings", () => {
     assert.deepEqual(buildProcessStartArgv("ps", 123), ["ps", "-p", "123", "-o", "lstart="]);

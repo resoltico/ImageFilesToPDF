@@ -25,14 +25,17 @@ function fileCandidates(ports, images, rejected) {
     return candidates;
 }
 
-function inspectBatch(ports, batch, completed) {
-    try { return ports.inspect(batch); }
+async function inspectBatch(ports, batch, completed) {
+    try { return await ports.inspect(batch); }
     catch (error) {
         expectedFailure(error);
-        return batch.map((entry, index) => {
+        const results = [];
+        for (const [index, entry] of batch.entries()) {
             ports.checked(completed + index);
-            return ports.inspectOne(entry);
-        });
+            // eslint-disable-next-line no-await-in-loop -- Observe Stop before inspecting each item.
+            results.push(await ports.inspectOne(entry));
+        }
+        return results;
     }
 }
 
@@ -45,7 +48,7 @@ function include(checked, entry, image, rejected) {
 }
 
 /** Content refusals are settled before consent. Capture inspection remains independent. */
-function inspectSelection(ports, selection) {
+async function inspectSelection(ports, selection) {
     if (selection.images.length === 0) { return selection; }
     const rejected = [...selection.rejected];
     const images = [];
@@ -54,7 +57,8 @@ function inspectSelection(ports, selection) {
     let completed = selection.images.length - candidates.length;
     ports.checked(completed);
     for (const batch of ports.batches(candidates)) {
-        const facts = inspectBatch(ports, batch, completed);
+        // eslint-disable-next-line no-await-in-loop -- Complete and account for each batch in order.
+        const facts = await inspectBatch(ports, batch, completed);
         if (facts.length !== batch.length) { throw new Error("Image inspection did not account for every source."); }
         batch.forEach((entry, index) => include(images, entry, facts[index], rejected));
         completed += batch.length;

@@ -8,11 +8,11 @@ const { collectImageFiles } = require("./admission.js");
 const { makeTimestamp } = require("../core/timestamps.js");
 const { createJob, unitsOf, runJob } = require("./job.js");
 
-function prepare(input, options) {
+async function prepare(input, options) {
     const { interaction, operations } = options;
     const { progress } = interaction;
     progress.phase("Checking required tools");
-    const tools = options.checkTools();
+    const tools = await options.checkTools();
     const invocation = interaction.collect(input);
     const capabilities = typeof options.capabilities === "function" ? options.capabilities() : options.capabilities;
     const { tree, sources, publication, storage, destinationNames } = capabilities;
@@ -23,7 +23,7 @@ function prepare(input, options) {
     progress.diagnostics.push(...options.reclaim(storage));
     progress.phase("Finding images");
     const selected = collectImageFiles(operations, invocation.inputItems.map(operations.resolve), tree);
-    const selection = inspectCandidates(operations, selected, { tools, sources, progress });
+    const selection = await inspectCandidates(operations, selected, { tools, sources, progress });
     return { tools, invocation, ...capabilities, selection };
 }
 

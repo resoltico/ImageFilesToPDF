@@ -170,6 +170,24 @@ async function verifyLinkRefusal(folder, photo) {
     assert.ok(!fs.existsSync(path.join(outside, "outside.pdf")));
 }
 
+async function verifyMacPackages(folder, photo) {
+    const selected = path.join(folder, "native packages");
+    fs.mkdirSync(selected);
+    const pixel = path.join(selected, "visible.png");
+    fs.copyFileSync(photo, pixel);
+    for (const name of ["Proj.xcodeproj", "Song.band", "Lib.photoslibrary"]) {
+        const bundle = path.join(selected, name);
+        fs.mkdirSync(bundle);
+        fs.copyFileSync(photo, path.join(bundle, "inner.png"));
+    }
+    const input = selected.replace(/^\/private(?=\/var\/)/u, "");
+    const result = parseReceipt(await cli(["--settings", config(folder), "--", input], folder));
+    assert.deepEqual(result.documents[0].sources, [path.join(input, "visible.png")]);
+    verifyPdf(result.documents[0].output, 1);
+    assert.ok(!fs.existsSync(path.join(selected, "inner.pdf")));
+    process.stdout.write("macOS skipped xcodeproj, band and photoslibrary packages.\n");
+}
+
 async function verifyTransport(folder, photo) {
     const configFile = config(folder);
     const broken = parseReceipt(await cli(["--settings", configFile, photo], folder, 2));
@@ -227,6 +245,13 @@ async function verifyWindowsLongArguments(folder, photo) {
     process.stdout.write("Windows converted a source list exceeding one native command line.\n");
 }
 
+async function verifySelection(folder, photo) {
+    await verifyNamespace(folder, photo);
+    await verifyExtensionCollisions(folder, photo);
+    await verifyLinkRefusal(folder, photo);
+    if (process.platform === "darwin") { await verifyMacPackages(folder, photo); }
+}
+
 async function main() {
     const directory = fs.realpathSync(os.tmpdir());
     using work = fs.mkdtempDisposableSync(path.join(directory, "iftp-native-"));
@@ -241,9 +266,7 @@ async function main() {
     await verifyFormats(work.path, photo);
     if (process.env.IFTP_HEVC_UNAVAILABLE) { await verifyHevcRefusal(work.path); }
     await verifyPngCounts(work.path);
-    await verifyNamespace(work.path, photo);
-    await verifyExtensionCollisions(work.path, photo);
-    await verifyLinkRefusal(work.path, photo);
+    await verifySelection(work.path, photo);
     await verifyModes(work.path, photo);
     await verifyTransport(work.path, photo);
     if (process.env.IFTP_SECOND_VOLUME) { await verifySecondVolume(work.path, photo, process.env.IFTP_SECOND_VOLUME); }

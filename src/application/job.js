@@ -67,26 +67,26 @@ function documentPorts(job) {
             return artifact;
         },
         beginning: (source, index, documentIndex) => job.progress.beginning(documentIndex + index + 1, source.originalName),
-        prepare(source, index) {
+        async prepare(source, index) {
             requireReleasedResources(job);
-            const page = preparePage(job, source, index);
+            const page = await preparePage(job, source, index);
             const { path } = page;
             requireReleasedResources(job);
             const {size} = job.publication.facts(path);
-            if (size < 0) { removeOwned(job, path); throw new OperationError(message("pageSizeUnknown")); }
+            if (size <= 0) { removeOwned(job, path); throw new OperationError(message("pageSizeUnknown")); }
             return { ...page, size, group: page.placement.relativeScale };
         },
         fits: (staged, pages, placement) => job.operations.fits(buildPdfcpuImportArgv(job.tools.pdfcpu, partPdfPath(staged, job.parts.get(staged).length), pages, { geometry: job.geometry, placement, background: job.settings.background })),
         import(staged, pages, placement) {
             job.progress.about("");
             job.progress.phase("Creating PDF");
-            importBatch(job, staged, pages, placement);
+            return importBatch(job, staged, pages, placement);
         },
-        assemble(staged) { job.progress.about(""); assemblePdf(job, staged); },
+        assemble(staged) { job.progress.about(""); return assemblePdf(job, staged); },
         beforeValidation: () => retainCandidate(job),
         validate(staged, expected) {
             requireReleasedResources(job);
-            validatePdf(job, staged, expected);
+            return validatePdf(job, staged, expected);
         },
         publish: (staged, destination) => publishPdf(job, staged, destination),
         remove: (path) => removeOwned(job, path),
@@ -106,12 +106,12 @@ function cleanupJob(job, issues) {
     } catch (error) { issues.push(...issuesOf(error, "cleanup")); }
 }
 
-function runJob(job, imageFiles) {
+async function runJob(job, imageFiles) {
     const issues = [], records = [];
     try {
         const groups = isSeparateMode(job.settings) ? job.destinationNames.groups(imageFiles, job.workspace) : [];
         const plans = documentPlan(job.settings, imageFiles, job.timestamp, { nameGroups: groups, separateName: job.operations.outputName });
-        executeDocuments(documentPorts(job), plans, records);
+        await executeDocuments(documentPorts(job), plans, records);
     }
     catch (error) { issues.push(...issuesOf(error, "execution")); }
     finally { cleanupJob(job, issues); }

@@ -79,6 +79,6 @@ test("backend remains pure and supports the portable application", async () => {
     assert.throws(() => checkBoundary("src/entry.js", 'ObjC.import("Foundation");'));
     assert.doesNotThrow(() => checkBoundary("src/backend/a.js", 'require("../core/settings.js");'));
     assert.doesNotThrow(() => checkBoundary("src/backend/a.js", 'require("./commands.js");'));
-    assert.doesNotThrow(() => checkBoundary("src/host/a.js", 'require("../backend/commands.js");'));
+    assert.throws(() => checkBoundary("src/host/a.js", 'require("../backend/commands.js");'), /forbidden dependency/u);
     assert.doesNotThrow(() => checkBoundary("src/core/a.js", '// Path manipulation\nconst text = "ObjC";'));
 });

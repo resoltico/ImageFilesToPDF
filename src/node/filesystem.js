@@ -15,8 +15,6 @@ const BIGINT = { bigint: true };
 const DECODER = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const BLOCK_SIZE = 1048576;
 const MAC_SYSTEM_ALIASES = new Map([["/tmp", "/private/tmp"], ["/var", "/private/var"]]);
-const MAC_PACKAGES = /\.(?:app|bundle|framework|plugin|photoslibrary|photolibrary|pkg|rtfd|pages|numbers|key)$/iu;
-const MAC_ALIAS_MAGIC = Buffer.from("626f6f6b", "hex");
 const PRIVATE_FILE_MODE = 0o600;
 const NO_INODE = 0n;
 const UNKNOWN_FILE = Object.freeze({ identity: "", size: -1 });
@@ -42,13 +40,23 @@ function pathPrefixes(file) {
     })];
 }
 
-function kindOf(stats, file) {
+function kindOf(stats) {
     if (stats.isSymbolicLink()) { return "link"; }
-    if (stats.isDirectory()) { return platform === "darwin" && MAC_PACKAGES.test(file) ? "package" : "directory"; }
+    if (stats.isDirectory()) { return "directory"; }
     return stats.isFile() ? "file" : "other";
 }
 
-function checkedPath(windows, file, { owned = false } = {}) {
+function macKind(mac, prefixes, leaf, leafKind) {
+    // checkedPath already verifies the two macOS system symlinks by their exact targets.
+    const paths = [...prefixes.filter((part) => !MAC_SYSTEM_ALIASES.has(part)), leaf];
+    const records = mac({ type: "packages", paths });
+    if (!Array.isArray(records) || records.length !== paths.length || records.some((record) =>
+        typeof record?.package !== "boolean" || typeof record?.alias !== "boolean")) { return "unexaminable"; }
+    if (records.some((record) => record.alias)) { return "link"; }
+    return records.some((record) => record.package) ? "package" : leafKind;
+}
+
+function checkedPath(windows, mac, file, { owned = false } = {}) {
     const prefixes = pathPrefixes(standardize(file));
     const leaf = prefixes.pop();
     const attributes = windows ? windows.attributes(leaf) : "ordinary";
@@ -56,9 +64,7 @@ function checkedPath(windows, file, { owned = false } = {}) {
     if (!["ordinary", "hidden"].includes(attributes)) { throw new OperationError(message("nativeFileAttributesUnavailable"), { diagnostic: { attributes } }); }
     for (const part of prefixes) {
         const stats = fs.lstatSync(part, BIGINT);
-        if (stats.isDirectory()) {
-            if (!owned && platform === "darwin" && MAC_PACKAGES.test(part)) { return { kind: "package" }; }
-        } else {
+        if (!stats.isDirectory()) {
             const macAlias = platform === "darwin" && MAC_SYSTEM_ALIASES.get(part);
             if (!macAlias || !stats.isSymbolicLink() || fs.realpathSync.native(part) !== macAlias) {
                 return { kind: stats.isSymbolicLink() ? "link" : "unexaminable" };
@@ -66,7 +72,9 @@ function checkedPath(windows, file, { owned = false } = {}) {
         }
     }
     const stats = fs.lstatSync(leaf, BIGINT);
-    return { stats, kind: kindOf(stats, leaf), hidden: attributes === "hidden", identity: identity(stats) };
+    const observed = kindOf(stats);
+    const kind = mac && !owned && ["file", "directory"].includes(observed) ? macKind(mac, prefixes, leaf, observed) : observed;
+    return { stats, kind, hidden: attributes === "hidden", identity: identity(stats) };
 }
 
 function changedSource(file) {
@@ -114,8 +122,8 @@ function readPng(fd, size) {
     }, size);
 }
 
-function localFilesystem(windows) {
-    const checked = (file, options) => checkedPath(windows, file, options);
+function localFilesystem(windows, mac) {
+    const checked = (file, options) => checkedPath(windows, mac, file, options);
     function inspect(file) {
         try {
             const found = checked(file);
@@ -152,11 +160,6 @@ function localFilesystem(windows) {
         try {
             const opened = fileFacts(fs.fstatSync(fd, BIGINT));
             if (!sameFile(before, opened) || !sameFile(opened, facts(file))) { throw changedSource(file); }
-            if (platform === "darwin") {
-                const head = Buffer.alloc(MAC_ALIAS_MAGIC.length);
-                fs.readSync(fd, head, 0, head.length, 0);
-                if (head.equals(MAC_ALIAS_MAGIC)) { throw new OperationError(message("finderAliasUnresolved")); }
-            }
             const result = use(fd, opened);
             if (!sameFile(opened, fileFacts(fs.fstatSync(fd, BIGINT))) || !sameFile(opened, facts(file))) { throw changedSource(file); }
             return result;

@@ -4,7 +4,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { openProgress } = require("../../../src/host/quick-action/surfaces.js");
+const { openProgress } = require("../../support/macos-conversion/host/quick-action/surfaces.js");
 
 function reportsNowhere(progress) {
     // A reporter with no surfaces: every verb is accepted and nothing can

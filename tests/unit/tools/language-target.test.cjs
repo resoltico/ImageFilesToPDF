@@ -16,7 +16,7 @@ test("code within the target passes", async () => {
 
     assert.equal(
         checkFeatures("const a = records.slice().sort();\nObject.hasOwn(x, 'y');"),
-        "ES2022, macOS 12.3+",
+        "ES2022, macOS 13.5+",
         "and says what it held the code to"
     );
 });
@@ -49,7 +49,7 @@ test("built-ins newer than the floor are rejected", async () => {
     for (const token of late) {
         assert.throws(
             () => checkFeatures(`const x = a${token}b);`),
-            /newer than macOS/u,
+            /JavaScriptCore target/u,
             `${token} must be rejected`
         );
     }
@@ -62,7 +62,7 @@ test("ES2022 syntax that postdates the floor is rejected", async () => {
 
     assert.throws(
         () => checkFeatures("class A { static { this.x = 1; } }"),
-        /newer than macOS/u
+        /JavaScriptCore target/u
     );
 });
 
@@ -122,10 +122,10 @@ test("the artifact is what is checked, not the sources it came from", async () =
 
     assert.equal(
         await checkLanguageTarget(() => Promise.resolve("const a = 1;\n")),
-        "ES2022, macOS 12.3+"
+        "ES2022, macOS 13.5+"
     );
     await assert.rejects(
         () => checkLanguageTarget(() => Promise.resolve("a.toSorted();\n")),
-        /uses features newer than macOS/u
+        /JavaScriptCore target/u
     );
 });

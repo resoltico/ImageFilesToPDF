@@ -30,5 +30,6 @@ async function main() {
 if (isMainThread) {
     main().then((code) => { process.exitCode = code; }, () => { process.exitCode = 1; });
 } else {
-    parentPort.postMessage({ outcome: convert(workerData.invocation, workerCommands(parentPort, workerData)) });
+    convert(workerData.invocation, workerCommands(parentPort, workerData))
+        .then((outcome) => parentPort.postMessage({ outcome }), (error) => { throw error; });
 }

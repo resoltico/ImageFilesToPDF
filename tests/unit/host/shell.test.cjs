@@ -5,7 +5,7 @@ const test = require("node:test");
 const {
     runArgv,
     removeFile
-} = require("../../../src/host/shell.js");
+} = require("../../support/macos-conversion/host/shell.js");
 const { createFakeApp, failing } = require("../ports/fake-app.cjs");
 
 test("runArgv quotes every argument before running it", () => {
@@ -87,7 +87,7 @@ test("technical diagnostics retain a full long argv outside the main explanation
 });
 
 test("header commands fix diagnostic language and retain argv quoting and budgeting", () => {
-    const { runHeaderArgv, HEADER_ARGV_BUDGET } = require("../../../src/host/shell.js");
+    const { runHeaderArgv, HEADER_ARGV_BUDGET } = require("../../support/macos-conversion/host/shell.js");
     const app = createFakeApp();
     runHeaderArgv(app, ["/v/vipsheader", "-a", "/a quote' and space.png"], "checking images");
     assert.equal(app.commands[0], "export LC_ALL=C; '/v/vipsheader' '-a' '/a quote'\\'' and space.png'");
@@ -96,14 +96,14 @@ test("header commands fix diagnostic language and retain argv quoting and budget
 });
 
 test("capability probes use the same fixed locale and preserve quoted argv", () => {
-    const { probeArgv } = require("../../../src/host/shell.js");
+    const { probeArgv } = require("../../support/macos-conversion/host/shell.js");
     const app = createFakeApp();
     probeArgv(app, ["/v/vips", "a'b"]);
     assert.equal(app.commands[0], "export LC_ALL=C; '/v/vips' 'a'\\''b' 2>&1 || true");
 });
 
 test("built-in image probes use one owned file and cleanup an empty private directory", () => {
-    const { probeImageArgv } = require("../../../src/host/shell.js");
+    const { probeImageArgv } = require("../../support/macos-conversion/host/shell.js");
     const app = createFakeApp([["image-tool-probe", "1"]]);
     assert.equal(probeImageArgv(app, ["/tool path/vipsheader", "-f", "width"], "\\0211"), "1");
     assert.match(app.commands[0], /^export LC_ALL=C; /u);

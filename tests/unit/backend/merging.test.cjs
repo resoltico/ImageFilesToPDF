@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { commandLengthOf } = require("../../../src/backend/batching.js");
+const { commandLengthOf } = require("../../support/macos-conversion/backend/batching.js");
 const { mergeGroups: groupMerge } = require("../../../src/backend/merging.js");
 const { buildPdfcpuMergeArgv } = require("../../../src/backend/pdfcpu.js");
 

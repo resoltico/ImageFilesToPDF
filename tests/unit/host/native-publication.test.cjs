@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { nativePublication, classify } = require("../../../src/host/native-publication.js");
+const { nativePublication, classify } = require("../../support/macos-conversion/host/native-publication.js");
 const { fakeDirectory } = require("../ports/fake-directory.cjs");
 const { nativeAttributes } = require("../ports/fake-attributes.cjs");
 

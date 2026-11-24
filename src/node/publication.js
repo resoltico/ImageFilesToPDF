@@ -85,7 +85,9 @@ function nameGroups(files, sources) {
     return groups;
 }
 
-function destinationOperations(files) {
+const MAC_RENAME_ERRORS = { 1: "denied", 13: "denied", 18: "cross-device", 30: "denied", 45: "unsupported", 78: "unsupported" };
+
+function destinationOperations(files, mac) {
     const parents = new Map();
     function link(from, to) {
         parents.delete(to);
@@ -99,6 +101,22 @@ function destinationOperations(files) {
             if (state === "exists" && !fs.lstatSync(to, { throwIfNoEntry: false })) { state = "unknown"; }
             return { state, diagnostic: { code: error.code, message: error.message } };
         }
+    }
+
+    function rename(from, to) {
+        const directory = files.directoryIdentity(dirname(to));
+        const original = facts(from);
+        const reported = mac({ type: "renameExclusive", from, to });
+        const remaining = facts(from);
+        const target = facts(to);
+        if (!remaining.identity && same(target, original)) {
+            parents.set(to, directory);
+            return { state: "created" };
+        }
+        if (!same(remaining, original)) { return { state: "unknown", diagnostic: reported }; }
+        if (fs.lstatSync(to, { throwIfNoEntry: false })) { return { state: "exists" }; }
+        const state = reported?.status === -1 ? MAC_RENAME_ERRORS[reported.errno] ?? "unknown" : "unknown";
+        return { state, diagnostic: reported };
     }
 
     function actualPath(file, expected) {
@@ -141,7 +159,7 @@ function destinationOperations(files) {
     }
 
     return {
-        publication: { facts, link, actualPath },
+        publication: { facts, link, actualPath, ...(mac ? { rename } : {}) },
         operations: { stagingArea, openStaging, closeStaging,
             copyBeside: (from, to) => fs.copyFileSync(from, to, fs.constants.COPYFILE_EXCL) },
         destinationNames: { groups: (sources) => nameGroups(files, sources) }

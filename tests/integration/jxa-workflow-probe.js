@@ -1,5 +1,5 @@
 "use strict";
-const { execute, application } = require("../../src/host/main.js");
+const { execute, application } = require("../support/macos-conversion/host/main.js");
 const { createProgress } = require("../../src/application/progress.js");
 const { failedRun, noImagesOutcome } = require("../../src/core/outcomes.js");
 const { normalizeSettings } = require("../../src/core/settings.js");

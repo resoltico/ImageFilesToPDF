@@ -27,29 +27,31 @@ function pngFacts(sources, path, facts) {
     catch (error) { return { ...facts, ...failedInspection(error), problem: "damaged" }; }
 }
 
-function optionalField(app, tool, path, field) {
-    try { return app.run(buildFieldArgv(tool, field, [path]), "checking optional image metadata"); }
+async function optionalField(app, tool, path, field) {
+    try { return await app.run(buildFieldArgv(tool, field, [path]), "checking optional image metadata"); }
     catch (error) {
         if (fieldAbsent(diagnosticText(error), field)) { return undefined; }
         throw error;
     }
 }
 
-function scalarFacts(app, tool, path) {
+async function scalarFacts(app, tool, path) {
     const fields = {};
     for (const field of REQUIRED_FIELDS) {
-        fields[field] = app.run(buildFieldArgv(tool, field, [path]), "checking image metadata").trim();
+        // eslint-disable-next-line no-await-in-loop -- Native inspection completes in field order.
+        fields[field] = (await app.run(buildFieldArgv(tool, field, [path]), "checking image metadata")).trim();
     }
     for (const field of OPTIONAL_FIELDS) {
-        const value = optionalField(app, tool, path, field);
+        // eslint-disable-next-line no-await-in-loop -- Each optional fact can fail independently.
+        const value = await optionalField(app, tool, path, field);
         if (value !== undefined) { fields[field] = value; }
     }
     return finishMetadata(rawMetadata(fields));
 }
 
-function parsedHeader(app, tool, path) {
+async function parsedHeader(app, tool, path) {
     try {
-        const text = app.run(buildHeaderArgv(tool, [path]), "checking the image header");
+        const text = await app.run(buildHeaderArgv(tool, [path]), "checking the image header");
         return readMetadata(text, path);
     } catch (error) {
         expectedHeaderFailure(error);
@@ -58,25 +60,30 @@ function parsedHeader(app, tool, path) {
 }
 
 /** Optional fields in a printable dump may be forged by multiline comments. */
-function confirmedOne(app, tool, path, parsed) {
+async function confirmedOne(app, tool, path, parsed) {
     if (!parsed) { return scalarFacts(app, tool, path); }
     let { raw } = parsed;
-    for (const field of parsed.optional) { raw = optionalValue(raw, field, optionalField(app, tool, path, field)); }
+    for (const field of parsed.optional) {
+        // eslint-disable-next-line no-await-in-loop -- Complete this image's metadata before admitting it.
+        raw = optionalValue(raw, field, await optionalField(app, tool, path, field));
+    }
     return finishMetadata(raw);
 }
 
-function readOne(app, tools, sources, path) {
+async function readOne(app, tools, sources, path) {
     try {
-        return pngFacts(sources, path, confirmedOne(app, tools.vipsheader, path, parsedHeader(app, tools.vipsheader, path)));
+        const parsed = await parsedHeader(app, tools.vipsheader, path);
+        return pngFacts(sources, path, await confirmedOne(app, tools.vipsheader, path, parsed));
     } catch (error) { return failedInspection(error); }
 }
 
-function confirmBatch(app, tool, paths, parsed) {
+async function confirmBatch(app, tool, paths, parsed) {
     const raw = parsed.map((entry) => entry.raw);
     for (const field of OPTIONAL_FIELDS) {
         const indices = parsed.flatMap((entry, index) => entry.optional.includes(field) ? [index] : []);
         if (indices.length > 0) {
-            const text = app.run(buildFieldArgv(tool, field, indices.map((index) => paths[index])), "checking optional image metadata");
+            // eslint-disable-next-line no-await-in-loop -- Scalar probes update distinct metadata fields in order.
+            const text = await app.run(buildFieldArgv(tool, field, indices.map((index) => paths[index])), "checking optional image metadata");
             const values = scalarValues(text, indices.length);
             indices.forEach((index, position) => { raw[index] = optionalValue(raw[index], field, values[position]); });
         }
@@ -84,11 +91,11 @@ function confirmBatch(app, tool, paths, parsed) {
     return raw.map(finishMetadata);
 }
 
-function inspectBatch(app, tools, sources, entries) {
+async function inspectBatch(app, tools, sources, entries) {
     const paths = entries.map((entry) => entry.source.path);
-    const text = app.run(buildHeaderArgv(tools.vipsheader, paths), "checking image headers");
+    const text = await app.run(buildHeaderArgv(tools.vipsheader, paths), "checking image headers");
     const parsed = paths.length === 1 ? [readMetadata(text, paths[0])] : readMetadataBatch(text, paths);
-    return confirmBatch(app, tools.vipsheader, paths, parsed).map((image, index) => pngFacts(sources, paths[index], image));
+    return (await confirmBatch(app, tools.vipsheader, paths, parsed)).map((image, index) => pngFacts(sources, paths[index], image));
 }
 
 function batchesFor(app, tools, candidates) {
@@ -116,8 +123,8 @@ function inspectCandidates(app, selection, context) {
 }
 
 /** The owned copy is always re-inspected, independently of admission. */
-function inspectCaptured(job, owned, original) {
-    const facts = readOne(job.operations, job.tools, job.sources, owned.path);
+async function inspectCaptured(job, owned, original) {
+    const facts = await readOne(job.operations, job.tools, job.sources, owned.path);
     const issues = sourceIssues(facts);
     if (issues.length > 0) {
         const issue = { ...issues[0], source: original };

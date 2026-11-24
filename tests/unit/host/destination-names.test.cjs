@@ -1,7 +1,7 @@
 "use strict";
 const assert=require("node:assert/strict");
 const test=require("node:test");
-const {nativeDestinationNames}=require("../../../src/host/destination-names.js");
+const {nativeDestinationNames}=require("../../support/macos-conversion/host/destination-names.js");
 const {createFakeHost}=require("../ports/fake-host.cjs");
 const {installPlatform}=require("../ports/fake-platform.cjs");
 

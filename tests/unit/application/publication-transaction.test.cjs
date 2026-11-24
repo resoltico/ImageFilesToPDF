@@ -218,7 +218,7 @@ test("diagnostic assembly faults after confirmation preserve the actual publishe
     const {job,app}=fixture();job.cleanupIssues.slice=()=>{throw new TypeError("post-confirmation diagnostics fault");};
     const result=publishPdf(job,staged,target);
     assert.equal(result.path,target);assert.equal(result.state,"saved");assert.ok(app.files.has(target));
-    assert.equal(result.issues[0].message,"post-confirmation diagnostics fault");assert.ok(!app.files.has(staged));
+    assert.equal(result.issues[0].message,"post-confirmation diagnostics fault");assert.equal(result.issues[0].stage,"cleanup");assert.ok(!app.files.has(staged));
 });
 
 test("a later staging failure reports its current cause instead of an earlier collision", () => {

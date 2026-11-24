@@ -1,7 +1,7 @@
 import { build } from "esbuild";
 import path from "node:path";
 
-// Safari 15.4 is the JavaScriptCore shipped by the supported macOS 12.3 floor.
+// Keep the Finder client compatible with Safari 15.4 JavaScriptCore.
 // Built-in availability is checked separately; this target supplies no polyfills.
 export const BUNDLE_OPTIONS = {
     bundle: true,
@@ -16,10 +16,11 @@ export const BUNDLE_OPTIONS = {
     metafile: true
 };
 
-export async function scopedBundle(entry, base) {
+export async function scopedBundle(entry, base, define = {}) {
     const result = await build({
         ...BUNDLE_OPTIONS,
         absWorkingDir: base,
+        define,
         entryPoints: [entry]
     });
     const outputs = Object.values(result.metafile.outputs);

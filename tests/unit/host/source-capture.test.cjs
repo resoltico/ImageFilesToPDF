@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { sourceAccess } = require("../../../src/host/source-capture.js");
+const { sourceAccess } = require("../../support/macos-conversion/host/source-capture.js");
 
 function fixture(overrides = {}) {
     const events = [];

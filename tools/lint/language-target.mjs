@@ -7,8 +7,8 @@ import { ECMASCRIPT_TARGET, MINIMUM_MACOS, renderRelease } from "../release.mjs"
  * so nothing in a parser will flag it. It fails at runtime, on the user's Mac,
  * with a TypeError.
  *
- * The floor is macOS 12.3, whose JavaScriptCore corresponds to Safari 15.4.
- * Everything below is what landed after that. Each entry names the first
+ * The Finder client uses a Safari 15.4 compatibility target. The separate
+ * Node runtime determines the minimum supported macOS version. Each entry names the first
  * JavaScriptCore release that has it.
  *
  * No ECMAScript year maps exactly onto a Safari release: ES2022 as a whole is
@@ -51,7 +51,7 @@ export function checkFeatures(release) {
             .join("\n");
 
         throw new Error(
-            `released artifact uses features newer than macOS ` +
+            `released artifact exceeds its JavaScriptCore target on macOS ` +
             `${MINIMUM_MACOS} (ES${ECMASCRIPT_TARGET}):\n${detail}`
         );
     }

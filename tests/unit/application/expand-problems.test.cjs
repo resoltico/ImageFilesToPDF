@@ -91,3 +91,24 @@ test("all unknown file identities are refused without claiming known-empty",()=>
     const result=imagesInFolder(tree,"/t",new Set());
     assert.deepEqual(result,{found:[],code:"",problems:[{path:"/t/first.png",code:"unexaminable"},{path:"/t/second.png",code:"unexaminable"}]});
 });
+
+test("a directory's listing attributes distinguish unexamined entries from hidden, linked and package entries", () => {
+    const kinds = {
+        "/t/denied.png": { kind: "unreadable" },
+        "/t/unknown.png": { kind: "unexaminable" },
+        "/t/hidden.png": { kind: "file", identity: "hidden-id", hidden: true },
+        "/t/project": { kind: "package" },
+        "/t/link": { kind: "link" }
+    };
+    const tree = {
+        entries: () => Object.keys(kinds).map((name) => name.slice(3)),
+        inspect: (file) => kinds[file],
+        standardize: (value) => value
+    };
+    assert.deepEqual(imagesInFolder(tree, "/t", new Set()), {
+        found: [], code: "", problems: [
+            { path: "/t/denied.png", code: "unreadable" },
+            { path: "/t/unknown.png", code: "unexaminable" }
+        ]
+    });
+});

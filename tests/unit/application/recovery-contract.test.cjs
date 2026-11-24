@@ -107,3 +107,23 @@ test("a lost stored-name acknowledgement preserves secondary cleanup issues and 
         return true;
     });
 });
+
+test("a Downloads lookup fault leaves a verified original and a run-specific recovery diagnostic", () => {
+    const { job, paths, artifact } = recoveryPort();
+    const lookup = new TypeError("Downloads lookup failed.");
+    Object.defineProperty(job.storage, "downloads", { get() { throw lookup; } });
+    const failure = keep(job, paths, { reasons: ["Destination denied."] });
+    assert.equal(artifact.state, "validated");
+    assert.equal(failure.recovery, staged);
+    assert.deepEqual(failure.issues.map(({ code, stage }) => [code, stage]), [["publication", "publication"], ["fault", "recovery"]]);
+    assert.deepEqual(failure.issues[1].diagnostic, { message: "Downloads lookup failed.", path: undefined, detail: undefined });
+});
+
+test("a failed recovery marker release leaves the verified Downloads PDF and reports the cleanup stage", () => {
+    const { job, paths, files } = recoveryPort();
+    job.storage.remove = () => { throw new Error("Marker removal was denied."); };
+    const failure = keep(job, paths, { reasons: ["Destination denied."] });
+    assert.equal(failure.recovery, download);
+    assert.deepEqual(files.get(download), original);
+    assert.deepEqual(failure.issues.map(({ code, stage }) => [code, stage]), [["publication", "publication"], ["cleanup", "cleanup"]]);
+});

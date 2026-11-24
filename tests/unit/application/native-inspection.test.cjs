@@ -39,10 +39,10 @@ function fixture(paths, options = {}) {
             return options.read(argv[1], argv.slice(2));
         }
     };
-    return { commands, events, counts, inspect: () => inspectCandidates(operations, selection, { tools, sources, progress }), operations, sources };
+    return { commands, events, counts, inspect: async () => (await inspectCandidates(operations, selection, { tools, sources, progress })), operations, sources };
 }
 
-test("headers confirm just the reported optional fields in their original order across bounded batches", () => {
+test("headers confirm just the reported optional fields in their original order across bounded batches", async () => {
     const initial = { [jpeg]: { orientation: "1" }, [png]: { orientation: "1", "n-pages": "1", "icc-profile-data": "tag" } };
     const { commands, events, counts, inspect } = fixture([jpeg, png, another], {
         fits: (argv) => argv.length <= (argv.includes("-a") ? 4 : 5),
@@ -51,7 +51,7 @@ test("headers confirm just the reported optional fields in their original order 
             return { orientation: "6\n8\n", "n-pages": "1\n", "icc-profile-data": "profile\n" }[args[0]];
         }
     });
-    const result = inspect();
+    const result = await inspect();
     assert.deepEqual(result.images.map(({ path, admission }) => [path, admission.image.orientation, admission.image.icc]), [
         [jpeg, 6, false], [png, 8, true], [another, 1, false]
     ]);
@@ -71,7 +71,7 @@ test("headers confirm just the reported optional fields in their original order 
     ]);
 });
 
-test("malformed combined dumps fall back to labeled and trimmed scalar calls", () => {
+test("malformed combined dumps fall back to labeled and trimmed scalar calls", async () => {
     const { inspect, commands } = fixture([jpeg], {
         read(flag, args) {
             if (flag === "-a") { throw new OperationError("Ambiguous metadata"); }
@@ -80,7 +80,7 @@ test("malformed combined dumps fall back to labeled and trimmed scalar calls", (
             throw new OperationError(`vips_image_get: field "${args[0]}" not found`);
         }
     });
-    const result = inspect();
+    const result = await inspect();
     assert.equal(result.images[0].admission.image.orientation, 6);
     assert.equal(result.images[0].admission.image.format, "JPEG");
     assert.deepEqual(commands, [
@@ -91,20 +91,20 @@ test("malformed combined dumps fall back to labeled and trimmed scalar calls", (
     ]);
 });
 
-test("header faults and content refusals retain their types, command and diagnostics", () => {
+test("header faults and content refusals retain their types, command and diagnostics", async () => {
     const cause = new OperationError("Decoder diagnostic", {
         command: "native header output", issues: [{ code: "damaged", message: "bad header", diagnostic: { detail: "truncated data" } }]
     });
     const bad = fixture([jpeg], { read() { throw cause; } });
-    const result = bad.inspect();
+    const result = await bad.inspect();
     assert.deepEqual(result.rejected[0], {
         path: jpeg, name: "one.jpg", code: "damaged", stage: "inspection", reason: "This image is damaged or incomplete.",
         diagnostic: { detail: "truncated data", message: "Decoder diagnostic", command: "native header output" }
     });
-    assert.throws(() => inspectCaptured({ operations: bad.operations, tools, sources: bad.sources }, { path: jpeg }, "/selected.jpg"),
+    await assert.rejects(() => inspectCaptured({ operations: bad.operations, tools, sources: bad.sources }, { path: jpeg }, "/selected.jpg"),
         (error) => error.message === "/selected.jpg: This image is damaged or incomplete." && error.issues[0].source === "/selected.jpg");
 
     const fault = new TypeError("unexpected port failure");
     const broken = fixture([jpeg], { read() { throw fault; } });
-    assert.throws(() => inspectCaptured({ operations: broken.operations, tools, sources: broken.sources }, { path: jpeg }, jpeg), (error) => error === fault);
+    await assert.rejects(() => inspectCaptured({ operations: broken.operations, tools, sources: broken.sources }, { path: jpeg }, jpeg), (error) => error === fault);
 });

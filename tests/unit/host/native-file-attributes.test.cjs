@@ -1,8 +1,8 @@
 "use strict";
 const test=require("node:test");
 const assert=require("node:assert/strict");
-const {nativePublication}=require("../../../src/host/native-publication.js");
-const {identityOf,attributesAt}=require("../../../src/host/native-file-attributes.js");
+const {nativePublication}=require("../../support/macos-conversion/host/native-publication.js");
+const {identityOf,attributesAt}=require("../../support/macos-conversion/host/native-file-attributes.js");
 const {nativeAttributes}=require("../ports/fake-attributes.cjs");
 
 function fixture(values) {
@@ -46,7 +46,7 @@ test("an empty regular file remains a known measurement rather than an unknown e
 });
 
 test("absence needs a positive native error and permission failures remain unreadable", () => {
-    const { attributeFailureKind } = require("../../../src/host/native-file-attributes.js");
+    const { attributeFailureKind } = require("../../support/macos-conversion/host/native-file-attributes.js");
     const objc = { unwrap: (value) => value };
     const ns = { NSUnderlyingErrorKey: "underlying" };
     const nil = { isNil: () => true };
