@@ -271,8 +271,10 @@ test("a capture close failure prevents publication and preserves the primary pre
 test("unstarted capture slots cannot prevent later acquired sources from being released", async () => {
     const closed = [];
     const sample = fixture(2, { parallelism: 2, ports: {
-        beginning(source, index) { if (index === 0) { throw new UserCanceled(); } },
-        capture(source) { return { ready: Promise.resolve(source), close: () => closed.push(source.path) }; }
+        capture(source, index) {
+            if (index === 0) { throw new UserCanceled(); }
+            return { ready: Promise.resolve(source), close: () => closed.push(source.path) };
+        }
     } });
     const [record] = await executeDocuments(sample.ports, sample.plans);
     assert.equal(record.state, "canceled");

@@ -35,6 +35,22 @@ function uncatalogedMessages(source) {
         .map((node) => source.slice(node.start, node.end));
 }
 
+function progressArgument(node) {
+    if (node.type !== "CallExpression" || node.callee.type !== "MemberExpression") { return undefined; }
+    const receiver = node.callee.object;
+    if (receiver.name !== "progress" && receiver.property?.name !== "progress") { return undefined; }
+    const method = node.callee.property.name;
+    if (method === "checking") { return node.arguments[2]; }
+    return ["phase", "finished"].includes(method) ? node.arguments[0] : undefined;
+}
+
+function uncatalogedProgress(source) {
+    const nodes = [...syntaxNodes(parseScript(source, "latest"))];
+    const bindings = nodes.filter((node) => node.type === "VariableDeclarator");
+    return nodes.map(progressArgument).filter((argument) => argument && !usesCatalog(argument, bindings))
+        .map((argument) => source.slice(argument.start, argument.end));
+}
+
 test("operation and issue errors use core wording or forward an existing issue", async () => {
     const root = join(__dirname, "../..");
     const messages = await Promise.all((await sourceFiles()).map(async (file) =>
@@ -47,4 +63,19 @@ test("uncataloged literals, template literals and prebuilt wording are rejected"
     assert.equal(uncatalogedMessages(`throw new IssueError(\`Missing \${path}.\`);`).length, 1);
     assert.equal(uncatalogedMessages('const text = "Inline."; throw new IssueError(text);').length, 1);
     assert.deepEqual(uncatalogedMessages('const text = message("sourceDamaged"); throw new IssueError(text);'), []);
+});
+
+test("application progress announcements use catalog wording", async () => {
+    const root = join(__dirname, "../..");
+    const files = (await sourceFiles()).filter((file) => file.startsWith("src/application/"));
+    const invalid = await Promise.all(files.map(async (file) =>
+        uncatalogedProgress(await readFile(join(root, file), "utf8")).map((source) => ({ file, source }))));
+    assert.deepEqual(invalid.flat(), []);
+});
+
+test("progress controls detect inline, assembled and indirectly supplied wording", () => {
+    assert.equal(uncatalogedProgress('progress.phase("Finding images");').length, 1);
+    assert.equal(uncatalogedProgress('job.progress.finished("Saved " + label);').length, 1);
+    assert.equal(uncatalogedProgress('const title = "Checking"; progress.checking(0, 3, title);').length, 1);
+    assert.deepEqual(uncatalogedProgress('progress.phase(message("progressFindingImages")); progress.checking(0, 3);'), []);
 });

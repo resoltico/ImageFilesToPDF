@@ -1,5 +1,6 @@
 "use strict";
 
+const { message } = require("../core/messages.js");
 const { isUserCanceled, UserCanceled } = require("../core/errors.js");
 
 /*
@@ -56,30 +57,22 @@ function announce(state, say, requiredStop) {
 }
 
 function reporting(state, say, requiredStop) {
-    const headline = (text) => {
+    const headline = (text, detail = "") => {
         state.description = text;
+        state.detail = detail;
         announce(state, say, requiredStop);
     };
 
     return {
-        checking(done, images, description = "Checking images") {
+        checking(done, images, description = message("progressCheckingImages")) {
             state.done = done;
-            state.detail = `${done} of ${images}`;
-            headline(description);
+            headline(description, message("progressCount", { done, total: images }));
         },
         beginning(index, originalName) {
             // A name is a line of the description, so it is kept to one.
             const name = String(originalName).replace(/\s+/gu, " ");
 
-            state.detail = `${index} of ${state.images} — ${name}`;
-            headline("Preparing");
-        },
-
-        // The detail line, replaced by something that is not a file: the
-        // last stages of a combined run are about the PDF.
-        about(summary) {
-            state.detail = summary;
-            announce(state, say, requiredStop);
+            headline(message("progressPreparing"), message("progressImage", { index, total: state.images, name }));
         },
 
         phase: headline,
@@ -89,6 +82,7 @@ function reporting(state, say, requiredStop) {
         finished(text) {
             state.done += 1;
             state.description = text;
+            state.detail = "";
             say();
         }
     };

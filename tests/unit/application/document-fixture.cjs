@@ -10,6 +10,7 @@ function fixture(count = 1, options = {}) {
     const sources = Array.from({ length: count }, (ignored, index) => ({ path: `/source/${index}.png`, originalName: `${index}.png`, folder: "/out/" }));
     const ports = {
         allocate: (index) => registerArtifact(artifacts, `/work/${index}.pdf`),
+        capturing: () => undefined,
         beginning: (source) => { events.push(["begin", source.path]); },
         parallelism: options.parallelism ?? 1,
         capture: () => ({ ready: Promise.resolve(null), close: () => undefined }),

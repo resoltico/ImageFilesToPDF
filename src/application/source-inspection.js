@@ -28,7 +28,7 @@ async function pngFacts(sources, path, facts) {
 }
 
 async function optionalField(app, tool, path, field) {
-    try { return await app.run(buildFieldArgv(tool, field, [path]), "checking optional image metadata"); }
+    try { return await app.run(buildFieldArgv(tool, field, [path]), message("operationCheckingOptionalMetadata")); }
     catch (error) {
         if (fieldAbsent(diagnosticText(error), field)) { return undefined; }
         throw error;
@@ -39,7 +39,7 @@ async function scalarFacts(app, tool, path) {
     const fields = {};
     for (const field of REQUIRED_FIELDS) {
         // eslint-disable-next-line no-await-in-loop -- Native inspection completes in field order.
-        fields[field] = (await app.run(buildFieldArgv(tool, field, [path]), "checking image metadata")).trim();
+        fields[field] = (await app.run(buildFieldArgv(tool, field, [path]), message("operationCheckingMetadata"))).trim();
     }
     for (const field of OPTIONAL_FIELDS) {
         // eslint-disable-next-line no-await-in-loop -- Each optional fact can fail independently.
@@ -51,7 +51,7 @@ async function scalarFacts(app, tool, path) {
 
 async function parsedHeader(app, tool, path) {
     try {
-        const text = await app.run(buildHeaderArgv(tool, [path]), "checking the image header");
+        const text = await app.run(buildHeaderArgv(tool, [path]), message("operationCheckingHeader"));
         return readMetadata(text, path);
     } catch (error) {
         expectedHeaderFailure(error);
@@ -84,7 +84,7 @@ async function confirmBatch(app, tool, paths, parsed) {
         const indices = parsed.flatMap((entry, index) => entry.optional.includes(field) ? [index] : []);
         if (indices.length > 0) {
             // eslint-disable-next-line no-await-in-loop -- Scalar probes update distinct metadata fields in order.
-            const text = await app.run(buildFieldArgv(tool, field, indices.map((index) => paths[index])), "checking optional image metadata");
+            const text = await app.run(buildFieldArgv(tool, field, indices.map((index) => paths[index])), message("operationCheckingOptionalMetadata"));
             const values = scalarValues(text, indices.length);
             indices.forEach((index, position) => { raw[index] = optionalValue(raw[index], field, values[position]); });
         }
@@ -94,7 +94,7 @@ async function confirmBatch(app, tool, paths, parsed) {
 
 async function inspectBatch(app, tools, sources, entries) {
     const paths = entries.map((entry) => app.toolPath(entry.source.path));
-    const text = await app.run(buildHeaderArgv(tools.vipsheader, paths), "checking image headers");
+    const text = await app.run(buildHeaderArgv(tools.vipsheader, paths), message("operationCheckingHeaders"));
     const parsed = paths.length === 1 ? [readMetadata(text, paths[0])] : readMetadataBatch(text, paths);
     const confirmed = await confirmBatch(app, tools.vipsheader, paths, parsed);
     const facts = [];
@@ -120,7 +120,7 @@ function inspectCandidates(app, selection, context) {
     const total = selection.images.length;
     return inspectSelection({
         begin: (count) => progress.expect({ units: count, images: count }),
-        accessed: (done, count) => progress.checking(done, count, "Checking image access"),
+        accessed: (done, count) => progress.checking(done, count, message("progressCheckingAccess")),
         checked: (done) => progress.checking(done, total),
         fileFacts: async (entry) => ({ ...await sources.facts(entry.path), readable: await sources.readable(entry.path) }),
         batches: (candidates) => batchesFor(app, tools, candidates),

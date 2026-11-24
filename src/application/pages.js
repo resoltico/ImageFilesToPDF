@@ -16,11 +16,11 @@ async function normalizeImage(job, captured, source, page) {
     const { toolPath } = job.operations;
     try {
         await job.operations.run(buildThumbnailArgv(job.tools.vips, toolPath(captured.path), toolPath(intermediate ? prepared : path),
-            { placement, source, intermediate, background: job.settings.background, quality: job.settings.quality }), "normalizing the image");
+            { placement, source, intermediate, background: job.settings.background, quality: job.settings.quality }), message("operationNormalizingImage"));
         if (intermediate) {
-            await job.operations.run(buildFlattenArgv(job.tools.vips, toolPath(prepared), toolPath(path), job.settings.background), "flattening transparency");
+            await job.operations.run(buildFlattenArgv(job.tools.vips, toolPath(prepared), toolPath(path), job.settings.background), message("operationFlattening"));
         }
-        job.operations.verifyFile(path, "prepared image");
+        job.operations.verifyFile(path, message("artifactPreparedImage"));
     } finally { if (intermediate) { removeOwned(job, prepared); } }
 }
 
@@ -40,7 +40,7 @@ function requireAdmission(imageFile, captured) {
 
 async function checkDecode(job, captured, pass) {
     if (!pass) { return; }
-    await job.operations.run(buildDecodeArgv(job.tools.vips, job.operations.toolPath(captured.path)), "checking image data");
+    await job.operations.run(buildDecodeArgv(job.tools.vips, job.operations.toolPath(captured.path)), message("operationCheckingImageData"));
 }
 
 function preparationFailure(error, imageFile) {

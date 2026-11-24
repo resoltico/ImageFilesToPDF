@@ -64,7 +64,7 @@ async function downloadsRecovery(job, paths) {
 }
 
 async function keep(job, paths, outcome) {
-    if (typeof paths.intended !== "string") { throw new Error("Publication intent is required for recovery."); }
+    if (typeof paths.intended !== "string") { throw new Error(message("publicationIntentMissing")); }
     requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: null });
     const cleanup = clearAway(job.operations, outcome);
 

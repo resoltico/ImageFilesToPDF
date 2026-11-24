@@ -68,8 +68,10 @@ function documentPorts(job) {
             return artifact;
         },
         beginning: (source, index, documentIndex) => job.progress.beginning(documentIndex + index + 1, source.originalName),
+        capturing: () => job.progress.phase(message("progressCapturing")),
         parallelism: job.operations.preparationConcurrency,
         capture(source, index) {
+            job.operations.checkpoint();
             requireReleasedResources(job);
             return beginPagePreparation(job, source, index);
         },
@@ -84,11 +86,10 @@ function documentPorts(job) {
         },
         fits: (staged, pages, placement) => job.operations.fits(buildPdfcpuImportArgv(job.tools.pdfcpu, toolPath(partPdfPath(staged, job.parts.get(staged).length)), pages.map(toolPath), { geometry: job.geometry, placement, background: job.settings.background })),
         import(staged, pages, placement) {
-            job.progress.about("");
-            job.progress.phase("Creating PDF");
+            job.progress.phase(message("progressCreatingPdf"));
             return importBatch(job, staged, pages, placement);
         },
-        assemble(staged) { job.progress.about(""); return assemblePdf(job, staged); },
+        assemble: (staged) => assemblePdf(job, staged),
         beforeValidation: () => retainCandidate(job),
         validate(staged, expected) {
             requireReleasedResources(job);
@@ -96,8 +97,8 @@ function documentPorts(job) {
         },
         publish: (staged, destination) => publishPdf(job, staged, destination),
         remove: (path) => removeOwned(job, path),
-        prepared: () => { if (!isSeparateMode(job.settings)) { job.progress.finished("Preparing"); } },
-        completed: (record) => job.progress.finished(record.state === "saved" ? "Saved" : "Finished")
+        prepared: () => { if (!isSeparateMode(job.settings)) { job.progress.finished(message("progressPrepared")); } },
+        completed: (record) => job.progress.finished(record.state === "saved" ? message("progressSaved") : message("progressFinished"))
     };
  }
 

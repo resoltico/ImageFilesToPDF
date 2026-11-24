@@ -45,7 +45,7 @@ test("nothing is complete until something has finished", () => {
     assert.deepEqual(sink.said, [
         "start 3",
         "Preparing 0 | 1 of 3 — one.png",
-        "Saved 1 | 1 of 3 — one.png",
+        "Saved 1 | ",
         "Preparing 1 | 2 of 3 — two.png"
     ]);
 });
@@ -65,46 +65,13 @@ test("the label says which file, the count says how much is done", () => {
     assert.equal(sink.said.at(-1), "Preparing 2 | 3 of 20 — c.png");
 });
 
-test("image preparation phases keep their file until the detail is replaced", () => {
-    const sink = recorder();
-    const progress = opened(sink, 2, 2);
-
-    progress.beginning(2, "last.png");
-    progress.phase("Reading image");
-    progress.phase("Encoding image");
-
-    assert.deepEqual(sink.said.slice(-2), [
-        "Reading image 0 | 2 of 2 — last.png",
-        "Encoding image 0 | 2 of 2 — last.png"
-    ]);
-});
-
-test("a stage that is not about an image says so instead of naming one", () => {
-    // The last stages of a combined run are about the PDF. They used to be
-    // reported beside whichever image happened to be prepared last, so a run
-    // of twenty read "Validating PDF / 20 of 20 — last.png".
+test("a document phase clears the last image and completion reports no current image", () => {
     const sink = recorder();
     const progress = opened(sink, 3, 2);
-
     progress.beginning(2, "last.png");
-    progress.about("2 images prepared");
     progress.phase("Creating PDF");
-
-    assert.deepEqual(sink.said.slice(-2), [
-        "Preparing 0 | 2 images prepared",
-        "Creating PDF 0 | 2 images prepared"
-    ]);
-});
-
-test("a summary before any stage invents no stage to put it under", () => {
-    // The detail line and the headline are two separate things, and setting
-    // one must not make the other up.
-    const sink = recorder();
-    const progress = createProgress([sink]);
-
-    progress.about("1 image prepared");
-
-    assert.deepEqual(sink.said, [" 0 | 1 image prepared"]);
+    progress.finished("Saved");
+    assert.deepEqual(sink.said.slice(-3), ["Preparing 0 | 2 of 2 — last.png", "Creating PDF 0 | ", "Saved 1 | "]);
 });
 
 test("a name that spans lines is kept to one", () => {

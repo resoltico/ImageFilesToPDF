@@ -23,16 +23,16 @@ function application() {
     return app;
 }
 
-function progressObserver() {
+function progressObserver(open = openPanel) {
     let panel = null;
     let available = true;
-    const state = { done: 0, total: null, phase: "", detail: "", stopped: false, diagnostics: [] };
+    const state = { done: 0, total: null, phase: "", nextPhase: "", detail: "", stopped: false, diagnostics: [] };
     function record(error) {
         const translated = hostError(error);
         if (isUserCanceled(translated)) { state.stopped = true; }
         else { available = false; state.diagnostics.push({ code: "observer-fault", message: String(translated), stack: error?.stack ?? "" }); }
     }
-    try { panel = openPanel(); } catch (error) { record(error); }
+    try { panel = open(); } catch (error) { record(error); }
     function notify(effect) {
         if (!panel || !available) { return; }
         try { effect(panel); } catch (error) { record(error); }
@@ -40,8 +40,9 @@ function progressObserver() {
     return {
         diagnostics: state.diagnostics,
         progress(event) {
-            if (event.type === "phase") { state.phase = event.phase; }
+            if (event.type === "phase") { state.nextPhase = event.phase; }
             else if (event.type === "progress") {
+                state.phase = state.nextPhase;
                 state.done = event.done;
                 state.detail = event.current ?? "";
                 if (state.total !== event.total) { state.total = event.total; notify((sink) => sink.start(state.total)); }
@@ -103,4 +104,4 @@ function runQuickAction(input, ports = finder) {
     }
 }
 
-module.exports = { runQuickAction };
+module.exports = { runQuickAction, progressObserver };

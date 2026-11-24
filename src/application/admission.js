@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 
 const { selectionReason, selectionRefusal } = require("../core/selection-policy.js");
 const { basename, dirname } = require("../core/paths.js");
@@ -103,7 +104,7 @@ async function admit(app, tree, root, outcome) {
 
 /* Mandatory tree facts apply to directly selected files as well as folders. */
 async function collectImageFiles(app, inputItems, tree = null) {
-    if (!tree) { throw new Error("Required filesystem capabilities are unavailable."); }
+    if (!tree) { throw new Error(message("filesystemCapabilitiesMissing")); }
     const outcome = { images: [], rejected: [], taken: new Set() };
 
     const roots = await selectedItems(tree, inputItems, outcome.rejected);

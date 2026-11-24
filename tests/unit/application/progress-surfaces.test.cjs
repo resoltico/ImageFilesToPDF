@@ -45,7 +45,6 @@ test("with nothing to report to, nothing is reported", () => {
     assert.doesNotThrow(() => {
         silent.expect({ units: 1, images: 1 });
         silent.beginning(1, "x.png");
-        silent.about("1 image prepared");
         silent.finished("Saved");
         silent.phase("Saving PDF");
         silent.pause();

@@ -65,8 +65,8 @@ function closePreparations(slots) {
 async function prepareGroup(ports, context, queue, group) {
     const { record } = context;
     const slots = [];
+    ports.capturing();
     const results = await Promise.allSettled(group.map(async ([index, source], offset) => {
-        ports.beginning(source, index, context.documentIndex);
         const slot = ports.capture(source, index);
         slots[offset] = slot;
         return await slot.ready;
@@ -77,6 +77,7 @@ async function prepareGroup(ports, context, queue, group) {
             const [index, source] = group[offset];
             Object.assign(context, { stage: "preparation", source: source.path });
             if (outcome.status === "rejected") { throw outcome.reason; }
+            ports.beginning(source, index, context.documentIndex);
             // eslint-disable-next-line no-await-in-loop -- Only one encoded page can be outside the bounded queue.
             const page = await ports.prepare(source, index, slots[offset], outcome.value);
             record.pages += 1;

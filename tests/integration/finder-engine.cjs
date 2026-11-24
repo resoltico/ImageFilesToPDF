@@ -22,6 +22,8 @@ function makeFixtures(folder) {
     fs.writeFileSync(refused, "This entry cannot convert.");
     const photo = path.join(photos, "visible.png");
     execFileSync("vips", ["black", photo, "64", "48", "--bands", "3"]);
+    fs.copyFileSync(photo, path.join(photos, "visible 2.png"));
+    fs.copyFileSync(photo, path.join(photos, "visible 3.png"));
     for (const name of ["project.xcodeproj", "song.band", "library.photoslibrary"]) {
         const bundle = path.join(photos, name);
         fs.mkdirSync(bundle);
@@ -40,9 +42,13 @@ async function buildHarness(folder, engineBundle) {
         const bundle = ${JSON.stringify(engineBundle)};
         function run([node, home, photos, refused, mismatchedSource]) {
             const events = [];
+            const progressEvents = [];
             let receipt = null;
             const progress = { diagnostics: [], pause() {}, close() {},
-                progress(event) { if (event.type === "phase") events.push(event.phase); }, stopped() { return false; } };
+                progress(event) {
+                    if (event.type === "phase") events.push(event.phase);
+                    else progressEvents.push([events.at(-1), event.done, event.current ?? ""]);
+                }, stopped() { return false; } };
             const selected = mismatchedSource ? { filename: "engine-wrong.cjs", source: mismatchedSource } : bundle;
             const ports = {
                 application: () => null, openProgress: () => progress, collect: collectInvocation,
@@ -53,7 +59,7 @@ async function buildHarness(folder, engineBundle) {
             };
             const returned = runQuickAction([[photos, refused], {}], ports);
             if (returned !== undefined) throw new Error("The Finder handler returned a Shortcuts result.");
-            return JSON.stringify({ receipt, events });
+            return JSON.stringify({ receipt, events, progressEvents });
         }
         module.exports = { run };
     `;
@@ -69,11 +75,25 @@ function invoke(probe, { home, photos, refused, ambient, marker }, { node = proc
     return JSON.parse(result);
 }
 
-function verifyConversion({ receipt, events }) {
+function verifyProgress(events, names) {
+    const encoding = events.filter(([phase, done]) => phase === "Preparing" && done < names.length);
+    assert.deepEqual(encoding, names.map((name, index) => ["Preparing", index, `${index + 1} of 3 — ${name}`]));
+    const capturing = events.filter(([phase]) => phase === "Capturing and checking images");
+    assert.ok(capturing.length > 0 && capturing.every(([, , detail]) => detail === ""), JSON.stringify(capturing));
+    const pdfPhases = new Set(["Creating PDF", "Assembling PDF", "Validating PDF", "Saving PDF"]);
+    const pdfEvents = events.filter(([phase]) => pdfPhases.has(phase));
+    assert.deepEqual(new Set(pdfEvents.map(([phase]) => phase)), pdfPhases);
+    assert.ok(pdfEvents.every(([, , detail]) => detail === ""), JSON.stringify(pdfEvents));
+}
+
+function verifyConversion({ receipt, events, progressEvents }) {
     assert.equal(receipt.state, "incomplete", JSON.stringify(receipt));
-    assert.deepEqual(receipt.documents[0].sources.map((source) => path.basename(source)), ["visible.png"]);
-    assert.deepEqual(events.filter(Array.isArray), [["review", 1], ["settings", 1]]);
+    const names = ["visible 2.png", "visible 3.png", "visible.png"];
+    assert.deepEqual(receipt.documents[0].sources.map((source) => path.basename(source)), names);
+    assert.equal(receipt.documents[0].pages, 3);
+    assert.deepEqual(events.filter(Array.isArray), [["review", 1], ["settings", 3]]);
     assert.equal(events.at(-1), "Saved");
+    verifyProgress(progressEvents, names);
     const [{ output }] = receipt.documents;
     execFileSync("pdfcpu", ["validate", "--conf", "disable", "--mode=strict", output]);
     execFileSync("qpdf", ["--check", output]);

@@ -11,7 +11,7 @@ const { createJob, unitsOf, runJob } = require("./job.js");
 async function prepare(input, options) {
     const { interaction, operations } = options;
     const { progress } = interaction;
-    progress.phase("Checking required tools");
+    progress.phase(message("progressCheckingTools"));
     const tools = await options.checkTools();
     const invocation = interaction.collect(input);
     const capabilities = typeof options.capabilities === "function" ? await options.capabilities() : options.capabilities;
@@ -21,7 +21,7 @@ async function prepare(input, options) {
         throw new OperationError(message("filesystemCapabilitiesUnavailable"));
     }
     progress.diagnostics.push(...await options.reclaim(storage));
-    progress.phase("Finding images");
+    progress.phase(message("progressFindingImages"));
     const selected = await collectImageFiles(operations, invocation.inputItems.map(operations.resolve), tree);
     const selection = await inspectCandidates(operations, selected, { tools, sources, progress });
     return { tools, invocation, ...capabilities, selection };

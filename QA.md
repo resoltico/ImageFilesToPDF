@@ -170,7 +170,8 @@ exclusive rename from an owned staging copy. The native FAT32 and exFAT probes
 compare the engine result with the observed driver capability and confirm
 recovery when the driver refuses an exclusive rename. The macOS 27.2.1 arm64
 driver returned errno 45 on both filesystems, and both PDF modes recovered
-valid PDFs. Windows uses a no-replace, same-volume move. On FAT32 and exFAT
+valid PDFs. Successful exclusive rename on a supporting macOS FAT32 driver
+remains unverified. Windows uses a no-replace, same-volume move. On FAT32 and exFAT
 the native move changes the stored file ID, so the engine checks that an open
 handle to the staging file identifies the entry at the destination. The card
 suite exercises an occupied name and a same-byte replacement.
@@ -188,17 +189,19 @@ natural order. Strict validation passed, and Poppler renders matched for every
 page.
 
 The engine starts up to four source captures and inspections per group, capped
-by the available processor count minus one with a minimum of one. It admits
+by the available processor count minus one with a minimum of one. The capture
+phase shows no individual filename. During ordered page preparation it shows the
+image being encoded, and the PDF phases clear that detail. The engine admits
 encoded pages in plan order, one at a time. The encoded queue holds up to 32
 pages and 64 MiB. An oversized page is imported alone before another is encoded.
 The workspace writer guard remains until every in-flight command settles.
 
 ## Live Shortcuts acceptance
 
-Verification of the live Shortcuts dialogs remains pending. ShortcutsMacHelper
-started the engine and its osascript child with the current artifact. The
-osascript harness and native form suite exercise the dialogs and conversion
-separately.
+Live Shortcuts acceptance remains pending. A preliminary launch under
+ShortcutsMacHelper established that the helper could start Node and osascript.
+The osascript harness checks ordered progress with the embedded engine. The
+native form suite verifies the dialogs separately.
 
 Use an isolated test Shortcut containing the complete current artifact and
 synthetic inputs. Preserve the production Shortcut and restore only preferences

@@ -23,8 +23,8 @@ async function importBatch(job, stagedPath, pages, placement) {
     registerArtifact(job.artifacts, path);
     const { toolPath } = job.operations;
     await job.operations.run(buildPdfcpuImportArgv(job.tools.pdfcpu, toolPath(path), pages.map(toolPath),
-        { geometry: job.geometry, placement, background: job.settings.background }), "creating PDF pages");
-    job.operations.verifyFile(path, "PDF pages");
+        { geometry: job.geometry, placement, background: job.settings.background }), message("operationCreatingPages"));
+    job.operations.verifyFile(path, message("artifactPdfPages"));
     parts.push(path);
 }
 
@@ -36,7 +36,7 @@ async function importBatch(job, stagedPath, pages, placement) {
 async function verifyEveryPageArrived(job, stagedPath, expected) {
     const found = readPageCountFrom(await job.operations.run(
         buildPdfcpuInfoArgv(job.tools.pdfcpu, job.operations.toolPath(stagedPath)),
-        "counting the pages"
+        message("operationCountingPages")
     ));
 
     if (found === 0) {
@@ -51,10 +51,10 @@ async function verifyEveryPageArrived(job, stagedPath, expected) {
 }
 
 async function validatePdf(job, stagedPath, expected) {
-    job.operations.verifyFile(stagedPath, "partial PDF");
+    job.operations.verifyFile(stagedPath, message("artifactPartialPdf"));
     await verifyEveryPageArrived(job, stagedPath, expected);
-    job.progress.phase("Validating PDF");
-    await job.operations.run(buildPdfcpuValidateArgv(job.tools.pdfcpu, job.operations.toolPath(stagedPath)), "validating PDF");
+    job.progress.phase(message("progressValidatingPdf"));
+    await job.operations.run(buildPdfcpuValidateArgv(job.tools.pdfcpu, job.operations.toolPath(stagedPath)), message("operationValidatingPdf"));
 }
 
 module.exports = { partPdfPath, importBatch, validatePdf };

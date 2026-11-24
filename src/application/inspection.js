@@ -1,4 +1,5 @@
 "use strict";
+const { message } = require("../core/messages.js");
 const { isUserCanceled } = require("../core/errors.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { sourceIssue, sourceFileIssue, sourceIssues, sourceRefusal } = require("../core/source-policy.js");
@@ -60,7 +61,7 @@ async function inspectSelection(ports, selection) {
     for (const batch of ports.batches(candidates)) {
         // eslint-disable-next-line no-await-in-loop -- Complete and account for each batch in order.
         const facts = await inspectBatch(ports, batch, completed);
-        if (facts.length !== batch.length) { throw new Error("Image inspection did not account for every source."); }
+        if (facts.length !== batch.length) { throw new Error(message("inspectionIncomplete")); }
         batch.forEach((entry, index) => include(images, entry, facts[index], rejected));
         completed += batch.length;
         ports.checked(completed);

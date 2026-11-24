@@ -3,7 +3,7 @@ const { requireOriginal, unconfirmedClaim } = require("./publication-name.js");
 const { requireValidatedArtifact, isPublished } = require("../core/artifacts.js");
 const { keep } = require("./recovery.js");
 const { confirm } = require("./settling.js");
-const { issueMessage } = require("../core/messages.js");
+const { issueMessage, message } = require("../core/messages.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { IssueError, diagnosticText, isUserCanceled } = require("../core/errors.js");
 const { claimAvailable } = require("./destination.js");
@@ -33,8 +33,8 @@ function publicationCode(error) {
 
 function publicationDiagnostic(context, error) {
     const diagnostic = context.diagnostic ?? issuesOf(error, "publication")[0].diagnostic;
-    const message = typeof diagnostic?.message === "string" && diagnostic.message.trim() ? diagnostic.message : diagnosticText(error);
-    return { ...diagnostic, message };
+    const detail = typeof diagnostic?.message === "string" && diagnostic.message.trim() ? diagnostic.message : diagnosticText(error);
+    return { ...diagnostic, message: detail };
 }
 
 async function failedPublication(context, error) {
@@ -68,7 +68,7 @@ async function publishPdf(job, staged, destination) {
         return requireOriginal(job.publication, { staged, expected: facts, cause: null });
     }
     const context = { job, paths, facts, area: null, from: staged, claimed: facts, diagnostic: null };
-    try { return await claimAvailable(context, destination, confirmed, () => job.progress.phase("Saving PDF")); }
+    try { return await claimAvailable(context, destination, confirmed, () => job.progress.phase(message("progressSavingPdf"))); }
     catch (error) { return failedPublication(context, error); }
 }
 module.exports = { publishPdf };

@@ -147,7 +147,7 @@ test("queue, validation and cleanup keep their progress and ownership boundaries
     };
     const outcome = (await runJob(job, [imageOf("/a/1.png")]));
     assert.equal(outcome.state, "complete");
-    assert.ok(events.some(([done, description]) => done === 1 && description === "Preparing"));
+    assert.ok(events.some(([done, description]) => done === 1 && description === "Prepared"));
     assert.deepEqual(outcome.issues, []);
     assert.deepEqual(outcome.documents[0].issues, []);
     assert.ok(app.commands.some((command) => command.includes("'/bin/rm' '-rf'")));

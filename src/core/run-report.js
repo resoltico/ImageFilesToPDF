@@ -8,7 +8,7 @@ const { message } = require("./messages.js");
 const canonicalPath = (path) => path;
 
 function describeRejections(rejected, heading = message("reportRefusals"), renderPath = canonicalPath) {
-    return `${heading}\n${rejected.map((entry) => `${renderPath(entry.path || entry.name)}: ${entry.reason}`).join("\n")}`;
+    return `${heading}\n${rejected.map((entry) => message("fileIssue", { path: renderPath(entry.path || entry.name), reason: entry.reason })).join("\n")}`;
 }
 
 /*
@@ -39,9 +39,10 @@ function headline(summary) {
 
 // Only the counts that happened, so a run that saved one PDF does not also report zeros.
 function countsLine(summary) {
-    const parts = [[summary.counts.saved, "saved"], [summary.counts.recovered, "recovered"], [summary.counts.failed, "failed"],
-        [summary.counts.canceled, "canceled"], [summary.notStarted, "not started"], [summary.refusals.length, "not included"]]
-        .filter(([count]) => count > 0).map(([count, label]) => `${count} ${label}`);
+    const parts = [[summary.counts.saved, "reportCountSaved"], [summary.counts.recovered, "reportCountRecovered"],
+        [summary.counts.failed, "reportCountFailed"], [summary.counts.canceled, "reportCountCanceled"],
+        [summary.notStarted, "reportCountNotStarted"], [summary.refusals.length, "reportCountNotIncluded"]]
+        .filter(([count]) => count > 0).map(([count, key]) => message(key, { count }));
     return parts.length > 0 ? `${parts.join("; ")}.` : "";
 }
 
@@ -60,9 +61,9 @@ function summaryText(summary, includeHeadline = true, renderPath = canonicalPath
     const saved = summary.saved.map((group) => `${renderPath(group.folder)}\n${group.outputs.map((output) => output.name).join("\n")}`);
     const recovered = summary.recoveries.map((entry) => `${renderPath(entry.location)}\n${recoveryReason(entry.cause)}`);
     return [includeHeadline ? headline(summary) : "", countsLine(summary), saved.length > 0 ? `${message("reportSaved")}\n${saved.join("\n\n")}` : "",
-        summary.failures.length > 0 ? `${message("reportFailures")}\n${summary.failures.map((entry) => `${renderPath(entry.source)}: ${entry.message}`).join("\n")}` : "",
+        summary.failures.length > 0 ? `${message("reportFailures")}\n${summary.failures.map((entry) => message("fileIssue", { path: renderPath(entry.source), reason: entry.message })).join("\n")}` : "",
         recovered.length > 0 ? `${message("reportRecoveries")}\n${recovered.join("\n\n")}` : "",
-        summary.problems.length > 0 ? `${message("reportOtherIssues")}\n${summary.problems.map((entry) => `${entry.source ? `${renderPath(entry.source)}: ` : ""}${entry.message}`).join("\n")}` : "",
+        summary.problems.length > 0 ? `${message("reportOtherIssues")}\n${summary.problems.map((entry) => entry.source ? message("fileIssue", { path: renderPath(entry.source), reason: entry.message }) : entry.message).join("\n")}` : "",
         summary.notStarted > 0 ? message("reportNotStarted", { count: summary.notStarted }) : "",
         summary.refusals.length > 0 ? describeRejections(summary.refusals, undefined, renderPath) : ""
     ].filter(Boolean).join("\n\n");
