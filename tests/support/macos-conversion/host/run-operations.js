@@ -15,6 +15,8 @@ function runOperations(app) {
     const fits = (argv) => commandLengthOf(argv) <= HEADER_ARGV_BUDGET;
     return {
         toolPath: (path) => path,
+        checkpoint: () => undefined,
+        preparationConcurrency: 1,
         fits,
         run(argv, label) {
             if (!fits(argv)) { throw new OperationError(message("commandArgumentBudgetExceeded")); }

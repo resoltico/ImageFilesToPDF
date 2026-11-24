@@ -1,11 +1,11 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { preparePage } = require("../../../src/application/pages.js");
+const { beginPagePreparation } = require("../../../src/application/pages.js");
 const { OperationError } = require("../../../src/core/errors.js");
 const { issuesOf } = require("../../../src/core/outcomes.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
-const { makeJob, imageOf } = require("../ports/fake-job.cjs");
+const { makeJob, imageOf, preparePage } = require("../ports/fake-job.cjs");
 
 test("normalization reads only the captured input and returns an image-sized page", async () => {
     const app = createFakeHost({ files: ["/source.png"] });
@@ -133,4 +133,19 @@ test("capture refusal names the original file and records the compared facts", a
         assert.equal(issue.diagnostic.captured.width, 601);
         return true;
     });
+});
+
+
+test("closing a captured source twice releases its owned file only once", async () => {
+    const host = createFakeHost({ files: ["/source.png"] });
+    const job = makeJob(host);
+    const work = beginPagePreparation(job, imageOf("/source.png"), 0);
+    const { captured } = await work.ready;
+    const removed = [];
+    const { removeFile } = job.operations;
+    job.operations.removeFile = (file) => { removed.push(file); return removeFile(file); };
+    work.close();
+    work.close();
+    assert.deepEqual(removed, [captured.path]);
+    assert.ok(host.files.has("/source.png"));
 });

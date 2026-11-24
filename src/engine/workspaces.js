@@ -123,6 +123,8 @@ async function workspaceStore(files, commands, windows) {
     await createPrivateRoot(files, windows, root);
     const rootIdentity = identity(fs.lstatSync(root, BIGINT));
     let current = null;
+    let writers = 0;
+    let unsettled = false;
     function inspect(directory) {
         if (dirname(directory) !== `${root}/` || !NAME.test(directory.slice(root.length + 1)) ||
             rootIdentity !== identity(fs.lstatSync(root, BIGINT))) {
@@ -183,12 +185,15 @@ async function workspaceStore(files, commands, windows) {
         async command(argv, request) {
             if (!current) { return request(argv); }
             const guard = `${current.directory}/${IN_FLIGHT}`;
-            writeNew(guard, "Native command settlement has not been acknowledged.\n");
-            // A native writer owns the guard until the process and its streams have closed.
-            // A process crash leaves that work and its guard for inspection.
-            const result = await request(argv);
-            fs.unlinkSync(guard);
-            return result;
+            if (writers === 0) { writeNew(guard, "Native command settlement has not been acknowledged.\n"); }
+            writers += 1;
+            try { return await request(argv); }
+            catch (error) { unsettled = true; throw error; }
+            finally {
+                writers -= 1;
+                // Keep the guard across a crash or uncertain native settlement.
+                if (writers === 0 && !unsettled) { fs.unlinkSync(guard); }
+            }
         }
     };
 }

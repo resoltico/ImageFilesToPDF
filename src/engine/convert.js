@@ -1,6 +1,7 @@
 "use strict";
 const { message } = require("../core/messages.js");
 const fs = require("node:fs");
+const { availableParallelism } = require("node:os");
 const { platform } = require("node:process");
 const { darwinHelper } = require("./platform/darwin.js");
 const { execute } = require("../application/workflow.js");
@@ -14,6 +15,8 @@ const { destinationOperations } = require("./publication.js");
 const { workspaceStore } = require("./workspaces.js");
 const { commandOutput } = require("./processes.js");
 const { checkTools } = require("./tools.js");
+
+const MAX_PREPARATION_WORKERS = 4;
 
 function configure(commands) {
     const windows = WINDOWS ? windowsNative(commands) : null;
@@ -32,6 +35,8 @@ function configure(commands) {
             ...destination.operations,
             fits: commands.fits,
             toolPath,
+            checkpoint: commands.checkpoint,
+            preparationConcurrency: Math.max(1, Math.min(MAX_PREPARATION_WORKERS, availableParallelism() - 1)),
             async run(argv, label) {
                 commands.checkpoint();
                 return commandOutput(await storage.command(argv, commands.request), argv, label);

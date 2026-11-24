@@ -217,3 +217,65 @@ test("an inherited null recovery is not an explicit producer refusal", async () 
     const [result] = (await executeDocuments(sample.ports, sample.plans));
     assert.equal(result.state, "recovered"); assert.equal(result.recovery, "/work/0.pdf");
 });
+
+test("source work runs in bounded waves while encoding and queue handoff stay ordered", async () => {
+    const { setImmediate } = require("node:timers/promises");
+    const active = { count: 0, peak: 0 };
+    const closed = [], encoded = [];
+    const sample = fixture(7, {
+        parallelism: 3,
+        ports: {
+            capture(source) {
+                active.count += 1;
+                active.peak = Math.max(active.peak, active.count);
+                return {
+                    ready: setImmediate().then(() => { active.count -= 1; return source.path; }),
+                    close: () => closed.push(source.path)
+                };
+            }
+        }
+    });
+    const { prepare } = sample.ports;
+    sample.ports.prepare = (source, index, unused, observed) => {
+        assert.equal(active.count, 0, "the wave has settled before encoding");
+        assert.equal(observed, source.path);
+        encoded.push(index);
+        return prepare(source, index);
+    };
+    const [record] = await executeDocuments(sample.ports, sample.plans);
+    assert.equal(active.peak, 3);
+    assert.deepEqual(encoded, [0, 1, 2, 3, 4, 5, 6]);
+    assert.deepEqual(closed, record.sources);
+    assert.equal(record.state, "saved");
+    assert.equal(record.pages, 7);
+});
+
+test("a capture close failure prevents publication and preserves the primary preparation issue", async () => {
+    for (const fail of [false, true]) {
+        const sample = fixture(2, { parallelism: 2, ports: {
+            capture: (source, index) => ({
+                ready: fail && index === 1 ? Promise.reject(new OperationError("Capture failed.")) : Promise.resolve(source),
+                close() { if (index === 0) { throw new OperationError("Close failed."); } }
+            })
+        } });
+        // eslint-disable-next-line no-await-in-loop -- Each source fault uses independent ownership.
+        const [record] = await executeDocuments(sample.ports, sample.plans);
+        assert.equal(record.state, "failed");
+        assert.equal(record.fatal, true);
+        assert.ok(record.issues.some(({ code, message }) => code === "cleanup" && message === "Close failed."));
+        assert.equal(record.issues.some(({ message }) => message === "Capture failed."), fail);
+        assert.ok(!sample.events.some(([action]) => action === "publish"));
+    }
+});
+
+test("unstarted capture slots cannot prevent later acquired sources from being released", async () => {
+    const closed = [];
+    const sample = fixture(2, { parallelism: 2, ports: {
+        beginning(source, index) { if (index === 0) { throw new UserCanceled(); } },
+        capture(source) { return { ready: Promise.resolve(source), close: () => closed.push(source.path) }; }
+    } });
+    const [record] = await executeDocuments(sample.ports, sample.plans);
+    assert.equal(record.state, "canceled");
+    assert.deepEqual(closed, ["/source/1.png"]);
+    assert.equal(record.pages, 0);
+});

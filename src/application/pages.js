@@ -38,30 +38,52 @@ function requireAdmission(imageFile, captured) {
     }
 }
 
-/** Capture, inspect and render identical owned bytes; the queue then owns the result. */
-async function preparePage(job, imageFile, index) {
+async function checkDecode(job, captured, pass) {
+    if (!pass) { return; }
+    await job.operations.run(buildDecodeArgv(job.tools.vips, job.operations.toolPath(captured.path)), "checking image data");
+}
+
+function preparationFailure(error, imageFile) {
+    if (isUserCanceled(error) || issuesOf(error, "preparation")[0].code === ISSUE.fault) { throw error; }
+    throw damaged(error, imageFile.path);
+}
+
+async function inspectInput(job, imageFile, capturedPath) {
     if (!imageFile.admission) { throw new TypeError("Source admission facts are required before capture."); }
-    const capturedPath = `${job.workspace}/input-${index}`;
-    let made = false, pagePath = "";
+    const captured = await job.sources.capture(imageFile.path, capturedPath);
+    const source = await inspectCaptured(job, captured, imageFile.path);
+    requireAdmission(imageFile, source);
+    const placement = calculatePlacement(job.geometry, source);
+    const pass = canPassThrough(source, placement);
+    try { await checkDecode(job, captured, pass); }
+    catch (error) { preparationFailure(error, imageFile); }
+    return { captured, source, placement, pass };
+}
+
+async function encodePage(job, imageFile, index, { captured, source, placement, pass }) {
+    const extension = SUPPORTED_FORMATS.find((format) => format.family === source.format).pageEncoding === "jpeg" ? "jpg" : "png";
+    const path = `${job.workspace}/${index}-page.${extension}`;
     try {
-        const captured = await job.sources.capture(imageFile.path, capturedPath);
-        const source = await inspectCaptured(job, captured, imageFile.path);
-        requireAdmission(imageFile, source);
-        const placement = calculatePlacement(job.geometry, source);
-        const pass = canPassThrough(source, placement);
-        const extension = SUPPORTED_FORMATS.find((format) => format.family === source.format).pageEncoding === "jpeg" ? "jpg" : "png";
-        pagePath = `${job.workspace}/${index}-page.${extension}`;
-        try {
-            if (pass) {
-                await job.operations.run(buildDecodeArgv(job.tools.vips, job.operations.toolPath(captured.path)), "checking image data");
-                await job.sources.capture(captured.path, pagePath);
-            } else { await normalizeImage(job, captured, source, { path: pagePath, placement }); }
-        } catch (error) { if (isUserCanceled(error) || issuesOf(error, "preparation")[0].code === ISSUE.fault) { throw error; } throw damaged(error, imageFile.path); }
-        made = true;
-        return { path: pagePath, placement };
-    } finally {
-        removeOwned(job, capturedPath);
-        if (!made && pagePath) { removeOwned(job, pagePath); }
+        if (pass) { await job.sources.capture(captured.path, path); }
+        else { await normalizeImage(job, captured, source, { path, placement }); }
+        return { path, placement };
+    } catch (error) {
+        removeOwned(job, path);
+        return preparationFailure(error, imageFile);
     }
 }
-module.exports = { preparePage };
+
+/** Captures may overlap. Only the ordered consumer creates encoded pages. */
+function beginPagePreparation(job, imageFile, index) {
+    const capturedPath = `${job.workspace}/input-${index}`;
+    let closed = false;
+    return {
+        ready: inspectInput(job, imageFile, capturedPath),
+        finish: (facts) => encodePage(job, imageFile, index, facts),
+        close() {
+            if (!closed) { closed = true; removeOwned(job, capturedPath); }
+        }
+    };
+}
+
+module.exports = { beginPagePreparation };

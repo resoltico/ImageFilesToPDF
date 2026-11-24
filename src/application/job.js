@@ -11,7 +11,7 @@ const { documentPlan } = require("../core/document-plan.js");
 const { runOutcome, issuesOf } = require("../core/outcomes.js");
 const { registerArtifact, hasRetainedArtifacts } = require("../core/artifacts.js");
 const { stagedPdfPath } = require("../core/naming.js");
-const { preparePage } = require("./pages.js");
+const { beginPagePreparation } = require("./pages.js");
 const { removeOwned, requireReleasedResources } = require("./owned-cleanup.js");
 const { partPdfPath, importBatch, validatePdf } = require("./staging.js");
 const { assemblePdf } = require("./assembly.js");
@@ -68,12 +68,17 @@ function documentPorts(job) {
             return artifact;
         },
         beginning: (source, index, documentIndex) => job.progress.beginning(documentIndex + index + 1, source.originalName),
-        async prepare(source, index) {
+        parallelism: job.operations.preparationConcurrency,
+        capture(source, index) {
             requireReleasedResources(job);
-            const page = await preparePage(job, source, index);
+            return beginPagePreparation(job, source, index);
+        },
+        async prepare(unusedSource, unusedIndex, work, facts) {
+            job.operations.checkpoint();
+            const page = await work.finish(facts).finally(work.close);
             const { path } = page;
             requireReleasedResources(job);
-            const {size} = job.publication.facts(path);
+            const { size } = job.publication.facts(path);
             if (size <= 0) { removeOwned(job, path); throw new OperationError(message("pageSizeUnknown")); }
             return { ...page, size, group: page.placement.relativeScale };
         },

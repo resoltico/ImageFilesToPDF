@@ -144,6 +144,22 @@ Inspect normal, correction, deep-path, multiple-destination and large-detail sta
 in Aqua and Dark Aqua. Controls and actions must fit within 744 points; complete
 variable detail must be selectable and scrollable.
 
+## Preparation measurements
+
+On macOS 27.2.1 arm64 with Node.js 26.13.1, libvips 8.18.7 and pdfcpu 0.16.4,
+a synthetic corpus of 80 distinct 3000 × 2000 PNGs took 36.78 seconds on the
+original sequential artifact, 33.95 seconds on the sequential async engine, and
+28.68 seconds with bounded concurrent preparation. Each run used combined A4
+portrait output at 300 ppi. All three produced the same PDF name and 80 pages in
+natural order. Strict validation passed, and Poppler renders matched for every
+page.
+
+The engine starts up to four source captures and inspections per group, capped
+by the available processor count minus one with a minimum of one. It admits
+encoded pages in plan order, one at a time. The encoded queue holds up to 32
+pages and 64 MiB. An oversized page is imported alone before another is encoded.
+The workspace writer guard remains until every in-flight command settles.
+
 ## Live Shortcuts acceptance
 
 Use an isolated test Shortcut containing the complete current artifact and

@@ -5,7 +5,6 @@ const { assemblePdf } = require("../../../src/application/assembly.js");
 const { collectImageFiles } = require("../../../src/application/admission.js");
 const { selectedItems } = require("../../../src/application/selection.js");
 const { executeDocuments } = require("../../../src/application/documents.js");
-const { preparePage } = require("../../../src/application/pages.js");
 const { inspectCandidates } = require("../../../src/application/source-inspection.js");
 const { publishPdf } = require("../../../src/application/publish.js");
 const { keep } = require("../../../src/application/recovery.js");
@@ -16,7 +15,7 @@ const { treeOf } = require("../ports/fake-tree.cjs");
 const { runOperations } = require("../../support/macos-conversion/host/run-operations.js");
 const { fixture } = require("../application/document-fixture.cjs");
 const { createFakeHost } = require("../ports/fake-host.cjs");
-const { makeJob, imageOf } = require("../ports/fake-job.cjs");
+const { makeJob, imageOf, preparePage } = require("../ports/fake-job.cjs");
 
 test("a drive root already supplies its directory separator and a trailing slash requires a directory", async () => {
     const tree = treeOf({ "C:/": ["p.png"] });

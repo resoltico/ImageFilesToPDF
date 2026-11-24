@@ -1,5 +1,5 @@
 "use strict";
-const { message, issueMessage } = require("../core/messages.js");
+const { message, issueMessage, issueMessages } = require("../core/messages.js");
 const { IssueError, isUserCanceled } = require("../core/errors.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 
@@ -51,17 +51,53 @@ function pageQueue(ports, context) {
     } };
 }
 
-async function prepareDocument(ports, plan, context, queue) {
-    for (const [index, source] of plan.sources.entries()) {
-        context.stage = "preparation";
-        context.source = source.path;
+function closePreparations(slots) {
+    const issues = [];
+    for (const slot of slots) {
+        try { slot?.close(); }
+        catch (error) {
+            issues.push(...issuesOf(error, "cleanup").map((issue) => ({ ...issue, code: ISSUE.cleanup })));
+        }
+    }
+    return issues;
+}
+
+async function prepareGroup(ports, context, queue, group) {
+    const { record } = context;
+    const slots = [];
+    const results = await Promise.allSettled(group.map(async ([index, source], offset) => {
         ports.beginning(source, index, context.documentIndex);
-        // eslint-disable-next-line no-await-in-loop -- The sequential preparation port hands off one completed page at a time.
-        const page = await ports.prepare(source, index);
-        context.record.pages += 1;
-        // eslint-disable-next-line no-await-in-loop -- Complete any queue import before preparing another page.
-        await queue.add(page);
-        ports.prepared();
+        const slot = ports.capture(source, index);
+        slots[offset] = slot;
+        return await slot.ready;
+    }));
+    let failure = null;
+    try {
+        for (const [offset, outcome] of results.entries()) {
+            const [index, source] = group[offset];
+            Object.assign(context, { stage: "preparation", source: source.path });
+            if (outcome.status === "rejected") { throw outcome.reason; }
+            // eslint-disable-next-line no-await-in-loop -- Only one encoded page can be outside the bounded queue.
+            const page = await ports.prepare(source, index, slots[offset], outcome.value);
+            record.pages += 1;
+            // eslint-disable-next-line no-await-in-loop -- Flush an oversized page before materializing another.
+            await queue.add(page);
+            ports.prepared();
+        }
+    } catch (error) { failure = { error }; }
+    const issues = closePreparations(slots);
+    if (failure) {
+        record.issues.push(...issues);
+        throw failure.error;
+    }
+    if (issues.length > 0) { throw new IssueError(issueMessages(issues), { issues }); }
+}
+
+async function prepareDocument(ports, plan, context, queue) {
+    for (let offset = 0; offset < plan.sources.length; offset += ports.parallelism) {
+        const group = plan.sources.slice(offset, offset + ports.parallelism).map((source, index) => [offset + index, source]);
+        // eslint-disable-next-line no-await-in-loop -- A group of source work settles before the next starts.
+        await prepareGroup(ports, context, queue, group);
     }
 }
 

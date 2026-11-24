@@ -11,6 +11,8 @@ function fixture(count = 1, options = {}) {
     const ports = {
         allocate: (index) => registerArtifact(artifacts, `/work/${index}.pdf`),
         beginning: (source) => { events.push(["begin", source.path]); },
+        parallelism: options.parallelism ?? 1,
+        capture: () => ({ ready: Promise.resolve(null), close: () => undefined }),
         prepare(source, index) {
             if (options.fail === index) { throw options.error ?? new OperationError("bad source"); }
             const page = { path: `/work/${index}.jpg`, size: options.size ?? 1 };

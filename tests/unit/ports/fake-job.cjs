@@ -6,6 +6,7 @@
  */
 
 const { calculatePageGeometry } = require("../../../src/core/geometry.js");
+const { beginPagePreparation } = require("../../../src/application/pages.js");
 const { createProgress } = require("../../../src/application/progress.js");
 
 const { runOperations } = require("../../support/macos-conversion/host/run-operations.js");
@@ -52,4 +53,10 @@ function imageOf(path) {
     };
 }
 
-module.exports = { geometry, makeJob, imageOf };
+async function preparePage(job, source, index) {
+    const work = beginPagePreparation(job, source, index);
+    try { return await work.finish(await work.ready); }
+    finally { work.close(); }
+}
+
+module.exports = { geometry, makeJob, imageOf, preparePage };
