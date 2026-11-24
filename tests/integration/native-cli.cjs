@@ -29,6 +29,43 @@ function config(folder, mode = "combined") {
     return file;
 }
 
+async function verifySetup(folder, photo) {
+    const settingsFile = config(folder);
+    const args = ["--settings", settingsFile, "--", photo];
+    const environment = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
+        key.toUpperCase() !== "PATH" && !key.startsWith("IMAGE_FILES_TO_PDF_")));
+    const withoutTools = process.platform === "darwin" ? "/usr/bin:/bin" : path.join(folder, "empty-path");
+    const withPath = (value) => ({ ...environment, PATH: value });
+    const all = parseReceipt(await cli(args, folder, 3, { env: withPath(withoutTools) }));
+    assert.equal(all.state, "setup-failed");
+    assert.deepEqual(all.issues.slice(0, 3).map(({ code, params }) => [code, params]), [
+        ["tool-missing", { name: "vips" }], ["tool-missing", { name: "vipsheader" }], ["tool-missing", { name: "pdfcpu" }]
+    ]);
+    const [hint] = all.issues.slice(3);
+    assert.equal(all.issues.length, 4);
+    assert.equal(hint.code, "install-hint");
+    const vips = process.platform === "darwin" ? "vips" : "libvips";
+    assert.deepEqual(hint.params, { platform: process.platform, packages: [vips, "pdfcpu"] });
+    const wording = {
+        darwin: /brew install vips pdfcpu/u, linux: /Linux distribution/u, win32: /Windows.*PATH/u
+    };
+    assert.match(hint.message, wording[process.platform]);
+    if (process.platform === "darwin") {
+        const tools = fs.mkdtempSync(path.join(folder, "only-vips-"));
+        for (const name of ["vips", "vipsheader"]) {
+            const source = execFileSync("/usr/bin/which", [name], { encoding: "utf8" }).trim();
+            fs.symlinkSync(source, path.join(tools, name));
+        }
+        const missing = parseReceipt(await cli(args, folder, 3, { env: withPath(`${tools}:/usr/bin:/bin`) }));
+        assert.deepEqual(missing.issues.map(({ code, params }) => [code, params]), [
+            ["tool-missing", { name: "pdfcpu" }], ["install-hint", { platform: "darwin", packages: ["pdfcpu"] }]
+        ]);
+        assert.match(missing.issues[1].message, /brew install pdfcpu\./u);
+    }
+    assert.equal(all.documents.length, 0);
+    process.stdout.write(`Setup issue parameters and package guidance passed on ${process.platform}.\n`);
+}
+
 function verifyPdf(file, pages) {
     execFileSync("pdfcpu", ["validate", "--conf", "disable", "--mode=strict", file], { stdio: "pipe" });
     execFileSync("qpdf", ["--check", file], { stdio: "pipe" });
@@ -273,6 +310,7 @@ async function main() {
         await verifySecondVolume(work.path, photo, process.env.IFTP_SECOND_VOLUME);
         return;
     }
+    await verifySetup(work.path, photo);
     await verifyFormats(work.path, photo);
     if (process.env.IFTP_HEVC_UNAVAILABLE) { await verifyHevcRefusal(work.path); }
     await verifyPngCounts(work.path);

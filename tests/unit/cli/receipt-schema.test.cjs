@@ -43,3 +43,12 @@ test("independent receipt violations are refused rather than silently redefining
     assertReceipt(recovered);
     const failed = receipt(); failed.documents[0].state = "failed"; delete failed.documents[0].output; assertReceipt(failed);
 });
+
+test("setup installation hints carry package data rather than pre-rendered text", () => {
+    const value = { state: "setup-failed", documents: [], rejected: [], diagnostics: [], issues: [
+        { code: "install-hint", stage: "setup", params: { platform: "darwin", packages: ["pdfcpu"] }, message: "Install pdfcpu." }
+    ] };
+    assertReceipt(value);
+    value.issues[0].params.hint = "Install pdfcpu.";
+    assert.throws(() => assertReceipt(value));
+});

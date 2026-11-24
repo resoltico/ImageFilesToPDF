@@ -197,10 +197,16 @@ keep the setting's display name.
 | --- | --- |
 | `request` | `usage`, `settings-file`, `timestamp` |
 | `settings` | `unknown`, `choice`, `integer`, `color`; `object` belongs to the core validator, not the CLI root check |
-| `setup` | `tool-missing`, `tool-unusable`, `override-invalid`, `runtime-unsupported`, `runtime-unavailable`, `fault`, `canceled` |
+| `setup` | `tool-missing`, `tool-unusable`, `override-invalid`, `install-hint`, `runtime-unsupported`, `runtime-unavailable`, `fault`, `canceled` |
 | `selection` | `folder`, `unsupported-format`, `not-a-file`, `not-a-path`, `remote-url`, `not-a-folder`, `package`, `link`, `special-file`, `unreadable`, `unexaminable`, `empty-folder`, and the run issue `no-images` |
 | `inspection` | `unreadable`, `unexaminable`, `empty`, `not-an-image`, `unsupported-content`, `multiple-images`, `damaged` |
 | `allocation`, `planning`, `capture`, `preparation`, `execution`, `validation`, `publication`, `recovery`, `cleanup`, `workspace`, `reporting` | `operation`, `fault`, `canceled`, `damaged`, `publication`, `recovery`, `cleanup` |
+
+After tool issues, setup appends one `install-hint` for missing or unusable
+automatically discovered tools. Its `params.platform` identifies the platform
+and `params.packages` lists only the affected packages. An explicit override
+is reported with its raw value and does not add an installation recommendation
+for that tool. Tool issue parameters contain only data.
 
 A CLI settings root that is an array, `null` or another non-object is
 `settings-file` at `request`, with exit 2. The core `object` validation code is

@@ -32,15 +32,17 @@ test("setup probes every required tool with the real input and flags before pass
 });
 
 test("missing setup tools are reported together with the selected platform hint", async () => {
-    for (const [platform, guidance] of [["darwin", /brew install vips pdfcpu/u], ["linux", /Linux distribution/u], ["win32", /add their directories to PATH/u]]) {
+    for (const [platform, guidance] of [["darwin", /brew install vips pdfcpu/u], ["linux", /Linux distribution/u], ["win32", /add the tool directories to PATH/u]]) {
         const { argv, opened, result } = fixture({ platform, locate: () => ({ file: null }) });
         // eslint-disable-next-line no-await-in-loop -- Inspect each platform result independently.
         await assert.rejects(() => checkRequiredTools(result), (error) => {
             const outcome = failedRun(error);
             assert.equal(outcome.state, "setup-failed");
-            assert.deepEqual(outcome.issues.map(({ code }) => code), ["tool-missing", "tool-missing", "tool-missing"]);
+            assert.deepEqual(outcome.issues.map(({ code }) => code), ["tool-missing", "tool-missing", "tool-missing", "install-hint"]);
             assert.deepEqual(outcome.issues.slice(0, 3).map(({ params }) => params.name), ["vips", "vipsheader", "pdfcpu"]);
-            assert.match(outcome.issues[2].message, guidance);
+            assert.deepEqual(outcome.issues.slice(0, 3).map(({ params }) => params), [{ name: "vips" }, { name: "vipsheader" }, { name: "pdfcpu" }]);
+            assert.deepEqual(outcome.issues[3].params, { platform, packages: [platform === "darwin" ? "vips" : "libvips", "pdfcpu"] });
+            assert.match(outcome.issues[3].message, guidance);
             return true;
         });
         assert.deepEqual([argv, opened], [[], []]);
@@ -56,6 +58,7 @@ test("explicit overrides do not fall back and native stderr stays diagnostic", a
         assert.deepEqual(checked, ["vips", "vipsheader", "pdfcpu"]);
         assert.deepEqual(error.issues.map(({ code }) => code), ["override-invalid", "tool-unusable", "tool-unusable"]);
         assert.match(error.issues[0].message, /IMAGE_FILES_TO_PDF_VIPS="\/overrides\/vips"/u);
+        assert.equal(error.issues[0].params.value, "/overrides/vips");
         assert.equal(error.issues[1].diagnostic.message, "native diagnostic");
         assert.match(error.issues[2].message, /Version 0\.16\.4 or later is required/u);
         assert.doesNotMatch(error.message, /native diagnostic|brew install/u);
@@ -69,7 +72,7 @@ test("zero status without the required capability gives a setup problem for each
         sample: { input: "/form/test.png", output: "/form/output.png", outputExists: () => false }
     });
     await assert.rejects(() => checkRequiredTools(result), ({ issues }) => {
-        assert.deepEqual(issues.map(({ code }) => code), ["tool-unusable", "tool-unusable", "tool-unusable"]);
+        assert.deepEqual(issues.map(({ code }) => code), ["tool-unusable", "tool-unusable", "tool-unusable", "install-hint"]);
         assert.match(issues[2].message, /0\.16\.4/u);
         return true;
     });
@@ -104,7 +107,8 @@ test("setup requires status, native error and feature evidence independently", a
         });
         // eslint-disable-next-line no-await-in-loop -- Inspect each fault before moving to the next.
         await assert.rejects(() => checkRequiredTools(result), ({ issues }) =>
-            issues.length === 1 && issues[0].code === "tool-unusable" && issues[0].params.name === tool);
+            issues.length === 2 && issues[0].code === "tool-unusable" && issues[0].params.name === tool &&
+            issues[1].code === "install-hint" && issues[1].params.packages[0] === (tool === "pdfcpu" ? "pdfcpu" : "vips"));
     }
 });
 
@@ -112,4 +116,15 @@ test("setup checks Stop before executable discovery", async () => {
     const { result, checked, argv } = fixture({ checkpoint() { throw new UserCanceled(); } });
     await assert.rejects(() => checkRequiredTools(result), UserCanceled);
     assert.deepEqual([checked, argv], [[], []]);
+});
+
+test("one missing automatic tool gives one hint for precisely that package", async () => {
+    const { result } = fixture({ locate: (name) => ({ file: name === "pdfcpu" ? null : `/tools/${name}` }) });
+    await assert.rejects(() => checkRequiredTools(result), ({ issues }) => {
+        assert.deepEqual(issues, [
+            { code: "tool-missing", stage: "setup", params: { name: "pdfcpu" }, message: "pdfcpu could not be found." },
+            { code: "install-hint", stage: "setup", params: { platform: "darwin", packages: ["pdfcpu"] }, message: "Install the missing tools with Homebrew: brew install pdfcpu." }
+        ]);
+        return true;
+    });
 });

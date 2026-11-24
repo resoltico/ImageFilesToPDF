@@ -1,7 +1,5 @@
 "use strict";
-const { OperationError } = require("../core/errors.js");
-const { issueMessages, message } = require("../core/messages.js");
-const { setupToolProblem, toolInstallHint } = require("../core/setup.js");
+const { setupToolProblem, setupFailure } = require("../core/setup.js");
 const { buildVipsProbeArgv, buildVipsheaderProbeArgv, isVipsheaderUsable, buildPdfcpuProbeArgv, isPdfcpuUsable } = require("../backend/preflight.js");
 
 const REQUIRED_TOOLS = ["vips", "vipsheader", "pdfcpu"];
@@ -38,24 +36,16 @@ function checkedTool(ports, name, found) {
 async function checkRequiredTools(ports) {
     const tools = {};
     const issues = [];
-    let automatic = null;
     for (const name of REQUIRED_TOOLS) {
         ports.checkpoint();
         // eslint-disable-next-line no-await-in-loop -- Capability probes run one at a time before any source is opened.
         const found = await ports.locate(name);
         // eslint-disable-next-line no-await-in-loop -- Preserve probe and report order.
         const issue = await checkedTool(ports, name, found);
-        if (issue) { issues.push(issue); if (!found.override) { automatic = issue; } }
+        if (issue) { issues.push(issue); }
         else { tools[name] = found.file; }
     }
-    if (issues.length > 0) {
-        if (automatic) {
-            const hint = message(toolInstallHint(ports.platform));
-            automatic.params = { ...automatic.params, problem: automatic.message, hint };
-            automatic.message = message("setupProblemWithHint", automatic.params);
-        }
-        throw new OperationError(issueMessages(issues), { issues });
-    }
+    if (issues.length > 0) { throw setupFailure(issues, ports.platform); }
     return tools;
 }
 

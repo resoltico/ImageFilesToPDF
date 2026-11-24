@@ -1,24 +1,46 @@
 "use strict";
-const { issueMessage } = require("./messages.js");
+const { OperationError } = require("./errors.js");
+const { issueMessage, issueMessages, message } = require("./messages.js");
 
 const MINIMUM_PDFCPU_VERSION = "0.16.4";
 const INSTALL_HINT = {
     darwin: "toolInstallDarwin", linux: "toolInstallLinux", win32: "toolInstallWindows"
 };
+const packageList = new Intl.ListFormat("en-US");
 
-function toolInstallHint(platform) {
-    if (!Object.hasOwn(INSTALL_HINT, platform)) { throw new Error("Unknown setup platform."); }
-    return INSTALL_HINT[platform];
+function setupIssue(code, wording, params, rendered = params) {
+    return { ...issueMessage(code, "setup", wording, rendered), params };
 }
 
-function setupToolProblem(code, tool, override) {
-    if (override) {
-        const failure = tool === "pdfcpu" ? "toolOverridePdfcpuUnusable" : "toolOverrideUnusableName";
-        return issueMessage(code, "setup", code === "override-invalid" ? "toolOverrideInvalidName" : failure,
-            { variable: override.variable, value: JSON.stringify(override.value), tool, minimum: MINIMUM_PDFCPU_VERSION });
+function setupToolProblem(code, name, override) {
+    if (override && code === "override-invalid") {
+        const params = { variable: override.variable, value: override.value, name };
+        return setupIssue(code, "toolOverrideInvalidName", params, { ...params, value: JSON.stringify(params.value) });
     }
-    if (code === "tool-missing") { return issueMessage(code, "setup", "toolMissingFromPath", { name: tool }); }
-    return issueMessage(code, "setup", tool === "pdfcpu" ? "pdfcpuUnusable" : "toolUnusable", { name: tool, minimum: MINIMUM_PDFCPU_VERSION });
+    const version = name === "pdfcpu" ? { minimum: MINIMUM_PDFCPU_VERSION } : {};
+    if (override) {
+        const params = { variable: override.variable, value: override.value, name, ...version };
+        const wording = name === "pdfcpu" ? "toolOverridePdfcpuUnusable" : "toolOverrideUnusableName";
+        return setupIssue(code, wording, params, { ...params, value: JSON.stringify(params.value) });
+    }
+    if (code === "tool-missing") { return setupIssue(code, "toolMissing", { name }); }
+    return setupIssue(code, name === "pdfcpu" ? "pdfcpuUnusable" : "toolUnusable", { name, ...version });
 }
 
-module.exports = { MINIMUM_PDFCPU_VERSION, setupToolProblem, toolInstallHint };
+function installHint(automatic, platform) {
+    if (!Object.hasOwn(INSTALL_HINT, platform)) { throw new Error("Unknown setup platform."); }
+    const vips = platform === "darwin" ? "vips" : "libvips";
+    const packages = [...new Set(automatic.map(({ params }) => params.name === "pdfcpu" ? "pdfcpu" : vips))];
+    const params = { platform, packages };
+    const rendered = platform === "darwin" ? packages.join(" ") : packageList.format(packages.map((name) =>
+        name === "pdfcpu" ? message("toolInstallStablePdfcpu") : name));
+    return setupIssue("install-hint", INSTALL_HINT[platform], params, { packages: rendered });
+}
+
+function setupFailure(problems, platform) {
+    const automatic = problems.filter((issue) => !Object.hasOwn(issue.params, "variable"));
+    const issues = automatic.length > 0 ? [...problems, installHint(automatic, platform)] : problems;
+    return new OperationError(issueMessages(issues), { issues });
+}
+
+module.exports = { MINIMUM_PDFCPU_VERSION, setupToolProblem, setupFailure };
