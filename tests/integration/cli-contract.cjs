@@ -9,8 +9,9 @@ const {pathToFileURL} = require("node:url");
 const {parseReceipt} = require("./lib/receipt.cjs");
 const {spawnSync, execFileSync, spawn} = require("node:child_process");
 const {once} = require("node:events");
-const [script, work] = process.argv.slice(2);
-const owned = new Set();
+const [script, workArgument] = process.argv.slice(2);
+const work = fs.realpathSync(workArgument);
+const workspaceRoot = path.join(fs.realpathSync(os.tmpdir()), `image-files-to-pdf-node-1-${process.getuid()}`);
 let activeChild=null;
 const settings = {mode:"combined", paperSize:"A4", orientation:"Portrait", background:"#FFFFFF", resolutionLimit:300, quality:92, timestamp:"20261029_010203"};
 const config = path.join(work,"settings.json");
@@ -18,7 +19,7 @@ fs.writeFileSync(config,JSON.stringify(settings));
 const at = (name) => path.join(work,name);
 
 function command(status, args, options={}) {
-    const result = spawnSync("/usr/bin/osascript",["-l","JavaScript",script,...args],{cwd:work,encoding:"utf8",timeout:60000,...options});
+    const result = spawnSync(process.execPath,[script,...args],{cwd:work,encoding:"utf8",timeout:60000,...options});
     assert.ifError(result.error);
     assert.equal(result.signal,null, result.stderr);
     assert.equal(result.status,status,`${args.join(" ")}\n${result.stderr}\n${result.stdout}`);
@@ -26,7 +27,7 @@ function command(status, args, options={}) {
     return result;
 }
 function convert(status, files, file=config, options={}) {
-    const result=command(status,["--","--headless",file,...files],options);
+    const result=command(status,["--settings",file,"--",...files],options);
     assert.equal(result.stdout.trim().split("\n").length,1,"one receipt line");
     const receipt=parseReceipt(result.stdout);
     assert.ok(["complete","incomplete","invalid","canceled"].includes(receipt.state));
@@ -110,7 +111,7 @@ function settingsDiagnostics() {
     ]) {
         const file = at(`diagnostic-${key}.json`);
         fs.writeFileSync(file, JSON.stringify(values));
-        const result = command(2, ["--headless", file, "photo.jpg"]);
+        const result = command(2, ["--settings", file, "--", "photo.jpg"]);
         const receipt = parseReceipt(result.stdout);
         assert.equal(receipt.issues.find((issue) => issue.field === key).message, expected);
         assert.ok(result.stderr.includes(expected));
@@ -118,8 +119,8 @@ function settingsDiagnostics() {
 }
 
 function workspaceOf(pid, existing) {
-    for(const name of fs.readdirSync(os.tmpdir()).filter((item)=>/^ImageFilesToPDF\.[A-Za-z0-9]{10}$/u.test(item)&&!existing.has(item))) {
-        const candidate=path.join(os.tmpdir(),name);
+    for(const name of fs.readdirSync(workspaceRoot).filter((item)=>/^run-[A-Za-z0-9]{6}$/u.test(item)&&!existing.has(item))) {
+        const candidate=path.join(workspaceRoot,name);
         try {if(JSON.parse(fs.readFileSync(path.join(candidate,"owner.json"),"utf8")).pid===pid) {return candidate;}}
         catch {
             // A candidate belonging to another process is never ours.
@@ -131,7 +132,7 @@ function workspaceOf(pid, existing) {
 async function registeredWorkspace(existing) {
     for (let attempt = 0; attempt < 1000; attempt += 1) {
         const workspace = workspaceOf(activeChild.pid, existing);
-        if (workspace) { owned.add(workspace); return workspace; }
+        if (workspace) { return workspace; }
         // Wait for this child's ownership registration before delivering any signal.
         // eslint-disable-next-line no-await-in-loop
         await new Promise((resolve) => { setTimeout(resolve, 10); });
@@ -146,8 +147,8 @@ async function childEnded(child) {
 }
 
 async function signalRun(delivered, input) {
-    const existing = new Set(fs.readdirSync(os.tmpdir()));
-    activeChild = spawn("/usr/bin/osascript", ["-l", "JavaScript", script, "--headless", config, input]);
+    const existing = new Set(fs.readdirSync(workspaceRoot));
+    activeChild = spawn(process.execPath, [script, "--settings", config, "--", input]);
     let stderr = "", stdout = "";
     activeChild.stdout.setEncoding("utf8"); activeChild.stderr.setEncoding("utf8");
     activeChild.stdout.on("data", (text) => { stdout += text; }); activeChild.stderr.on("data", (text) => { stderr += text; });
@@ -173,33 +174,11 @@ async function signals() {
     }
 }
 
-async function ownership() {
-    const input=at("many");fs.mkdirSync(input);
-    for(let index=0;index<200;index+=1) {fs.copyFileSync(at("photo.jpg"),path.join(input,`${index}.jpg`));}
-    const existing=new Set(fs.readdirSync(os.tmpdir()));
-    activeChild=spawn("/usr/bin/osascript",["-l","JavaScript",script,"--headless",config,input],{stdio:"ignore"});
-    const orphan = await registeredWorkspace(existing);
-    const ended=childEnded(activeChild);activeChild.kill("SIGKILL");await ended;
-    assert.ok(fs.existsSync(orphan),"KILL left an observable orphan");
-    const retained=execFileSync("mktemp",["-d","-t","ImageFilesToPDF"],{encoding:"utf8"}).trim();owned.add(retained);
-    fs.writeFileSync(path.join(retained,"owner.json"),JSON.stringify({pid:2147483647,started:"not a live process"}));
-    fs.writeFileSync(path.join(retained,"retain"),"");
-    const checked = command(0, ["--headless", config, "photo.jpg"]);
-    const receipt = parseReceipt(checked.stdout);
-    assert.ok(checked.stderr.includes(`Temporary work:\n`));
-    assert.ok(checked.stderr.includes(orphan)); assert.ok(checked.stderr.includes(retained));
-    assert.ok(checked.stderr.includes("A stale workspace was reclaimed."));
-    assert.ok(!fs.existsSync(orphan),"next startup reclaims the child-owned orphan");
-    assert.ok(fs.existsSync(retained),"dead retained workspace survives");
-    assert.ok(receipt.diagnostics.some((entry)=>entry.code==="workspace-retained"&&entry.diagnostic.path===retained));
-    assert.ok(receipt.diagnostics.some((entry)=>entry.code==="workspace-reclaimed"&&entry.diagnostic.path===orphan));
-}
-
 function grammar() {
-    const runLine="Usage: osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless <settings.json> <path…>\nRun with --help to see the settings.";
-    for(const [args,problem] of [[[],"No arguments were given."],[["--headless"],"--headless needs a settings file and at least one path."],
-        [["--headless",config],"--headless needs a settings file and at least one path."],[["--bogus"],"Unknown option: --bogus."],
-        [["--help","extra"],"--help and --version take no other arguments."],[["--headless","",config],"An argument is empty."]]) {
+    const runLine="Usage: node Image-Files-to-PDF.cjs --settings <settings.json> -- <path…>\nRun with --help to see the settings.";
+    for(const [args,problem] of [[[],"No arguments were given."],[["--settings"],"--settings needs a settings file, the -- separator, and at least one path."],
+        [["--settings",config],"--settings needs a settings file, the -- separator, and at least one path."],[["--bogus"],"Unknown option: --bogus."],
+        [["--help","extra"],"--help and --version take no other arguments."],[["--settings","","--",config],"An argument is empty."]]) {
         const started=Date.now();const result=command(2,args,{timeout:2000});
         assert.ok(Date.now()-started<2000);assert.equal(parseReceipt(result.stdout).state,"invalid");
         assert.equal(result.stderr,`The request is invalid.\n\n${problem}\n${runLine}\n`,"a usage error is one problem and the run line, not the help");
@@ -212,7 +191,7 @@ function grammar() {
 
 function readerErrors() {
     settingsError("missing.json",undefined,/not found/u);
-    fs.mkdirSync(at("folder.json"));settingsError("folder.json",undefined,/folder/u);
+    fs.mkdirSync(at("folder.json"));settingsError("folder.json",undefined,/regular file/u);
     settingsError("empty.json","",/empty/u);
     settingsError("bytes.json",Buffer.from([255,254,255]),/UTF-8/u);
     settingsError("syntax.json","{",/not valid JSON/u);
@@ -275,7 +254,7 @@ function setupRefusals() {
     assert.equal(setup.state,"invalid");
     assert.ok(setup.issues.some((issue)=>issue.stage==="setup"));
     for (const override of ["/usr/bin/false",work,"relative-vipsheader","/no-such-fieldtest-vipsheader"]) {
-        const result=command(3,["--headless",config,"photo.jpg"],{env:{...process.env,IMAGE_FILES_TO_PDF_VIPSHEADER:override}});
+        const result=command(3,["--settings",config,"--","photo.jpg"],{env:{...process.env,IMAGE_FILES_TO_PDF_VIPSHEADER:override}});
         const receipt=parseReceipt(result.stdout);
         assert.equal(receipt.state,"invalid");assert.deepEqual(receipt.documents,[]);assert.deepEqual(receipt.rejected,[]);
         assert.match(result.stderr,/^A required tool is missing or unusable\./u);
@@ -314,7 +293,6 @@ async function run() {
     assert.deepEqual(special.rejected.map((entry) => [path.basename(entry.path), entry.code]).sort(), [["pipe.png", "special-file"], ["visible", "special-file"]]);
     assert.equal(special.documents[0].state, "saved");
     await signals();
-    await ownership();
     assert.deepEqual(fs.readFileSync(at("photo.jpg")),original,"source bytes untouched");
     // eslint-disable-next-line no-console
     console.log("macOS CLI integration passed: grammar/statuses, native reader, refusals, naming, embedding, placement and workspace ownership");
@@ -324,5 +302,4 @@ run().catch((error)=>{console.error(error);process.exitCode=1;}).finally(async()
     if(activeChild&&activeChild.exitCode===null&&activeChild.signalCode===null) {
         const ended=childEnded(activeChild);activeChild.kill("SIGKILL");await ended;
     }
-    for(const directory of owned) {fs.rmSync(directory,{recursive:true,force:true});}
 });

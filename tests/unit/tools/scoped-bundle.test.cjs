@@ -69,12 +69,12 @@ test("bare imports cannot bypass the portable dependency boundary",async()=>{
     assert.throws(()=>checkBoundary("src/core/a.js",'require("node:fs");'),/external dependency/u);
 });
 
-test("backend remains pure and is consumed only by host adapters", async () => {
+test("backend remains pure and supports the portable application", async () => {
     const { checkBoundary } = await import("../../../tools/lint/boundaries.mjs");
     for (const source of ['require("../host/shell.js");', 'require("../application/run.js");', 'Progress.completedUnitCount = 1;']) {
         assert.throws(() => checkBoundary("src/backend/a.js", source));
     }
-    assert.throws(() => checkBoundary("src/application/a.js", 'require("../backend/commands.js");'));
+    assert.doesNotThrow(() => checkBoundary("src/application/a.js", 'require("../backend/commands.js");'));
     assert.throws(() => checkBoundary("src/core/a.js", 'require("../application/run.js");'));
     assert.throws(() => checkBoundary("src/entry.js", 'ObjC.import("Foundation");'));
     assert.doesNotThrow(() => checkBoundary("src/backend/a.js", 'require("../core/settings.js");'));

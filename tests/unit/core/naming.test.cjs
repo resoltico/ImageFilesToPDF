@@ -14,8 +14,8 @@ test("combined names use the validated local timestamp and separate names use sa
 test("same-run destination conflicts get source extensions, while different destinations do not", () => {
     const source = (originalName, folder = "/out/") => ({ path: `${folder}${originalName}`, originalName, folder });
     const sources = [source("photo.jpg"), source("photo.PNG"), source("photo.jpg", "/other/")];
-    assert.deepEqual(documentPlan({ mode: "separate" }, sources, "20260904_070509", [0,0,1]).map((plan) => plan.destination), ["/out/photo-jpg.pdf", "/out/photo-png.pdf", "/other/photo.pdf"]);
-    assert.deepEqual(documentPlan({ mode: "separate" }, [source("photo.JPG"), source("photo.jpg")], "20260904_070509", [0,0]).map((plan) => plan.destination), ["/out/photo-jpg.pdf", "/out/photo-jpg.pdf"]);
+    assert.deepEqual(documentPlan({ mode: "separate" }, sources, "20260904_070509", { nameGroups: [0,0,1] }).map((plan) => plan.destination), ["/out/photo-jpg.pdf", "/out/photo-png.pdf", "/other/photo.pdf"]);
+    assert.deepEqual(documentPlan({ mode: "separate" }, [source("photo.JPG"), source("photo.jpg")], "20260904_070509", { nameGroups: [0,0] }).map((plan) => plan.destination), ["/out/photo-jpg.pdf", "/out/photo-jpg.pdf"]);
     assert.equal(documentPlan({ mode: "combined" }, sources, "20260904_070509")[0].destination, "/out/Images 2026-09-04 at 07.05.09.pdf");
     assert.deepEqual(documentPlan({ mode: "combined" }, [], "unused"), []);
 });
@@ -39,10 +39,10 @@ test("host name equivalence determines conflicts without changing spelling or so
         {path:"/Trip/photo.jpg",folder:"/Trip/",originalName:"photo.jpg"},
         {path:"/trip/PHOTO.png",folder:"/trip/",originalName:"PHOTO.png"}
     ];
-    assert.deepEqual(documentPlan({mode:"separate"},sources,"unused",[7,7]).map((plan)=>plan.destination),["/Trip/photo-jpg.pdf","/trip/PHOTO-png.pdf"]);
-    assert.deepEqual(documentPlan({mode:"separate"},sources,"unused",[7,8]).map((plan)=>plan.destination),["/Trip/photo.pdf","/trip/PHOTO.pdf"]);
+    assert.deepEqual(documentPlan({mode:"separate"},sources,"unused",{ nameGroups: [7,7] }).map((plan)=>plan.destination),["/Trip/photo-jpg.pdf","/trip/PHOTO-png.pdf"]);
+    assert.deepEqual(documentPlan({mode:"separate"},sources,"unused",{ nameGroups: [7,8] }).map((plan)=>plan.destination),["/Trip/photo.pdf","/trip/PHOTO.pdf"]);
     for (const groups of [undefined,null,[],[0],Array(2),[-1,0],[0.5,0],[NaN,0],["0",0],[Number.MAX_SAFE_INTEGER+1,0]]) {
-        assert.throws(()=>documentPlan({mode:"separate"},sources,"unused",groups),/identify every source/u);
+        assert.throws(()=>documentPlan({mode:"separate"},sources,"unused",{ nameGroups: groups }),/identify every source/u);
     }
 });
 
@@ -50,7 +50,7 @@ test("host name equivalence determines conflicts without changing spelling or so
 test("one admitted image uses its name in both modes and ignores the timestamp", () => {
     const source = { path: "/out/photo.jpg", originalName: "photo.jpg", folder: "/out/" };
     for (const mode of ["combined", "separate"]) {
-        assert.deepEqual(documentPlan({ mode }, [source], "unused", [0]), [{ sources: [source], destination: "/out/photo.pdf" }]);
+        assert.deepEqual(documentPlan({ mode }, [source], "unused", { nameGroups: [0] }), [{ sources: [source], destination: "/out/photo.pdf" }]);
     }
     assert.equal(documentPlan({ mode: "combined" }, [source, { ...source, path: "/out/other.jpg", originalName: "other.jpg" }], "20261113_010203")[0].destination,
         "/out/Images 2026-11-13 at 01.02.03.pdf");

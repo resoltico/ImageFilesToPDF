@@ -8,63 +8,53 @@ not as a public issue. This is a personal project without a support commitment.
 
 ## File-safety boundary
 
-Originals are read and copied, never opened for writing, moved or deleted. Folder
-searches do not follow links or enter packages and skip hidden entries; an
-explicitly selected item is checked on its own terms. Required file-kind, package,
-identity and source-capture capabilities must be available; processing does not
-fall back to weaker checks.
+Originals are read and copied without modification. The tree excludes links,
+junctions and reparse points, packages where applicable, and hidden entries from
+folder walks. The CLI treats Windows hidden attributes as hidden and requires
+local drive paths. It refuses POSIX special files and source path components it
+cannot verify. Explicitly selected hidden images are assessed individually.
 
-In the Quick Action, candidates are inspected before the settings dialog. The
-command line validates its settings before tool setup and source inspection.
-Each admitted source is then
-copied into an owned private workspace, and the same captured bytes are inspected
-and decoded. Identity, version and image facts, including gain-map presence, are
-checked around the capture, and an observed change refuses the image. Coarse filesystem timestamps cannot guarantee
-an atomic snapshot of an original that another program is changing, so stop other
-writers while converting.
+The Quick Action inspects the selection before showing settings. The CLI
+validates its request and settings before tool setup, reclamation or conversion.
+Both re-inspect and render private captured bytes. The Node adapter opens a
+regular source by handle, checks its identity, size and version against the
+named path before and after the copy, and writes an exclusively created private
+file. POSIX opens use no-follow and nonblocking flags where available. On
+Windows the adapter checks reparse attributes along the path and compares the
+open handle with the named path.
 
-Separate-mode names are planned against the destination's actual rules. Native
-folder identity and probes in an owned directory on the destination volume (the
-workspace, or an OS-created temporary directory there) decide which names coincide;
-ownership metadata is written before any probe name, and every allocated probe is
-removed before encoding. Where no such directory can be made, Unicode comparisons
-require reliable persistent identities and hard-link support. Missing facts stop
-planning. An abrupt process end can leave a probe directory on the destination
-volume; it holds ownership metadata and name tokens, never image or PDF bytes, and
-workspace cleanup does not reclaim it.
+The capture checks detect ordinary replacement and concurrent edits. They do not
+lock other applications out of a source or provide an atomic snapshot. Writers
+able to race ancestor replacement, same-account attackers, and filesystems
+without trustworthy identities and version facts are outside the trust boundary.
+Convert stable sources in directories you trust.
 
-A finished PDF is published with an exact-path hard link from the workspace. When
-the destination is on another volume, an owned copy is first made beside the
-destination and linked from there; on a volume that cannot link, it is published
-by exclusive rename. Only a classified name collision is retried, with the next
-` 2`, ` 3` name. Existing files, folders, pipes and links are never replaced or
-written inside. Native identity, size and the literal directory-entry basename confirm the actual output before the
-workspace copy is released. Exact names require read/search access to the output
-folder. An unavailable or ambiguous listing preserves the already-created entry
-and verified workspace PDF without guessing a canonical spelling or making a duplicate
-recovery. Mandatory name-inspection cleanup failures also stop remaining PDFs
-and retain unresolved work, even when another failure occurred first. The validated
-workspace PDF's identity is checked again before release; if it no longer matches,
-the confirmed output remains saved with a fatal cleanup issue, the workspace PDF
-is not removed, and its workspace stays retained. A volume that supports neither exclusive route fails
-over to recovery instead of exposing a partial file.
+Separate-mode naming uses actual namespace lookups and native directory identity.
+Temporary comparison directories contain name tokens. An abrupt process end can
+leave a comparison or staging directory on the destination volume.
 
-If a PDF cannot be published, the action attempts recovery to `~/Downloads` under
-its intended name with the same exclusive rules, then to private temporary
-storage. Only a confirmed recovery releases the workspace copy. An unverifiable stored
-name leaves any already-created entry untouched and retains a verified workspace
-PDF, with explicit uncertainty rather than a guessed output path. If that
-workspace PDF cannot be verified either, the run reports a fatal issue without claiming
-a recovery; raw ownership observations remain in diagnostics. A candidate whose validation
-faulted is reported as unconfirmed, never as a validated recovery. Stop keeps saved
-PDFs and preserves validated unpublished work in recovery or its workspace. Temporary storage is
-not permanent: move needed recovered or retained work promptly.
+A validated PDF is claimed at its final path using an exclusive hard link.
+For cross-volume publication, a complete owned copy is staged beside the
+destination first. The Finder adapter also has an exclusive macOS rename route.
+Only an observed existing entry triggers a suffix retry. The requested
+destination must be readable and searchable so the tool can confirm the stored
+basename, size and identity before releasing the verified original. A possibly
+successful but unconfirmed claim leaves the public entry and private original in
+place. If even the original cannot be verified, the result reports uncertainty
+without supplying a recovery path. An unavailable exclusive route tries
+Downloads under the same rules, then keeps verified private work. Stop and
+receipt transport failures preserve validated or confirmed files.
 
-Each workspace records `owner.json` (process ID and start time) before any image
-data, and a `retain` marker protects work entering validation. When a conversion
-starts, only workspaces whose recorded process has ended and that carry no `retain`
-marker are removed; retained, unreadable and ownerless workspaces are reported and
-left alone. Help, version and invalid command-line requests do not run this cleanup.
+Workspace metadata records process identity and retention before use. The Node
+workspace root is private to the current user, using POSIX ownership and
+permissions or a verified Windows access-control list. Its owner record binds
+the directory's identity to a process ID and start discriminator. A guard
+created before any workspace-writing command is removed after a correlated
+settlement reply. Interruption before that reply leaves an unknown writer, so a
+later run preserves the workspace even if its owner died. Startup only reclaims
+recognized, unretained work whose recorded owner instance has ended and whose
+writer guard is absent. The Quick Action uses its own workspace records.
+Temporary storage can be cleared by the OS.
 
 ## Embedded image metadata
 
@@ -79,10 +69,9 @@ Remembered settings, under `com.resoltico.ImageFilesToPDF`, hold page settings o
 
 ## Commands and trust
 
-External commands are built as argument vectors and shell-quoted at the execution
-boundary by `src/backend/shell.js`; NUL bytes are refused. Executables are
-registered in `src/host/backend-executables.js`, and source rules refuse absolute
-executable paths elsewhere. `IMAGE_FILES_TO_PDF_VIPS`,
+External commands are built as argument vectors. Node passes them directly to
+the native executable. The Finder adapter quotes them for the shell.
+Executable discovery and overrides select trusted installed tools. `IMAGE_FILES_TO_PDF_VIPS`,
 `IMAGE_FILES_TO_PDF_VIPSHEADER` and `IMAGE_FILES_TO_PDF_PDFCPU` can name explicit
 executables; they select trusted tools and are not a sandbox.
 
@@ -97,7 +86,7 @@ them before sharing.
 
 The release workflow requires the generated artifact to reproduce the committed
 bytes, verifies checksums and build attestations before publication, and checks
-that the tag still names the commit being released. The JXA, checksum manifest,
+that the tag still names the commit being released. Both bundles, the checksum manifest,
 installation instructions and license are attestation subjects.
 
 [README.md](README.md#verify-a-download) describes download verification.

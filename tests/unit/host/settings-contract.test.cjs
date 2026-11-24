@@ -2,7 +2,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { DEFAULT_SETTINGS, validateSettings, normalizeSettings } = require("../../../src/core/settings.js");
-const { configurationValues } = require("../../../src/host/command-line/cli.js");
 const { PAPER_SIZE, defaultValueOf, defaultLabelOf } = require("../../../src/host/quick-action/settings-model.js");
 
 for (const field of ["resolutionLimit","quality","paperSize","orientation","mode","background"]) {
@@ -23,13 +22,6 @@ test("quoted and hexadecimal numeric strings and unknown fields are errors",()=>
     assert.equal(validateSettings({...DEFAULT_SETTINGS,quailty:92}).issues[0].code,"unknown");
     assert.equal(validateSettings({}).issues.length,6);
     for(const value of [null,[],false,0,"settings"]) { assert.equal(validateSettings(value).issues[0].code,"object"); }
-});
-
-test("supplied timestamp is optional only by absence",()=>{
-    for(const timestamp of [null,false,0,"",[],{},"2026/10/29"]) {
-        assert.throws(()=>configurationValues({...DEFAULT_SETTINGS,timestamp}),(error)=>error.issues.some((issue)=>issue.field==="timestamp"));
-    }
-    assert.equal(configurationValues({...DEFAULT_SETTINGS,timestamp:"20240229_010203"}).timestamp,"20240229_010203");
 });
 
 test("defaults are domain values independent of popup order",()=>{

@@ -13,7 +13,6 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-SCRIPT="$ROOT/dist/Image-Files-to-PDF.jxa"
 WORK=$(mktemp -d -t ImageFilesToPDF-volumes)
 VOLUME_NAME=ImageFilesToPDF-test-volume
 VOLUME="$WORK/mount-APFS"
@@ -25,6 +24,8 @@ cleanup() {
     rm -rf "$WORK"
 }
 trap cleanup EXIT
+SCRIPT="$WORK/workflow-probe.jxa"
+node "$ROOT/tools/build-probe.mjs" tests/integration/jxa-workflow-probe.js "$SCRIPT"
 
 # shellcheck source=tests/integration/lib/assert.sh
 source "$ROOT/tests/integration/lib/assert.sh"
@@ -41,7 +42,7 @@ run() {
     local stamp=$1 mode=$2
     shift 2
     write_config "$WORK/config.json" A4 Portrait "$mode" "#FFFFFF" "$stamp"
-    osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$@" \
+    osascript -l JavaScript "$SCRIPT" "$WORK/config.json" "$@" \
         2>"$WORK/error.txt" || true
 }
 
@@ -72,6 +73,19 @@ if attach_test_volume APFS "$VOLUME_NAME" "$VOLUME"; then
     run 20260907_020204 separate "$VOLUME/photo.png"
     assert_valid_pdf "$VOLUME/photo 2.pdf"
     assert_nothing_left_behind "$VOLUME"
+    if [ "$VOLUME" = "$WORK/mount-APFS" ]; then
+        CLI="$ROOT/dist/Image-Files-to-PDF.cjs"
+        test "$(stat -f%d "$VOLUME")" != "$(stat -f%d "$WORK")" || fail "APFS mount must be a different device"
+        for mode in combined separate; do
+            cp "$WORK/photo.png" "$VOLUME/$mode-node.png"
+            write_config "$WORK/config.json" A4 Portrait "$mode" "#FFFFFF" 20260907_020205
+            node "$CLI" --settings "$WORK/config.json" -- "$VOLUME/$mode-node.png" >"$WORK/node-receipt.json"
+            cmp "$WORK/photo.png" "$VOLUME/$mode-node.png"
+            assert_valid_pdf "$VOLUME/$mode-node.pdf"
+            test "$(stat -f%l "$VOLUME/$mode-node.pdf")" = 1
+        done
+        assert_nothing_left_behind "$VOLUME"
+    fi
     detach_test_volume "$VOLUME" "$WORK/$VOLUME_NAME.dmg"
 else
     printf 'cross-volume publication skipped: no test volume could be attached\n'

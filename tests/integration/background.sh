@@ -10,7 +10,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-SCRIPT="$ROOT/dist/Image-Files-to-PDF.jxa"
+SCRIPT="$ROOT/dist/Image-Files-to-PDF.cjs"
 WORK=$(mktemp -d -t ImageFilesToPDF-background)
 
 cleanup() {
@@ -30,7 +30,7 @@ vips copy "$WORK/tiny.svg" "$WORK/tiny.png"
 # render <stamp> <background> <image> <name>
 render() {
     write_config "$WORK/config.json" A4 Portrait "combined" "$2" "$1"
-    osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$3" \
+    node "$SCRIPT" --settings "$WORK/config.json" -- "$3" \
         >"$WORK/render-receipt.json" 2>"$WORK/render-stderr.txt"
     local pdf
     pdf=$(node -p 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).documents[0].output' "$WORK/render-receipt.json")

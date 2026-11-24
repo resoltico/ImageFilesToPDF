@@ -1,43 +1,18 @@
-/*
- * Verifies that the committed artifact matches the current source.
- *
- * This must be able to fail, which means it has to run against whatever is
- * already on disk. Never run a build immediately before it: regenerating the
- * artifact first makes the comparison vacuous and lets a stale artifact ship.
- */
-import { readFile } from "node:fs/promises";
-import {
-    artifactPath,
-    digestOf,
-    manifestPath,
-    renderManifest,
-    renderRelease
-} from "./release.mjs";
+/* Compare the files already in the checkout with a fresh build in memory. */
+import { readFile, readdir } from "node:fs/promises";
+import path from "node:path";
+import { manifestPath, renderManifest, renderArtifacts } from "./release.mjs";
 
-const expected = await renderRelease();
-
-async function readArtifact() {
-    try {
-        return await readFile(artifactPath, "utf8");
-    } catch {
-        throw new Error(
-            "dist artifact is missing; run `npm run build` and commit the result"
-        );
+const artifacts = await renderArtifacts();
+const dist = path.dirname(manifestPath);
+const expected = [...Object.keys(artifacts), path.basename(manifestPath)].sort();
+const found = (await readdir(dist)).sort();
+if (JSON.stringify(found) !== JSON.stringify(expected)) { throw new Error(`Unexpected distribution files: ${found.join(", ")}`); }
+for (const [name, source] of Object.entries(artifacts)) {
+    if (await readFile(path.join(dist, name), "utf8") !== source) {
+        throw new Error(`dist/${name} is stale. Run npm run build and commit the result.`);
     }
 }
-
-const actual = await readArtifact();
-
-if (actual !== expected) {
-    throw new Error(
-        "dist artifact is stale: it does not match src/. Run `npm run build` and commit the result."
-    );
-}
-
-const digest = digestOf(actual);
-const manifest = await readFile(manifestPath, "utf8");
-if (manifest !== renderManifest(digest)) {
-    throw new Error("dist checksum manifest is stale");
-}
-
-console.log(`distribution verified (${digest})`);
+const manifest = renderManifest(artifacts);
+if (await readFile(manifestPath, "utf8") !== manifest) { throw new Error("dist checksum manifest is stale"); }
+process.stdout.write(manifest);

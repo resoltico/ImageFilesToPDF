@@ -1,8 +1,8 @@
 {
-  "name": "image-files-to-pdf-macos",
+  "name": "image-files-to-pdf",
   "version": "4.0.0",
   "private": true,
-  "description": "Source, build, QA, and release scaffolding for a vips + pdfcpu macOS Finder Quick Action",
+  "description": "Image conversion to PDF through a Node CLI and macOS Finder Quick Action",
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
@@ -23,7 +23,7 @@
     "check-dist": "node tools/check-dist.mjs",
     "quality": "npm run lint && npm run lint:js && npm run test:coverage && npm run test:mutation && npm run check-dist",
     "release": "npm run build && npm run quality",
-    "test:integration:macos": "bash tests/integration/macos.sh && bash tests/integration/background.sh && bash tests/integration/selection.sh && bash tests/integration/publication.sh && bash tests/integration/volumes.sh && bash tests/integration/cards.sh && bash tests/integration/damaged.sh && bash tests/integration/form.sh && bash tests/integration/cli.sh && bash tests/integration/hdr.sh && bash tests/integration/naming.sh",
+    "test:integration:macos": "bash tests/integration/macos.sh && bash tests/integration/background.sh && bash tests/integration/selection.sh && bash tests/integration/publication.sh && bash tests/integration/volumes.sh && bash tests/integration/cards.sh && bash tests/integration/damaged.sh && bash tests/integration/form.sh && bash tests/integration/cli.sh && bash tests/integration/hdr.sh && bash tests/integration/naming.sh && node tests/integration/native-cli.cjs && python3 tests/integration/posix-process.py",
     "test:mutation": "stryker run",
     "test:unit": "node --test \"tests/unit/**/*.test.cjs\""
   },

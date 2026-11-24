@@ -7,14 +7,14 @@ const root = path.resolve(__dirname, "../..");
 
 test("the command-line dependency graph never imports AppKit", () => {
     const visited = new Set();
-    const pending = [path.join(root, "src/host/command-line/main.js")];
+    const pending = [path.join(root, "src/node/entry.js")];
     while (pending.length > 0) {
         const file = pending.pop();
         if (!visited.has(file)) {
         visited.add(file);
         const source = readFileSync(file, "utf8");
         assert.doesNotMatch(source, /import\(["']AppKit["']\)/u, file);
-        assert.equal(file.includes("/quick-action/"), false, file);
+        assert.equal(file.includes("/src/host/"), false, file);
         for (const match of source.matchAll(/require\("(?<target>\.[^"]+)"\)/gu)) {
             pending.push(path.resolve(path.dirname(file), match.groups.target));
         }

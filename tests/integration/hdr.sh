@@ -28,4 +28,4 @@ head -c 400 "$WORK/photo.jpg" > "$WORK/damaged.jpg"
 vips icc_transform "$WORK/p3.jpg" "$WORK/reference.v" srgb --embedded
 vips copy "$WORK/photo.jpg" "$WORK/unmapped.gif"
 cp "$WORK/unmapped.gif" "$WORK/unmapped.png"
-node "$ROOT/tests/integration/hdr-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.jxa" "$WORK"
+node "$ROOT/tests/integration/hdr-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.cjs" "$WORK"

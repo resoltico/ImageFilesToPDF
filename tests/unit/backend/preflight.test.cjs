@@ -163,3 +163,9 @@ test("explicit unusable overrides retain each tool's capability requirement", ()
         assert.ok(text.includes(required)); assert.doesNotMatch(text, /brew|Homebrew/u);
     }
 });
+
+
+test("official pdfcpu version lines need no v prefix", () => {
+    assert.equal(isPdfcpuUsable("version: 0.16.4\n commit: 0f5ac76d"), true);
+    assert.equal(isPdfcpuUsable("version: 0.16.4-rc.1"), false);
+});

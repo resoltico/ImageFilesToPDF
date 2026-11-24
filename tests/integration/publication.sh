@@ -12,7 +12,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-SCRIPT="$ROOT/dist/Image-Files-to-PDF.jxa"
+SCRIPT="$ROOT/dist/Image-Files-to-PDF.cjs"
 WORK=$(mktemp -d -t ImageFilesToPDF-publication)
 
 cleanup() {
@@ -35,7 +35,7 @@ run() {
     local stamp=$1
     shift
     write_config "$WORK/config.json" A4 Portrait "combined" "#FFFFFF" "$stamp"
-    osascript -l JavaScript "$SCRIPT" -- --headless "$WORK/config.json" "$@" \
+    node "$SCRIPT" --settings "$WORK/config.json" -- "$@" \
         >"$WORK/receipt.json" 2>"$WORK/error.txt" || true
 }
 
@@ -116,7 +116,7 @@ for mode in combined separate; do
 const assert = require("node:assert/strict");
 const {spawnSync} = require("node:child_process");
 const [script,config,source,expected] = process.argv.slice(2);
-const result = spawnSync("/usr/bin/osascript", ["-l","JavaScript",script,"--headless",config,source], {encoding:"utf8",timeout:30000});
+const result = spawnSync(process.execPath, [script,"--settings",config,"--",source], {encoding:"utf8",timeout:30000});
 assert.ifError(result.error);
 assert.equal(result.status,0,result.stderr);
 const receipt = JSON.parse(result.stdout);

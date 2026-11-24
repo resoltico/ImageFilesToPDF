@@ -1,0 +1,92 @@
+name: Native CLI
+
+on:
+  workflow_call:
+    inputs:
+      windows-only:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    if: ${{ !inputs.windows-only }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - run: npm install --global "$(node --print 'require("./package.json").packageManager')"
+      - run: npm ci --ignore-scripts
+      - run: npm run check-dist
+      - run: docker build -t iftp-native - < tests/integration/linux-native.Dockerfile
+      - name: Verify the committed CLI on Linux
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" -v /tmp -w /repo iftp-native sh -ec '
+            uname -m
+            df -T /tmp /dev/shm
+            node --version
+            vips --version
+            pdfcpu version
+            IFTP_SECOND_VOLUME=/dev/shm node tests/integration/native-cli.cjs
+            python3 tests/integration/posix-process.py
+          '
+
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [artifact, console, arguments]
+    runs-on: windows-11-arm
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - run: npm install --global (node --print "require('./package.json').packageManager")
+      - run: npm ci --ignore-scripts
+      - run: npm run check-dist
+      - run: ./tests/integration/windows-tools.ps1
+      - name: Verify Windows, NTFS, tools and PowerShell transport
+        run: |
+          Get-ComputerInfo -Property WindowsProductName,WindowsVersion,OsBuildNumber,OsArchitecture
+          Get-Volume | Format-Table DriveLetter,FileSystem,DriveType
+          node --version
+          vips --version
+          pdfcpu version
+          qpdf --version
+          ./tests/integration/powershell.ps1
+      - name: Verify the committed CLI on NTFS
+        if: matrix.check == 'artifact'
+        env:
+          IFTP_HEVC_UNAVAILABLE: "1"
+        run: node tests/integration/native-cli.cjs
+      - name: Verify recovery after a denied NTFS claim
+        if: matrix.check == 'artifact' && !cancelled()
+        run: ./tests/integration/windows-recovery.ps1
+      - name: Verify publication across two NTFS volumes
+        if: matrix.check == 'artifact' && !cancelled()
+        run: ./tests/integration/windows-volume.ps1
+      - name: Verify PowerShell console Ctrl+C
+        if: matrix.check == 'console'
+        run: ./tests/integration/windows-console.ps1
+      - name: Verify Windows restart with a live decoder
+        if: matrix.check == 'console' && !cancelled()
+        run: ./tests/integration/windows-console.ps1 -Scenario Crash
+      - name: Verify Windows source replacement at capture
+        if: matrix.check == 'console' && !cancelled()
+        run: ./tests/integration/windows-console.ps1 -Scenario Change
+      - name: Verify Windows argv batching
+        if: matrix.check == 'arguments'
+        env:
+          IFTP_LONG_WINDOWS_ONLY: "1"
+        run: node tests/integration/native-cli.cjs

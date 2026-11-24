@@ -141,13 +141,15 @@ Both interfaces use the same selection, conversion and saving rules.
 | Input | Files or folders from Shortcuts; Finder selection when no files are supplied | Explicit file or folder paths |
 | Settings | Interactive form with remembered page settings | Required JSON settings file; no remembered settings |
 | Feedback | Progress panel and completion dialog | Plain-language stderr report, JSON receipt attempt and exit status |
-| Stop | **Stop** button | `SIGINT` or `SIGTERM` |
+| Stop | **Stop** button | `SIGINT` or `SIGTERM` on POSIX, Ctrl+C in Windows PowerShell |
 
 ```sh
-osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless settings.json photo.jpg folder
+node Image-Files-to-PDF.cjs --settings settings.json -- photo.jpg folder
 ```
 
-Command-line runs open no dialogs and do not use remembered settings.
+The standalone CLI targets macOS, Linux and Windows PowerShell. Install Node 26.13.1
+or later, libvips and stable pdfcpu 0.16.4 or later. macOS terminal
+users must switch to the CJS command above. Each run uses its settings file.
 [HEADLESS.md](HEADLESS.md) specifies the settings file, the JSON receipt and the
 exit statuses.
 
@@ -158,6 +160,7 @@ download folder, with GitHub CLI installed:
 
 ```sh
 gh attestation verify Image-Files-to-PDF.jxa --repo resoltico/ImageFilesToPDF
+gh attestation verify Image-Files-to-PDF.cjs --repo resoltico/ImageFilesToPDF
 shasum --check SHA256SUMS
 ```
 

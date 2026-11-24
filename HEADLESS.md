@@ -1,28 +1,54 @@
 # Command line
 
-Image Files to PDF runs from the command line with `osascript`. Node is not needed.
+Run the standalone Node.js distribution with Node 26.13.1 or later, libvips
+(`vips` and `vipsheader`), and stable pdfcpu 0.16.4 or later. For macOS,
+`brew install vips pdfcpu` installs the native tools. On Linux, use a build of
+libvips with the image codecs you need and an official pdfcpu release for your
+architecture. On Windows, extract the libvips **all** distribution and pdfcpu
+for your Windows architecture or supported emulation. Put the directories
+containing the actual executables on `PATH`. Windows PowerShell 5.1 is used
+internally to query filesystem and process properties on Windows.
+
+See [the platform matrix](QA.md#native-platform-matrix) for tested combinations
+and open qualification checks. The CLI delivers one platform-independent CJS
+file. [Finder installation](INSTALL.txt) uses the standalone JXA file.
+
+## Run syntax
+
+In Bash, zsh, or PowerShell, quote paths containing spaces. The first
+`--` after the settings operand is required. Source names beginning with a
+dash go after it, where they are passed literally.
 
 ```sh
-osascript -l JavaScript Image-Files-to-PDF.jxa -- --help
-osascript -l JavaScript Image-Files-to-PDF.jxa -- --version
-osascript -l JavaScript Image-Files-to-PDF.jxa -- --headless settings.json photo.jpg folder
+node ./Image-Files-to-PDF.cjs --help
+node ./Image-Files-to-PDF.cjs --version
+node ./Image-Files-to-PDF.cjs --settings 'page settings.json' -- 'my photo.jpg' '-album'
 ```
 
-`--help` lists the required settings in the table order below, their allowed values
-and a complete example JSON object. The example values are not fallback defaults:
-every page setting is required. `--version` prints `Image Files to PDF <version>`.
-Both print to stdout and exit 0 when transport succeeds. Anything else that
-is not a complete `--headless` request is a usage error: it names the problem in one
-sentence (`No arguments were given.`, `Unknown option: <arg>.`,
-`--headless needs a settings file and at least one path.`, `An argument is empty.`
-or `--help and --version take no other arguments.`), includes the run line and a
-help hint in its stderr report, attempts a JSON receipt with state `invalid`, and
-exits 2.
+```powershell
+& node .\Image-Files-to-PDF.cjs --settings 'page settings.json' -- 'C:\Photos\my photo.jpg' '-album' > receipt.json
+$status = $LASTEXITCODE
+$receipt = Get-Content -Encoding utf8 -Raw -LiteralPath receipt.json | ConvertFrom-Json
+```
 
-A command-line run never opens a dialog and neither reads nor writes remembered
-settings. Paths may be absolute or relative to the working directory. Local
-`file://` URLs are accepted; remote URLs are refused. Selection, conversion,
-validation, saving and recovery follow the same rules as the Quick Action.
+Use PowerShell 7.4 or later for native stdout redirection as bytes. Bash
+redirection with `> receipt.json` also preserves the UTF-8 bytes. Capture the
+machine exit status immediately with `$LASTEXITCODE` or `$?`, respectively.
+
+Help lists the required settings, allowed values and a complete example.
+Version prints `Image Files to PDF <version>`. Both write ordinary text to
+stdout. An invalid command yields one usage issue, a run line and a help hint.
+Help, version and invalid requests have no conversion-side effects, including
+workspace reclamation.
+
+A command-line run is headless and leaves remembered Finder settings alone.
+Relative paths resolve from the current working directory. Local file URLs
+accept empty or `localhost` authority. Windows accepts drive-absolute paths
+such as `C:\Photos\a.jpg` and ordinary relative paths. Receipts use forward
+slashes in Windows paths and preserve actual basenames. Drive-relative and
+root-relative Windows paths, UNC shares, device namespaces, alternate data
+streams and names with trailing dots or spaces are refused. On all platforms,
+use a local filesystem and names that round-trip through the tools as Unicode.
 
 ## Settings file
 
@@ -68,7 +94,9 @@ A transport failure exits nonzero even when a complete processing receipt was
 delivered; it does not remove confirmed PDFs or change their processing state.
 With working stderr, failed stdout completion adds one plain line:
 `Standard output could not be completed.` If stderr fails, the JSON receipt is
-still attempted; if both streams fail, neither readable output is guaranteed.
+still attempted. Node can reopen a descriptor the parent passed closed as a
+writable null sink. In that case the shell receives no receipt bytes and a
+successful conversion can still exit 0.
 
 | Exit | Meaning |
 | --- | --- |
@@ -97,7 +125,10 @@ tool-setup refusal is also `invalid` and exits 3 with the headline
 a stop that arrives after everything was saved does not erase the saved PDFs. An
 abrupt process end, `SIGKILL` or a failed stdout cannot guarantee a receipt.
 
-`SIGINT` and `SIGTERM` request cooperative Stop. A running native command finishes before the next safe checkpoint observes the request; publication and recovery protections remain in force. Signal monitoring stays active through receipt transport. Normal process exit lets the OS reclaim its resources.
+On macOS and Linux, `SIGINT` and `SIGTERM` request cooperative Stop. On Windows, use Ctrl+C in a PowerShell console. PowerShell can close its redirected pipeline when it handles Ctrl+C. A
+receipt on cancellation requires writable streams. The Windows verification
+launches the foreground console process with direct file redirection to
+observe its receipt and exit code. Forced process termination is abrupt. A running native command finishes before the next safe checkpoint observes the request; publication and recovery protections remain in force. Signal monitoring stays active through receipt transport. Normal process exit lets the OS reclaim its resources.
 
 The stderr report is the headline, then sections separated by one blank line.
 Output and recovery basenames are read back as literal directory-entry names after identity and size confirmation; chosen parent-folder spelling is preserved. If a claim's name cannot be verified, a verified workspace PDF stays in place and the issue reports that uncertainty rather than guessing a public output path. If that workspace PDF cannot be verified either, the PDF is failed with a fatal issue and no recovery path; existing files remain untouched. The destination folder needs read/search access for this verification. An unavailable or ambiguous directory listing reports the same claim uncertainty and preserves existing files; a canonicalized path is not used as a guessed stored name.
@@ -187,8 +218,7 @@ disambiguating source-extension suffix, uses at most 250 UTF-8 bytes before a
 collision number: five of the 255-byte budget are reserved for ` 9999`. Stored
 spelling can reflect filesystem normalization; use the actual receipt path.
 
-Recovery attempts use `~/Downloads` under the intended name, then private
-temporary storage. Recovery
+Recovery first attempts the intended name under `~/Downloads`. If it cannot confirm a recovery there, it keeps and verifies the private workspace PDF. A claim with uncertain acknowledgement or identity leaves the existing entry and the verified original in place. Recovery
 is reported only when its path and contents are verified; otherwise the report
 identifies retained work or unresolved uncertainty. Always use the receipt's
 actual `output` or `recovery` path. Retained
@@ -199,7 +229,22 @@ human report. Successful safe startup reclamation uses diagnostic code
 
 ## Tool overrides
 
-External tools run with `LC_ALL=C`, independently of the caller's locale.
+Native commands launch directly with arguments and `LC_ALL=C`, from their own
+executable directories. Executable
+lookup uses absolute `PATH` directories in order. Windows uses `.exe` files.
+The built-in capability probe includes a Unicode-named PNG. Some libvips builds omit optional codecs. The pinned
+Windows `all` distribution includes AVIF decoding and omits HEVC. HEIC photos
+need a libvips build with an HEVC decoder. Linux Ultra HDR also requires a build
+with the corresponding codec. [libvips Windows build variants](https://github.com/libvips/build-win64-mxe/tree/v8.18.7#heic-support) The CLI checks PNG/APNG structure to detect additional
+images, including an APNG with a separate default image. Malformed or
+unverifiable image-count metadata is refused.
+
+Only positively identified name collisions produce a numeric suffix. The CLI
+uses a hard-link claim, staging beside the destination for cross-volume copies.
+When no exclusive route is available, it attempts recovery. Separate-mode name
+equivalence for multiple images in one folder needs permission to create an
+owned comparison directory there. The Finder action also supports the macOS
+exclusive-rename route described in [QA.md](QA.md).
 
 `IMAGE_FILES_TO_PDF_VIPS`, `IMAGE_FILES_TO_PDF_VIPSHEADER` and
 `IMAGE_FILES_TO_PDF_PDFCPU` may name explicit executables. An override that is

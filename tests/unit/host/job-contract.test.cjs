@@ -2,17 +2,18 @@
 const test=require("node:test");
 const assert=require("node:assert/strict");
 const {Buffer}=require("node:buffer");
-const {createJob,runJob,unitsOf}=require("../../../src/host/job.js");
+const {createJob,runJob,unitsOf}=require("../../../src/application/job.js");
 const {createFakeHost}=require("../ports/fake-host.cjs");
 const {imageOf}=require("../ports/fake-job.cjs");
-const {createProgress}=require("../../../src/host/progress.js");
+const {createProgress}=require("../../../src/application/progress.js");
+const {runOperations}=require("../../../src/host/run-operations.js");
 const settings={paperSize:"A4",orientation:"Portrait",mode:"combined",resolutionLimit:72,quality:85,background:"#FFFFFF"};
 const tools={vips:"/v/vips",vipsheader:"/v/vipsheader",pdfcpu:"/v/pdfcpu"};
 const stamp="20261029_070000";
 
 function jobFixture(mode="combined",failures=[]) {
     const app=createFakeHost({files:["/a/1.png","/a/2.png"],failures});
-    const job=createJob(app,{...settings,mode},stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
+    const job=createJob(runOperations(app),{...settings,mode},stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
     const events=[];
     job.sources=app.sources;job.publication=app.publication;
     job.progress=createProgress([{start:(units)=>events.push(["expect",units]),report:(done,text,detail)=>events.push([done,text,detail])}]);
@@ -64,14 +65,14 @@ test("unconfirmed validated work keeps the workspace even after unexpected publi
 
 test("a default job has an inert progress capability, not a malformed sink",()=>{
     const app=createFakeHost();
-    const job=createJob(app,settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
+    const job=createJob(runOperations(app),settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
     job.progress.phase("Checking");assert.deepEqual(job.progress.diagnostics,[]);
 });
 
 function longPathFixture() {
     const sources=Array.from({length:35},(unused,index)=>`/a/${index}.png`);
     const app=createFakeHost({files:sources});
-    const job=createJob(app,settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
+    const job=createJob(runOperations(app),settings,stamp,{tools,storage:app.storage,destinationNames:app.destinationNames});
     Object.assign(job,{sources:app.sources,publication:app.publication,tools:{...tools,pdfcpu:"/opt/homebrew/Cellar/pdfcpu/0.16.4/bin/pdfcpu"}});
     job.workspace=`/${[246,246,246,245].map((width)=>"'".repeat(width)).join("/")}/ImageFilesToPDF.x`;
     const counts=[];const original=app.doShellScript;
@@ -89,14 +90,14 @@ test("page staging stays bounded across real adapter imports, including quote-he
 
 test("job accumulator outlives executor and workspace teardown faults",()=>{
     const vm=require("node:vm");const fs=require("node:fs");const {createRequire}=require("node:module");
-    const jobPath=require.resolve("../../../src/host/job.js");const actualRequire=createRequire(jobPath);
+    const jobPath=require.resolve("../../../src/application/job.js");const actualRequire=createRequire(jobPath);
     const module={exports:{}};
     vm.runInNewContext(fs.readFileSync(jobPath,"utf8"),{module,globalThis,require(name){
-        if(name==="../application/documents.js"){return {executeDocuments(ports,plans,records){records.push({state:"saved",sources:["/a/1.png"],pages:1,output:"/saved.pdf",issues:[]});throw new TypeError("executor bug");}};}
-        if(name==="./workspace.js"){return {removeWorkspace(){throw new Error("workspace teardown bug");}};}
+        if(name==="./documents.js"){return {executeDocuments(ports,plans,records){records.push({state:"saved",sources:["/a/1.png"],pages:1,output:"/saved.pdf",issues:[]});throw new TypeError("executor bug");}};}
         return actualRequire(name);
     }}, {filename:jobPath});
     const {job}=jobFixture("combined");
+    job.operations.removeWorkspace = () => { throw new Error("workspace teardown bug"); };
     const result=module.exports.runJob(job,[imageOf("/a/1.png")]);
     assert.deepEqual([result.documents[0].output,Array.from(result.issues,issue=>issue.stage),result.state], ["/saved.pdf",["execution","cleanup"],"incomplete"]);
 });
@@ -125,4 +126,43 @@ test("actual PDF import, assembly, validation and publication clear image detail
             assert.ok(events.some((event) => event[1] === "Preparing" && event[2].endsWith(`— ${name}`)), name);
         }
     }
+});
+
+test("queue, validation and cleanup keep their progress and ownership boundaries", () => {
+    const { job, app, events } = jobFixture("combined");
+    const { run } = job.operations;
+    const { write } = job.storage;
+    let retained = false;
+    job.storage.write = (path, text) => {
+        assert.ok(path.endsWith("/retain"));
+        assert.equal(text, "validating\n");
+        retained = true;
+        write(path, text);
+    };
+    job.operations.run = (argv, label) => {
+        if (argv[1] === "validate") { assert.equal(retained, true); }
+        return run(argv, label);
+    };
+    const outcome = runJob(job, [imageOf("/a/1.png")]);
+    assert.equal(outcome.state, "complete");
+    assert.ok(events.some(([done, description]) => done === 1 && description === "Preparing"));
+    assert.deepEqual(outcome.issues, []);
+    assert.deepEqual(outcome.documents[0].issues, []);
+    assert.ok(app.commands.some((command) => command.includes("'/bin/rm' '-rf'")));
+});
+
+test("the initial setup reports prior workspace observations before showing a selection", () => {
+    const { execute } = require("../../../src/application/workflow.js");
+    const { treeOf } = require("../ports/fake-tree.cjs");
+    const { noImagesOutcome } = require("../../../src/core/outcomes.js");
+    const host = createFakeHost(), progress = createProgress([]);
+    const observation = { code: "workspace-reclaimed", stage: "workspace", message: "A stale workspace was reclaimed." };
+    const options = {
+        operations: runOperations(host), checkTools: () => tools,
+        capabilities: { tree: treeOf({}), sources: host.sources, publication: host.publication, storage: host.storage, destinationNames: host.destinationNames },
+        reclaim: () => [observation], now: () => new Date(),
+        interaction: { progress, collect: () => ({ inputItems: [] }), noImages: noImagesOutcome }
+    };
+    execute(null, options);
+    assert.deepEqual(progress.diagnostics, [observation]);
 });

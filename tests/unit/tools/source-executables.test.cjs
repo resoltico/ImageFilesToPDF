@@ -15,10 +15,10 @@ test("a production module may not name an executable directly", async () => {
     const { checkContent } = await loadRules();
 
     assert.throws(
-        () => checkContent("src/host/pages.js", 'runArgv(a, ["/bin/cp", x]);\n'),
+        () => checkContent("src/application/pages.js", 'runArgv(a, ["/bin/cp", x]);\n'),
         // Named in full: the whole point is to say where it does belong.
         new RegExp(
-            "src/host/pages\\.js: names /bin/cp directly; every executable " +
+            "src/application/pages\\.js: names /bin/cp directly; every executable " +
             "belongs in src/host/backend-executables\\.js, which is the one place " +
             "the action.s external surface is written down",
             "u"
@@ -68,7 +68,7 @@ test("a production module with no executable in it passes", async () => {
     const { checkContent } = await loadRules();
 
     assert.doesNotThrow(
-        () => checkContent("src/host/pages.js", "const value = 1;\n")
+        () => checkContent("src/application/pages.js", "const value = 1;\n")
     );
     assert.doesNotThrow(
         () => checkContent("src/core/geometry.js", 'const label = "output";\n')
@@ -81,7 +81,7 @@ test("a file naming several is told about all of them, as a list", async () => {
     // Run together, "/bin/cp/bin/mv" is a path that does not exist and a
     // reader looks for the wrong thing.
     assert.throws(
-        () => checkContent("src/host/pages.js", '["/bin/cp", "/bin/mv"]\n'),
+        () => checkContent("src/application/pages.js", '["/bin/cp", "/bin/mv"]\n'),
         /names \/bin\/cp, \/bin\/mv directly/u
     );
 });

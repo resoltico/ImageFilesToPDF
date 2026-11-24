@@ -1,12 +1,13 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { inspectCandidates, inspectCaptured } = require("../../../src/host/source-inspection.js");
+const { inspectCandidates, inspectCaptured } = require("../../../src/application/source-inspection.js");
 const { issuesOf } = require("../../../src/core/outcomes.js");
-const { validatePdf } = require("../../../src/host/staging.js");
-const { createProgress } = require("../../../src/host/progress.js");
+const { validatePdf } = require("../../../src/application/staging.js");
+const { createProgress } = require("../../../src/application/progress.js");
 const { createFakeHost } = require("../ports/fake-host.cjs");
 const { makeJob } = require("../ports/fake-job.cjs");
+const { runOperations } = require("../../../src/host/run-operations.js");
 const base = "width: 400\nheight: 200\nbands: 3\nvips-loader: jpegload\ninterpretation: srgb\n";
 
 test("captured inspection preserves original identity and authoritative oriented facts", () => {
@@ -58,7 +59,7 @@ test("ordinary candidates are inspected in bounded batches before producing admi
     const host = createFakeHost({ files: ["/a.png", "/b.png"] });
     const job = makeJob(host);
     const selection = { images: ["/a.png", "/b.png"].map((path) => ({ path, originalName: path.slice(1), folder: "/" })), rejected: [], selectedFolders: 0 };
-    const result = inspectCandidates(host, selection, { tools: job.tools, sources: job.sources, progress: createProgress([]) });
+    const result = inspectCandidates(runOperations(host), selection, { tools: job.tools, sources: job.sources, progress: createProgress([]) });
     assert.equal(result.images.length, 2);
     assert.equal(result.images[0].admission.identity, "/a.png");
     assert.ok(host.commands.some((command) => command.includes("'-a' '/a.png' '/b.png'")));

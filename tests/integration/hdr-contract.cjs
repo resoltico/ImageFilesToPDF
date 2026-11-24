@@ -12,7 +12,7 @@ const native = (tool, args) => execFileSync(tool, args, { encoding: "utf8" }).tr
 function convert(mode, name, status = 0) {
     const configuration = { mode, paperSize: "A4", orientation: "Portrait", resolutionLimit: 300, quality: 92, background: "#FFFFFF", timestamp: "20261113_010203" };
     fs.writeFileSync(at("settings.json"), JSON.stringify(configuration));
-    const result = spawnSync("osascript", ["-l", "JavaScript", script, "--", "--headless", at("settings.json"), at(name)], { encoding: "utf8", timeout: 60000 });
+    const result = spawnSync(process.execPath, [script, "--settings", at("settings.json"), "--", at(name)], { encoding: "utf8", timeout: 60000 });
     assert.ifError(result.error);
     assert.equal(result.status, status, `${result.stdout}\n${result.stderr}`);
     return JSON.parse(result.stdout);

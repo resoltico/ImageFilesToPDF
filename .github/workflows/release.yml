@@ -45,9 +45,12 @@ jobs:
       - run: npm run quality
       - run: npm run test:integration:macos
 
+  native-cli:
+    uses: ./.github/workflows/native-cli.yml
+
   build:
     name: Build the artifact on CI
-    needs: qualify
+    needs: [qualify, native-cli]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -79,6 +82,7 @@ jobs:
           name: release-dist
           path: |
             dist/Image-Files-to-PDF.jxa
+            dist/Image-Files-to-PDF.cjs
             dist/SHA256SUMS
           if-no-files-found: error
 
@@ -120,6 +124,7 @@ jobs:
         with:
           subject-path: |
             dist/Image-Files-to-PDF.jxa
+            dist/Image-Files-to-PDF.cjs
             dist/SHA256SUMS
             INSTALL.txt
             LICENSE
@@ -128,7 +133,7 @@ jobs:
       # check. Before the release exists, so a failure publishes nothing.
       - name: Verify the attestation before publishing
         run: |
-          for subject in "dist/Image-Files-to-PDF.jxa" dist/SHA256SUMS INSTALL.txt LICENSE; do
+          for subject in "dist/Image-Files-to-PDF.jxa" "dist/Image-Files-to-PDF.cjs" dist/SHA256SUMS INSTALL.txt LICENSE; do
             gh attestation verify "$subject" --repo "$GITHUB_REPOSITORY"
           done
       # A tag can be moved after it is pushed. This proves the tag still
@@ -161,6 +166,7 @@ jobs:
         run: |
           gh release create "$RELEASE_TAG" \
             "dist/Image-Files-to-PDF.jxa" \
+            "dist/Image-Files-to-PDF.cjs" \
             dist/SHA256SUMS \
             INSTALL.txt \
             LICENSE \

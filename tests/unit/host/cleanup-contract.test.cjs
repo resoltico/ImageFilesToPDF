@@ -1,17 +1,18 @@
 "use strict";
 const test=require("node:test");
 const assert=require("node:assert/strict");
-const {createJob,runJob}=require("../../../src/host/job.js");
+const {createJob,runJob}=require("../../../src/application/job.js");
 const {createFakeHost}=require("../ports/fake-host.cjs");
 const {imageOf}=require("../ports/fake-job.cjs");
 const {UserCanceled}=require("../../../src/core/errors.js");
-const {removeOwned,requireReleasedResources}=require("../../../src/host/owned-cleanup.js");
+const {removeOwned,requireReleasedResources}=require("../../../src/application/owned-cleanup.js");
 const {removeFile}=require("../../../src/host/shell.js");
+const {runOperations}=require("../../../src/host/run-operations.js");
 const settings={paperSize:"A4",orientation:"Portrait",mode:"separate",resolutionLimit:72,quality:85,background:"#FFFFFF"};
 const tools={vips:"/v/vips",vipsheader:"/v/vipsheader",pdfcpu:"/v/pdfcpu"};
 function fixture(failures=[]){
     const app=createFakeHost({files:["/a/1.png","/a/2.png"],failures});
-    const job=createJob(app,settings,"20261029_070000",{tools,storage:app.storage,destinationNames:app.destinationNames});
+    const job=createJob(runOperations(app),settings,"20261029_070000",{tools,storage:app.storage,destinationNames:app.destinationNames});
     job.sources=app.sources;job.publication=app.publication;
     return {app,job};
 }

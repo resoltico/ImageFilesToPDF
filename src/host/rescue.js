@@ -1,5 +1,5 @@
 "use strict";
-const { actualPublicationPath, requireOriginal } = require("./publication-name.js");
+const { actualPublicationPath, requireOriginal } = require("../application/publication-name.js");
 const { MKTEMP, CP, RMDIR } = require("./backend-executables.js");
 const { ISSUE, issuesOf } = require("../core/outcomes.js");
 const { dirname } = require("../core/paths.js");

@@ -40,7 +40,7 @@ export async function readMetadata(read, minimumMacos) {
  * The standalone artifact retains the AGPL notice and the source location for
  * its version even when copied without the repository or release assets.
  */
-export function renderBanner(meta) {
+export function renderBanner(meta, runtime = `Requires macOS ${meta.minimumMacos} or later, and the command-line tools:\n *     brew install vips pdfcpu`) {
     return `/*
  * Image Files to PDF ${meta.version}
  * ${meta.homepage}
@@ -59,7 +59,6 @@ export function renderBanner(meta) {
  * overwritten and are not covered by any test. Comments are stripped on build:
  * the sources they came from are at the address above.
  *
- * Requires macOS ${meta.minimumMacos} or later, and the command-line tools:
- *     brew install vips pdfcpu
+ * ${runtime}
  */`;
 }

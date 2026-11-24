@@ -63,12 +63,20 @@ function assertSavedPdf(document,wanted) {
     assert.equal(path.basename(document.output).normalize("NFC"),wanted.normalize("NFC"));
     execFileSync("qpdf",["--check",document.output],{stdio:"pipe"});
 }
+function invoke(operands) {
+    const probe = artifact.endsWith(".jxa");
+    const program = probe ? "/usr/bin/osascript" : process.execPath;
+    const args = probe ? ["-l", "JavaScript", artifact, settings, ...operands] : [artifact, "--settings", settings, "--", ...operands];
+    const result = spawnSync(program, args, { encoding: "utf8", timeout: 60000 });
+    if (probe && result.status === 0 && JSON.parse(result.stdout).state !== "complete") { result.status = 1; }
+    return result;
+}
 function convert(records,wanted,protectedFile=null) {
     const before=records.map(record=>hash(record.path));
     const inventory=capability.supported?null:recoveryInventory();
     const recoveries=[];
     const protectedHash=protectedFile?hash(protectedFile):null;
-    const result=spawnSync("/usr/bin/osascript",["-l","JavaScript",artifact,"--headless",settings,...records.map(record=>record.path)],{encoding:"utf8",timeout:60000});
+    const result = invoke(records.map((record) => record.path));
     assert.ifError(result.error);assert.equal(result.status,capability.supported?0:1,`${result.stderr}\n${result.stdout}`);
     const receipt=parseReceipt(result.stdout);
     assert.equal(receipt.state,capability.supported?"complete":"incomplete");

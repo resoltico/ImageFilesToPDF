@@ -1,8 +1,11 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { mergeGroups } = require("../../../src/backend/merging.js");
+const { commandLengthOf } = require("../../../src/backend/batching.js");
+const { mergeGroups: groupMerge } = require("../../../src/backend/merging.js");
 const { buildPdfcpuMergeArgv } = require("../../../src/backend/pdfcpu.js");
+
+const mergeGroups = (tool, output, paths, budget = 131072) => groupMerge(tool, output, paths, (args) => commandLengthOf(args) <= budget);
 
 test("merge disables bookmarks and external configuration", () => {
     assert.deepEqual(buildPdfcpuMergeArgv("pdfcpu", "/out.pdf", ["/1.pdf", "/2.pdf"]), ["pdfcpu", "merge", "--conf", "disable", "--bookmarks=false", "--", "/out.pdf", "/1.pdf", "/2.pdf"]);
@@ -23,7 +26,6 @@ test("argv byte budget is enforced independently of the page bound", () => {
 });
 
 test("the per-path budget check includes the path itself, and an exact fit is not split", () => {
-    const { commandLengthOf } = require("../../../src/backend/batching.js");
     const empty = commandLengthOf(buildPdfcpuMergeArgv("pdfcpu", "/out.pdf", []));
     assert.throws(() => mergeGroups("pdfcpu", "/out.pdf", ["/a.pdf"], empty), /argument exceeds/u);
     const both = commandLengthOf(buildPdfcpuMergeArgv("pdfcpu", "/out.pdf", ["/a.pdf", "/b.pdf"]));

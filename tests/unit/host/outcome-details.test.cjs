@@ -5,7 +5,6 @@ const { runOutcome, issuesOf }=require("../../../src/core/outcomes.js");
 const { sourceIssues }=require("../../../src/core/source-policy.js");
 const { completionMessage }=require("../../../src/host/quick-action/completion.js");
 const { showDetails,detailPages }=require("../../../src/host/quick-action/details-dialog.js");
-const { writeReceipt,foundation }=require("../../../src/host/command-line/receipt.js");
 const { createFakeObjC }=require("../ports/fake-objc.cjs");
 const { createFakeApp }=require("../ports/fake-app.cjs");
 
@@ -61,20 +60,6 @@ test("native details preserve selectable text and action response",()=>{
     assert.equal(alert.accessoryView.documentView.selectable,true);
 });
 
-test("stdout transport reports presence truthfully",()=>{
-    assert.equal(foundation(null,null),null);
-    assert.equal(foundation({import:()=>true},null),null);
-    assert.equal(writeReceipt("receipt",null),false);
-    const written=[];
-    const ns=(text)=>({dataUsingEncoding:()=>text});
-    ns.NSFileHandle={fileHandleWithStandardOutput:{writeData:(text)=>written.push(text)}};
-    assert.equal(foundation({import:()=>true},ns),ns);
-    const brokenPipe = require("../../../src/host/command-line/broken-pipe.js");
-    const { withoutSigpipe } = brokenPipe;
-    try { brokenPipe.withoutSigpipe = (write) => write(); assert.equal(writeReceipt("receipt\n",ns),true); }
-    finally { brokenPipe.withoutSigpipe = withoutSigpipe; }
-    assert.deepEqual(written,["receipt\n"]);
-});
 
 function assertDetailBehavior(view) {
     assert.equal(view.string,"abc");
@@ -211,4 +196,15 @@ test("registration and teardown notifications cannot read native visibility", ()
     assert.equal(reads, 0);
     assert.equal(bridge.state.aborted, 0);
     assert.deepEqual(bridge.state.observers, []);
+});
+
+test("completion labels outputs, failures, recoveries and original refusals without diagnostics", () => {
+    const value = runOutcome([{ state: "saved", sources: ["/ok.png"], pages: 1, output: "/saved.pdf", issues: [] },
+        { state: "failed", sources: ["/first.png"], issues: [{ source: "/bad.png", message: "damaged", diagnostic: { stack: "private stack" } }] },
+        { state: "recovered", sources: ["/kept.png"], recovery: "/Downloads/kept.pdf", issues: [] },
+        { state: "not-started", sources: ["/unattempted.png"], issues: [] }
+    ], [{ path: "/a/same.gif", reason: "unsupported" }, { path: "/b/same.gif", reason: "unsupported" }]);
+    const text = completionMessage(value);
+    for (const expected of ["Stopped.", "Saved to:", "saved.pdf", "/bad.png: damaged", "/Downloads/kept.pdf", "Not started: 1", "/a/same.gif", "/b/same.gif"]) { assert.ok(text.includes(expected), expected); }
+    assert.doesNotMatch(text, /private stack|unattempted|diagnostic/u);
 });
