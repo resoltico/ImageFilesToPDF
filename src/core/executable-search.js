@@ -19,7 +19,7 @@ function pathFileOrder(left, right) {
     const rightPrefix = /^\d+/u.exec(right)?.[0];
     if (leftPrefix && rightPrefix) {
         const difference = Number(BigInt(leftPrefix) - BigInt(rightPrefix));
-        return difference || ordinal(left.slice(leftPrefix.length), right.slice(rightPrefix.length));
+        return difference || ordinal(left.slice(leftPrefix.length), right.slice(rightPrefix.length)) || ordinal(left, right);
     }
     return ordinal(left, right);
 }
