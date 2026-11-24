@@ -138,7 +138,7 @@ function listedMacKind(record, kind) {
     return record.package ? "package" : kind;
 }
 
-function sourceOperations(checkedSource) {
+function sourceOperations(checkedSource, hydrateCloudFile) {
     async function facts(file) {
         try {
             const found = await checkedSource(file);
@@ -162,6 +162,14 @@ function sourceOperations(checkedSource) {
             if (!sameFile(opened, fileFacts(fs.fstatSync(fd, BIGINT))) || !sameFile(opened, await facts(file))) { throw changedSource(file); }
             return result;
         } finally { fs.closeSync(fd); }
+    }
+
+    async function admissionFacts(file) {
+        const before = await facts(file);
+        if (!hydrateCloudFile || !await hydrateCloudFile(file)) { return before; }
+        const after = await facts(file);
+        if (before.identity !== after.identity || before.size !== after.size) { throw changedSource(file); }
+        return after;
     }
 
     async function capture(file, destination) {
@@ -193,7 +201,7 @@ function sourceOperations(checkedSource) {
         }
     }
 
-    return { facts, capture, readable, prefix, pngCount: (file) => withSource(file, (fd, opened) => readPng(fd, Number(opened.size))) };
+    return { facts: admissionFacts, capture, readable, prefix, pngCount: (file) => withSource(file, (fd, opened) => readPng(fd, Number(opened.size))) };
 }
 
 function localFilesystem(windows, mac) {
@@ -258,7 +266,7 @@ function localFilesystem(windows, mac) {
     return {
         checked, directoryIdentity,
         tree: { inspect, entries, standardize },
-        sources: sourceOperations(checkedSource)
+        sources: sourceOperations(checkedSource, windows?.hydrateCloudFile)
     };
 }
 

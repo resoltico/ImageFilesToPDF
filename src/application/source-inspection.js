@@ -138,13 +138,14 @@ function inspectCandidates(app, selection, context) {
 
 /** The owned copy is always re-inspected, independently of admission. */
 async function inspectCaptured(job, owned, original) {
-    const facts = await readOne(job.operations, job.tools, job.sources, { path: owned.path, prefix: () => owned.prefix });
+    const { path, identity, version, prefix } = owned;
+    const facts = await readOne(job.operations, job.tools, job.sources, { path, prefix: () => prefix });
     const issues = sourceIssues(facts);
     if (issues.length > 0) {
         const issue = { ...issues[0], source: original };
         const error = new OperationError(message("fileIssue", { path: original, reason: issue.message }), { issues: [issue] });
         throw error;
     }
-    return { ...owned, ...facts };
+    return { path, identity, version, ...facts };
 }
 module.exports = { inspectCandidates, inspectCaptured };

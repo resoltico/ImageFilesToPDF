@@ -194,7 +194,13 @@ the native move changes the stored file ID, so the engine checks that an open
 handle to the staging file identifies the entry at the destination. The card
 suite exercises an occupied name and a same-byte replacement.
 
-OneDrive Files On-Demand placeholders on Windows remain unverified.
+The Windows artifact job creates dehydrated PNG and JPEG placeholders through
+the Cloud Files API and hydrates them through a local test provider. It checks
+the initial and final on-disk data sizes, fetch callbacks, source hashes and
+the saved two-page PDF. Windows hydrates confirmed Cloud Files placeholders
+before taking the admission snapshot because hydration can change NTFS change
+time. Capture still checks the admitted identity, version and image metadata.
+OneDrive remains unverified.
 
 ## Preparation measurements
 
