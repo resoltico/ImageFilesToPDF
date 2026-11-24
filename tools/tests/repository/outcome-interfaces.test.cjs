@@ -5,6 +5,8 @@ const assert = require("node:assert/strict");
 const { RUN_OUTCOME, runOutcome } = require("../../../src/core/outcomes.js");
 const { completionMessage } = inspectModule(require.resolve("../../../src/finder/quick-action/completion.js"), ["completionMessage"]);
 const { exitCode } = require("../../../src/cli/exit-code.js");
+const { assertReceipt } = require("../../../tests/integration/lib/receipt.cjs");
+const { setupToolProblem, setupFailure } = require("../../../src/core/setup.js");
 const receiptSchema = require("../../../tests/integration/lib/receipt.schema.json");
 
 test("every declared run outcome has an exchange value, CLI status and Finder headline", () => {
@@ -29,4 +31,17 @@ test("every declared run outcome has an exchange value, CLI status and Finder he
     const invalid = { ...runOutcome(), state: "undeclared" };
     assert.throws(() => exitCode(invalid), /Unknown run outcome/u);
     assert.throws(() => completionMessage(invalid), /Unknown run outcome/u);
+});
+
+test("the installation hint is a separate setup issue in the exchange and Finder completion", () => {
+    const missing = setupToolProblem("tool-missing", "pdfcpu");
+    const { issues } = setupFailure([missing], "darwin");
+    const receipt = runOutcome([], [], issues);
+    assertReceipt(receipt);
+    assert.equal(exitCode(receipt), 3);
+    assert.deepEqual(receipt.issues.map(({ code }) => code), ["tool-missing", "install-hint"]);
+    const text = completionMessage(receipt);
+    assert.match(text, /^Setup failed\./u);
+    assert.match(text, /pdfcpu could not be found\./u);
+    assert.match(text, /brew install pdfcpu\./u);
 });

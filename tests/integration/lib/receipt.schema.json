@@ -52,6 +52,39 @@
               }
             }
           }
+        },
+        {
+          "if": { "properties": { "code": { "const": "runtime-unsupported" } } },
+          "then": {
+            "properties": {
+              "stage": { "const": "setup" },
+              "params": {
+                "type": "object", "required": ["minimum", "found"], "additionalProperties": false,
+                "properties": { "minimum": { "type": "string", "minLength": 1 }, "found": { "type": "string", "minLength": 1 } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "code": { "const": "runtime-unavailable" } } },
+          "then": {
+            "properties": {
+              "stage": { "const": "setup" },
+              "params": {
+                "type": "object", "required": ["minimum", "found"], "additionalProperties": false,
+                "properties": {
+                  "minimum": { "type": "string", "minLength": 1 },
+                  "found": {
+                    "type": "array",
+                    "items": {
+                      "type": "object", "required": ["path"], "additionalProperties": false,
+                      "properties": { "path": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       ]
     },

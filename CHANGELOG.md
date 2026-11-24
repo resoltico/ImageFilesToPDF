@@ -2,12 +2,17 @@
 
 ## [Unreleased]
 
+- Setup receipts emit a separate `install-hint` with package names. Read that issue in place of the removed tool issue parameters `problem` and `hint`.
+- Tool-override issue parameters use `name` and the raw `value`. The minimum version appears only when pdfcpu fails its version check.
+- Runtime refusals carry the detected Node.js version in CLI receipts and the examined executable paths and versions in Finder results.
 - Finder now requires Node.js 26.13.1+ and macOS 13.5+. Run `brew install node vips pdfcpu` and replace the pasted action with the complete JXA file.
 - Usage and settings refusals use receipt state `invalid-request` (exit 2). Setup failures use `setup-failed` (exit 3). Windows receipts and reports use backslash paths.
 - Replace macOS osascript CLI commands with `node Image-Files-to-PDF.cjs`. The CLI requires Node.js 26.13.1+ on macOS, Linux and Windows.
 - Use `-h` for help. `--` is optional before ordinary source paths. See [HEADLESS.md](HEADLESS.md).
 - Separate PDFs add source extensions only when they distinguish colliding names. Two `inner.png` images produce `inner.pdf` and `inner 2.pdf`.
-- A setup failure lists all missing or unusable tools together and gives platform-specific installation guidance.
+- Setup reports every missing or unusable tool and names only the packages affected by automatic discovery.
+- Finder reports a failed conversion session when its Node engine dies during review or progress.
+- Recognized PNG and TIFF truncation is reported as damage. Current workspace notes appear in the human report.
 - Windows accepts long local drive paths and uses one PowerShell helper per run. The installed libvips build determines codec support.
 - Windows can save to FAT32 and exFAT with an exclusive move. Failed publication uses system Downloads or retains a verified PDF in a durable private workspace.
 - Combined PDFs prepare source images concurrently while preserving PDF names, page order, and validation before saving.

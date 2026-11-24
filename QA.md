@@ -26,7 +26,9 @@ npm run test:integration:macos
 `quality` checks syntax, executable registry, import boundaries, toolchain and
 metadata consistency, document links and settings tables, ShellCheck/actionlint
 when available, ESLint, unit/repository tests, coverage, mutation and distribution
-bytes. It never rebuilds first: stale committed output must fail. Use
+bytes. The product-test import gate rejects adapter copies outside the allowed
+source and fixture paths. The export gate checks the importing module and
+binding, including declared build and native probe entry points. It never rebuilds first: stale committed output must fail. Use
 `npm run build` to regenerate intentionally. Inspect discovered tests and all skips.
 
 Serialized receipts are checked against
@@ -83,8 +85,8 @@ that the source bytes remain unchanged.
 
 ## Required native checks
 
-`npm run test:integration:macos` runs these scripts under `tests/integration/` in
-sequence:
+`npm run test:integration:macos` runs the native suites listed below in sequence. Unqualified paths are
+relative to `tests/integration/`.
 
 | Script | Coverage |
 | --- | --- |
@@ -100,6 +102,7 @@ sequence:
 | `hdr.sh` | Synthetic Ultra HDR in both modes, SDR JPEG streams, ICC conversion, orientations 6/8, damage and unmapped-loader diagnostics |
 | `naming.sh` | Case and normalization namespaces, folder aliases, hard links, raw stored-basename bytes, long-name/collision budgets and occupied-name protection on local, APFS, APFSX, HFS+, HFSX, FAT32 and exFAT volumes |
 | `tools/tests/native/finder-engine.cjs` | macOS osascript client through the embedded engine, package parity, private cache reuse and tampering, runtime discovery |
+| `tools/tests/native/finder-pipe.cjs` | Engine SIGKILL during review and progress, exit and stderr diagnostics, restored SIGPIPE state, helper exit |
 | `native-cli.cjs` | Native CLI format, strict PDF, collision race, source integrity and receipt checks |
 | `posix-process.py` | Native Stop, crash, writer guard, helper exit, source replacement and argv batching |
 
@@ -142,7 +145,7 @@ Required lifecycle cases:
 - Source changes before, during and after capture; inspection and rendering must
   use identical private bytes.
 - Page queue bounds: at most 32 queued pages and 64 MiB of encoded page data, a
-  131,072-byte command budget, and merges of at most 32 inputs per level. One newly
+  122,880-byte POSIX command budget, and merges of at most 32 inputs per level. One newly
   prepared page may coexist with a full queue, an oversized page is imported alone,
   and the final page count must be exact. Measure retained page records and bytes
   separately from process memory.
@@ -207,7 +210,27 @@ encoded pages in plan order, one at a time. The encoded queue holds up to 32
 pages and 64 MiB. An oversized page is imported alone before another is encoded.
 The workspace writer guard remains until every in-flight command settles.
 
+## Setup and runtime refusals
+
+Native CLI tests restrict executable discovery and assert setup receipt shape
+and package wording on each platform. On macOS, the CLI must also name only
+pdfcpu when the two libvips tools are present. Node.js 24.21.0, 25.9.0 and 26.1.0
+are refusal probes. The CLI must give exit 3, the detected version and a
+schema-valid receipt. Finder checks missing executables, executables that
+return no version, and old runtimes when their paths are supplied through
+`IFTP_REJECTED_NODE`.
+
 ## Live Shortcuts acceptance
+
+The current SIGPIPE change still needs the owner’s live A11 check in
+ShortcutsMacHelper. In an isolated test Shortcut containing the entire
+candidate artifact, kill its `node --serve` engine with `kill -9` while the
+selection review is visible, then continue. Repeat while conversion progress
+is visible, then press Stop. Confirm a session-failure report with engine
+status 9 and confirm the run’s Node and osascript helpers exit. Verify the
+host’s SIGPIPE disposition is restored. The automated osascript probe covers
+both scenarios with default and ignored initial dispositions. Live A11 is
+pending, so the candidate is not release-ready.
 
 On macOS 27.2.1, the live Shortcut launches Node and osascript under
 ShortcutsMacHelper. The live checks exercise Finder selection, settings

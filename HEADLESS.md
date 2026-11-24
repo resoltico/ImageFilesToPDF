@@ -205,7 +205,8 @@ keep the setting's display name.
 After tool issues, setup appends one `install-hint` for missing or unusable
 automatically discovered tools. Its `params.platform` identifies the platform
 and `params.packages` lists only the affected packages. An explicit override
-is reported with its raw value and does not add an installation recommendation
+is reported with its `params.variable`, raw `params.value` and tool `params.name`.
+An override does not add an installation recommendation
 for that tool. Tool issue parameters contain only data.
 
 A `runtime-unsupported` issue has `params.minimum` and `params.found` Node.js

@@ -52,3 +52,17 @@ test("setup installation hints carry package data rather than pre-rendered text"
     value.issues[0].params.hint = "Install pdfcpu.";
     assert.throws(() => assertReceipt(value));
 });
+
+test("runtime refusal receipts identify the detected version or examined paths", () => {
+    const value = { state: "setup-failed", documents: [], rejected: [], diagnostics: [], issues: [
+        { code: "runtime-unsupported", stage: "setup", params: { minimum: "26.13.1", found: "25.9.0" }, message: "Upgrade Node.js." }
+    ] };
+    assertReceipt(value);
+    delete value.issues[0].params.found;
+    assert.throws(() => assertReceipt(value));
+    value.issues[0] = { code: "runtime-unavailable", stage: "setup",
+        params: { minimum: "26.13.1", found: [{ path: "/tool/node", version: "25.9.0" }, { path: "/other/node" }] }, message: "Upgrade Node.js." };
+    assertReceipt(value);
+    delete value.issues[0].params.found[0].path;
+    assert.throws(() => assertReceipt(value));
+});
