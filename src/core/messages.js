@@ -124,7 +124,7 @@ const MESSAGES = Object.freeze({
     toolInstallWindows: "Install libvips and a supported stable release of pdfcpu for Windows and add their directories to PATH.",
     toolOverrideInvalidName: "{variable}={value} is not an absolute regular executable file.",
     toolOverrideUnusableName: "{variable}={value} failed the {tool} capability check.",
-    runtimeUnavailable: "Node.js {major} or later is required. Run brew install node.",
+    runtimeUnavailable: "Node.js {minimum} or later is required. Run brew install node.",
     engineCacheUnavailable: "The private engine directory could not be verified.",
     engineCacheWriteFailed: "The engine file could not be written.",
     engineCacheUnverified: "The installed engine did not match the embedded file.",

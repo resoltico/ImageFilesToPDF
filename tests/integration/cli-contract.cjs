@@ -11,7 +11,7 @@ const {spawnSync, execFileSync, spawn} = require("node:child_process");
 const {once} = require("node:events");
 const [script, workArgument] = process.argv.slice(2);
 const work = fs.realpathSync(workArgument);
-const workspaceRoot = path.join(fs.realpathSync(os.tmpdir()), `image-files-to-pdf-node-1-${process.getuid()}`);
+const workspaceRoot = path.join(os.homedir(), "Library", "Application Support", "Image Files to PDF", "Workspaces");
 let activeChild=null;
 const settings = {mode:"combined", paperSize:"A4", orientation:"Portrait", background:"#FFFFFF", resolutionLimit:300, quality:92, timestamp:"20261029_010203"};
 const config = path.join(work,"settings.json");
@@ -175,15 +175,16 @@ async function signals() {
 }
 
 function grammar() {
-    const runLine="Usage: node Image-Files-to-PDF.cjs --settings <settings.json> -- <path…>\nRun with --help to see the settings.";
-    for(const [args,problem] of [[[],"No arguments were given."],[["--settings"],"--settings needs a settings file, the -- separator, and at least one path."],
-        [["--settings",config],"--settings needs a settings file, the -- separator, and at least one path."],[["--bogus"],"Unknown option: --bogus."],
-        [["--help","extra"],"--help and --version take no other arguments."],[["--settings","","--",config],"An argument is empty."]]) {
+    const runLine="Usage: node Image-Files-to-PDF.cjs --settings <settings.json> [--] <path…>\nRun with --help to see the settings.";
+    for(const [args,problem] of [[[],"No arguments were given."],[["--settings"],"--settings needs a settings file."],
+        [["--settings",config],"At least one source path is required."],[["--bogus"],"Unknown option: --bogus."],
+        [["--help","extra"],"--help takes no other arguments."],[["--settings","","--",config],"An argument is empty."]]) {
         const started=Date.now();const result=command(2,args,{timeout:2000});
         assert.ok(Date.now()-started<2000);assert.equal(parseReceipt(result.stdout).state,"invalid-request");
         assert.equal(result.stderr,`The request is invalid.\n\n${problem}\n${runLine}\n`,"a usage error is one problem and the run line, not the help");
     }
     const help=command(0,["--help"],{timeout:2000});
+    assert.equal(command(0,["-h"],{timeout:2000}).stdout,help.stdout);
     for(const name of ["PDF files","Paper size","Orientation","Page background","Maximum resolution","JPEG quality"]) {assert.ok(help.stdout.includes(name));}
     const {version}=require("../../package.json");
     assert.equal(command(0,["--version"],{timeout:2000}).stdout,`Image Files to PDF ${version}\n`);

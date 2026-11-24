@@ -7,10 +7,9 @@ const { issueMessage, issueMessages } = require("../core/messages.js");
 const fs = require("node:fs");
 const { TextDecoder } = require("node:util");
 const { localPath } = require("../engine/paths.js");
+const { parseArgs, RUN_LINE } = require("./grammar.js");
 
 const JSON_INDENT = 2;
-const FIRST_SOURCE = 3;
-const RUN_LINE = "node Image-Files-to-PDF.cjs --settings <settings.json> -- <path…>";
 
 function choiceCaption(choice) {
     const caption = choice.label ?? choice.name;
@@ -31,15 +30,6 @@ function usage() {
         "  node Image-Files-to-PDF.cjs --version\n" +
         `  ${RUN_LINE}\n\nSettings (all ${Object.keys(SETTINGS_SCHEMA).length} required):\n` +
         `${settingsHelp()}\n\nExample settings JSON (all required fields):\n${JSON.stringify(DEFAULT_SETTINGS, null, JSON_INDENT)}\n\nOptional run option:\n  timestamp — ${TIMESTAMP_FORM} in local time; default now\n\nPaths may be absolute or relative to the working directory. Settings accept a local file URL or path and must be UTF-8 JSON without a BOM.\n`;
-}
-
-// One sentence on what was wrong and the run line; the settings stay in --help.
-function usageProblem(args) {
-    if (args.length === 0) { return "No arguments were given."; }
-    if (args.some((argument) => argument === "")) { return "An argument is empty."; }
-    if (["--help", "--version"].includes(args[0])) { return "--help and --version take no other arguments."; }
-    if (args[0] !== "--settings") { return `Unknown option: ${args[0]}.`; }
-    return "--settings needs a settings file, the -- separator, and at least one path.";
 }
 
 function usageMessage(problem) {
@@ -123,13 +113,12 @@ function settingsPath(value) {
 }
 
 function cliCommand(args) {
-    if (args.length === 1 && args[0] === "--help") { return { kind: "help", text: usage() }; }
-    if (args.length === 1 && args[0] === "--version") { return { kind: "version", text: `${APP_NAME} ${VERSION}\n` }; }
-    if (args[0] !== "--settings" || args[2] !== "--" || args.length <= FIRST_SOURCE || args.includes("")) {
-        throw requestError({ code: "usage", stage: "request", params: {}, message: usageMessage(usageProblem(args)) });
-    }
-    const path = settingsPath(args[1]);
-    return { kind: "run", invocation: { ...configurationValues(readSettingsFile(path)), inputItems: args.slice(FIRST_SOURCE) } };
+    const parsed = parseArgs(args);
+    if (parsed.problem) { throw requestError({ code: "usage", stage: "request", params: {}, message: usageMessage(parsed.problem) }); }
+    if (parsed.kind === "help") { return { kind: "help", text: usage() }; }
+    if (parsed.kind === "version") { return { kind: "version", text: `${APP_NAME} ${VERSION}\n` }; }
+    const path = settingsPath(parsed.file);
+    return { kind: "run", invocation: { ...configurationValues(readSettingsFile(path)), inputItems: parsed.inputItems } };
 }
 
 module.exports = { cliCommand, jsonConfiguration, configurationValues, usage };

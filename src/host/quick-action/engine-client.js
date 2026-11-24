@@ -1,5 +1,5 @@
 "use strict";
-const { VERSION } = require("../../core/version.js");
+const { VERSION, MINIMUM_NODE_VERSION, supportsNode } = require("../../core/version.js");
 const { OperationError, isUserCanceled } = require("../../core/errors.js");
 const { issueMessage, message } = require("../../core/messages.js");
 const { validateMessage } = require("../../core/protocol.js");
@@ -7,7 +7,6 @@ const { startChild } = require("./engine-child.js");
 const { materializeEngine } = require("./engine-cache.js");
 
 const { NODE_EXECUTABLES } = require("../backend-executables.js");
-const MINIMUM_NODE_MAJOR = 26;
 
 function findNode(paths, launch) {
     ObjC.import("Foundation");
@@ -18,11 +17,10 @@ function findNode(paths, launch) {
             child.finishInput();
             let version = "";
             while (!child.closed()) { version += child.tick(); }
-            const match = /^v(?<major>\d+)\.\d+\.\d+$/u.exec(version.trim());
-            if (child.result().status === 0 && match && Number(match.groups.major) >= MINIMUM_NODE_MAJOR) { return executable; }
+            if (child.result().status === 0 && supportsNode(version.trim())) { return executable; }
         } finally { child.close(); }
     }
-    const issue = issueMessage("runtime-unavailable", "setup", "runtimeUnavailable", { major: MINIMUM_NODE_MAJOR });
+    const issue = issueMessage("runtime-unavailable", "setup", "runtimeUnavailable", { minimum: MINIMUM_NODE_VERSION });
     throw new OperationError(issue.message, { issues: [issue] });
 }
 

@@ -15,9 +15,9 @@ file. [Finder installation](INSTALL.txt) uses the standalone JXA file.
 
 ## Run syntax
 
-In Bash, zsh, or PowerShell, quote paths containing spaces. The first
-`--` after the settings operand is required. Source names beginning with a
-dash go after it, where they are passed literally.
+In Bash, zsh, or PowerShell, quote paths containing spaces. Supply the settings
+file first, then the source paths. An optional `--` ends option parsing, so
+put source names beginning with a dash after it. Use `-h` or `--help` for help.
 
 ```sh
 node ./Image-Files-to-PDF.cjs --help
@@ -44,8 +44,7 @@ workspace reclamation.
 A command-line run is headless and leaves remembered Finder settings alone.
 Relative paths resolve from the current working directory. Local file URLs
 accept empty or `localhost` authority. Windows accepts drive-absolute paths
-such as `C:\Photos\a.jpg` and ordinary relative paths. Receipts use forward
-slashes in Windows paths and preserve actual basenames. Drive-relative and
+such as `C:\Photos\a.jpg` and ordinary relative paths. Reports and receipts use backslashes in Windows paths and preserve actual basenames. Drive-relative and
 root-relative Windows paths, UNC shares, device namespaces, alternate data
 streams and names with trailing dots or spaces are refused. On all platforms,
 use a local filesystem and names that round-trip through the tools as Unicode.

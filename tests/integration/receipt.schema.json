@@ -51,10 +51,10 @@
       "additionalProperties": false,
       "properties": {
         "state": { "enum": ["saved", "recovered", "failed", "canceled", "not-started"] },
-        "sources": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^(?:/|[A-Za-z]:/)" } },
+        "sources": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^(?:/|[A-Za-z]:\\\\)" } },
         "pages": { "type": "integer", "minimum": 0 },
         "issues": { "type": "array", "items": { "$ref": "#/definitions/issue" } },
-        "output": { "type": "string", "pattern": "^(?:/|[A-Za-z]:/)" }, "recovery": { "type": "string", "pattern": "^(?:/|[A-Za-z]:/)" },
+        "output": { "type": "string", "pattern": "^(?:/|[A-Za-z]:\\\\)" }, "recovery": { "type": "string", "pattern": "^(?:/|[A-Za-z]:\\\\)" },
         "fatal": { "type": "boolean" }, "diagnostics": { "type": "array", "items": { "$ref": "#/definitions/diagnostic" } }
       },
       "allOf": [

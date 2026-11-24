@@ -16,8 +16,6 @@ const windows = process.platform === "win32";
 const settings = { mode: "combined", paperSize: "A4", orientation: "Portrait", resolutionLimit: 300, quality: 82, background: "#FFFFFF", timestamp: "20261029_012345" };
 const ROUNDS = 12;
 
-function asPath(file) { return windows ? file.replace(/\\/gu, "/") : file; }
-
 async function cli(args, cwd, expected = 0, { env = process.env, timeout = 90000 } = {}) {
     const result = await run(process.execPath, [artifact, ...args], { cwd, env, encoding: "utf8", timeout }).catch((error) => error);
     assert.equal(result.code ?? 0, expected, `${result.stderr}\n${result.stdout}`);
@@ -58,7 +56,7 @@ async function verifyModes(folder, photo) {
             assert.ok(fs.statSync(path.join(dir, base)).isDirectory());
             for (const document of docs) {
                 assert.equal(document.state, "saved");
-                assert.ok(document.sources.every((file) => [asPath(first), asPath(second)].includes(file)));
+                assert.ok(document.sources.every((file) => [first, second].includes(file)));
                 assert.ok(fs.readdirSync(dir).includes(path.basename(document.output)));
                 verifyPdf(document.output, mode === "combined" ? 2 : 1);
             }
@@ -108,7 +106,7 @@ async function verifyPngCounts(folder) {
     const args = ["--settings", settingsFile, "--", ...Object.values(files)];
     const result = parseReceipt(await cli(args, folder, 1));
     assert.equal(result.documents.length, 1);
-    assert.deepEqual(result.documents[0].sources, [asPath(files.single)]);
+    assert.deepEqual(result.documents[0].sources, [files.single]);
     const codes = Object.fromEntries(result.rejected.map((item) => [path.basename(item.path, ".png"), item.code]));
     assert.deepEqual(codes, { malformed: "damaged", multiple: "multiple-images", separateDefault: "multiple-images" });
     verifyPdf(result.documents[0].output, 1);
@@ -164,7 +162,7 @@ async function verifyLinkRefusal(folder, photo) {
     fs.symlinkSync(outside, link, windows ? "junction" : "dir");
     const combined = config(folder);
     const result = parseReceipt(await cli(["--settings", combined, "--", selected], folder));
-    assert.deepEqual(result.documents[0].sources, [asPath(source)]);
+    assert.deepEqual(result.documents[0].sources, [source]);
     const refusal = parseReceipt(await cli(["--settings", combined, "--", path.join(link, "outside.png")], folder, 1));
     assert.equal(refusal.rejected[0].code, "link");
     assert.ok(!fs.existsSync(path.join(outside, "outside.pdf")));
@@ -190,7 +188,12 @@ async function verifyMacPackages(folder, photo) {
 
 async function verifyTransport(folder, photo) {
     const configFile = config(folder);
-    const broken = parseReceipt(await cli(["--settings", configFile, photo], folder, 2));
+    const plain = await run(process.execPath, [artifact, "--settings", configFile, photo], { cwd: folder, encoding: "utf8" });
+    const [saved] = parseReceipt(plain.stdout).documents;
+    assert.deepEqual(saved.sources, [photo]);
+    assert.ok(plain.stderr.includes(path.dirname(saved.output) + path.sep));
+    verifyPdf(saved.output, 1);
+    const broken = parseReceipt(await cli(["--settings", configFile, "--unknown", photo], folder, 2));
     assert.equal(broken.issues[0].code, "usage");
     const setup = parseReceipt(await cli(["--settings", configFile, "--", photo], folder, 3,
         { env: { ...process.env, IMAGE_FILES_TO_PDF_VIPS: path.join(folder, "missing.exe") } }));
@@ -224,7 +227,7 @@ async function verifySecondVolume(folder, photo, secondVolume) {
         const result = parseReceipt(await cli(["--settings", config(folder, mode), "--", source], folder));
         verifyPdf(result.documents[0].output, 1);
         assert.deepEqual(fs.readFileSync(source), fs.readFileSync(photo));
-        assert.equal(result.documents[0].output, asPath(path.join(target.path, inputName.replace(/\.png$/u, ".pdf"))));
+        assert.equal(result.documents[0].output, path.join(target.path, inputName.replace(/\.png$/u, ".pdf")));
     }
     assert.ok(!fs.readdirSync(target.path).some((name) => name.startsWith(".ImageFilesToPDF-")));
     process.stdout.write("Exclusive cross-volume publication passed in both modes.\n");
@@ -239,7 +242,7 @@ async function verifyWindowsLongArguments(folder, photo) {
     for (const file of filenames) { fs.copyFileSync(photo, file); }
     const result = parseReceipt(await cli(["--settings", config(folder), "--", input], folder, 0, { timeout: 900000 }));
     const [document] = result.documents;
-    assert.deepEqual(document.sources, filenames.map(asPath));
+    assert.deepEqual(document.sources, filenames);
     verifyPdf(document.output, filenames.length);
     for (const file of filenames) { assert.deepEqual(fs.readFileSync(file), fs.readFileSync(photo)); }
     process.stdout.write("Windows converted a source list exceeding one native command line.\n");

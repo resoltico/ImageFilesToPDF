@@ -9,10 +9,11 @@ const { cliCommand, jsonConfiguration, configurationValues, usage } = require(".
 const { DEFAULT_SETTINGS } = require("../../../src/core/settings.js");
 const settings = { ...DEFAULT_SETTINGS };
 
-test("CLI grammar rejects missing separators and distinguishes standalone informational commands", () => {
+test("CLI request validates grammar before reading settings", () => {
     assert.equal(cliCommand(["--help"]).kind, "help");
+    assert.equal(cliCommand(["-h"]).kind, "help");
     assert.equal(cliCommand(["--version"]).kind, "version");
-    for (const args of [[], ["--bogus"], ["--settings"], ["--help", "extra"], ["--settings", "x", "photo.jpg"], ["--settings", "x", "--"], ["--settings", "", "--", "photo"]]) {
+    for (const args of [[], ["--bogus"], ["--settings"], ["--help", "extra"], ["--settings", "x", "-bad"], ["--settings", "x", "--"], ["--settings", "", "--", "photo"]]) {
         assert.throws(() => cliCommand(args), (error) => error.issues[0].code === "usage" && error.message.includes("Run with --help"));
     }
 });
@@ -22,6 +23,7 @@ test("settings use fatal UTF-8 and local file URLs, and source operands stay lit
     const file = path.join(folder.path, "settings é.json");
     const url = pathToFileURL(file).href;
     fs.writeFileSync(file, JSON.stringify(settings));
+    assert.deepEqual(cliCommand(["--settings", url, "é.jpg"]).invocation.inputItems, ["é.jpg"]);
     const request = cliCommand(["--settings", url, "--", "-é.jpg", "--"]);
     assert.deepEqual(request.invocation, { settings, timestamp: "", inputItems: ["-é.jpg", "--"] });
     fs.writeFileSync(file, "\uFEFF{}");
@@ -46,6 +48,7 @@ test("JSON diagnostics name the settings path and distinguish root type from syn
 
 test("help renders canonical names, choice captions, bounds and complete JSON", () => {
     const text = usage();
+    assert.doesNotMatch(text, /or type #RRGGBB/u);
     assert.match(text, /Settings \(all 6 required\):/u);
     for (const expected of ["PDF files", "combined", "One PDF — one image per page", "Paper size", "US Letter", "Maximum resolution", "72–1017", "Page background", "JPEG quality", "White"]) { assert.ok(text.includes(expected), expected); }
 });
@@ -73,12 +76,6 @@ test("supplied timestamp is optional only by absence",()=>{
         assert.throws(()=>configurationValues({...DEFAULT_SETTINGS,timestamp}),(error)=>error.issues.some((issue)=>issue.field==="timestamp"));
     }
     assert.equal(configurationValues({...DEFAULT_SETTINGS,timestamp:"20240229_010203"}).timestamp,"20240229_010203");
-});
-
-test("the Node floor compares the release tuple", () => {
-    const { supportedNode } = require("../../../src/engine/runtime.js");
-    for (const version of ["26.13.1", "26.13.2", "26.14.0", "27.0.0"]) { assert.ok(supportedNode(version)); }
-    for (const version of ["25.15.1", "26.0.0", "26.13.0"]) { assert.equal(supportedNode(version), false); }
 });
 
 test("Windows path grammar distinguishes ordinary names from ambiguous namespaces", () => {

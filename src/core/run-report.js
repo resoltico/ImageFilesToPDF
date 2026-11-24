@@ -5,8 +5,10 @@ const { summarizeRun } = require("./run-summary.js");
 const { supportedFormatList } = require("./formats.js");
 const { message } = require("./messages.js");
 
-function describeRejections(rejected, heading = message("reportRefusals")) {
-    return `${heading}\n${rejected.map((entry) => `${entry.path || entry.name}: ${entry.reason}`).join("\n")}`;
+const canonicalPath = (path) => path;
+
+function describeRejections(rejected, heading = message("reportRefusals"), renderPath = canonicalPath) {
+    return `${heading}\n${rejected.map((entry) => `${renderPath(entry.path || entry.name)}: ${entry.reason}`).join("\n")}`;
 }
 
 /*
@@ -50,33 +52,33 @@ function recoveryReason(cause) {
     return reason ? reason.replace(/\s+/gu, " ").trim() : message("destinationUnused");
 }
 
-function summaryText(summary, includeHeadline = true) {
+function summaryText(summary, includeHeadline = true, renderPath = canonicalPath) {
     // An invalid request converted nothing, so it states its problems without counts or a conversion heading.
     if (summary.kind === "invalid" || summary.kind === "setup") {
         return [includeHeadline ? headline(summary) : "", ...summary.problems.map((entry) => entry.message)].filter(Boolean).join("\n\n");
     }
-    const saved = summary.saved.map((group) => `${group.folder}\n${group.outputs.map((output) => output.name).join("\n")}`);
-    const recovered = summary.recoveries.map((entry) => `${entry.location}\n${recoveryReason(entry.cause)}`);
+    const saved = summary.saved.map((group) => `${renderPath(group.folder)}\n${group.outputs.map((output) => output.name).join("\n")}`);
+    const recovered = summary.recoveries.map((entry) => `${renderPath(entry.location)}\n${recoveryReason(entry.cause)}`);
     return [includeHeadline ? headline(summary) : "", countsLine(summary), saved.length > 0 ? `${message("reportSaved")}\n${saved.join("\n\n")}` : "",
-        summary.failures.length > 0 ? `${message("reportFailures")}\n${summary.failures.map((entry) => `${entry.source}: ${entry.message}`).join("\n")}` : "",
+        summary.failures.length > 0 ? `${message("reportFailures")}\n${summary.failures.map((entry) => `${renderPath(entry.source)}: ${entry.message}`).join("\n")}` : "",
         recovered.length > 0 ? `${message("reportRecoveries")}\n${recovered.join("\n\n")}` : "",
-        summary.problems.length > 0 ? `${message("reportOtherIssues")}\n${summary.problems.map((entry) => `${entry.source ? `${entry.source}: ` : ""}${entry.message}`).join("\n")}` : "",
+        summary.problems.length > 0 ? `${message("reportOtherIssues")}\n${summary.problems.map((entry) => `${entry.source ? `${renderPath(entry.source)}: ` : ""}${entry.message}`).join("\n")}` : "",
         summary.notStarted > 0 ? message("reportNotStarted", { count: summary.notStarted }) : "",
-        summary.refusals.length > 0 ? describeRejections(summary.refusals) : ""
+        summary.refusals.length > 0 ? describeRejections(summary.refusals, undefined, renderPath) : ""
     ].filter(Boolean).join("\n\n");
 }
 
-function workspaceText(diagnostics) {
+function workspaceText(diagnostics, renderPath) {
     const workspaces = diagnostics.filter((entry) => entry.stage === "workspace" &&
         ["workspace-retained", "workspace-reclaimed", "workspace-unreadable"].includes(entry.code) &&
         typeof entry.message === "string" && entry.message.trim() &&
         typeof entry.diagnostic?.path === "string" && isWorkspaceName(basename(entry.diagnostic.path)));
-    return workspaces.length > 0 ? `${message("reportWorkspaces")}\n${workspaces.map((entry) => `${entry.message}\n${entry.diagnostic.path}`).join("\n\n")}` : "";
+    return workspaces.length > 0 ? `${message("reportWorkspaces")}\n${workspaces.map((entry) => `${entry.message}\n${renderPath(entry.diagnostic.path)}`).join("\n\n")}` : "";
 }
 
 // Elapsed time is the last section of the command-line report.
-function reportText(result, includeHeadline = true) {
-    return [summaryText(summarizeRun(result), includeHeadline), workspaceText(result.diagnostics), result.elapsed ? message("reportElapsed", { time: result.elapsed }) : ""].filter(Boolean).join("\n\n");
+function reportText(result, includeHeadline = true, renderPath = canonicalPath) {
+    return [summaryText(summarizeRun(result), includeHeadline, renderPath), workspaceText(result.diagnostics, renderPath), result.elapsed ? message("reportElapsed", { time: result.elapsed }) : ""].filter(Boolean).join("\n\n");
 }
 
 function noImagesHeadline(rejected) {

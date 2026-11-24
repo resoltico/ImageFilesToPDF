@@ -11,4 +11,16 @@
 const APP_NAME = "Image Files to PDF";
 const VERSION = "4.0.0";
 
-module.exports = { APP_NAME, VERSION };
+const MINIMUM_NODE_VERSION = "26.13.1";
+
+function supportsNode(version) {
+    const match = /^v?(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$/u.exec(version);
+    if (!match) { return false; }
+    const actual = [match.groups.major, match.groups.minor, match.groups.patch].map(Number);
+    for (const [index, minimum] of MINIMUM_NODE_VERSION.split(".").map(Number).entries()) {
+        if (actual[index] !== minimum) { return actual[index] > minimum; }
+    }
+    return true;
+}
+
+module.exports = { APP_NAME, VERSION, MINIMUM_NODE_VERSION, supportsNode };

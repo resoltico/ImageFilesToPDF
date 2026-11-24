@@ -2,7 +2,7 @@
 
 ## Scope and limits
 
-The Finder action targets macOS 13.5 and later with the Shortcuts JavaScript action and Node.js 26 or later. The JXA bundle has an ES2022 syntax ceiling, a Safari 15.4 target, and a
+The Finder action targets macOS 13.5 and later with the Shortcuts JavaScript action and Node.js 26.13.1 or later. The JXA bundle has an ES2022 syntax ceiling, a Safari 15.4 target, and a
 separate built-in compatibility check. The terminal bundle targets Node 26.13.1 and
 later. The runtime floor is independent of the locked development toolchain.
 

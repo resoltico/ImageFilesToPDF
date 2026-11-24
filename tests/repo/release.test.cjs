@@ -10,7 +10,7 @@ function checkBanner(release) {
     assert.ok(release.startsWith(`/*\n * Image Files to PDF ${version}\n`), "the banner names the declared version");
     assert.match(release, /SPDX-License-Identifier: AGPL-3\.0-only/u);
     assert.match(release, /Corresponding Source: https:\/\/github\.com\/resoltico\/ImageFilesToPDF/u);
-    assert.match(release, /Requires macOS 13\.5 or later, Node\.js 26 or later/u);
+    assert.match(release, /Requires macOS 13\.5 or later, Node\.js 26\.13\.1 or later/u);
 }
 
 test("artifact is standalone, scoped, licensed, deterministic, and current", async () => {
@@ -24,9 +24,10 @@ test("artifact is standalone, scoped, licensed, deterministic, and current", asy
     assert.equal(commentsIn(release, 2022).length, 1);
     assert.deepEqual(await renderArtifacts(), artifacts);
     assert.equal(await readFile(nodeArtifactPath, "utf8"), artifacts[nodeArtifactName]);
-    const { MINIMUM_NODE_VERSION } = require("../../src/engine/runtime.js");
-    assert.equal((await readFile(require("node:path").resolve(__dirname, "../../.node-version"), "utf8")).trim(), MINIMUM_NODE_VERSION);
+    assert.match(artifacts[nodeArtifactName], /^#!\/usr\/bin\/env node\n/u);
     assert.match(artifacts[nodeArtifactName], /Requires Node\.js 26\.13\.1 or later/u);
+    const { MINIMUM_NODE_VERSION } = require("../../src/core/version.js");
+    assert.equal(require("../../package.json").engines.node, `>=${MINIMUM_NODE_VERSION}`);
     assert.equal(await readFile(artifactPath, "utf8"), release);
     assert.equal(await readFile(manifestPath, "utf8"), renderManifest(artifacts));
 });

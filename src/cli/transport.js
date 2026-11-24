@@ -1,24 +1,12 @@
 "use strict";
 const { Buffer } = require("node:buffer");
-const { stdout, stderr } = require("node:process");
+const { stdout, stderr, platform } = require("node:process");
 const { reportText } = require("../core/run-report.js");
-const { RUN_OUTCOME } = require("../core/outcomes.js");
+const { exitCode } = require("./exit-code.js");
+const { nativeWindowsPath } = require("./paths.js");
 
-const INVALID_REQUEST = 2;
-const SETUP_FAILED = 3;
-const EXIT_CODES = new Map([
-    [RUN_OUTCOME.complete, 0],
-    [RUN_OUTCOME.incomplete, 1],
-    [RUN_OUTCOME.canceled, 1],
-    [RUN_OUTCOME.invalidRequest, INVALID_REQUEST],
-    [RUN_OUTCOME.setupFailed, SETUP_FAILED]
-]);
-
-function exitCode(result) {
-    const status = EXIT_CODES.get(result.state);
-    if (status === undefined) { throw new Error(`Unknown run outcome: ${result.state}`); }
-    return status;
-}
+const PATH_FIELDS = new Set(["source", "path", "folder", "output", "recovery"]);
+const displayPath = platform === "win32" ? nativeWindowsPath : (path) => path;
 
 function write(stream, text) {
     return new Promise((resolve) => {
@@ -29,15 +17,20 @@ function write(stream, text) {
     });
 }
 
-function receiptText(result) {
-    return `${JSON.stringify(result, (key, value) => key === "stack" ? undefined : value)}\n`;
+function receiptText(result, renderPath = displayPath) {
+    return `${JSON.stringify(result, (key, value) => {
+        if (key === "stack") { return undefined; }
+        if (key === "sources" && Array.isArray(value)) { return value.map(renderPath); }
+        if (PATH_FIELDS.has(key) && typeof value === "string") { return renderPath(value); }
+        return value;
+    })}\n`;
 }
 
 async function report(result, output = stdout, errors = stderr) {
-    const prose = await write(errors, `${reportText(result)}\n`);
+    const prose = await write(errors, `${reportText(result, true, displayPath)}\n`);
     const receipt = await write(output, receiptText(result));
     if (!receipt) { await write(errors, "Standard output could not be completed.\n"); }
     return prose && receipt ? exitCode(result) : 1;
 }
 
-module.exports = { exitCode, receiptText, report, write };
+module.exports = { receiptText, report, write };

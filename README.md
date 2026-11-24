@@ -10,7 +10,7 @@ Source and releases: https://github.com/resoltico/ImageFilesToPDF
 
 ## Requirements
 
-- macOS 13.5 or later with Shortcuts and Node.js 26 or later.
+- macOS 13.5 or later with Shortcuts and Node.js 26.13.1 or later.
 - `vips` (which includes `vipsheader`) and stable `pdfcpu` 0.16.4 or later,
   installed with Homebrew:
 

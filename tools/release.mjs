@@ -5,7 +5,8 @@ import path from "node:path";
 import { renderBanner, readMetadata } from "./banner.mjs";
 import { scopedBundle, nodeBundle } from "./scoped-bundle.mjs";
 import { root } from "./repository.mjs";
-import runtime from "../src/engine/runtime.js";
+import runtime from "../src/core/version.js";
+import { guardedBundle } from "./node-boot.mjs";
 
 const HASH_PREFIX_LENGTH = 12;
 const ENGINE_DEFINE = "globalThis.iftpEmbeddedEngine";
@@ -47,10 +48,10 @@ export async function renderArtifacts() {
         node.inputs.some((file) => file.startsWith("src/serve/")) || engine.inputs.includes("src/cli/entry.js")) {
         throw new Error("an artifact includes the other runtime's adapter");
     }
-    const finderRuntime = `Requires macOS ${meta.minimumMacos} or later, Node.js 26 or later, libvips and pdfcpu.\n *     brew install node vips pdfcpu`;
+    const finderRuntime = `Requires macOS ${meta.minimumMacos} or later, Node.js ${runtime.MINIMUM_NODE_VERSION} or later, libvips and pdfcpu.\n *     brew install node vips pdfcpu`;
     return {
         [artifactName]: `${renderBanner(meta, finderRuntime)}\n\n${jxa.source}`,
-        [nodeArtifactName]: `${renderBanner(meta, `Requires Node.js ${runtime.MINIMUM_NODE_VERSION} or later, libvips and pdfcpu. See HEADLESS.md for setup.`)}\n\n${node.source}`
+        [nodeArtifactName]: `#!/usr/bin/env node\n${renderBanner(meta, `Requires Node.js ${runtime.MINIMUM_NODE_VERSION} or later, libvips and pdfcpu. See HEADLESS.md for setup.`)}\n\n${guardedBundle(node.source)}`
     };
 }
 
