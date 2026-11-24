@@ -23,6 +23,10 @@ and then `brew upgrade node pdfcpu`. The Quick Action is a single JavaScript for
 Automation (JXA) file with the embedded conversion engine. Setup checks all three backend commands before
 inspecting images; missing or unusable tools are reported as setup problems.
 
+If Homebrew cannot supply Node.js for your macOS version, use the official
+macOS installer. Finder can use its `/usr/local/bin/node` executable.
+[Node.js 26.13.1 downloads](https://nodejs.org/en/blog/release/v26.13.1)
+
 ## Install in Shortcuts
 
 1. Download `Image-Files-to-PDF.jxa` from a

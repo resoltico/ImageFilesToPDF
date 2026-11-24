@@ -18,6 +18,10 @@ If Node.js or pdfcpu is below the required version, upgrade them:
     brew update
     brew upgrade node pdfcpu
 
+If Homebrew cannot supply Node.js for your macOS version, use the official
+macOS installer from https://nodejs.org/en/blog/release/v26.13.1 or a later
+supported release. Finder can use its /usr/local/bin/node executable.
+
 Verify a download
 =================
 

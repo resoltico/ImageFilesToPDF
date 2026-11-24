@@ -50,7 +50,7 @@ use `npm ci --ignore-scripts` with the declared npm version.
 | Target | Native tools and filesystem | Required checks |
 | --- | --- | --- |
 | macOS arm64 | macOS 26 CI and current macOS, local APFS, Homebrew libvips and pdfcpu | Committed Node bundle, APFS variants, a second volume, Apple-only HFS+/FAT/exFAT and JXA native probes, live Shortcuts |
-| Linux arm64 | Debian 13, ext4, libvips 8.16.1 with HEIF plugins, pdfcpu 0.16.4 | Committed Node bundle, ext4 and a distinct tmpfs device, terminal and crash lifecycle |
+| Linux arm64 | Debian 13 Docker image, libvips 8.16.1 with HEIF plugins, pdfcpu 0.16.4 | Committed Node bundle on overlay and a distinct tmpfs device, terminal and crash lifecycle |
 | Windows arm64 | Windows 11 ARM runner, NTFS, PowerShell 7, libvips 8.18.7 ARM64 all, pdfcpu 0.16.4 x64 under emulation | Node 26.13.1, PowerShell argv and encoding, console Ctrl+C, NTFS ownership and publication, cross-volume NTFS, FAT32 and exFAT publication |
 
 The pinned Windows variant lacks HEVC. Its negative HEIC case must keep the
@@ -154,10 +154,10 @@ variable detail must be selectable and scrollable.
 
 The engine uses one persistent PowerShell helper on Windows and one persistent
 osascript helper on macOS. The Windows process-budget check counts process
-starts during a 20-image separate run. A representative Windows ARM run
-completed 20 documents in 7.42 seconds with one PowerShell process. Native
-lifecycle checks cover Ctrl+C, helper exit and workspace retention after a
-forced termination.
+starts during a 20-image separate run. Windows ARM measurements were 7.42 and
+9.00 seconds for 20 documents, with one PowerShell process in each run.
+Native lifecycle checks cover Ctrl+C, helper exit and workspace retention
+after a forced termination.
 
 The durable workspace root is `~/Library/Application Support/Image Files to PDF/Workspaces`
 on macOS, `${XDG_STATE_HOME:-$HOME/.local/state}/image-files-to-pdf/workspaces`
@@ -195,9 +195,10 @@ The workspace writer guard remains until every in-flight command settles.
 
 ## Live Shortcuts acceptance
 
-Verification in Shortcuts with the owner present remains pending. The osascript
-harness and native form suite exercise the same client and engine outside
-ShortcutsMacHelper.
+Verification of the live Shortcuts dialogs remains pending. ShortcutsMacHelper
+started the engine and its osascript child with the current artifact. The
+osascript harness and native form suite exercise the dialogs and conversion
+separately.
 
 Use an isolated test Shortcut containing the complete current artifact and
 synthetic inputs. Preserve the production Shortcut and restore only preferences

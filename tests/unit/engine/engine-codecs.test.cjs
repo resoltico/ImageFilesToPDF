@@ -20,6 +20,19 @@ test("XDG directories use only absolute values and the documented home expansion
     assert.equal(linuxDownload('XDG_DOWNLOAD_DIR="/literal/\\$name"', "/home/test"), "/literal/$name");
 });
 
+test("a Downloads assignment must occupy its own line", () => {
+    for (const invalid of [
+        'unrelatedXDG_DOWNLOAD_DIR="/wrong"',
+        '# XDG_DOWNLOAD_DIR="/wrong"',
+        'XDG_DOWNLOAD_DIR_SUFFIX="/wrong"',
+        'XDG_DOWNLOAD_DIR=prefix"/wrong"',
+        'XDG_DOWNLOAD_DIR="/wrong" trailing-text'
+    ]) {
+        assert.equal(linuxDownload(invalid, "/home/test"), null, invalid);
+    }
+    assert.equal(linuxDownload('  XDG_DOWNLOAD_DIR = "/files"  # note', "/home/test"), "/files");
+});
+
 test("native helper codecs preserve Unicode and enforce Windows reply fields", () => {
     const request = { type: "packages", paths: ["/Café/🧪"] };
     const plain = encodeHelperRequest(request);
@@ -32,7 +45,8 @@ test("native helper codecs preserve Unicode and enforce Windows reply fields", (
     const failure = { ok: false, code: -2147024891, diagnostic: "Access denied." };
     assert.equal(windowsReply(none), none);
     assert.equal(windowsReply(failure), failure);
-    for (const bad of [null, "failed", [], {}, { ok: "yes" }, { ok: true },
+    for (const bad of [null, "failed", [], Object.assign([], { ok: true, value: null }), {}, { ok: "yes" },
+        { ok: "yes", value: null }, { ok: true },
         { ok: false, code: "1", diagnostic: "failed" }, { ok: false, code: 1 }]) {
         assert.throws(() => windowsReply(bad), /invalid response/u);
     }

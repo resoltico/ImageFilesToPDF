@@ -3,7 +3,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 test("Windows path grammar distinguishes ordinary names from ambiguous namespaces", () => {
     const { ordinaryWindowsPath } = require("../../../src/engine/path-syntax.js");
-    for (const name of ["C:\\Photos\\été.png", "D:/Folder/photo.jpg", "photos\\café.png", "..\\photo.png", "name with spaces.jpg"]) {
+    for (const name of ["C:\\Photos\\été.png", "D:/Folder/photo.jpg", "photos\\café.png", "..\\photo.png",
+        "C:/./sub/photo.png", "name with spaces.jpg", "myCON.jpg"]) {
         assert.ok(ordinaryWindowsPath(name), name);
     }
     for (const name of ["C:photo.jpg", "\\rooted\\photo.jpg", "\\\\server\\folder\\photo.jpg", "\\\\?\\C:\\photo.png",
@@ -20,5 +21,7 @@ test("Windows tool paths keep the normalized path behind the native prefix", () 
     assert.equal(isDriveAbsolute("CC:/photos"), false);
     assert.equal(windowsToolPath("c:/folder/sub/../été.png"), "\\\\?\\c:\\folder\\été.png");
     assert.equal(windowsOutputName("con.jpg"), "_con.jpg");
+    assert.equal(windowsOutputName("NUL"), "_NUL");
+    assert.equal(windowsOutputName("myCON.jpg"), "myCON.jpg");
     assert.equal(windowsOutputName("photo.jpg"), "photo.jpg");
 });

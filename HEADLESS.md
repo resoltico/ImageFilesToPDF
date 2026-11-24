@@ -11,6 +11,9 @@ Download `Image-Files-to-PDF.cjs` and install Node.js 26.13.1 or later, libvips
 brew install node vips pdfcpu
 ```
 
+The official macOS installer is also available for Node.js 26.13.1.
+[Node.js 26.13.1 downloads](https://nodejs.org/en/blog/release/v26.13.1)
+
 ### Linux
 
 Install Node.js 26.13.1 or later, libvips with the image codecs you need, and
