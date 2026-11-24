@@ -2,6 +2,7 @@
 
 const MILLISECONDS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
+const listFormatter = new Intl.ListFormat("en-US");
 
 /*
  * "1 PDF" / "2 PDFs", rather than the "(s)" that stands in for it.
@@ -22,4 +23,6 @@ function formatDuration(milliseconds) {
     return `${plural(minutes, "minute")}, ${plural(seconds, "second")}`;
 }
 
-module.exports = { plural, formatDuration };
+function formatList(values) { return listFormatter.format(values); }
+
+module.exports = { plural, formatDuration, formatList };

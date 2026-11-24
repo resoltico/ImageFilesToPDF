@@ -1,4 +1,6 @@
 "use strict";
+const { formatList } = require("./formatting.js");
+const { issueMessage, message } = require("./messages.js");
 
 /*
  * The released version, shown to the user on completion.
@@ -23,4 +25,12 @@ function supportsNode(version) {
     return true;
 }
 
-module.exports = { APP_NAME, VERSION, MINIMUM_NODE_VERSION, supportsNode };
+function runtimeUnavailableIssue(found) {
+    const params = { minimum: MINIMUM_NODE_VERSION, found };
+    const id = found.length > 0 ? "runtimeUnavailableFound" : "runtimeUnavailable";
+    const list = formatList(found.map(({ path, version }) =>
+        version ? message("runtimePathVersion", { path, version }) : path));
+    return { ...issueMessage("runtime-unavailable", "setup", id, { ...params, list }), params };
+}
+
+module.exports = { APP_NAME, VERSION, MINIMUM_NODE_VERSION, supportsNode, runtimeUnavailableIssue };

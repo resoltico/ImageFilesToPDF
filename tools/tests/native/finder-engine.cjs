@@ -127,10 +127,23 @@ function verifyRejectedRuntimes(probe, fixture) {
         const { receipt: rejected, events: rejectedEvents } = invoke(probe, fixture, { node });
         assert.equal(rejected.state, "setup-failed");
         assert.equal(rejected.issues[0].code, "runtime-unavailable");
-        assert.match(rejected.issues[0].message, /26\.13\.1.*brew install node/su);
+        assert.match(rejected.issues[0].message, /26\.13\.1.*brew upgrade node/su);
+        assert.deepEqual(rejected.issues[0].params, { minimum: "26.13.1", found: [{ path: node, version: version.slice(1) }] });
         assert.deepEqual(rejectedEvents, []);
-        process.stdout.write(`Finder refused unsupported Node ${version} with the installation hint.\n`);
+        process.stdout.write(`Finder refused unsupported Node ${version} with its executable path, version and upgrade hint.\n`);
     }
+}
+
+function verifyMissingRuntimes(probe, fixture, folder) {
+    const { receipt: missing } = invoke(probe, fixture, { node: path.join(folder, "absent-node") });
+    assert.equal(missing.state, "setup-failed");
+    assert.equal(missing.issues[0].code, "runtime-unavailable");
+    assert.match(missing.issues[0].message, /brew install node/u);
+    assert.deepEqual(missing.issues[0].params, { minimum: "26.13.1", found: [] });
+    const silent = path.join(folder, "silent-node");
+    fs.writeFileSync(silent, "#!/bin/sh\nexit 2\n", { mode: 0o700 });
+    const { receipt: noVersion } = invoke(probe, fixture, { node: silent });
+    assert.deepEqual(noVersion.issues[0].params.found, [{ path: silent }]);
 }
 
 async function main() {
@@ -144,10 +157,7 @@ async function main() {
     const fixture = makeFixtures(work.path);
     const probe = await buildHarness(work.path, { filename: bundle.filename, source: bundle.source });
     verifyCache(work.path, probe, fixture, bundle);
-    const { receipt: missing } = invoke(probe, fixture, { node: path.join(work.path, "absent-node") });
-    assert.equal(missing.state, "setup-failed");
-    assert.equal(missing.issues[0].code, "runtime-unavailable");
-    assert.match(missing.issues[0].message, /brew install node/u);
+    verifyMissingRuntimes(probe, fixture, work.path);
     verifyRejectedRuntimes(probe, fixture);
     const mismatch = 'process.stdout.write(JSON.stringify({type:"hello",version:"0.0.0",runtime:process.versions.node})+"\\n");process.stdin.resume();';
     const { receipt: wrong, events } = invoke(probe, fixture, { alternate: mismatch });

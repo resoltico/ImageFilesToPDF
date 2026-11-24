@@ -208,6 +208,11 @@ and `params.packages` lists only the affected packages. An explicit override
 is reported with its raw value and does not add an installation recommendation
 for that tool. Tool issue parameters contain only data.
 
+A `runtime-unsupported` issue has `params.minimum` and `params.found` Node.js
+version strings. Finder uses `runtime-unavailable` with `params.minimum` and a
+`params.found` array of examined executable paths. Each entry has `path` and,
+when available, `version`.
+
 A CLI settings root that is an array, `null` or another non-object is
 `settings-file` at `request`, with exit 2. The core `object` validation code is
 reserved for callers of the core settings validator.

@@ -1,4 +1,5 @@
 "use strict";
+const { formatList } = require("./formatting.js");
 const { OperationError } = require("./errors.js");
 const { issueMessage, issueMessages, message } = require("./messages.js");
 
@@ -6,7 +7,6 @@ const MINIMUM_PDFCPU_VERSION = "0.16.4";
 const INSTALL_HINT = {
     darwin: "toolInstallDarwin", linux: "toolInstallLinux", win32: "toolInstallWindows"
 };
-const packageList = new Intl.ListFormat("en-US");
 
 function setupIssue(code, wording, params, rendered = params) {
     return { ...issueMessage(code, "setup", wording, rendered), params };
@@ -32,7 +32,7 @@ function installHint(automatic, platform) {
     const vips = platform === "darwin" ? "vips" : "libvips";
     const packages = [...new Set(automatic.map(({ params }) => params.name === "pdfcpu" ? "pdfcpu" : vips))];
     const params = { platform, packages };
-    const rendered = platform === "darwin" ? packages.join(" ") : packageList.format(packages.map((name) =>
+    const rendered = platform === "darwin" ? packages.join(" ") : formatList(packages.map((name) =>
         name === "pdfcpu" ? message("toolInstallStablePdfcpu") : name));
     return setupIssue("install-hint", INSTALL_HINT[platform], params, { packages: rendered });
 }

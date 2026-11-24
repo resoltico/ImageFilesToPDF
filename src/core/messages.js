@@ -118,7 +118,7 @@ const MESSAGES = Object.freeze({
     nativeCommandFailed: "Command failed.",
     nativeCommandFailedForOperation: "Command failed while {label}.",
     nativeFileAttributesUnavailable: "Windows file attributes could not be established.",
-    runtimeUnsupported: "Node.js {minimum} or later is required.",
+    runtimeUnsupported: "Node.js {minimum} or later is required; this is Node.js {found}.",
     toolOverrideInvalid: "{override} is not an absolute regular executable file.",
     toolMissing: "{name} could not be found.",
     toolUnusable: "{name} failed its capability check.",
@@ -147,6 +147,8 @@ const MESSAGES = Object.freeze({
     toolOverrideInvalidName: "{variable}={value} is not an absolute regular executable file.",
     toolOverridePdfcpuUnusable: "{variable}={value} failed the pdfcpu capability check. Version {minimum} or later is required.",
     toolOverrideUnusableName: "{variable}={value} failed the {name} capability check.",
+    runtimeUnavailableFound: "Node.js {minimum} or later is required. Found {list}. Run brew upgrade node.",
+    runtimePathVersion: "{path} (Node.js {version})",
     runtimeUnavailable: "Node.js {minimum} or later is required. Run brew install node.",
     engineCacheUnavailable: "The private engine directory could not be verified.",
     engineCacheWriteFailed: "The engine file could not be written.",
@@ -220,10 +222,17 @@ const MESSAGES = Object.freeze({
     settingsColorFormHint: "or type #RRGGBB"
 });
 
-function message(id, params = {}) {
+function messageTemplate(id, params = {}) {
     const entry = MESSAGES[id];
-    const template = typeof entry === "string" ? entry : entry[plurals.select(params.count)];
+    return typeof entry === "string" ? entry : entry[plurals.select(params.count)];
+}
+
+function renderTemplate(template, params) {
     return template.replace(/\{(?<name>\w+)\}/gu, (token, name) => String(params[name]));
+}
+
+function message(id, params = {}) {
+    return renderTemplate(messageTemplate(id, params), params);
 }
 
 function issueMessage(code, stage, id, params = {}) {
@@ -238,4 +247,4 @@ function publicationFailureDetails(reasons, recovery) {
     return [message("publicationFailure"), ...reasons, message("publicationWhereabouts", { path: recovery })].join("\n\n");
 }
 
-module.exports = { message, issueMessage, issueMessages, publicationFailureDetails };
+module.exports = { messageTemplate, renderTemplate, message, issueMessage, issueMessages, publicationFailureDetails };

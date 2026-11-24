@@ -1,26 +1,41 @@
 "use strict";
-const { VERSION, MINIMUM_NODE_VERSION, supportsNode } = require("../../core/version.js");
+const { VERSION, supportsNode, runtimeUnavailableIssue } = require("../../core/version.js");
 const { OperationError, isUserCanceled } = require("../../core/errors.js");
-const { issueMessage, message } = require("../../core/messages.js");
+const { message } = require("../../core/messages.js");
 const { encodeMessage, decodeMessage, requireHello } = require("../../core/protocol.js");
 const { startChild } = require("./engine-child.js");
 const { materializeEngine } = require("./engine-cache.js");
 
 const { NODE_EXECUTABLES } = require("../node-executables.js");
 
+function versionChild(executable, launch) {
+    try { return launch(executable, ["--version"]); }
+    catch (error) {
+        if (error instanceof OperationError) { return null; }
+        throw error;
+    }
+}
+
 function findNode(paths, launch) {
     ObjC.import("Foundation");
     const manager = $.NSFileManager.defaultManager;
+    const found = [];
     for (const executable of paths.filter((path) => manager.isExecutableFileAtPath(path))) {
-        const child = launch(executable, ["--version"]);
-        try {
-            child.finishInput();
-            let version = "";
-            while (!child.closed()) { version += child.tick(); }
-            if (child.result().status === 0 && supportsNode(version.trim())) { return executable; }
-        } finally { child.close(); }
+        const candidate = { path: executable };
+        found.push(candidate);
+        const child = versionChild(executable, launch);
+        if (child) {
+            try {
+                child.finishInput();
+                let output = "";
+                while (!child.closed()) { output += child.tick(); }
+                const version = output.trim().replace(/^v/u, "");
+                if (/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/u.test(version)) { candidate.version = version; }
+                if (child.result().status === 0 && supportsNode(version)) { return executable; }
+            } finally { child.close(); }
+        }
     }
-    const issue = issueMessage("runtime-unavailable", "setup", "runtimeUnavailable", { minimum: MINIMUM_NODE_VERSION });
+    const issue = runtimeUnavailableIssue(found);
     throw new OperationError(issue.message, { issues: [issue] });
 }
 
