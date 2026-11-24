@@ -33,9 +33,9 @@ function memoryOn(objc, ns, suite) {
         // Nothing there and nothing readable are the same answer -- and on a
         // first run there is nothing there, which comes back as a wrapped nil
         // rather than as a missing value.
-        recall() {
+        recall(key = KEY) {
             try {
-                const held = suite.stringForKey(ns(KEY));
+                const held = suite.stringForKey(ns(key));
 
                 return present(held) ? String(objc.unwrap(held)) : "";
             } catch (error) {
@@ -47,9 +47,9 @@ function memoryOn(objc, ns, suite) {
         // Best effort, and deliberately silent: a preference that would not
         // stick is not a failure of the conversion, and the completion
         // dialog is about the documents.
-        remember(text) {
+        remember(text, key = KEY) {
             try {
-                suite.setObjectForKey(ns(text), ns(KEY));
+                suite.setObjectForKey(ns(text), ns(key));
             } catch (error) {
                 diagnostics.push({ code: "preferences-write", message: String(error) });
             }
@@ -66,7 +66,7 @@ const FORGETFUL = Object.freeze({
     }
 });
 
-function createMemory(objc, ns) {
+function createMemory(objc, ns, domain = DOMAIN) {
     if (!objc || !ns) {
         return { ...FORGETFUL, state: "unavailable", diagnostics: [] };
     }
@@ -74,7 +74,7 @@ function createMemory(objc, ns) {
     try {
         objc.import("Foundation");
 
-        const suite = ns.NSUserDefaults.alloc.initWithSuiteName(ns(DOMAIN));
+        const suite = ns.NSUserDefaults.alloc.initWithSuiteName(ns(domain));
 
         return present(suite) ? memoryOn(objc, ns, suite) : { ...FORGETFUL, state: "unavailable", diagnostics: [] };
     } catch (error) {

@@ -5,8 +5,9 @@ const { message } = require("../../core/messages.js");
 const { encodeMessage, decodeMessage, requireHello } = require("../../core/protocol.js");
 const { startChild } = require("./engine-child.js");
 const { materializeEngine } = require("./engine-cache.js");
-
-const { NODE_EXECUTABLES } = require("../node-executables.js");
+const { finderDirectories } = require("./executable-search.js");
+const { absoluteMacPath, TOOL_NAMES } = require("../../core/executable-search.js");
+const { chosenExecutableIssue } = require("../../core/setup.js");
 
 function versionChild(executable, launch) {
     try { return launch(executable, ["--version"]); }
@@ -16,11 +17,12 @@ function versionChild(executable, launch) {
     }
 }
 
-function findNode(paths, launch) {
+function findNode(directories, chosen, launch) {
     ObjC.import("Foundation");
     const manager = $.NSFileManager.defaultManager;
+    const paths = chosen === undefined ? directories.map((directory) => `${directory}/node`) : [chosen];
     const found = [];
-    for (const executable of paths.filter((path) => manager.isExecutableFileAtPath(path))) {
+    for (const executable of paths.filter((path) => absoluteMacPath(path) && manager.isExecutableFileAtPath(path))) {
         const candidate = { path: executable };
         found.push(candidate);
         const child = versionChild(executable, launch);
@@ -36,7 +38,8 @@ function findNode(paths, launch) {
         }
     }
     const issue = runtimeUnavailableIssue(found);
-    throw new OperationError(issue.message, { issues: [issue] });
+    const issues = chosen === undefined ? [issue] : [chosenExecutableIssue("node", chosen), issue];
+    throw new OperationError(issue.message, { issues });
 }
 
 function wire(child, pulse) {
@@ -90,11 +93,11 @@ function sessionFailure(child, outcome = undefined) {
     return new OperationError(message("engineSessionFailed"), { diagnostic: { message: diagnostic, status }, outcome });
 }
 
-function complete(child, messages, items, state) {
+function complete(child, messages, request, state) {
     const hello = messages.receive();
     if (!hello) { throw sessionFailure(child); }
     requireHello(hello, VERSION);
-    messages.send({ type: "start", inputItems: items });
+    messages.send(request);
     const { hooks, session } = state;
     let event = messages.receive();
     while (event && event.type !== "outcome") {
@@ -110,8 +113,10 @@ function complete(child, messages, items, state) {
     return event.receipt;
 }
 
-function engineSession(bundle, items, hooks, { paths = NODE_EXECUTABLES, home } = {}) {
-    const executable = findNode(paths, startChild);
+function engineSession(bundle, items, hooks, { directories = finderDirectories(), chosen = {}, home } = {}) {
+    const executable = findNode(directories, chosen.node, startChild);
+    const toolPaths = Object.fromEntries(TOOL_NAMES.filter((name) => Object.hasOwn(chosen, name)).map((name) => [name, chosen[name]]));
+    const request = { type: "start", inputItems: items, toolPaths };
     const file = materializeEngine(bundle, home ?? String(ObjC.unwrap($.NSHomeDirectory())));
     const child = startChild(executable, [file, "--serve"]);
     const session = { reviewed: false, requestedSettings: false, stopping: false };
@@ -121,7 +126,7 @@ function engineSession(bundle, items, hooks, { paths = NODE_EXECUTABLES, home } 
             messages.send({ type: "stop" });
         }
     });
-    try { return complete(child, messages, items, { hooks, session }); }
+    try { return complete(child, messages, request, { hooks, session }); }
     finally { child.close(); }
 }
 

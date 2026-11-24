@@ -9,6 +9,8 @@ const { reportNoImages, reportResult } = require("./reporting.js");
 const { openPanel } = require("./panel.js");
 const { engineSession } = require("./engine-client.js");
 const { engineBundle } = require("./engine-source.js");
+const { executableChoices } = require("../../core/setup.js");
+const { chooseExecutable, executableMemory } = require("./executable-choice.js");
 
 function rawItem(item) {
     if (typeof item === "string") { return item; }
@@ -59,11 +61,44 @@ function progressObserver(open = openPanel) {
     };
 }
 
+function runReceipt(run, chosen) {
+    try { return run(chosen); }
+    catch (caught) {
+        const error = hostError(caught);
+        if (isUserCanceled(error)) { throw error; }
+        return failedRun(error, caught?.outcome);
+    }
+}
+
+function withExecutableChoices(ports, app, progress, run) {
+    const memory = ports.executableMemory?.();
+    const chosen = { ...memory?.recalled };
+    for (;;) {
+        const receipt = runReceipt(run, chosen);
+        const choices = ports.chooseExecutable ? executableChoices(receipt) : [];
+        if (choices.length === 0) {
+            receipt.diagnostics.push(...(memory?.diagnostics ?? []));
+            return receipt;
+        }
+        progress.pause();
+        let updated = false;
+        for (const name of choices) {
+            const path = ports.chooseExecutable(app, name, receipt);
+            if (path !== undefined) {
+                chosen[name] = path;
+                memory?.remember(name, path);
+                updated = true;
+            }
+        }
+        if (!updated) { return null; }
+    }
+}
+
 function clientOutcome(ports, app, input, progress) {
     try {
         const items = ports.collect(app, input).inputItems.map(rawItem);
         let lastContext = null;
-        return ports.runEngine(items, {
+        const hooks = {
             progress: progress.progress, stopped: progress.stopped,
             review(context) { progress.pause(); return ports.review(app, context); },
             settings(context, problems) {
@@ -71,7 +106,8 @@ function clientOutcome(ports, app, input, progress) {
                 lastContext = context ?? lastContext;
                 return ports.settings(app, { ...lastContext, diagnostics: progress.diagnostics }, { problems });
             }
-        });
+        };
+        return withExecutableChoices(ports, app, progress, (chosen) => ports.runEngine(items, hooks, chosen));
     } catch (caught) {
         const error = hostError(caught);
         return isUserCanceled(error) ? null : failedRun(error, caught?.outcome);
@@ -86,7 +122,8 @@ const finder = {
     settings: chooseSettings,
     noImages: reportNoImages,
     result: reportResult,
-    runEngine: (items, hooks) => engineSession(engineBundle, items, hooks)
+    chooseExecutable, executableMemory,
+    runEngine: (items, hooks, chosen) => engineSession(engineBundle, items, hooks, { chosen })
 };
 
 function runQuickAction(input, ports = finder) {

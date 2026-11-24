@@ -37,6 +37,23 @@
       },
       "allOf": [
         {
+          "if": { "properties": { "code": { "const": "chosen-executable-invalid" } } },
+          "then": {
+            "properties": {
+              "stage": { "const": "setup" },
+              "params": {
+                "type": "object",
+                "required": ["name", "path"],
+                "additionalProperties": false,
+                "properties": {
+                  "name": { "enum": ["node", "vips", "vipsheader", "pdfcpu"] },
+                  "path": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        {
           "if": { "properties": { "code": { "const": "install-hint" } } },
           "then": {
             "properties": {

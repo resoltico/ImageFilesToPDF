@@ -2,7 +2,7 @@
 const { setupToolProblem, setupFailure } = require("../core/setup.js");
 const { buildVipsProbeArgv, buildVipsheaderProbeArgv, isVipsheaderUsable, buildPdfcpuProbeArgv, isPdfcpuUsable } = require("../backend/preflight.js");
 
-const REQUIRED_TOOLS = ["vips", "vipsheader", "pdfcpu"];
+const { TOOL_NAMES } = require("../core/executable-search.js");
 
 function probeArgv(name, file, sample) {
     if (name === "pdfcpu") { return buildPdfcpuProbeArgv(file); }
@@ -36,7 +36,7 @@ function checkedTool(ports, name, found) {
 async function checkRequiredTools(ports) {
     const tools = {};
     const issues = [];
-    for (const name of REQUIRED_TOOLS) {
+    for (const name of TOOL_NAMES) {
         ports.checkpoint();
         // eslint-disable-next-line no-await-in-loop -- Capability probes run one at a time before any source is opened.
         const found = await ports.locate(name);

@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { createHash } = require("node:crypto");
+const { createHash, randomUUID } = require("node:crypto");
 const { execFileSync } = require("node:child_process");
 const { build } = require("esbuild");
 
@@ -32,45 +32,58 @@ function makeFixtures(folder) {
     return { home, photos, refused, ambient, marker };
 }
 
-async function buildHarness(folder, engineBundle) {
+async function buildHarness(folder, engineBundle, plugins = []) {
     const probe = path.join(folder, "finder-probe.jxa");
     const contents = `
         const { runQuickAction } = require("./src/finder/quick-action/main.js");
         const { engineSession } = require("./src/finder/quick-action/engine-client.js");
         const { collectInvocation } = require("./src/finder/quick-action/input.js");
+        const { executableMemory } = require("./src/finder/quick-action/executable-choice.js");
         const { DEFAULT_SETTINGS } = require("./src/core/settings.js");
         const bundle = ${JSON.stringify(engineBundle)};
-        function run([node, home, photos, refused, mismatchedSource]) {
+        function run([home, photos, refused, configuration]) {
+            const { node, alternate, domain, choices = {}, directories } = JSON.parse(configuration);
             const events = [];
             const progressEvents = [];
+            const offers = [];
             let receipt = null;
             const progress = { diagnostics: [], pause() {}, close() {},
                 progress(event) {
                     if (event.type === "phase") events.push(event.phase);
                     else progressEvents.push([events.at(-1), event.done, event.current ?? ""]);
                 }, stopped() { return false; } };
-            const selected = mismatchedSource ? { filename: "engine-wrong.cjs", source: mismatchedSource } : bundle;
+            const selected = alternate ? { filename: "engine-wrong.cjs", source: alternate } : bundle;
             const ports = {
                 application: () => null, openProgress: () => progress, collect: collectInvocation,
                 review(app, context) { events.push(["review", context.rejected.length]); },
                 settings(app, context) { events.push(["settings", context.count]); return DEFAULT_SETTINGS; },
-                runEngine(items, hooks) { return engineSession(selected, items, hooks, { paths: [node], home }); },
+                runEngine(items, hooks, chosen) {
+                    return engineSession(selected, items, hooks, { chosen: node ? { node, ...chosen } : chosen, directories, home });
+                },
                 result(app, result) { receipt = result; }
             };
+            if (domain) {
+                ports.executableMemory = () => executableMemory(domain);
+                ports.chooseExecutable = (app, name, report) => {
+                    offers.push({ name, issues: report.issues });
+                    return choices[name];
+                };
+            }
             const returned = runQuickAction([[photos, refused], {}], ports);
             if (returned !== undefined) throw new Error("The Finder handler returned a Shortcuts result.");
-            return JSON.stringify({ receipt, events, progressEvents });
+            return JSON.stringify({ receipt, events, progressEvents, offers });
         }
         module.exports = { run };
     `;
-    await build({ stdin: { contents, resolveDir: root }, outfile: probe, bundle: true, platform: "neutral",
+    await build({ stdin: { contents, resolveDir: root }, outfile: probe, bundle: true, platform: "neutral", plugins,
         format: "iife", globalName: "FinderProbe", target: "safari15.4",
         footer: { js: "function run(input) { return FinderProbe.run(input); }" } });
     return probe;
 }
 
-function invoke(probe, { home, photos, refused, ambient, marker }, { node = process.execPath, alternate = "" } = {}) {
-    const result = execFileSync("/usr/bin/osascript", ["-l", "JavaScript", probe, node, home, photos, refused, alternate],
+function invoke(probe, { home, photos, refused, ambient, marker }, options = {}) {
+    const configuration = JSON.stringify({ node: process.execPath, ...options });
+    const result = execFileSync("/usr/bin/osascript", ["-l", "JavaScript", probe, home, photos, refused, configuration],
         { encoding: "utf8", timeout: 45000, env: { ...process.env, HOME: home, PATH: `${ambient}:/usr/bin:/bin:/usr/sbin:/sbin`, IFTP_AMBIENT_MARKER: marker } });
     return JSON.parse(result);
 }
@@ -126,16 +139,16 @@ function verifyRejectedRuntimes(probe, fixture) {
         const version = execFileSync(node, ["--version"], { encoding: "utf8" }).trim();
         const { receipt: rejected, events: rejectedEvents } = invoke(probe, fixture, { node });
         assert.equal(rejected.state, "setup-failed");
-        assert.equal(rejected.issues[0].code, "runtime-unavailable");
-        assert.match(rejected.issues[0].message, /26\.13\.1.*brew upgrade node/su);
-        assert.deepEqual(rejected.issues[0].params, { minimum: "26.13.1", found: [{ path: node, version: version.slice(1) }] });
+        const issue = rejected.issues.find(({ code }) => code === "runtime-unavailable");
+        assert.match(issue.message, /26\.13\.1.*brew upgrade node/su);
+        assert.deepEqual(issue.params, { minimum: "26.13.1", found: [{ path: node, version: version.slice(1) }] });
         assert.deepEqual(rejectedEvents, []);
         process.stdout.write(`Finder refused unsupported Node ${version} with its executable path, version and upgrade hint.\n`);
     }
 }
 
 function verifyMissingRuntimes(probe, fixture, folder) {
-    const { receipt: missing } = invoke(probe, fixture, { node: path.join(folder, "absent-node") });
+    const { receipt: missing } = invoke(probe, fixture, { node: null, directories: [path.join(folder, "absent-bin")] });
     assert.equal(missing.state, "setup-failed");
     assert.equal(missing.issues[0].code, "runtime-unavailable");
     assert.match(missing.issues[0].message, /brew install node/u);
@@ -143,7 +156,94 @@ function verifyMissingRuntimes(probe, fixture, folder) {
     const silent = path.join(folder, "silent-node");
     fs.writeFileSync(silent, "#!/bin/sh\nexit 2\n", { mode: 0o700 });
     const { receipt: noVersion } = invoke(probe, fixture, { node: silent });
-    assert.deepEqual(noVersion.issues[0].params.found, [{ path: silent }]);
+    assert.deepEqual(noVersion.issues[0].params, { name: "node", path: silent });
+    assert.deepEqual(noVersion.issues[1].params.found, [{ path: silent }]);
+}
+
+function installFixtures(directory) {
+    fs.mkdirSync(directory, { recursive: true });
+    const executable = (name) => execFileSync("/usr/bin/which", [name], { encoding: "utf8" }).trim();
+    const tools = { node: process.execPath, vips: executable("vips"), vipsheader: executable("vipsheader"), pdfcpu: executable("pdfcpu") };
+    return Object.fromEntries(Object.entries(tools).map(([name, source]) => {
+        const file = path.join(directory, name);
+        fs.symlinkSync(source, file);
+        return [name, file];
+    }));
+}
+
+function fixtureSearch(paths, fragments, conventional) {
+    const definitions = { SYSTEM_PATHS: paths, SYSTEM_FRAGMENTS: fragments, CONVENTIONAL_DIRECTORIES: conventional };
+    return {
+        name: "fixture-system-paths",
+        setup(bundle) {
+            // eslint-disable-next-line require-unicode-regexp -- esbuild uses Go's regular expression engine.
+            bundle.onLoad({ filter: /\/core\/executable-search\.js$/ }, (input) => {
+                let contents = fs.readFileSync(input.path, "utf8");
+                for (const [name, value] of Object.entries(definitions)) {
+                    const declaration = new RegExp(`^const ${name} = [^;]+;`, "mu");
+                    assert.match(contents, declaration);
+                    contents = contents.replace(declaration, () => `const ${name} = ${JSON.stringify(value)};`);
+                }
+                return { contents };
+            });
+        }
+    };
+}
+
+async function discoveryHarness(folder, conventional = []) {
+    const paths = path.join(folder, "paths");
+    const fragments = path.join(folder, "paths.d");
+    fs.mkdirSync(fragments);
+    fs.writeFileSync(paths, "~/ignored\nrelative");
+    const plugins = [fixtureSearch(paths, fragments, conventional)];
+    const { outputFiles } = await build({ entryPoints: [path.join(root, "src/serve/entry.js")],
+        bundle: true, platform: "node", format: "cjs", write: false, plugins });
+    const source = outputFiles[0].text;
+    const digest = createHash("sha256").update(source).digest("hex").slice(0, 12);
+    const probe = await buildHarness(folder, { filename: `engine-discovery-${digest}.cjs`, source }, plugins);
+    return { probe, fragments };
+}
+
+async function verifySystemDiscovery(folder, fixture) {
+    const listed = path.join(folder, "path-file-discovery");
+    fs.mkdirSync(listed);
+    const { probe, fragments } = await discoveryHarness(listed);
+    const directory = path.join(listed, "registered tools");
+    installFixtures(directory);
+    fs.writeFileSync(path.join(fragments, "20-tools"), directory);
+    verifyConversion(invoke(probe, fixture, { node: null }));
+
+    const conventional = path.join(folder, "conventional-discovery");
+    const prefix = path.join(conventional, "opt/local/bin");
+    installFixtures(prefix);
+    const { probe: prefixProbe } = await discoveryHarness(conventional, [prefix]);
+    verifyConversion(invoke(prefixProbe, fixture, { node: null }));
+}
+
+async function verifyChosenDiscovery(folder, fixture) {
+    const chosen = path.join(folder, "chosen-discovery");
+    const choices = installFixtures(path.join(chosen, "chosen tools"));
+    const { probe } = await discoveryHarness(chosen);
+    const domain = `com.resoltico.ImageFilesToPDF.NativeQA.${randomUUID()}`;
+    const options = { domain, node: null };
+    try {
+        const first = invoke(probe, fixture, { ...options, choices });
+        verifyConversion(first);
+        assert.deepEqual(first.offers.map(({ name }) => name), ["node", "vips", "vipsheader", "pdfcpu"]);
+        const recalled = invoke(probe, fixture, options);
+        verifyConversion(recalled);
+        assert.deepEqual(recalled.offers, []);
+        fs.unlinkSync(choices.vips);
+        fs.symlinkSync("/usr/bin/true", choices.vips);
+        const replacement = installFixtures(path.join(chosen, "replacement tools")).vips;
+        const retry = invoke(probe, fixture, { ...options, choices: { vips: replacement } });
+        verifyConversion(retry);
+        assert.deepEqual(retry.offers.map(({ name }) => name), ["vips"]);
+        assert.deepEqual(retry.offers[0].issues[0].params, { name: "vips", path: choices.vips });
+        assert.equal(retry.offers[0].issues[0].code, "chosen-executable-invalid");
+    } finally {
+        execFileSync("/usr/bin/defaults", ["delete", domain]);
+    }
 }
 
 async function main() {
@@ -159,13 +259,15 @@ async function main() {
     verifyCache(work.path, probe, fixture, bundle);
     verifyMissingRuntimes(probe, fixture, work.path);
     verifyRejectedRuntimes(probe, fixture);
+    await verifySystemDiscovery(work.path, fixture);
+    await verifyChosenDiscovery(work.path, fixture);
     const mismatch = 'process.stdout.write(JSON.stringify({type:"hello",version:"0.0.0",runtime:process.versions.node})+"\\n");process.stdin.resume();';
     const { receipt: wrong, events } = invoke(probe, fixture, { alternate: mismatch });
     assert.equal(wrong.state, "setup-failed");
     assert.match(wrong.issues[0].message, /expected version/u);
     assert.deepEqual(events, []);
     assert.equal(fs.existsSync(fixture.marker), false);
-    process.stdout.write("Finder osascript engine, package parity, materialization and runtime checks passed.\n");
+    process.stdout.write("Finder osascript engine, package parity, cache, runtime, system path files, conventional discovery and remembered executable checks passed.\n");
 }
 
 main().catch((error) => { process.stderr.write(`${error.stack}\n`); process.exitCode = 1; });

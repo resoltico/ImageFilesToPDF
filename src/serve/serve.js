@@ -11,10 +11,6 @@ const { utf8Lines, lineWriter } = require("./stdio.js");
 const { message, issueMessage } = require("../core/messages.js");
 const { interactions } = require("./interactions.js");
 
-const FINDER_TOOL_DIRECTORIES = [
-    "/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"
-];
-
 async function relayClient(queue, messages) {
     try {
         for await (const line of messages) {
@@ -26,7 +22,7 @@ async function relayClient(queue, messages) {
     } finally { queue.stop(); }
 }
 
-async function runConversion({ inputItems }, read, send, convertRun) {
+async function runConversion({ inputItems, toolPaths }, read, send, convertRun) {
     const commands = commandSession();
     const queue = dialogue(commands);
     let fault = null;
@@ -37,7 +33,7 @@ async function runConversion({ inputItems }, read, send, convertRun) {
             if (!await send(event)) { queue.stop(); }
             return reply;
         });
-        const receipt = await convertRun({ inputItems }, commands, { session, directories: FINDER_TOOL_DIRECTORIES });
+        const receipt = await convertRun({ inputItems }, commands, { session, toolPaths });
         if (!fault) { return receipt; }
         const issue = { ...issueMessage("protocol", "request", "engineRequestInvalid"), diagnostic: { message: fault.message } };
         return runOutcome(receipt.documents, receipt.rejected, [...receipt.issues, issue], receipt.diagnostics);
