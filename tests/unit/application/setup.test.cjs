@@ -32,7 +32,7 @@ test("setup probes every required tool with the real input and flags before pass
 });
 
 test("missing setup tools are reported together with the selected platform hint", async () => {
-    for (const [platform, guidance] of [["darwin", /brew install vips pdfcpu/u], ["linux", /Linux distribution/u], ["win32", /add the tool directories to PATH/u]]) {
+    for (const [platform, section] of [["darwin", "macos"], ["linux", "linux"], ["win32", "windows"]]) {
         const { argv, opened, result } = fixture({ platform, locate: () => ({ file: null }) });
         // eslint-disable-next-line no-await-in-loop -- Inspect each platform result independently.
         await assert.rejects(() => checkRequiredTools(result), (error) => {
@@ -41,8 +41,9 @@ test("missing setup tools are reported together with the selected platform hint"
             assert.deepEqual(outcome.issues.map(({ code }) => code), ["tool-missing", "tool-missing", "tool-missing", "install-hint"]);
             assert.deepEqual(outcome.issues.slice(0, 3).map(({ params }) => params.name), ["vips", "vipsheader", "pdfcpu"]);
             assert.deepEqual(outcome.issues.slice(0, 3).map(({ params }) => params), [{ name: "vips" }, { name: "vipsheader" }, { name: "pdfcpu" }]);
-            assert.deepEqual(outcome.issues[3].params, { platform, packages: [platform === "darwin" ? "vips" : "libvips", "pdfcpu"] });
-            assert.match(outcome.issues[3].message, guidance);
+            assert.deepEqual(outcome.issues[3].params, { platform, packages: ["libvips", "pdfcpu"] });
+            assert.equal(outcome.issues[3].message,
+                `Install libvips and pdfcpu. See the installation guide (https://github.com/resoltico/ImageFilesToPDF#${section}).`);
             return true;
         });
         assert.deepEqual([argv, opened], [[], []]);
@@ -61,7 +62,7 @@ test("explicit overrides do not fall back and native stderr stays diagnostic", a
         assert.equal(error.issues[0].params.value, "/overrides/vips");
         assert.equal(error.issues[1].diagnostic.message, "native diagnostic");
         assert.match(error.issues[2].message, /Version 0\.16\.4 or later is required/u);
-        assert.doesNotMatch(error.message, /native diagnostic|brew install/u);
+        assert.doesNotMatch(error.message, /native diagnostic|installation guide/u);
         return true;
     });
 });
@@ -108,7 +109,7 @@ test("setup requires status, native error and feature evidence independently", a
         // eslint-disable-next-line no-await-in-loop -- Inspect each fault before moving to the next.
         await assert.rejects(() => checkRequiredTools(result), ({ issues }) =>
             issues.length === 2 && issues[0].code === "tool-unusable" && issues[0].params.name === tool &&
-            issues[1].code === "install-hint" && issues[1].params.packages[0] === (tool === "pdfcpu" ? "pdfcpu" : "vips"));
+            issues[1].code === "install-hint" && issues[1].params.packages[0] === (tool === "pdfcpu" ? "pdfcpu" : "libvips"));
     }
 });
 
@@ -123,7 +124,8 @@ test("one missing automatic tool gives one hint for precisely that package", asy
     await assert.rejects(() => checkRequiredTools(result), ({ issues }) => {
         assert.deepEqual(issues, [
             { code: "tool-missing", stage: "setup", params: { name: "pdfcpu" }, message: "pdfcpu could not be found." },
-            { code: "install-hint", stage: "setup", params: { platform: "darwin", packages: ["pdfcpu"] }, message: "Install the missing tools with Homebrew: brew install pdfcpu." }
+            { code: "install-hint", stage: "setup", params: { platform: "darwin", packages: ["pdfcpu"] },
+                message: "Install pdfcpu. See the installation guide (https://github.com/resoltico/ImageFilesToPDF#macos)." }
         ]);
         return true;
     });

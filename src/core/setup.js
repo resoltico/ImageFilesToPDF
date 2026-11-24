@@ -1,14 +1,12 @@
 "use strict";
 const { formatList } = require("./formatting.js");
 const { OperationError } = require("./errors.js");
-const { issueMessage, issueMessages, message } = require("./messages.js");
+const { issueMessage, issueMessages } = require("./messages.js");
 const { FINDER_EXECUTABLES } = require("./executable-search.js");
 const { RUN_OUTCOME } = require("./outcomes.js");
+const { INSTALL_GUIDES } = require("./installation-guide.js");
 
 const MINIMUM_PDFCPU_VERSION = "0.16.4";
-const INSTALL_HINT = {
-    darwin: "toolInstallDarwin", linux: "toolInstallLinux", win32: "toolInstallWindows"
-};
 
 function setupIssue(code, wording, params, rendered = params) {
     return { ...issueMessage(code, "setup", wording, rendered), params };
@@ -35,13 +33,10 @@ function setupToolProblem(code, name, override) {
 }
 
 function installHint(automatic, platform) {
-    if (!Object.hasOwn(INSTALL_HINT, platform)) { throw new Error("Unknown setup platform."); }
-    const vips = platform === "darwin" ? "vips" : "libvips";
-    const packages = [...new Set(automatic.map(({ params }) => params.name === "pdfcpu" ? "pdfcpu" : vips))];
+    if (!Object.hasOwn(INSTALL_GUIDES, platform)) { throw new Error("Unknown setup platform."); }
+    const packages = [...new Set(automatic.map(({ params }) => params.name === "pdfcpu" ? "pdfcpu" : "libvips"))];
     const params = { platform, packages };
-    const rendered = platform === "darwin" ? packages.join(" ") : formatList(packages.map((name) =>
-        name === "pdfcpu" ? message("toolInstallStablePdfcpu") : name));
-    return setupIssue("install-hint", INSTALL_HINT[platform], params, { packages: rendered });
+    return setupIssue("install-hint", "toolInstall", params, { packages: formatList(packages), guide: INSTALL_GUIDES[platform] });
 }
 
 function setupFailure(problems, platform) {

@@ -22,8 +22,8 @@ test("runtime discovery presents each examined executable and leaves absent vers
     const found = [{ path: "/one/node", version: "24.21.0" }, { path: "/two/node" }];
     const checked = runtimeUnavailableIssue(found);
     assert.deepEqual(checked.params, { minimum: "26.13.1", found });
-    assert.match(checked.message, /Found \/one\/node \(Node\.js 24\.21\.0\) and \/two\/node\. Run brew upgrade node\./u);
+    assert.match(checked.message, /Found \/one\/node \(Node\.js 24\.21\.0\) and \/two\/node\. See the installation guide .*#macos/u);
     const missing = runtimeUnavailableIssue([]);
     assert.deepEqual(missing.params, { minimum: "26.13.1", found: [] });
-    assert.match(missing.message, /brew install node/u);
+    assert.match(missing.message, /^Node\.js 26\.13\.1 or later is required\. See the installation guide .*#macos/u);
 });

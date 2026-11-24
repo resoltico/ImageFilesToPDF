@@ -8,19 +8,48 @@ Requirements
 ============
 
 macOS 13.5 or later with Shortcuts and Node.js 26.13.1 or later.
-Install its command-line tools in Terminal:
+The Finder floor comes from the Node.js platform requirements. Finder execution
+on macOS 13.5–14 has not been tested.
+
+    https://github.com/nodejs/node/blob/v26.13.1/BUILDING.md#platform-list
+
+Installing the tools
+====================
+
+macOS
+-----
+
+Install libvips with vips and vipsheader, and stable pdfcpu 0.16.4 or later.
+
+Homebrew supports macOS 15 and later on Apple Silicon.
 
     brew install node vips pdfcpu
 
-vipsheader comes with vips. pdfcpu must be a stable release, 0.16.4 or later.
-If Node.js or pdfcpu is below the required version, upgrade them:
+MacPorts provides vips and pdfcpu. Use the official Node.js installer while
+the nodejs26 port is at 26.13.0, below the 26.13.1 minimum.
 
-    brew update
-    brew upgrade node pdfcpu
+    sudo port install vips pdfcpu
 
-If Homebrew cannot supply Node.js for your macOS version, use the official
-macOS installer from https://nodejs.org/en/blog/release/v26.13.1 or a later
-supported release. Finder can use its /usr/local/bin/node executable.
+Upstream downloads include the Node.js macOS installer, libvips sources and
+build instructions, and pdfcpu release binaries.
+
+    https://nodejs.org/en/blog/release/v26.13.1
+    https://www.libvips.org/install.html
+    https://github.com/pdfcpu/pdfcpu/releases
+
+Finder reads absolute directories from /etc/paths and then the files in
+/etc/paths.d in name order, with numeric prefixes ordered numerically when
+both names have one. It appends /opt/homebrew/bin, /usr/local/bin and
+/opt/local/bin, keeping each directory's first occurrence. If setup fails,
+use Choose… to select each missing or unusable executable. Finder remembers
+and checks a chosen path first on every run.
+
+Linux and Windows
+-----------------
+
+On Linux, use distribution packages or upstream releases. On Windows, use
+upstream installers and executable distributions or your choice of package
+manager. On both platforms put the executable directories on PATH.
 
 Verify a download
 =================
@@ -87,18 +116,17 @@ Remove it
 =========
 
 1. Delete the "Image Files to PDF" shortcut in Shortcuts.
-2. To forget the page settings shared by installed copies, run:
+2. To forget the page settings and chosen executable locations shared by
+   installed copies, run the following command.
 
        defaults delete com.resoltico.ImageFilesToPDF
 
-The preference domain stores page settings only. A message that the domain
-does not exist means there is nothing to remove. Working files are normally
-cleaned up; inspect any recovery or workspace location a run reported before
+A message that the domain does not exist means there is nothing to remove.
+Working files are normally cleaned up. Inspect any recovery or workspace location a run reported before
 removing it. Your images and their PDFs stay until you remove them.
 
-vips and pdfcpu may be used by other software. If nothing needs them, remove:
-
-    brew uninstall vips pdfcpu
+vips and pdfcpu may be used by other software. If nothing needs them, follow
+your installation method's removal instructions.
 
 License terms
 =============

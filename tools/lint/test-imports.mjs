@@ -26,6 +26,7 @@ const REPOSITORY_TEST_INPUTS = new Set([
     "tools/banner.mjs",
     "tools/dependency-rules.mjs",
     "tools/javascript.mjs",
+    "tools/node-boot.mjs",
     "tools/pure-modules.mjs",
     "tools/release.mjs",
     "tools/scoped-bundle.mjs",

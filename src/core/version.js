@@ -1,6 +1,7 @@
 "use strict";
 const { formatList } = require("./formatting.js");
 const { issueMessage, message } = require("./messages.js");
+const { INSTALL_GUIDES } = require("./installation-guide.js");
 
 /*
  * The released version, shown to the user on completion.
@@ -30,7 +31,7 @@ function runtimeUnavailableIssue(found) {
     const id = found.length > 0 ? "runtimeUnavailableFound" : "runtimeUnavailable";
     const list = formatList(found.map(({ path, version }) =>
         version ? message("runtimePathVersion", { path, version }) : path));
-    return { ...issueMessage("runtime-unavailable", "setup", id, { ...params, list }), params };
+    return { ...issueMessage("runtime-unavailable", "setup", id, { ...params, list, guide: INSTALL_GUIDES.darwin }), params };
 }
 
 module.exports = { APP_NAME, VERSION, MINIMUM_NODE_VERSION, supportsNode, runtimeUnavailableIssue };

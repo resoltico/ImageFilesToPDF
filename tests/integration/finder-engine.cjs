@@ -6,6 +6,7 @@ const path = require("node:path");
 const { createHash, randomUUID } = require("node:crypto");
 const { execFileSync } = require("node:child_process");
 const { build } = require("esbuild");
+const { assertReceipt } = require("./lib/receipt.cjs");
 
 const root = path.resolve(__dirname, "../..");
 
@@ -140,10 +141,10 @@ function verifyRejectedRuntimes(probe, fixture) {
         const { receipt: rejected, events: rejectedEvents } = invoke(probe, fixture, { node });
         assert.equal(rejected.state, "setup-failed");
         const issue = rejected.issues.find(({ code }) => code === "runtime-unavailable");
-        assert.match(issue.message, /26\.13\.1.*brew upgrade node/su);
+        assert.match(issue.message, /26\.13\.1.*Found .*installation guide .*#macos/su);
         assert.deepEqual(issue.params, { minimum: "26.13.1", found: [{ path: node, version: version.slice(1) }] });
         assert.deepEqual(rejectedEvents, []);
-        process.stdout.write(`Finder refused unsupported Node ${version} with its executable path, version and upgrade hint.\n`);
+        process.stdout.write(`Finder refused unsupported Node ${version} with its executable path, version and installation guide.\n`);
     }
 }
 
@@ -151,7 +152,7 @@ function verifyMissingRuntimes(probe, fixture, folder) {
     const { receipt: missing } = invoke(probe, fixture, { node: null, directories: [path.join(folder, "absent-bin")] });
     assert.equal(missing.state, "setup-failed");
     assert.equal(missing.issues[0].code, "runtime-unavailable");
-    assert.match(missing.issues[0].message, /brew install node/u);
+    assert.match(missing.issues[0].message, /installation guide .*#macos/u);
     assert.deepEqual(missing.issues[0].params, { minimum: "26.13.1", found: [] });
     const silent = path.join(folder, "silent-node");
     fs.writeFileSync(silent, "#!/bin/sh\nexit 2\n", { mode: 0o700 });
@@ -241,6 +242,7 @@ async function verifyChosenDiscovery(folder, fixture) {
         assert.deepEqual(retry.offers.map(({ name }) => name), ["vips"]);
         assert.deepEqual(retry.offers[0].issues[0].params, { name: "vips", path: choices.vips });
         assert.equal(retry.offers[0].issues[0].code, "chosen-executable-invalid");
+        assertReceipt({ state: "setup-failed", documents: [], rejected: [], diagnostics: [], issues: retry.offers[0].issues });
     } finally {
         execFileSync("/usr/bin/defaults", ["delete", domain]);
     }
