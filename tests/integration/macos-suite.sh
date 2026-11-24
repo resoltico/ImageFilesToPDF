@@ -20,8 +20,8 @@ for suite in macos background selection publication volumes cards damaged form c
         bash "$ROOT/tests/integration/$suite.sh"
     fi
 done
-node "$ROOT/tools/tests/native/finder-engine.cjs"
-node "$ROOT/tools/tests/native/finder-pipe.cjs"
+node "$ROOT/tests/integration/finder-engine.cjs"
+node "$ROOT/tests/integration/finder-pipe.cjs"
 node "$ROOT/tests/integration/native-cli.cjs"
 python3 "$ROOT/tests/integration/posix-process.py"
 passed=1

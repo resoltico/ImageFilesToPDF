@@ -26,8 +26,9 @@ npm run test:integration:macos
 `quality` checks syntax, executable registry, import boundaries, toolchain and
 metadata consistency, document links and settings tables, ShellCheck/actionlint
 when available, ESLint, unit/repository tests, coverage, mutation and distribution
-bytes. The product-test import gate rejects adapter copies outside the allowed
-source and fixture paths. The export gate checks the importing module and
+bytes. The test import gate checks both `tests/` and `tools/tests/` and rejects
+imports of adapter copies. Native harnesses may import the declared artifact
+reader. The export gate checks the importing module and
 binding, including declared build and native probe entry points. It never rebuilds first: stale committed output must fail. Use
 `npm run build` to regenerate intentionally. Inspect discovered tests and all skips.
 
@@ -101,8 +102,8 @@ relative to `tests/integration/`.
 | `cli.sh` | CLI grammar/statuses, settings reader, refusal corpus, unusable header overrides, German caller locale, names, JPEG streams, placement, actual INT/TERM/repeats, HEIC/excluded-loader/FIFO refusals and closed/broken stream integrity |
 | `hdr.sh` | Synthetic Ultra HDR in both modes, SDR JPEG streams, ICC conversion, orientations 6/8, damage and unmapped-loader diagnostics |
 | `naming.sh` | Case and normalization namespaces, folder aliases, hard links, raw stored-basename bytes, long-name/collision budgets and occupied-name protection on local, APFS, APFSX, HFS+, HFSX, FAT32 and exFAT volumes |
-| `tools/tests/native/finder-engine.cjs` | macOS osascript client through the embedded engine, package parity, private cache reuse and tampering, runtime discovery |
-| `tools/tests/native/finder-pipe.cjs` | Engine SIGKILL during review and progress, exit and stderr diagnostics, restored SIGPIPE state, helper exit |
+| `finder-engine.cjs` | macOS osascript client through the embedded engine, package parity, private cache reuse and tampering, runtime discovery |
+| `finder-pipe.cjs` | Engine SIGKILL during review and progress, exit and stderr diagnostics, restored SIGPIPE state, helper exit |
 | `native-cli.cjs` | Native CLI format, strict PDF, collision race, source integrity and receipt checks |
 | `posix-process.py` | Native Stop, crash, writer guard, helper exit, source replacement and argv batching |
 

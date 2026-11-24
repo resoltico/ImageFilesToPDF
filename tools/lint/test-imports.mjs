@@ -17,8 +17,26 @@ function importTarget(node) {
     return null;
 }
 
-function permittedPath(file) {
-    return /^(?:src\/|tests\/unit\/(?:ports\/|(?:[^/]+\/)*fixture[^/]*$)|tests\/integration\/lib\/)/u.test(file);
+// Native harnesses read and exercise the embedded engine in the shipped artifact.
+const NATIVE_BUILD_ENTRIES = new Set(["tools/embedded-engine.mjs"]);
+
+const REPOSITORY_TEST_INPUTS = new Set([
+    "package.json",
+    "package-lock.json",
+    "tools/banner.mjs",
+    "tools/dependency-rules.mjs",
+    "tools/javascript.mjs",
+    "tools/pure-modules.mjs",
+    "tools/release.mjs",
+    "tools/scoped-bundle.mjs",
+    "tools/tests/unit/fake-repo.cjs"
+]);
+
+function permittedPath(test, file) {
+    if (/^(?:src\/|tests\/unit\/(?:ports\/|(?:[^/]+\/)*fixture[^/]*$)|tests\/integration\/lib\/)/u.test(file)) { return true; }
+    if (test.startsWith("tests/integration/")) { return NATIVE_BUILD_ENTRIES.has(file); }
+    return test.startsWith("tools/tests/") &&
+        (REPOSITORY_TEST_INPUTS.has(file) || /^tools\/lint\/[^/]+\.mjs$/u.test(file));
 }
 
 async function checkModule(test, node, base, dependencies) {
@@ -30,9 +48,9 @@ async function checkModule(test, node, base, dependencies) {
     if (isBuiltin(name) || dependencies.has(packageName)) { return; }
     if (name.startsWith("./") || name.startsWith("../")) {
         const target = path.posix.normalize(path.posix.join(path.posix.dirname(test), name));
-        if (permittedPath(target)) {
+        if (permittedPath(test, target)) {
             const resolved = path.relative(base, await realpath(path.join(base, target))).split(path.sep).join("/");
-            if (permittedPath(resolved)) { return; }
+            if (permittedPath(test, resolved)) { return; }
         }
     }
     throw new Error(`${test}: forbidden test import ${name}`);
@@ -47,7 +65,7 @@ export async function checkTestImports(base = root) {
     if (support) { throw new Error("tests/support must be absent"); }
     const { devDependencies } = JSON.parse(await readFile(path.join(base, "package.json"), "utf8"));
     const packages = new Set(Object.keys(devDependencies));
-    for (const test of await walk("tests", base)) {
+    for (const test of [...await walk("tests", base), ...await walk("tools/tests", base)]) {
         const source = await readFile(path.join(base, test), "utf8");
         const syntax = parseScript(source, "latest", test.endsWith(".mjs") ? "module" : "script");
         for (const node of syntaxNodes(syntax)) {

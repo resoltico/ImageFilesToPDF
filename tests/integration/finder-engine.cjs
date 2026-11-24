@@ -7,7 +7,7 @@ const { createHash } = require("node:crypto");
 const { execFileSync } = require("node:child_process");
 const { build } = require("esbuild");
 
-const root = path.resolve(__dirname, "../../..");
+const root = path.resolve(__dirname, "../..");
 
 function makeFixtures(folder) {
     const home = path.join(folder, "home");
@@ -147,7 +147,7 @@ function verifyMissingRuntimes(probe, fixture, folder) {
 }
 
 async function main() {
-    const { embeddedEngineIn } = await import("../../embedded-engine.mjs");
+    const { embeddedEngineIn } = await import("../../tools/embedded-engine.mjs");
     const artifact = fs.readFileSync(path.join(root, "dist/Image-Files-to-PDF.jxa"), "utf8");
     const bundle = embeddedEngineIn(artifact, 2022);
     assert.ok(bundle);

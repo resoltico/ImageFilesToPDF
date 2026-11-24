@@ -5,7 +5,7 @@ const path = require("node:path");
 const os = require("node:os");
 const { execFileSync, spawnSync } = require("node:child_process");
 const { setTimeout: wait } = require("node:timers/promises");
-const root = path.resolve(__dirname, "../../..");
+const root = path.resolve(__dirname, "../..");
 const { build } = require("esbuild");
 function makeFixture(folder) {
     const home = path.join(folder, "home");
@@ -109,7 +109,7 @@ async function runScenario(fixture, mode, expected) {
 }
 
 async function main() {
-    const { embeddedEngineIn } = await import("../../embedded-engine.mjs");
+    const { embeddedEngineIn } = await import("../../tools/embedded-engine.mjs");
     const bundle = embeddedEngineIn(fs.readFileSync(path.join(root, "dist/Image-Files-to-PDF.jxa"), "utf8"), 2022);
     using probe = fs.mkdtempDisposableSync(path.join(os.tmpdir(), "iftp-finder-pipe-"));
     const fixture = makeFixture(probe.path);
