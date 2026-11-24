@@ -129,3 +129,10 @@ test("the artifact is what is checked, not the sources it came from", async () =
         /JavaScriptCore target/u
     );
 });
+
+test("only executable Finder code is subject to the JavaScriptCore built-in target", async () => {
+    const { checkLanguageTarget } = await loadTarget();
+    const engine = 'const embedded = { filename: "engine-test.cjs", source: "Promise.withResolvers();" };';
+    await assert.doesNotReject(() => checkLanguageTarget(() => engine));
+    await assert.rejects(() => checkLanguageTarget(() => `${engine}\nPromise.withResolvers();`), /JavaScriptCore target/u);
+});

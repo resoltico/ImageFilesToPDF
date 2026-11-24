@@ -1,72 +1,46 @@
 "use strict";
 const { stdin, stdout, stderr, versions } = require("node:process");
-const { createInterface } = require("node:readline");
 const { VERSION } = require("../core/version.js");
-const { validateMessage } = require("../core/protocol.js");
+const { decodeMessage } = require("../core/protocol.js");
 const { UserCanceled } = require("../core/errors.js");
-const { failedRun } = require("../core/outcomes.js");
+const { failedRun, runOutcome } = require("../core/outcomes.js");
 const { commandSession } = require("../engine/processes.js");
 const { convert } = require("../engine/convert.js");
+const { dialogue } = require("./dialogue.js");
+const { utf8Lines, lineWriter } = require("./stdio.js");
+const { message, issueMessage } = require("../core/messages.js");
 const { interactions } = require("./interactions.js");
 
 const FINDER_TOOL_DIRECTORIES = [
     "/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"
 ];
 
-function lineWriter(output) {
-    output.on("error", () => undefined);
-    let tail = Promise.resolve(true);
-    return (event) => {
-        const line = `${JSON.stringify(validateMessage("engine", event), (key, value) => key === "stack" ? undefined : value)}\n`;
-        tail = tail.then((success) => success && new Promise((resolve) => {
-            output.write(line, "utf8", (error) => resolve(!error));
-        }));
-        return tail;
-    };
-}
-
-function fromLine(line) {
-    return validateMessage("client", JSON.parse(line));
-}
-
-function clientQueue(commands) {
-    const pending = [];
-    let wake = null;
-    return {
-        stop() { commands.requestStop(); wake?.(); },
-        receive(answer) { pending.push(answer); wake?.(); },
-        async next() {
-            if (pending.length === 0 && !commands.stopped()) { await new Promise((resolve) => { wake = resolve; }); }
-            wake = null;
-            if (commands.stopped()) { throw new UserCanceled(); }
-            return pending.shift();
-        }
-    };
-}
-
 async function relayClient(queue, messages) {
     try {
         for await (const line of messages) {
-            const answer = fromLine(line);
-            if (answer.type === "start") { throw new Error("The engine session has already started."); }
+            const answer = decodeMessage("client", line);
+            if (answer.type === "start") { throw new Error(message("engineMessageOrder")); }
             if (answer.type === "stop") { queue.stop(); }
             else { queue.receive(answer); }
         }
     } finally { queue.stop(); }
 }
 
-async function runConversion({ inputItems }, read, send) {
+async function runConversion({ inputItems }, read, send, convertRun) {
     const commands = commandSession();
-    const queue = clientQueue(commands);
+    const queue = dialogue(commands);
     let fault = null;
     const incoming = relayClient(queue, read).catch((error) => { fault = error; });
     try {
         const session = interactions(send, async (event) => {
+            const reply = queue.expect(event.type);
             if (!await send(event)) { queue.stop(); }
-            return queue.next();
+            return reply;
         });
-        const receipt = await convert({ inputItems }, commands, { session, directories: FINDER_TOOL_DIRECTORIES });
-        return fault ? failedRun(fault, receipt) : receipt;
+        const receipt = await convertRun({ inputItems }, commands, { session, directories: FINDER_TOOL_DIRECTORIES });
+        if (!fault) { return receipt; }
+        const issue = { ...issueMessage("protocol", "request", "engineRequestInvalid"), diagnostic: { message: fault.message } };
+        return runOutcome(receipt.documents, receipt.rejected, [...receipt.issues, issue], receipt.diagnostics);
     } finally {
         read.close();
         await incoming;
@@ -74,28 +48,27 @@ async function runConversion({ inputItems }, read, send) {
     }
 }
 
-async function serve() {
-    const send = lineWriter(stdout);
-    const read = createInterface({ input: stdin, crlfDelay: Infinity });
-    const messages = read[Symbol.asyncIterator]();
+async function serve({ input = stdin, output = stdout, errors = stderr, convertRun = convert } = {}) {
+    const send = lineWriter(output);
+    const read = utf8Lines(input);
+    const { messages } = read;
     try {
         if (!await send({ type: "hello", version: VERSION, runtime: versions.node })) { return 1; }
         const first = await messages.next();
-        const request = first.done ? null : fromLine(first.value);
-        if (request && request.type !== "start") { throw new Error("An engine session starts with a selection."); }
+        const request = first.done ? null : decodeMessage("client", first.value);
+        if (request && request.type !== "start") { throw new Error(message("engineMessageOrder")); }
         let receipt = null;
         if (request) {
             // Continue from the same iterator so queued lines stay in order.
             const rest = { [Symbol.asyncIterator]: () => messages, close: () => read.close() };
-            receipt = await runConversion(request, rest, send);
+            receipt = await runConversion(request, rest, send, convertRun);
         } else { receipt = failedRun(new UserCanceled()); }
         return await send({ type: "outcome", receipt }) ? 0 : 1;
     } catch (error) {
-        stderr.write(`${error.message}\n`);
+        errors.write(`${error.message}\n`);
         return 1;
     } finally {
         read.close();
-        stdin.pause();
     }
 }
 

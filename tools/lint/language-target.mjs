@@ -1,3 +1,4 @@
+import { embeddedEngineIn } from "../embedded-engine.mjs";
 import { ECMASCRIPT_TARGET, MINIMUM_MACOS, renderRelease } from "../release.mjs";
 
 /*
@@ -60,5 +61,9 @@ export function checkFeatures(release) {
 }
 
 export async function checkLanguageTarget(render = renderRelease) {
-    return checkFeatures(await render());
+    const release = await render();
+    const engine = embeddedEngineIn(release, ECMASCRIPT_TARGET);
+    // The engine's source is data in JavaScriptCore and executable code only in Node.
+    const finder = engine ? `${release.slice(0, engine.start)}""${release.slice(engine.end)}` : release;
+    return checkFeatures(finder);
 }

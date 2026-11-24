@@ -1,12 +1,15 @@
 "use strict";
 const { message } = require("./messages.js");
+const { supportsNode } = require("./version.js");
 const { RUN_OUTCOME } = require("./outcomes.js");
 
 const text = (value) => typeof value === "string";
 const count = (value) => Number.isSafeInteger(value) && value >= 0;
 const record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const strings = (value) => Array.isArray(value) && value.every(text);
+const anything = () => true;
 const records = (value) => Array.isArray(value) && value.every(record);
+const boolean = (value) => typeof value === "boolean";
 const state = (value) => Object.values(RUN_OUTCOME).includes(value);
 
 function fields(value, { required = {}, optional = {} }) {
@@ -15,12 +18,34 @@ function fields(value, { required = {}, optional = {} }) {
         Object.entries(optional).every(([name, validate]) => !Object.hasOwn(value, name) || validate(value[name]));
 }
 
+const issue = (value) => fields(value, {
+    required: { code: text, stage: text, params: record, message: text },
+    optional: { source: text, field: text, diagnostic: anything }
+});
+const issues = (value) => Array.isArray(value) && value.every(issue);
+const refusal = (value) => fields(value, {
+    required: { code: text, stage: text, path: text, name: text, reason: text },
+    optional: { diagnostic: anything }
+});
+const refusals = (value) => Array.isArray(value) && value.every(refusal);
+
+const DOCUMENT_STATES = new Set(["saved", "recovered", "failed", "canceled", "not-started"]);
+
+function document(value) {
+    return fields(value, {
+        required: { state: (kind) => DOCUMENT_STATES.has(kind), sources: strings, pages: count, issues },
+        optional: { output: text, recovery: text, fatal: boolean, diagnostics: records }
+    }) && Object.hasOwn(value, "output") === (value.state === "saved") &&
+        Object.hasOwn(value, "recovery") === (value.state === "recovered");
+}
+
+const documents = (value) => Array.isArray(value) && value.every(document);
 const context = (value) => fields(value, {
-    required: { count, selectedFolders: count, folders: strings, rejected: records },
+    required: { count, selectedFolders: count, folders: strings, rejected: refusals },
     optional: { diagnostics: records }
 });
 const receipt = (value) => fields(value, {
-    required: { state, documents: records, rejected: records, issues: records, diagnostics: records },
+    required: { state, documents, rejected: refusals, issues, diagnostics: records },
     optional: { elapsed: text }
 });
 
@@ -32,7 +57,7 @@ const MESSAGES = {
         hello: { required: { version: text, runtime: text } }, phase: { required: { phase: text } },
         progress: { required: { done: count, total: count }, optional: { current: text } },
         review: { required: { context } }, "settings-needed": { required: { context } },
-        "settings-invalid": { required: { issues: records } }, outcome: { required: { receipt } }
+        "settings-invalid": { required: { issues } }, outcome: { required: { receipt } }
     }
 };
 
@@ -45,4 +70,17 @@ function validateMessage(sender, candidate) {
     return candidate;
 }
 
-module.exports = { validateMessage };
+function encodeMessage(sender, event) {
+    const declared = validateMessage(sender, event);
+    return `${JSON.stringify(declared, (key, value) => key === "stack" ? undefined : value)}\n`;
+}
+
+function decodeMessage(sender, line) {
+    return validateMessage(sender, JSON.parse(line));
+}
+
+function requireHello(event, version) {
+    if (event?.type !== "hello" || event.version !== version || !supportsNode(event.runtime)) { throw new Error(message("engineVersionMismatch")); }
+}
+
+module.exports = { validateMessage, encodeMessage, decodeMessage, requireHello };

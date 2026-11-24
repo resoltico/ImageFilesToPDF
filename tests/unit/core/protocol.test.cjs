@@ -1,11 +1,12 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { validateMessage } = require("../../../src/core/protocol.js");
+const { validateMessage, encodeMessage, decodeMessage, requireHello } = require("../../../src/core/protocol.js");
 
 const settings = { mode: "combined" };
 const context = { count: 1, selectedFolders: 0, folders: ["/photos"], rejected: [] };
-const receipt = { state: "setup-failed", documents: [], rejected: [], issues: [{}], diagnostics: [] };
+const issue = { code: "tool-missing", stage: "setup", params: {}, message: "A required tool is missing.", diagnostic: { stack: "private", detail: true } };
+const receipt = { state: "setup-failed", documents: [], rejected: [], issues: [issue], diagnostics: [] };
 const client = [
     { type: "start", inputItems: ["/photos/one.png"] },
     { type: "continue" }, { type: "cancel" }, { type: "settings", values: settings }, { type: "stop" }
@@ -15,7 +16,7 @@ const engine = [
     { type: "phase", phase: "Preparing" },
     { type: "progress", done: 0, total: 2 }, { type: "progress", done: 1, total: 2, current: "one.png" },
     { type: "review", context: { ...context, diagnostics: [] } },
-    { type: "settings-needed", context }, { type: "settings-invalid", issues: [{}] },
+    { type: "settings-needed", context }, { type: "settings-invalid", issues: [issue] },
     { type: "outcome", receipt }, { type: "outcome", receipt: { ...receipt, elapsed: "1 second" } }
 ];
 
@@ -49,4 +50,44 @@ test("required and optional wire values are separately validated", () => {
     ]) {
         assert.throws(() => validateMessage("engine", value), /message fields are invalid/u);
     }
+});
+
+
+test("UTF-8 JSON lines preserve input text and omit receipt stack fields at every depth", () => {
+    const selection = { type: "start", inputItems: ["A é.png", "a\nb.png", "🧪.png"] };
+    const encoded = encodeMessage("client", selection);
+    assert.ok(encoded.endsWith("\n"));
+    assert.equal(encoded.split("\n").length, 2);
+    assert.deepEqual(decodeMessage("client", encoded), selection);
+    const event = { type: "outcome", receipt };
+    const decoded = decodeMessage("engine", encodeMessage("engine", event));
+    assert.deepEqual(decoded.receipt.issues[0].diagnostic, { detail: true });
+    assert.equal(event.receipt.issues[0].diagnostic.stack, "private");
+    assert.throws(() => decodeMessage("client", "{"), SyntaxError);
+});
+
+test("the client refuses a mismatched engine version or runtime before starting", () => {
+    const hello = { type: "hello", version: "4.0.0", runtime: "26.13.1" };
+    assert.doesNotThrow(() => requireHello(hello, "4.0.0"));
+    for (const mismatch of [null, { type: "phase" }, { ...hello, version: "3.0.0" }, { ...hello, runtime: "26.0.0" }]) {
+        assert.throws(() => requireHello(mismatch, "4.0.0"), /expected version/u);
+    }
+});
+
+test("outcomes and review contexts reject malformed nested records", () => {
+    const saved = { state: "saved", sources: ["/photo.png"], output: "/photo.pdf", pages: 1, issues: [], fatal: false, diagnostics: [] };
+    const recovered = { state: "recovered", sources: ["/photo.png"], recovery: "/home/Downloads/photo.pdf", pages: 1, issues: [issue] };
+    const failed = { state: "failed", sources: ["/photo.png"], pages: 0, issues: [issue] };
+    const refused = { path: "/notes.pdf", code: "unsupported-format", stage: "selection", name: "notes.pdf", reason: "Unsupported.", diagnostic: {} };
+    const asOutcome = (documents) => ({ type: "outcome", receipt: { ...receipt, state: "incomplete", documents, rejected: [refused] } });
+    assert.doesNotThrow(() => validateMessage("engine", asOutcome([saved, recovered, failed])));
+    assert.doesNotThrow(() => validateMessage("engine", { type: "review", context: { ...context, rejected: [refused] } }));
+    for (const record of [
+        { ...saved, output: undefined }, { ...saved, recovery: "/elsewhere.pdf" }, { ...saved, fatal: "yes" },
+        { ...saved, sources: [false] }, { ...saved, pages: -1 }, { ...saved, state: "validated" },
+        { ...failed, issues: [{ ...issue, params: null }] }, { ...recovered, state: "failed" },
+        ...[null, true]
+    ]) { assert.throws(() => validateMessage("engine", asOutcome([record])), /message fields are invalid/u); }
+    assert.throws(() => validateMessage("engine", { type: "review", context: { ...context, rejected: [{ ...refused, reason: false }] } }), /message fields are invalid/u);
+    assert.throws(() => validateMessage("engine", { type: "settings-invalid", issues: [{}] }), /message fields are invalid/u);
 });
