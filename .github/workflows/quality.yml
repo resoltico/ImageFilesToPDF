@@ -73,7 +73,8 @@ jobs:
       - run: npm run check-dist
       # form.sh records a picture of the settings form in
       # each appearance: layout is checked by measurement, and read by eye.
-      - run: npm run test:integration:macos
+      - name: Verify the Finder client and CLI on macOS
+        run: npm run test:integration:macos
         env:
           IFTP_FORM_PREVIEWS: ${{ runner.temp }}/iftp-form-previews
       - if: always()

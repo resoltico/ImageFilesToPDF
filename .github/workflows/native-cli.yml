@@ -37,12 +37,14 @@ jobs:
             IFTP_SECOND_VOLUME=/dev/shm node tests/integration/native-cli.cjs
             python3 tests/integration/posix-process.py
           '
+          docker run --rm --user node -v "$PWD:/repo:ro" -w /repo iftp-native \
+            python3 tests/integration/linux-recovery.py
 
   windows:
     strategy:
       fail-fast: false
       matrix:
-        check: [artifact, console, arguments]
+        check: [artifact, console, arguments, cards]
     runs-on: windows-11-arm
     timeout-minutes: 40
     steps:
@@ -70,12 +72,21 @@ jobs:
         env:
           IFTP_HEVC_UNAVAILABLE: "1"
         run: node tests/integration/native-cli.cjs
+      - name: Verify the helper process budget, hidden entries, and long paths
+        if: matrix.check == 'artifact' && !cancelled()
+        run: ./tests/integration/windows-engine.ps1
       - name: Verify recovery after a denied NTFS claim
         if: matrix.check == 'artifact' && !cancelled()
         run: ./tests/integration/windows-recovery.ps1
       - name: Verify publication across two NTFS volumes
         if: matrix.check == 'artifact' && !cancelled()
         run: ./tests/integration/windows-volume.ps1
+      - name: Verify exclusive publication to FAT32
+        if: matrix.check == 'cards'
+        run: ./tests/integration/windows-volume.ps1 -FileSystem FAT32
+      - name: Verify exclusive publication to exFAT
+        if: matrix.check == 'cards' && !cancelled()
+        run: ./tests/integration/windows-volume.ps1 -FileSystem exFAT
       - name: Verify PowerShell console Ctrl+C
         if: matrix.check == 'console'
         run: ./tests/integration/windows-console.ps1

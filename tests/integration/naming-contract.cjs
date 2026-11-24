@@ -6,11 +6,17 @@ const path=require("node:path");
 const crypto=require("node:crypto");
 const {spawnSync,execFileSync}=require("node:child_process");
 const {parseReceipt}=require("./lib/receipt.cjs");
+const {destinationOperations}=require("../../src/engine/publication.js");
+const {localFilesystem}=require("../../src/engine/filesystem.js");
+const native=destinationOperations(localFilesystem(null,null),null,null);
+
 const {probeExclusiveRename}=require("./lib/exclusive-rename.cjs");
 const {recoveryInventory,assertRecoveredPdf,removeRecovery}=require("./lib/recovered-pdf.cjs");
 const [artifact,work,volume,label,expected]=process.argv.slice(2);
 const root=path.join(volume,"naming-contract");fs.mkdirSync(root);
-const capability=label==="fat32"?probeExclusiveRename(path.join(work,"rename.jxa"),root):{supported:label!=="exfat",code:0};
+const capability = ["fat32", "exfat"].includes(label)
+    ? probeExclusiveRename(path.join(work, "rename.jxa"), root)
+    : { supported: true, code: 0 };
 const settings=path.join(root,"settings.json");
 fs.writeFileSync(settings,JSON.stringify({mode:"separate",paperSize:"A4",orientation:"Portrait",resolutionLimit:300,quality:92,background:"#FFFFFF",timestamp:"20261030_010203"}));
 const hash=(file)=>crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
@@ -23,9 +29,11 @@ function storedNames() {
         const destination=path.join(folder,name),source=path.join(folder,`source-${index}`);
         const bytes=Buffer.from(`owned filename readback ${index}`);fs.writeFileSync(source,bytes,{flag:"wx"});
         const original=fs.statSync(source,{bigint:true});
-        const result=spawnSync("/usr/bin/osascript",["-l","JavaScript",path.join(work,"stored-name.jxa"),source,destination],{encoding:"utf8",timeout:10000});
-        assert.ifError(result.error);assert.equal(result.status,0,result.stderr);
-        const observed=JSON.parse(result.stdout),raw=fs.readdirSync(folder,{encoding:"buffer"});
+        fs.renameSync(source, destination);
+        const expectedFacts = { identity: `${original.dev}:${original.ino}`, size: bytes.length };
+        const actualPath = native.publication.actualPath(destination, expectedFacts);
+        const observed = { actual: actualPath, expected: expectedFacts, observed: native.publication.facts(actualPath) };
+        const raw=fs.readdirSync(folder,{encoding:"buffer"});
         assert.ok(raw.some(entry=>entry.equals(Buffer.from(path.basename(observed.actual)))),JSON.stringify({requirement:"POSIX-created stored name equals a raw entry",volume:label,...observed,entries:raw.map(entry=>entry.toString("hex"))}));
         assert.deepEqual(observed.observed,observed.expected);assert.deepEqual(observed.expected,{identity:`${original.dev}:${original.ino}`,size:bytes.length});
         const actual=fs.statSync(observed.actual,{bigint:true});assert.equal(actual.dev,original.dev);assert.equal(actual.ino,original.ino);
@@ -51,11 +59,7 @@ function sources(folder,left,right) {
     records.forEach((record,index)=>fs.copyFileSync(path.join(work,index===0?"photo.jpg":"photo.png"),record.path));
     return records;
 }
-function groups(records) {
-    const result=spawnSync("/usr/bin/osascript",["-l","JavaScript",path.join(work,"names.jxa"),JSON.stringify(records),work],{encoding:"utf8",timeout:10000});
-    assert.ifError(result.error);assert.equal(result.status,0,result.stderr);
-    return JSON.parse(result.stdout);
-}
+function groups(records) { return native.destinationNames.groups(records); }
 function assertSavedPdf(document,wanted) {
     assert.equal(document.state,"saved");assert.equal(document.pages,1);
     const raw = fs.readdirSync(path.dirname(document.output), { encoding: "buffer" });
@@ -64,12 +68,7 @@ function assertSavedPdf(document,wanted) {
     execFileSync("qpdf",["--check",document.output],{stdio:"pipe"});
 }
 function invoke(operands) {
-    const probe = artifact.endsWith(".jxa");
-    const program = probe ? "/usr/bin/osascript" : process.execPath;
-    const args = probe ? ["-l", "JavaScript", artifact, settings, ...operands] : [artifact, "--settings", settings, "--", ...operands];
-    const result = spawnSync(program, args, { encoding: "utf8", timeout: 60000 });
-    if (probe && result.status === 0 && JSON.parse(result.stdout).state !== "complete") { result.status = 1; }
-    return result;
+    return spawnSync(process.execPath, [artifact, "--settings", settings, "--", ...operands], { encoding: "utf8", timeout: 60000 });
 }
 function convert(records,wanted,protectedFile=null) {
     const before=records.map(record=>hash(record.path));
@@ -102,8 +101,7 @@ function pair(index,left,right,options={}) {
     const leftName=options.bareLeft??left,rightName=options.bareRight??right;
     const same=alias(oracle,`${leftName}.pdf`,`${rightName}.pdf`);
     const actual=groups(records);
-    const diagnostic=(actual[0]===actual[1])===same?"":spawnSync("/usr/bin/osascript",["-l","JavaScript",path.join(work,"names.jxa"),JSON.stringify(records),work,"details"],{encoding:"utf8"});
-    assert.equal(actual[0]===actual[1],same,`${label}: ${left}/${right} native equivalence ${diagnostic.stdout??""} ${diagnostic.stderr??""}`);
+    assert.equal(actual[0]===actual[1],same,`${label}: ${left}/${right} native equivalence`);
     let outputs=[],publication="namespace-only";
     if(label!=="exfat"&&options.production) {
         const wanted=same?[`${leftName}-jpg.pdf`,`${rightName}-png.pdf`]:[`${leftName}.pdf`,`${rightName}.pdf`];

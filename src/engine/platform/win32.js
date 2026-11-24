@@ -42,7 +42,7 @@ function windowsNative(commands) {
         downloads: () => value("downloads"),
         startTime: (pid) => value("startTime", { pid }),
         privateDirectory: (file, created) => value("privateDirectory", { path: path.win32.normalize(file), created }),
-        move: (from, to) => ask("move", { from: path.win32.normalize(from), to: path.win32.normalize(to) }),
+        move: (from, to) => ask("move", { from: path.win32.toNamespacedPath(from), to: path.win32.toNamespacedPath(to) }),
         close() { return native?.close(); }
     };
 }

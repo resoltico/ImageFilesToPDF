@@ -101,6 +101,18 @@ function verifyCache(folder, probe, fixture, bundle) {
     assert.equal(fs.lstatSync(linked).isSymbolicLink(), true);
 }
 
+function verifyRejectedRuntimes(probe, fixture) {
+    for (const node of (process.env.IFTP_REJECTED_NODE ?? "").split(path.delimiter).filter(Boolean)) {
+        const version = execFileSync(node, ["--version"], { encoding: "utf8" }).trim();
+        const { receipt: rejected, events: rejectedEvents } = invoke(probe, fixture, { node });
+        assert.equal(rejected.state, "setup-failed");
+        assert.equal(rejected.issues[0].code, "runtime-unavailable");
+        assert.match(rejected.issues[0].message, /26\.13\.1.*brew install node/su);
+        assert.deepEqual(rejectedEvents, []);
+        process.stdout.write(`Finder refused unsupported Node ${version} with the installation hint.\n`);
+    }
+}
+
 async function main() {
     const { embeddedEngineIn } = await import("../../tools/embedded-engine.mjs");
     const artifact = fs.readFileSync(path.join(root, "dist/Image-Files-to-PDF.jxa"), "utf8");
@@ -116,6 +128,7 @@ async function main() {
     assert.equal(missing.state, "setup-failed");
     assert.equal(missing.issues[0].code, "runtime-unavailable");
     assert.match(missing.issues[0].message, /brew install node/u);
+    verifyRejectedRuntimes(probe, fixture);
     const mismatch = 'process.stdout.write(JSON.stringify({type:"hello",version:"0.0.0",runtime:process.versions.node})+"\\n");process.stdin.resume();';
     const { receipt: wrong, events } = invoke(probe, fixture, { alternate: mismatch });
     assert.equal(wrong.state, "setup-failed");

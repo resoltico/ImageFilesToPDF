@@ -49,7 +49,11 @@ async function claimAvailable(context, destination, created, checkpoint) {
         context.paths.final = collisionPath(destination, attempt);
         // eslint-disable-next-line no-await-in-loop -- Only a confirmed collision permits trying the next name.
         const outcome = await claim(context);
-        if (outcome.state === "created") { return created(context); }
+        if (outcome.state === "created") {
+            if (outcome.claimed) { Object.assign(context, { claimed: outcome.claimed }); }
+            try { return created(context); }
+            finally { outcome.close?.(); }
+        }
         if (outcome.state === "unknown") {
             throw unconfirmedClaim(context.job.publication, { staged: context.paths.staged, original: context.facts,
                 path: context.paths.final, claimed: context.claimed, diagnostic: outcome.diagnostic });

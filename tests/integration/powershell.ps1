@@ -23,7 +23,7 @@ try {
     }
     & node $Artifact --settings $settings $name > bad.json
     if ($LASTEXITCODE -ne 2) { throw 'PowerShell did not preserve the usage exit status.' }
-    if ((Get-Content -LiteralPath 'bad.json' -Raw -Encoding utf8 | ConvertFrom-Json).state -ne 'invalid') { throw 'Invalid receipt was lost.' }
+    if ((Get-Content -LiteralPath 'bad.json' -Raw -Encoding utf8 | ConvertFrom-Json).state -ne 'invalid-request') { throw 'Invalid receipt was lost.' }
     $global:LASTEXITCODE = 0
     Write-Output "PowerShell $($PSVersionTable.PSVersion): literal separator, dash-leading Unicode source, UTF-8 redirection and exit status passed."
 }

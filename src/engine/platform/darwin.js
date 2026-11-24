@@ -8,6 +8,7 @@ ObjC.bindFunction("getchar", ["int", []]);
 ObjC.bindFunction("puts", ["int", ["char *"]]);
 ObjC.bindFunction("fflush", ["int", ["void *"]]);
 ObjC.bindFunction("__error", ["int *", []]);
+ObjC.bindFunction("strerror", ["char *", ["int"]]);
 ObjC.bindFunction("renamex_np", ["int", ["char *", "char *", "unsigned int"]]);
 function facts(path) {
     const url = $.NSURL.fileURLWithPath($(path));
@@ -20,7 +21,8 @@ function answer(request) {
     if (request.type === "packages") return request.paths.map(facts);
     if (request.type === "renameExclusive") {
         const status = Number($.renamex_np(request.from, request.to, 4));
-        return { status, errno: status === 0 ? 0 : Number($.__error()[0]) };
+        const errno = status === 0 ? 0 : Number($.__error()[0]);
+        return status === 0 ? { status, errno } : { status, errno, message: String($.strerror(errno)) };
     }
     throw new Error("Unknown macOS helper request.");
 }

@@ -222,15 +222,22 @@ async function verifySecondVolume(folder, photo, secondVolume) {
         const inputName = `cross-volume-${mode}.png`;
         const source = path.join(target.path, inputName);
         fs.copyFileSync(photo, source);
+        const base = inputName.replace(/\.png$/u, ".pdf");
+        const intended = path.join(target.path, base);
+        if (process.env.IFTP_CARD_VOLUME) { fs.writeFileSync(intended, "occupied", { flag: "wx" }); }
         // Sequentially exercise both modes against the same physical volume.
         // eslint-disable-next-line no-await-in-loop
         const result = parseReceipt(await cli(["--settings", config(folder, mode), "--", source], folder));
+        assert.equal(result.documents[0].state, "saved");
         verifyPdf(result.documents[0].output, 1);
         assert.deepEqual(fs.readFileSync(source), fs.readFileSync(photo));
-        assert.equal(result.documents[0].output, path.join(target.path, inputName.replace(/\.png$/u, ".pdf")));
+        if (process.env.IFTP_CARD_VOLUME) {
+            assert.equal(fs.readFileSync(intended, "utf8"), "occupied");
+            assert.equal(result.documents[0].output, path.join(target.path, base.replace(/\.pdf$/u, " 2.pdf")));
+        } else { assert.equal(result.documents[0].output, intended); }
     }
     assert.ok(!fs.readdirSync(target.path).some((name) => name.startsWith(".ImageFilesToPDF-")));
-    process.stdout.write("Exclusive cross-volume publication passed in both modes.\n");
+    process.stdout.write(`Exclusive cross-volume publication passed in both modes (${process.env.IFTP_CARD_VOLUME ?? "normal volume"}).\n`);
 }
 
 async function verifyWindowsLongArguments(folder, photo) {

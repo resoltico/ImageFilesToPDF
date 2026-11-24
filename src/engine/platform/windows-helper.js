@@ -6,12 +6,22 @@ $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
-public static class ImageFilesToPDFConsole {
+public static class ImageFilesToPDFNative {
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool SetConsoleCtrlHandler(IntPtr handler, bool add);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
+    private static extern bool MoveFileExW(string from, string to, uint flags);
+
+    public static void MoveExclusive(string from, string to) {
+        // With no flags the move cannot overwrite or fall back to a copy.
+        if (!MoveFileExW(from, to, 0)) {
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        }
+    }
 }
 '@
-if (-not [ImageFilesToPDFConsole]::SetConsoleCtrlHandler([IntPtr]::Zero, $true)) {
+if (-not [ImageFilesToPDFNative]::SetConsoleCtrlHandler([IntPtr]::Zero, $true)) {
     throw 'Could not configure helper console handling.'
 }
 $encoding = [Text.UTF8Encoding]::new($false, $true)
@@ -81,7 +91,7 @@ function Answer($request) {
         'downloads' { return Read-Downloads }
         'privateDirectory' { return Set-Or-VerifyPrivateDirectory $request.path $request.created }
         'startTime' { return Read-StartTime $request.pid }
-        'move' { [IO.File]::Move($request.from, $request.to); return $true }
+        'move' { [ImageFilesToPDFNative]::MoveExclusive($request.from, $request.to); return $true }
         default { throw 'Unknown helper request.' }
     }
 }
@@ -93,7 +103,8 @@ while ($null -ne ($line = $reader.ReadLine())) {
         $response = @{ ok = $true; value = $value }
     } catch {
         $fault = $_.Exception.GetBaseException()
-        $response = @{ ok = $false; code = $fault.HResult; diagnostic = $fault.Message }
+        $code = if ($fault -is [ComponentModel.Win32Exception]) { $fault.NativeErrorCode } else { $fault.HResult }
+        $response = @{ ok = $false; code = $code; diagnostic = $fault.Message }
     }
     $writer.WriteLine((ConvertTo-Json -InputObject $response -Depth 6 -Compress))
 }

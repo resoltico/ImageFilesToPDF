@@ -43,7 +43,8 @@ jobs:
       # Verifies the committed artifact against src/ rather than rebuilding
       # it, so a stale dist/ fails here instead of shipping.
       - run: npm run quality
-      - run: npm run test:integration:macos
+      - name: Verify the Finder client and CLI on macOS
+        run: npm run test:integration:macos
 
   native-cli:
     uses: ./.github/workflows/native-cli.yml

@@ -53,7 +53,7 @@ function assertRecoveredPdf(document, source, capability, inventory) {
     assert.equal(issue.code, "publication");
     assert.equal(issue.stage, "publication");
     assert.equal(issue.diagnostic.state, "unsupported");
-    assert.equal(issue.diagnostic.code, capability.code);
+    assert.equal(issue.diagnostic.errno, capability.code);
     const owned = newRecovery(document.recovery, inventory);
     assert.ok(fs.readdirSync(path.dirname(owned.file), { encoding: "buffer" }).some((name) => name.equals(Buffer.from(path.basename(owned.file)))),
         "recovery basename equals its raw directory entry without normalization");

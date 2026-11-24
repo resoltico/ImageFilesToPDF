@@ -239,3 +239,28 @@ test("a later staging failure reports its current cause instead of an earlier co
     });
     assert.ok(app.files.has(target), "the earlier occupied output remains untouched");
 });
+
+test("a move with a refreshed identity holds its proof until publication settles", async () => {
+    const { job, app } = fixture();
+    const { rename, facts, actualPath } = job.publication;
+    let settled = false;
+    let closed = false;
+    let moved = null;
+    job.publication.link = () => ({ state: "unsupported" });
+    job.publication.facts = (file) => file === target && moved ? moved : facts(file);
+    job.publication.actualPath = (file, claimed) => {
+        assert.equal(claimed.identity, "moved-identity");
+        assert.equal(closed, false);
+        settled = true;
+        return actualPath(file, claimed);
+    };
+    job.publication.rename = (from, to) => {
+        assert.equal(rename(from, to).state, "created");
+        moved = { ...facts(to), identity: "moved-identity" };
+        return { state: "created", claimed: moved, close() { closed = true; } };
+    };
+    assert.equal((await publishPdf(job, staged, target)).path, target);
+    assert.equal(settled, true);
+    assert.equal(closed, true);
+    assert.equal(app.files.has(staged), false);
+});

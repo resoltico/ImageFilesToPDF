@@ -9,12 +9,7 @@ const { basename } = require("../core/paths.js");
 const { isPublished, recoveryDestination } = require("../core/artifacts.js");
 const { claimAvailable } = require("./destination.js");
 
-/*
- * What this attempt made and does not need: the place it made in the output
- * folder, and -- when a folder was standing at the output path, which ln
- * links into rather than refusing -- the link left inside it, which publish.js
- * adds once it has confirmed the file there is the one this run published.
- */
+// Remove the private staging copy and its directory after a settled claim.
 function clearAway(operations, outcome) {
     return outcome.staging ? operations.closeStaging( outcome.staging) : [];
 }

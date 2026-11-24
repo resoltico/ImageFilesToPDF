@@ -24,8 +24,7 @@ cleanup() {
     rm -rf "$WORK"
 }
 trap cleanup EXIT
-SCRIPT="$WORK/workflow-probe.jxa"
-node "$ROOT/tools/build-probe.mjs" tests/integration/jxa-workflow-probe.js "$SCRIPT"
+SCRIPT="$ROOT/dist/Image-Files-to-PDF.cjs"
 
 # shellcheck source=tests/integration/lib/assert.sh
 source "$ROOT/tests/integration/lib/assert.sh"
@@ -42,8 +41,8 @@ run() {
     local stamp=$1 mode=$2
     shift 2
     write_config "$WORK/config.json" A4 Portrait "$mode" "#FFFFFF" "$stamp"
-    osascript -l JavaScript "$SCRIPT" "$WORK/config.json" "$@" \
-        2>"$WORK/error.txt" || true
+    node "$SCRIPT" --settings "$WORK/config.json" -- "$@" \
+        >"$WORK/receipt.json" 2>"$WORK/error.txt"
 }
 
 # The place a publication makes for itself is hidden and named for the attempt

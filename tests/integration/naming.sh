@@ -29,9 +29,6 @@ solid_svg "$WORK/blue.svg" 400 200 '#235789'
 solid_svg "$WORK/red.svg" 400 200 '#DF2935'
 vips copy "$WORK/blue.svg" "$WORK/photo.jpg[Q=92,keep=none]"
 vips copy "$WORK/red.svg" "$WORK/photo.png"
-node "$ROOT/tools/build-probe.mjs" tests/integration/naming-probe.js "$WORK/names.jxa"
-node "$ROOT/tools/build-probe.mjs" tests/integration/jxa-workflow-probe.js "$WORK/workflow.jxa"
-node "$ROOT/tools/build-probe.mjs" tests/integration/stored-name-probe.js "$WORK/stored-name.jxa"
 node "$ROOT/tools/build-probe.mjs" tests/integration/rename-probe.js "$WORK/rename.jxa"
 mkdir "$WORK/local"
 node "$ROOT/tests/integration/naming-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.cjs" "$WORK" "$WORK/local" local measure
@@ -43,7 +40,7 @@ for spec in 'APFS|apfs|insensitive' 'Case-sensitive APFS|apfs-cs|sensitive' 'HFS
         printf 'Required naming-control volume could not attach: %s\n' "$format" >&2
         exit 1
     fi
-    node "$ROOT/tests/integration/naming-contract.cjs" "$WORK/workflow.jxa" "$WORK" "$MOUNT" "$label" "$expected"
+    node "$ROOT/tests/integration/naming-contract.cjs" "$ROOT/dist/Image-Files-to-PDF.cjs" "$WORK" "$MOUNT" "$label" "$expected"
     detach_test_volume "$MOUNT" "$IMAGE"; MOUNT=''; IMAGE=''
 done
 printf 'macOS naming integration passed\n'

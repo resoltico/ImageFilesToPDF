@@ -34,7 +34,7 @@ public class DecoderProbe
         bool change = Environment.GetEnvironmentVariable("IFTP_CONSOLE_SCENARIO") == "Change";
         string operation = change ? "-a" : "thumbnail";
         string watched = change ? "/photo.png" : "/input-0";
-        if (argv.Length > 1 && argv[0] == operation && argv[1].Contains(watched))
+        if (argv.Length > 1 && argv[0] == operation && argv[1].Replace('\\', '/').Contains(watched))
         {
             File.WriteAllText(Path.Combine(folder, "started"), Process.GetCurrentProcess().Id.ToString());
             for (int attempt = 0; !File.Exists(Path.Combine(folder, "release")); attempt++)
@@ -120,9 +120,8 @@ function Wait-File([string]$File, [int]$Seconds = 30) {
     throw "Timed out waiting for $File."
 }
 
-function Test-InterruptedWriter($Node, $Writer) {
-    $profileHome = (& node --print "require('node:os').homedir()").Trim()
-    $root = Join-Path $profileHome 'AppData/Local/image-files-to-pdf-node-1'
+function Test-InterruptedWriter($Node, $Writer, $Helper) {
+    $root = Join-Path $env:LOCALAPPDATA 'Image Files to PDF/Workspaces'
     $owned = Get-ChildItem -LiteralPath $root -Filter 'run-*' -Directory | Where-Object {
         try { (Get-Content -LiteralPath (Join-Path $_.FullName 'owner.json') -Raw | ConvertFrom-Json).pid -eq $Node.Id }
         catch { $false }
@@ -132,13 +131,14 @@ function Test-InterruptedWriter($Node, $Writer) {
     if (-not [IO.File]::Exists($guard)) { throw 'The writer started before its ownership guard.' }
     $Node.Kill()
     if (-not $Node.WaitForExit(10000) -or $Writer.HasExited) { throw 'The test did not leave a surviving native writer.' }
+    if (-not $Helper.WaitForExit(10000)) { throw 'The PowerShell helper survived the crashed engine.' }
     $settings = Join-Path $work 'settings.json'
     $source = Join-Path $work 'photo.png'
     $result = & node $Artifact --settings $settings -- $source
     if ($LASTEXITCODE -ne 0) { throw 'The restarted CLI failed.' }
     $receipt = $result | ConvertFrom-Json
     $reported = $receipt.diagnostics | Where-Object {
-        $_.code -eq 'workspace-retained' -and $_.diagnostic.path -eq $owned.FullName.Replace('\','/')
+        $_.code -eq 'workspace-retained' -and $_.diagnostic.path -eq $owned.FullName
     }
     if (-not $reported -or -not [IO.File]::Exists($guard)) { throw 'Startup failed to preserve the live writer workspace.' }
     [IO.File]::WriteAllText((Join-Path $work 'release'), 'yes', $utf8)
@@ -148,9 +148,10 @@ function Test-InterruptedWriter($Node, $Writer) {
     Write-Output 'Windows forced termination left a live decoder. Restart retained its workspace and produced a verified receipt.'
 }
 
-function Test-ConsoleStop($Node, $Writer) {
+function Test-ConsoleStop($Node, $Writer, $Helper) {
     [ConsoleStopProbe]::Send([uint32]$Node.Id)
     if ($Writer.HasExited) { throw 'Ctrl+C reached the detached decoder.' }
+    if ($Helper.HasExited) { throw 'Ctrl+C reached the platform helper before the checkpoint.' }
     [IO.File]::WriteAllText((Join-Path $work 'release'), 'yes', $utf8)
     Wait-File (Join-Path $work 'settled')
     if (-not $Node.WaitForExit(30000)) { throw 'Node did not settle after console Ctrl+C.' }
@@ -160,6 +161,7 @@ function Test-ConsoleStop($Node, $Writer) {
         throw 'The console Stop did not produce a canceled receipt without publication.'
     }
     if ($Node.ExitCode -ne 1) { throw 'The console Stop exit status was not 1.' }
+    if (-not $Helper.WaitForExit(10000)) { throw 'The PowerShell helper survived Stop.' }
     Write-Output 'Windows PowerShell console Ctrl+C stopped at the next checkpoint and left the decoder running until settlement.'
 }
 
@@ -183,6 +185,7 @@ function Test-SourceReplacement($Node) {
 $console = $null
 $runtime = $null
 $writer = $null
+$helper = $null
 try {
     [IO.File]::WriteAllText((Join-Path $work 'decoder.cs'), $decoder, $utf8)
     [IO.File]::WriteAllText((Join-Path $work 'settings.json'), '{"mode":"combined","paperSize":"A4","orientation":"Portrait","resolutionLimit":300,"quality":82,"background":"#FFFFFF"}', $utf8)
@@ -204,10 +207,14 @@ try {
     $runtime = Get-Process -Id $nodeId
     $null = $runtime.Handle
     $null = $writer.Handle
+    $helperInfo = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$nodeId AND Name='powershell.exe'")
+    if ($helperInfo.Count -ne 1) { throw 'Expected exactly one live platform helper.' }
+    $helper = Get-Process -Id $helperInfo[0].ProcessId
+    $null = $helper.Handle
     switch ($Scenario) {
-        'Crash' { Test-InterruptedWriter $runtime $writer }
+        'Crash' { Test-InterruptedWriter $runtime $writer $helper }
         'Change' { Test-SourceReplacement $runtime }
-        'Stop' { Test-ConsoleStop $runtime $writer }
+        'Stop' { Test-ConsoleStop $runtime $writer $helper }
     }
 }
 catch {
@@ -221,6 +228,7 @@ catch {
 finally {
     if ($writer -and -not $writer.HasExited) { [IO.File]::WriteAllText((Join-Path $work 'release'), 'yes', $utf8); $null = $writer.WaitForExit(10000) }
     if ($runtime -and -not $runtime.HasExited) { $runtime.Kill(); $runtime.WaitForExit() }
+    if ($helper -and -not $helper.HasExited) { $helper.Kill(); $helper.WaitForExit() }
     if ($console -and -not $console.HasExited) { $console.Kill(); $console.WaitForExit() }
     [IO.Directory]::Delete($work, $true)
 }

@@ -31,8 +31,7 @@ cleanup() {
     rm -rf "$WORK"
 }
 trap cleanup EXIT
-SCRIPT="$WORK/workflow-probe.jxa"
-node "$ROOT/tools/build-probe.mjs" tests/integration/jxa-workflow-probe.js "$SCRIPT"
+SCRIPT="$ROOT/dist/Image-Files-to-PDF.cjs"
 
 # shellcheck source=tests/integration/lib/assert.sh
 source "$ROOT/tests/integration/lib/assert.sh"
@@ -42,6 +41,7 @@ source "$ROOT/tests/integration/lib/fixtures.sh"
 source "$ROOT/tests/integration/lib/volume.sh"
 
 require_tools
+node "$ROOT/tools/build-probe.mjs" tests/integration/rename-probe.js "$WORK/rename.jxa"
 solid_svg "$WORK/blue.svg" 64 64 "#3080c0"
 vips copy "$WORK/blue.svg" "$WORK/photo.png"
 
@@ -50,11 +50,8 @@ run() {
     shift 2
     write_config "$WORK/config.json" A4 Portrait "$mode" "#FFFFFF" "$stamp"
     RUN_STATUS=0
-    osascript -l JavaScript "$SCRIPT" "$WORK/config.json" "$@" \
+    node "$SCRIPT" --settings "$WORK/config.json" -- "$@" \
         >"$WORK/receipt.json" 2>"$WORK/error.txt" || RUN_STATUS=$?
-    if [ "$RUN_STATUS" = 0 ]; then
-        node -e 'process.exit(JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).state === "complete" ? 0 : 1)' "$WORK/receipt.json" || RUN_STATUS=$?
-    fi
 }
 
 # The place a publication makes for itself is hidden and named for the attempt
@@ -75,7 +72,6 @@ assert_nothing_left_behind() {
 if attach_test_volume "MS-DOS FAT32" "$FAT_NAME" "$FAT_VOLUME"; then
     cp "$WORK/photo.png" "$FAT_VOLUME/"
     SOURCE_BEFORE=$(shasum -a 256 < "$FAT_VOLUME/photo.png")
-    node "$ROOT/tools/build-probe.mjs" tests/integration/rename-probe.js "$WORK/rename.jxa"
     PRIMITIVE=$(node "$ROOT/tests/integration/lib/exclusive-rename.cjs" "$WORK/rename.jxa" "$FAT_VOLUME")
     printf 'FAT32 exclusive-rename probe: %s\n' "$PRIMITIVE"
     if node -e 'process.exit(JSON.parse(process.argv[1]).supported ? 0 : 1)' "$PRIMITIVE"; then
@@ -140,40 +136,34 @@ fi
 
 if attach_test_volume "ExFAT" "$EXFAT_NAME" "$EXFAT_VOLUME"; then
     cp "$WORK/photo.png" "$EXFAT_VOLUME/"
-    run 20260907_070707 combined "$EXFAT_VOLUME/photo.png"
-
-    test ! -e "$EXFAT_VOLUME/photo.pdf" ||
-        fail "a name was created on a volume that cannot take one whole"
-    test -z "$(find "$EXFAT_VOLUME" -maxdepth 1 -name '*.pdf')" ||
-        fail "something of the run reached the card: $(ls -a "$EXFAT_VOLUME")"
+    SOURCE_BEFORE=$(shasum -a 256 < "$EXFAT_VOLUME/photo.png")
+    PRIMITIVE=$(node "$ROOT/tests/integration/lib/exclusive-rename.cjs" "$WORK/rename.jxa" "$EXFAT_VOLUME")
+    printf 'exFAT exclusive-rename probe: %s\n' "$PRIMITIVE"
+    if node -e 'process.exit(JSON.parse(process.argv[1]).supported ? 0 : 1)' "$PRIMITIVE"; then
+        run 20260907_070707 combined "$EXFAT_VOLUME/photo.png"
+        test "$RUN_STATUS" = 0 || fail "exFAT combined publication failed: $(cat "$WORK/error.txt")"
+        assert_valid_pdf "$EXFAT_VOLUME/photo.pdf"
+        run 20260907_070708 separate "$EXFAT_VOLUME/photo.png"
+        test "$RUN_STATUS" = 0 || fail "exFAT separate publication failed: $(cat "$WORK/error.txt")"
+        assert_valid_pdf "$EXFAT_VOLUME/photo 2.pdf"
+    else
+        for mode in combined separate; do
+            node - "$ROOT" "$WORK/recovery-inventory.json" <<'NODE'
+const fs = require("node:fs");
+const { recoveryInventory } = require(`${process.argv[2]}/tests/integration/lib/recovered-pdf.cjs`);
+const inventory = recoveryInventory();
+fs.writeFileSync(process.argv[3], JSON.stringify({ ...inventory, downloadIdentities: [...inventory.downloadIdentities], temporaryIdentities: [...inventory.temporaryIdentities] }));
+NODE
+            run 20260907_070707 "$mode" "$EXFAT_VOLUME/photo.png"
+            test "$RUN_STATUS" = 1 || fail "unsupported exFAT publication returned $RUN_STATUS"
+            test -z "$(find "$EXFAT_VOLUME" -maxdepth 1 -name '*.pdf')" || fail "a PDF was published on an unsupported volume"
+            grep -Eq 'Operation not supported|Function not implemented' "$WORK/receipt.json" ||
+                fail "the native reason was missing: $(cat "$WORK/error.txt")"
+            node "$ROOT/tests/integration/lib/recovered-pdf.cjs" "$WORK/receipt.json" "$EXFAT_VOLUME/photo.png" "$PRIMITIVE" "$WORK/recovery-inventory.json"
+        done
+    fi
     assert_nothing_left_behind "$EXFAT_VOLUME"
-
-    grep -q '"state":"unsupported"' "$WORK/receipt.json" ||
-        fail "the message does not say what failed: $(cat "$WORK/error.txt")"
-    # What the system said about the operation it actually refused. Measured
-    # on exFAT: ln reports "Operation not supported" from beside the
-    # destination, which is the capability statement, made by the kernel
-    # rather than guessed at here.
-    grep -q 'Operation not supported' "$WORK/receipt.json" ||
-        fail "the system's own words are missing: $(cat "$WORK/error.txt")"
-
-    # The whole point of stopping is that the work survives it.
-    KEPT=$(receipt_recovery "$WORK/receipt.json")
-    test -n "$KEPT" || fail "no recovery path was named: $(cat "$WORK/error.txt")"
-    assert_valid_pdf "$KEPT"
-    # A failed assertion exits before this, so a failing run keeps its
-    # recovery as evidence; a passing one removes only the recovered file.
-    remove_test_recovery "$KEPT"
-    run 20260907_070708 separate "$EXFAT_VOLUME/photo.png"
-    test -z "$(find "$EXFAT_VOLUME" -maxdepth 1 -name '*.pdf')" ||
-        fail "separate publication left a PDF on exFAT"
-    assert_nothing_left_behind "$EXFAT_VOLUME"
-    grep -q '"state":"unsupported"' "$WORK/receipt.json" || fail "separate exFAT was not classified"
-    KEPT=$(receipt_recovery "$WORK/receipt.json")
-    test -n "$KEPT" || fail "separate exFAT recovery was not named"
-    assert_valid_pdf "$KEPT"
-    remove_test_recovery "$KEPT"
-
+    test "$SOURCE_BEFORE" = "$(shasum -a 256 < "$EXFAT_VOLUME/photo.png")" || fail "source image changed"
     detach_test_volume "$EXFAT_VOLUME" "$WORK/$EXFAT_NAME.dmg"
 else
     printf 'exFAT publication skipped: no exFAT volume could be attached\n'
