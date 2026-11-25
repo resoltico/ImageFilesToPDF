@@ -22,6 +22,7 @@ import { checkBoundaries } from "./lint/boundaries.mjs";
 
 import { checkExportConsumers } from "./lint/production-exports.mjs";
 import { checkTestImports } from "./lint/test-imports.mjs";
+import { checkOverrides } from "./lint/overrides.mjs";
 
 await checkBoundaries();
 await checkTestImports();
@@ -44,8 +45,9 @@ const consistency = await checkConsistency();
 const formulae = await checkToolchain();
 const ignored = await checkIgnores();
 const documents = await checkDocumentReferences();
+const overrides = await checkOverrides();
 
 console.log(
     `syntax and static policy checks passed for ${files.length} files ` +
-    `(shell: ${shellStatus}; ${workflowStatus}; language target: ${languageTarget}; ${consistency}, ${formulae} formulae, ${ignored} ignore rules, ${documents} documents)`
+    `(shell: ${shellStatus}; ${workflowStatus}; language target: ${languageTarget}; ${consistency}, ${formulae} formulae, ${ignored} ignore rules, ${documents} documents, ${overrides} load-bearing overrides)`
 );

@@ -34,6 +34,7 @@ const REPOSITORY_TEST_INPUTS = new Set([
     "tools/lint/ignore-rules.mjs",
     "tools/lint/language-target.mjs",
     "tools/lint/notes.mjs",
+    "tools/lint/overrides.mjs",
     "tools/lint/production-exports.mjs",
     "tools/lint/settings-docs.mjs",
     "tools/lint/shell-rules.mjs",
