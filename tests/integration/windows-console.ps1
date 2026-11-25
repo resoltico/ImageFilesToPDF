@@ -159,13 +159,23 @@ function Test-InterruptedWriter($Node, $Writer, $Helper) {
     Write-Output 'Windows forced termination left a live decoder. Restart retained its workspace and produced a verified receipt.'
 }
 
-function Test-ConsoleStop($Node, $Writer, $Helper) {
+function Test-ConsoleStop($Node, $Writer, $Helper, $Shell = $null) {
     [ConsoleStopProbe]::Send([uint32]$Node.Id)
     if ($Writer.HasExited) { throw 'Ctrl+C reached the detached decoder.' }
     if ($Helper.HasExited) { throw 'Ctrl+C reached the platform helper before the checkpoint.' }
     [IO.File]::WriteAllText((Join-Path $work 'release'), 'yes', $utf8)
     Wait-File (Join-Path $work 'settled')
     if (-not $Node.WaitForExit(30000)) { throw 'Node did not settle after console Ctrl+C.' }
+    if ($Shell) {
+        # cmd.exe holds the redirected receipt open while it waits at its batch prompt.
+        if ($Shell.WaitForExit(3000)) {
+            Write-Output "npm .cmd launcher: cmd.exe exited with $($Shell.ExitCode) after the console Stop."
+        } else {
+            Write-Output 'npm .cmd launcher: cmd.exe was still waiting 3 s after Node exited (Terminate batch job prompt); ending it to read the receipt Node wrote.'
+            $Shell.Kill()
+            $Shell.WaitForExit()
+        }
+    }
     Wait-File (Join-Path $work 'receipt.json')
     $receipt = $utf8.GetString([IO.File]::ReadAllBytes((Join-Path $work 'receipt.json'))) | ConvertFrom-Json
     if ($receipt.state -ne 'canceled' -or [IO.File]::Exists((Join-Path $work 'photo.pdf'))) {
@@ -235,14 +245,7 @@ try {
         'Crash' { Test-InterruptedWriter $runtime $writer $helper }
         'Change' { Test-SourceReplacement $runtime }
         'Stop' { Test-ConsoleStop $runtime $writer $helper }
-        'Shim' {
-            Test-ConsoleStop $runtime $writer $helper
-            if ($cmdShell.WaitForExit(3000)) {
-                Write-Output "npm .cmd launcher: cmd.exe exited with $($cmdShell.ExitCode) after the console Stop."
-            } else {
-                Write-Output 'npm .cmd launcher: cmd.exe was still waiting 3 s after Node exited (Terminate batch job prompt); the receipt and exit status above come from Node.'
-            }
-        }
+        'Shim' { Test-ConsoleStop $runtime $writer $helper $cmdShell }
     }
 }
 catch {

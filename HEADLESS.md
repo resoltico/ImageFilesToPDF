@@ -48,6 +48,12 @@ the codecs you need, and stable pdfcpu 0.16.4 or later for your architecture
 or supported emulation. Put the executable directories on `PATH`. The
 engine uses the built-in Windows PowerShell 5.1 helper for platform queries.
 
+npm installs a PowerShell and a Command Prompt launcher for the command.
+Windows PowerShell's default `Restricted` execution policy refuses the
+PowerShell launcher, as it refuses npm's own; PowerShell 7 and the
+`RemoteSigned` policy run it. In Command Prompt, Ctrl+C stops the conversion
+safely, and Command Prompt then asks whether to terminate the batch job.
+
 See [the platform matrix](QA.md#native-platform-matrix) for tested combinations.
 For Finder, follow [the shortcut installation instructions](INSTALL.txt).
 
