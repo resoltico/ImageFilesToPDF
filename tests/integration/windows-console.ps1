@@ -1,6 +1,8 @@
 param(
     [string]$Artifact = (Join-Path $PSScriptRoot '../../dist/Image-Files-to-PDF.cjs'),
-    [ValidateSet('Stop','Crash','Change')][string]$Scenario = 'Stop'
+    [ValidateSet('Stop','Crash','Change','Shim')][string]$Scenario = 'Stop',
+    # For Shim: npm's .cmd launcher, which runs Node under cmd.exe.
+    [string]$Command = ''
 )
 $ErrorActionPreference = 'Stop'
 $Artifact = (Resolve-Path -LiteralPath $Artifact).Path
@@ -8,6 +10,10 @@ $work = [IO.Directory]::CreateTempSubdirectory('iftp-console-').FullName
 $env:IFTP_CONSOLE_FIXTURE = $work
 $env:IFTP_CONSOLE_ARTIFACT = $Artifact
 $env:IFTP_CONSOLE_SCENARIO = $Scenario
+if ($Scenario -eq 'Shim') {
+    if (-not $Command) { throw 'The Shim scenario needs -Command.' }
+    $env:IFTP_CONSOLE_COMMAND = (Resolve-Path -LiteralPath $Command).Path
+}
 $env:IFTP_CONSOLE_NODE = (& node --print process.execPath).Trim()
 $env:IFTP_CONSOLE_VIPS = (Get-Command vips -CommandType Application -TotalCount 1).Source
 $toolName = if ($Scenario -eq 'Change') { 'vipsheader' } else { 'vips' }
@@ -70,9 +76,14 @@ try {
     $override = Join-Path $env:IFTP_CONSOLE_FIXTURE 'decoder.exe'
     if ($env:IFTP_CONSOLE_SCENARIO -eq 'Change') { $env:IMAGE_FILES_TO_PDF_VIPSHEADER = $override }
     else { $env:IMAGE_FILES_TO_PDF_VIPS = $override }
-    $arguments = '"{0}" --settings settings.json -- photo.png' -f $env:IFTP_CONSOLE_ARTIFACT
-    $process = Start-Process -FilePath $env:IFTP_CONSOLE_NODE -ArgumentList $arguments -NoNewWindow -PassThru `
-        -WorkingDirectory $env:IFTP_CONSOLE_FIXTURE -RedirectStandardOutput receipt.json -RedirectStandardError stderr.txt
+    if ($env:IFTP_CONSOLE_COMMAND) {
+        $process = Start-Process -FilePath $env:IFTP_CONSOLE_COMMAND -ArgumentList '--settings settings.json -- photo.png' -NoNewWindow -PassThru `
+            -WorkingDirectory $env:IFTP_CONSOLE_FIXTURE -RedirectStandardOutput receipt.json -RedirectStandardError stderr.txt
+    } else {
+        $arguments = '"{0}" --settings settings.json -- photo.png' -f $env:IFTP_CONSOLE_ARTIFACT
+        $process = Start-Process -FilePath $env:IFTP_CONSOLE_NODE -ArgumentList $arguments -NoNewWindow -PassThru `
+            -WorkingDirectory $env:IFTP_CONSOLE_FIXTURE -RedirectStandardOutput receipt.json -RedirectStandardError stderr.txt
+    }
     [IO.File]::WriteAllText((Join-Path $env:IFTP_CONSOLE_FIXTURE 'node-pid'), [string]$process.Id)
     $process.WaitForExit()
 } catch {
@@ -183,6 +194,7 @@ function Test-SourceReplacement($Node) {
 }
 
 $console = $null
+$cmdShell = $null
 $runtime = $null
 $writer = $null
 $helper = $null
@@ -203,6 +215,14 @@ try {
     Wait-File (Join-Path $work 'node-pid')
     $writerId = [int][IO.File]::ReadAllText((Join-Path $work 'started'))
     $nodeId = [int][IO.File]::ReadAllText((Join-Path $work 'node-pid'))
+    if ($Scenario -eq 'Shim') {
+        # The launched process is cmd.exe running npm's .cmd; Node is its child.
+        $cmdShell = Get-Process -Id $nodeId
+        $null = $cmdShell.Handle
+        $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$nodeId AND Name='node.exe'")
+        if ($children.Count -ne 1) { throw 'Expected exactly one Node process under the npm launcher.' }
+        $nodeId = [int]$children[0].ProcessId
+    }
     $writer = Get-Process -Id $writerId
     $runtime = Get-Process -Id $nodeId
     $null = $runtime.Handle
@@ -215,6 +235,14 @@ try {
         'Crash' { Test-InterruptedWriter $runtime $writer $helper }
         'Change' { Test-SourceReplacement $runtime }
         'Stop' { Test-ConsoleStop $runtime $writer $helper }
+        'Shim' {
+            Test-ConsoleStop $runtime $writer $helper
+            if ($cmdShell.WaitForExit(3000)) {
+                Write-Output "npm .cmd launcher: cmd.exe exited with $($cmdShell.ExitCode) after the console Stop."
+            } else {
+                Write-Output 'npm .cmd launcher: cmd.exe was still waiting 3 s after Node exited (Terminate batch job prompt); the receipt and exit status above come from Node.'
+            }
+        }
     }
 }
 catch {
@@ -228,6 +256,7 @@ catch {
 finally {
     if ($writer -and -not $writer.HasExited) { [IO.File]::WriteAllText((Join-Path $work 'release'), 'yes', $utf8); $null = $writer.WaitForExit(10000) }
     if ($runtime -and -not $runtime.HasExited) { $runtime.Kill(); $runtime.WaitForExit() }
+    if ($cmdShell -and -not $cmdShell.HasExited) { $cmdShell.Kill(); $cmdShell.WaitForExit() }
     if ($helper -and -not $helper.HasExited) { $helper.Kill(); $helper.WaitForExit() }
     if ($console -and -not $console.HasExited) { $console.Kill(); $console.WaitForExit() }
     [IO.Directory]::Delete($work, $true)

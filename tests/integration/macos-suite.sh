@@ -24,4 +24,6 @@ node "$ROOT/tests/integration/finder-engine.cjs"
 node "$ROOT/tests/integration/finder-pipe.cjs"
 node "$ROOT/tests/integration/native-cli.cjs"
 python3 "$ROOT/tests/integration/posix-process.py"
+mkdir "$owned/npm"
+node "$ROOT/tests/integration/npm-route.cjs" "$(node "$ROOT/tools/npm-package.mjs" "$owned/npm")"
 passed=1
