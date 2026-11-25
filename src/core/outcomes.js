@@ -26,6 +26,11 @@ function issuesOf(error, stage) {
     catch { return [issueMessage(ISSUE.fault, stage, "failureDetailsUnreadable")]; }
 }
 
+/** A failure's issues for their codes, messages and diagnostics, where the caller reports no stage. */
+function failureIssues(error) {
+    return issuesOf(error, undefined);
+}
+
 /** Saved paths/source mappings are authoritative; rendered-page counts never imply publication. */
 function runOutcome(documents = [], rejected = [], issues = [], diagnostics = []) {
     const undone = documents.some((document) => document.state !== "saved");
@@ -49,4 +54,4 @@ function failedRun(error, outcome = null) {
         [...(outcome?.issues ?? []), ...issuesOf(error, outcome ? "reporting" : "setup")], outcome?.diagnostics ?? []);
 }
 
-module.exports = { ISSUE, RUN_OUTCOME, issuesOf, runOutcome, noImagesOutcome, failedRun };
+module.exports = { failureIssues, ISSUE, RUN_OUTCOME, issuesOf, runOutcome, noImagesOutcome, failedRun };

@@ -1,7 +1,7 @@
 "use strict";
 const { message } = require("../core/messages.js");
 const { SUPPORTED_FORMATS } = require("../core/formats.js");
-const { issuesOf, ISSUE } = require("../core/outcomes.js");
+const { failureIssues, ISSUE } = require("../core/outcomes.js");
 const { OperationError, isUserCanceled } = require("../core/errors.js");
 const { calculatePlacement, canPassThrough } = require("../core/geometry.js");
 const { inspectCaptured } = require("./source-inspection.js");
@@ -44,7 +44,7 @@ async function checkDecode(job, captured, pass) {
 }
 
 function preparationFailure(error, imageFile) {
-    if (isUserCanceled(error) || issuesOf(error, "preparation")[0].code === ISSUE.fault) { throw error; }
+    if (isUserCanceled(error) || failureIssues(error)[0].code === ISSUE.fault) { throw error; }
     throw damaged(error, imageFile.path);
 }
 

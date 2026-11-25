@@ -177,8 +177,9 @@ function handleDocumentFailure(context, error) {
 
 /** Ports own native values and bytes. This executor owns document/resource sequencing. */
 async function executeDocument(ports, plan, documentIndex) {
+    // The record gains its state when the document settles, before anyone reads it.
     const context = { documentIndex, artifact: null, stage: "allocation",
-        record: { state: "building", sources: plan.sources.map((source) => source.path), pages: 0, issues: [] } };
+        record: { sources: plan.sources.map((source) => source.path), pages: 0, issues: [] } };
     const queue = pageQueue(ports, context);
     try {
         context.artifact = ports.allocate(documentIndex);

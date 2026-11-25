@@ -121,5 +121,21 @@ test("a truncated copy never wears the finished PDF's name", async () => {
 test("a faulted facts reader retains destination-area ownership and the original exception",()=>{
     const host=createConversionFixture({files:["/a/p.pdf"]});host.publication.facts=()=>{throw new TypeError("facts failed");};
     const outcome=copyBeside(makeJob(host),"/a/p.pdf",AREA,1024);
-    assert.equal(outcome.state,"failed");assert.equal(outcome.area,AREA);assert.ok(outcome.error instanceof TypeError);
+    assert.equal(outcome.area,AREA);assert.ok(outcome.error instanceof TypeError);
+});
+
+test("an unmeasured or empty original never matches, even a copy that reports the same", () => {
+    for (const expected of [-1, 0]) {
+        const host = createConversionFixture({ files: ["/a/p.pdf"] });
+        host.publication.facts = () => ({ identity: "16777232:9", size: expected });
+        const outcome = copyBeside(makeJob(host), "/a/p.pdf", AREA, expected);
+        assert.equal(outcome.error.message, `the staged file is ${expected} bytes where ${expected} were expected`);
+    }
+});
+
+test("a finished copy reports its own facts and no error", () => {
+    const host = createConversionFixture({ files: ["/a/p.pdf"] });
+    const { facts } = host.publication;
+    host.publication.facts = (path) => (path === AREA.file ? { identity: "16777232:5", size: 1024 } : facts(path));
+    assert.deepEqual(copyBeside(makeJob(host), "/a/p.pdf", AREA, 1024), { area: AREA, identity: "16777232:5", size: 1024 });
 });

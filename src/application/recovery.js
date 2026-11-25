@@ -3,7 +3,7 @@ const { message, publicationFailureDetails } = require("../core/messages.js");
 
 const { actualPublicationPath, requireOriginal, unconfirmedClaim } = require("./publication-name.js");
 const { releaseOwnedArtifact } = require("./workspace.js");
-const { ISSUE, issuesOf } = require("../core/outcomes.js");
+const { ISSUE, issuesOf, failureIssues } = require("../core/outcomes.js");
 const { IssueError, diagnosticText } = require("../core/errors.js");
 const { basename } = require("../core/paths.js");
 const { isPublished, recoveryDestination } = require("../core/artifacts.js");
@@ -57,7 +57,7 @@ async function downloadsRecovery(job, paths) {
         if (error && Object.hasOwn(error, "recovery")) { throw error; }
         requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: error, candidate: context?.area ? { folder: context.area.directory } : null });
         const cleanup = context?.area ? job.operations.closeStaging(context.area) : [];
-        const [issue] = issuesOf(error, "recovery");
+        const [issue] = failureIssues(error);
         return { state: "retained", path: paths.staged, issues: [{ code: issue.code === ISSUE.operation ? ISSUE.recovery : issue.code, stage: "recovery", params: {},
             message: message("downloadsRecoveryFailed"), diagnostic: { message: diagnosticText(error), path: context?.paths.final, detail: context?.diagnostic } }, ...cleanup] };
     }

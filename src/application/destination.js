@@ -5,17 +5,19 @@ const { OperationError } = require("../core/errors.js");
 const { collisionPath, MAXIMUM_SUFFIX } = require("../core/naming.js");
 const needsStaging = (state) => ["cross-device", "unsupported"].includes(state);
 
+// A failed copy carries its error; a finished one carries the copy's facts.
 function copyBeside(job, staged, area, expected) {
     try { job.operations.openStaging(area); }
-    catch (error) { return { state: "failed", area: null, error }; }
+    catch (error) { return { area: null, error }; }
     try {
         job.operations.copyBeside(staged, area.file);
         const written = job.publication.facts(area.file);
-        if (expected < 0 || written.size !== expected || !written.identity) {
+        // An unmeasured or empty original matches nothing, whatever the copy reports.
+        if (expected <= 0 || written.size !== expected || !written.identity) {
             throw new OperationError(message("stagedFileSizeMismatch", { found: written.size, expected }));
         }
-        return { state: "copied", area, ...written };
-    } catch (error) { return { state: "failed", area, error }; }
+        return { area, identity: written.identity, size: written.size };
+    } catch (error) { return { area, error }; }
 }
 
 function destinationCopy(context) {
@@ -24,9 +26,9 @@ function destinationCopy(context) {
     const area = job.operations.stagingArea(paths.final);
     const copied = copyBeside(job, paths.staged, area, facts.size);
     context.area = copied.area;
-    requireOriginal(job.publication, { staged: paths.staged, expected: context.facts, cause: copied.error ?? null,
-        candidate: copied.area ? { folder: copied.area.directory, ...(copied.state === "copied" ? { identity: copied.identity, size: copied.size } : {}) } : null });
-    if (copied.state !== "copied") { throw copied.error; }
+    requireOriginal(job.publication, { staged: paths.staged, expected: context.facts, cause: copied.error,
+        candidate: copied.area ? { folder: copied.area.directory, identity: copied.identity, size: copied.size } : null });
+    if (copied.error) { throw copied.error; }
     Object.assign(context, { from: area.file, claimed: { identity: copied.identity, size: facts.size } });
 }
 

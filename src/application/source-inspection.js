@@ -1,7 +1,7 @@
 "use strict";
 const { message } = require("../core/messages.js");
 const { OperationError, isUserCanceled, diagnosticText, commandOf } = require("../core/errors.js");
-const { issuesOf, ISSUE } = require("../core/outcomes.js");
+const { failureIssues, ISSUE } = require("../core/outcomes.js");
 const { sourceIssues } = require("../core/source-policy.js");
 const { unknownFormatCode } = require("../core/raster-signatures.js");
 const { REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata,
@@ -11,7 +11,7 @@ const { inspectSelection } = require("./inspection.js");
 
 function expectedHeaderFailure(caught) {
     const error = caught;
-    const [issue] = issuesOf(error, "inspection");
+    const [issue] = failureIssues(error);
     if (isUserCanceled(error) || issue.code === ISSUE.fault) { throw error; }
     return { error, issue };
 }

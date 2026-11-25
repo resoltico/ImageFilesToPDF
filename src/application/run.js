@@ -1,7 +1,7 @@
 "use strict";
 const { IssueError } = require("../core/errors.js");
 const { selectionContext } = require("../core/selection-policy.js");
-const { runOutcome, issuesOf } = require("../core/outcomes.js");
+const { runOutcome, failureIssues } = require("../core/outcomes.js");
 
 async function presentOutcome(ports, outcome) {
     try {
@@ -10,7 +10,7 @@ async function presentOutcome(ports, outcome) {
         return await ports.interaction.present(outcome);
     }
     catch (cause) {
-        const [issue] = issuesOf(cause, "reporting");
+        const [issue] = failureIssues(cause);
         const error = new IssueError(issue.message, { cause, outcome, stack: issue.diagnostic?.stack });
         throw error;
     }

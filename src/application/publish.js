@@ -4,7 +4,7 @@ const { requireValidatedArtifact, isPublished } = require("../core/artifacts.js"
 const { keep } = require("./recovery.js");
 const { confirm } = require("./settling.js");
 const { issueMessage, message } = require("../core/messages.js");
-const { ISSUE, issuesOf } = require("../core/outcomes.js");
+const { ISSUE, issuesOf, failureIssues } = require("../core/outcomes.js");
 const { IssueError, diagnosticText, isUserCanceled } = require("../core/errors.js");
 const { claimAvailable } = require("./destination.js");
 
@@ -27,12 +27,12 @@ function confirmed(context) {
 }
 
 function publicationCode(error) {
-    const [issue] = issuesOf(error, "publication");
+    const [issue] = failureIssues(error);
     return issue.code === ISSUE.operation ? ISSUE.publication : issue.code;
 }
 
 function publicationDiagnostic(context, error) {
-    const diagnostic = context.diagnostic ?? issuesOf(error, "publication")[0].diagnostic;
+    const diagnostic = context.diagnostic ?? failureIssues(error)[0].diagnostic;
     const detail = typeof diagnostic?.message === "string" && diagnostic.message.trim() ? diagnostic.message : diagnosticText(error);
     return { ...diagnostic, message: detail };
 }

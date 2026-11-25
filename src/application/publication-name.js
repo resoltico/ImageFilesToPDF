@@ -1,7 +1,7 @@
 "use strict";
 const { message } = require("../core/messages.js");
 const { IssueError, errorMessage } = require("../core/errors.js");
-const { ISSUE, issuesOf } = require("../core/outcomes.js");
+const { ISSUE, failureIssues } = require("../core/outcomes.js");
 const { dirname } = require("../core/paths.js");
 
 function originalObservation(publication, staged) {
@@ -32,7 +32,7 @@ function actualPublicationPath(publication, { staged, original, path, claimed })
         let originalFailure = null;
         try { requireOriginal(publication, { staged, expected: original, cause: error }); }
         catch (failure) { originalFailure = failure; }
-        const underlying = issuesOf(error, "publication");
+        const underlying = failureIssues(error);
         const primary = underlying.findIndex((issue) => issue.code !== ISSUE.cleanup);
         const code = originalFailure ? ISSUE.fault : underlying[primary]?.code ?? ISSUE.publication;
         const stack = underlying[primary]?.diagnostic?.stack;
