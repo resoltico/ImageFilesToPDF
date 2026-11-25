@@ -116,7 +116,8 @@ function cleanupJob(job, issues) {
 async function runJob(job, imageFiles) {
     const issues = [], records = [];
     try {
-        const groups = isSeparateMode(job.settings) ? job.destinationNames.groups(imageFiles, job.workspace) : [];
+        // Combined documents take no name groups.
+        const groups = isSeparateMode(job.settings) ? job.destinationNames.groups(imageFiles, job.workspace) : null;
         const plans = documentPlan(job.settings, imageFiles, job.timestamp, { nameGroups: groups, separateName: job.operations.outputName });
         await executeDocuments(documentPorts(job), plans, records);
     }

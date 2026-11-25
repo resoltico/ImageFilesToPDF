@@ -227,3 +227,26 @@ test("a marker inspection fault remains visible and prevents workspace removal",
     ]);
     assert.ok(!app.events.some(([event]) => event === "removeWorkspace"));
 });
+
+test("the first page batch of a document is its part 0", async () => {
+    const { job, app } = await jobFixture();
+    await runJob(job, [imageOf("/a/1.png"), imageOf("/a/2.png")]);
+    const imports = app.commands.filter((argv) => argv[1] === "import");
+    assert.match(imports[0].join(" "), /\.part-0\.pdf/u);
+});
+
+test("a prepared page of unknown size is removed before the document fails", async () => {
+    const { job, app } = await jobFixture();
+    const { facts } = job.publication;
+    job.publication = { ...job.publication, facts: (path) => (path.endsWith(".jpg") || path.endsWith(".png") && path.includes("page") ? { identity: "", size: 0 } : facts(path)) };
+    const result = await runJob(job, [imageOf("/a/1.png")]);
+    assert.equal(result.documents[0].state, "failed");
+    assert.ok(app.events.some(([event, path]) => event === "removeFile" && /page/u.test(path)), JSON.stringify(app.events));
+});
+
+test("a failure before any document runs is an execution issue", async () => {
+    const { job } = await jobFixture("separate");
+    job.destinationNames = { groups() { throw new Error("names unavailable"); } };
+    const result = await runJob(job, [imageOf("/a/1.png")]);
+    assert.deepEqual(result.issues.map(({ stage, message }) => [stage, message]), [["execution", "names unavailable"]]);
+});

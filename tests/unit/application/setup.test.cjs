@@ -133,3 +133,27 @@ test("one missing automatic tool gives one hint for precisely that package", asy
         return true;
     });
 });
+
+test("vips is judged by its output file and vipsheader by its answer", async () => {
+    // vips prints nothing useful; only the file it writes shows it worked.
+    const answers = { pdfcpu: "version: v0.16.4", vipsheader: "1", vips: "" };
+    const quietVips = fixture({ run: (args) => ({ status: 0, stdout: answers[args[0].split("/").pop()] }) });
+    assert.equal((await checkRequiredTools(quietVips.result)).vips, "/tools/vips");
+    const wrongAnswer = fixture({ run: (args) => ({ status: 0, stdout: args[0].endsWith("pdfcpu") ? "version: v0.16.4" : "2" }) });
+    await assert.rejects(() => checkRequiredTools(wrongAnswer.result), (error) => {
+        assert.deepEqual(failedRun(error).issues.map(({ params }) => params.name).filter(Boolean), ["vipsheader"]);
+        return true;
+    });
+});
+
+test("a Stop checkpoint follows every capability probe", async () => {
+    const events = [];
+    const { result } = fixture({
+        locate(name) { events.push(`locate ${name}`); return { file: `/tools/${name}` }; },
+        run(args) { events.push(`probe ${args[0].split("/").pop()}`); return { status: 0, stdout: args[0].endsWith("pdfcpu") ? "version: v0.16.4" : "1" }; },
+        checkpoint() { events.push("checkpoint"); }
+    });
+    await checkRequiredTools(result);
+    assert.deepEqual(events, ["checkpoint", "locate vips", "probe vips", "checkpoint", "checkpoint", "locate vipsheader", "probe vipsheader", "checkpoint",
+        "checkpoint", "locate pdfcpu", "probe pdfcpu", "checkpoint"]);
+});

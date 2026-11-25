@@ -123,7 +123,7 @@ async function imagesInFolder(tree, folder, taken) {
     if (!await walk(tree, folder, taken, outcome)) {
         // The folder that was selected, which is reported as itself rather
         // than as something unreadable inside it.
-        return { found: [], problems: [], code: "unreadable" };
+        return { problems: [], code: "unreadable" };
     }
 
     return {

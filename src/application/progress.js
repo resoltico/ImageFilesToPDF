@@ -16,15 +16,14 @@ const { isUserCanceled, UserCanceled } = require("../core/errors.js");
  * happen may stop the run, while a report of what has happened may not.
  */
 
-function broadcast(sinks, state, translateError) {
+function broadcast(sinks, state) {
     const failed = new Set();
     return (use, teardown = false) => {
         for (const sink of sinks) {
             if (teardown || !failed.has(sink)) {
                 try {
                     use(sink);
-                } catch (caught) {
-                    const error = translateError(caught);
+                } catch (error) {
                     // Record the fault without unwinding from a publication.
                     if (isUserCanceled(error)) { state.stopped = true; }
                     else {
@@ -49,7 +48,7 @@ function broadcast(sinks, state, translateError) {
  */
 function announce(state, say, requiredStop) {
     say();
-    state.stopped ||= requiredStop();
+    state.stopped ||= Boolean(requiredStop?.());
 
     if (state.stopped) {
         throw new UserCanceled();
@@ -121,10 +120,12 @@ function lifecycle(state, each) {
  * Required Stop polling runs outside that broadcast at safe announcements.
  * Command-line progress can therefore stop without a visible surface.
  */
-function createProgress(sinks, requiredStop = () => false, translateError = (error) => error) {
+// requiredStop is optional: a run without a Stop control is never asked to stop.
+function createProgress(sinks, requiredStop) {
     const state =
-        { images: 0, done: 0, description: "", detail: "", stopped: false, closed: false, diagnostics: [] };
-    const each = broadcast(sinks, state, translateError);
+        // Every report sets its description and detail before it is made.
+        { images: 0, done: 0, stopped: false, closed: false, diagnostics: [] };
+    const each = broadcast(sinks, state);
     const say = () => each(
         (sink) => sink.report(state.done, state.description, state.detail)
     );

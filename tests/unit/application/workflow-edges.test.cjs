@@ -215,3 +215,11 @@ test("a mixed resource cleanup error keeps cancellation and takes an independent
         return true;
     });
 });
+
+test("a selected package may carry a trailing slash", async () => {
+    const tree = treeOf({ "/p/Book.photoslibrary": [] });
+    tree.standardize = (value) => value.replace(/\/+$/u, "");
+    tree.inspect = (value) => ({ kind: "package", identity: value });
+    const roots = await selectedItems(tree, [{ path: "/p/Book.photoslibrary/" }], []);
+    assert.equal(roots[0].kind, "package");
+});

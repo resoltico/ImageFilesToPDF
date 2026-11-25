@@ -1,4 +1,5 @@
 "use strict";
+const { compareText } = require("./ordering.js");
 
 const SYSTEM_PATHS = "/etc/paths";
 const SYSTEM_FRAGMENTS = "/etc/paths.d";
@@ -10,18 +11,15 @@ function absoluteMacPath(value) {
     return typeof value === "string" && value.startsWith("/") && !value.includes("\0");
 }
 
-function ordinal(left, right) {
-    return left < right ? -1 : Number(left > right);
-}
 
 function pathFileOrder(left, right) {
     const leftPrefix = /^\d+/u.exec(left)?.[0];
     const rightPrefix = /^\d+/u.exec(right)?.[0];
     if (leftPrefix && rightPrefix) {
         const difference = Number(BigInt(leftPrefix) - BigInt(rightPrefix));
-        return difference || ordinal(left.slice(leftPrefix.length), right.slice(rightPrefix.length)) || ordinal(left, right);
+        return difference || compareText(left.slice(leftPrefix.length), right.slice(rightPrefix.length)) || compareText(left, right);
     }
-    return ordinal(left, right);
+    return compareText(left, right);
 }
 
 function searchDirectories({ systemPaths, conventional = CONVENTIONAL_DIRECTORIES }) {

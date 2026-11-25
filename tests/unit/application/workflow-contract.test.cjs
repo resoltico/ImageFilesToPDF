@@ -107,3 +107,16 @@ test("elapsed measures processing and excludes time spent choosing settings", as
     assert.equal(result.elapsed, "1 second");
     assert.equal(Date.now(), 121000);
 });
+
+test("progress is told the units of work and the image count before the job runs", async () => {
+    const { app, caps } = fixture();
+    const started = [];
+    const report = createProgress([{ start: (units) => started.push(units), report: () => undefined, pause: () => undefined, close: () => undefined }]);
+    const { expect } = report;
+    const expected = [];
+    report.expect = (plan) => { expected.push(plan); expect(plan); };
+    await execute(app, { settings, timestamp: "", inputItems: ["/source.png"] }, { report, capabilities: caps });
+    // The last expectation is the job's: one image and the combined PDF.
+    assert.deepEqual(expected.at(-1), { units: 2, images: 1 });
+    assert.equal(started.at(-1), 2);
+});

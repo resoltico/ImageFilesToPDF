@@ -1,4 +1,5 @@
 "use strict";
+const { compareText } = require("../core/ordering.js");
 
 const { selectionRefusal } = require("../core/selection-policy.js");
 
@@ -47,7 +48,8 @@ async function resolve(tree, items, rejected) {
 
         if (path) {
             await remember(found, tree, path, rejected);
-        } else if (refusal) {
+        } else {
+            // A resolved item is a path or a refusal, never neither.
             rejected.push(refusal);
         }
     }
@@ -67,7 +69,7 @@ function isFolder(root) {
  * by now, so there is no third case.
  */
 function byPath(left, right) {
-    return left.path < right.path ? -1 : 1;
+    return compareText(left.path, right.path);
 }
 
 async function selectedItems(tree, items, rejected) {

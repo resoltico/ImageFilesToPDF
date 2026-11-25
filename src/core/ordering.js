@@ -16,6 +16,7 @@ function naturalParts(value) {
         .map((match) => ({ text: match[0], numeric: match.groups.digits !== undefined }));
 }
 
+/** Ordinal order of two strings (or numbers): -1, 0 or 1. */
 function compareText(left, right) {
     if (left < right) { return LEFT_FIRST; }
     if (left > right) { return RIGHT_FIRST; }
@@ -86,4 +87,4 @@ function sortImageRecords(records) {
     );
 }
 
-module.exports = { sortImageRecords };
+module.exports = { compareText, sortImageRecords };
