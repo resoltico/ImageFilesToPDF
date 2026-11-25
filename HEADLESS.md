@@ -1,7 +1,21 @@
 # Command line
 
-Download `Image-Files-to-PDF.cjs` and install Node.js 26.13.1 or later, libvips
-(`vips` and `vipsheader`), and stable pdfcpu 0.16.4 or later.
+Install Node.js 26.13.1 or later, libvips (`vips` and `vipsheader`), and stable
+pdfcpu 0.16.4 or later as described below, then install the
+`image-files-to-pdf` command with npm, which comes with Node.js:
+
+```sh
+npm install -g image-files-to-pdf
+```
+
+Update with `npm install -g image-files-to-pdf@latest` and remove with
+`npm uninstall -g image-files-to-pdf`. If npm reports a permission error for a
+global install, follow npm's guide to
+[resolving EACCES permissions errors](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally).
+
+Tested platforms are listed in [the platform matrix](QA.md#native-platform-matrix).
+Other platforms that Node.js supports are expected to work where libvips and
+pdfcpu are installed.
 
 ## Installing the tools
 
@@ -44,13 +58,13 @@ file first, then the source paths. An optional `--` ends option parsing, so
 put source names beginning with a dash after it. Use `-h` or `--help` for help.
 
 ```sh
-node ./Image-Files-to-PDF.cjs --help
-node ./Image-Files-to-PDF.cjs --version
-node ./Image-Files-to-PDF.cjs --settings 'page settings.json' -- 'my photo.jpg' '-album'
+image-files-to-pdf --help
+image-files-to-pdf --version
+image-files-to-pdf --settings 'page settings.json' -- 'my photo.jpg' '-album'
 ```
 
 ```powershell
-& node .\Image-Files-to-PDF.cjs --settings 'page settings.json' -- 'C:\Photos\my photo.jpg' '-album' > receipt.json
+& image-files-to-pdf --settings 'page settings.json' -- 'C:\Photos\my photo.jpg' '-album' > receipt.json
 $status = $LASTEXITCODE
 $receipt = Get-Content -Encoding utf8 -Raw -LiteralPath receipt.json | ConvertFrom-Json
 ```
