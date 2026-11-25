@@ -10,7 +10,7 @@ function backgroundVector(background) {
     return [red, green, blue].join(",");
 }
 
-function hasAlphaBand(bandCount, interpretation = "") {
+function hasAlphaBand(bandCount, interpretation) {
     const bands = Number(bandCount);
     return bands === GRAY_ALPHA_BANDS || (interpretation === "cmyk" ? bands > RGB_ALPHA_BANDS : bands >= RGB_ALPHA_BANDS);
 }

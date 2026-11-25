@@ -67,3 +67,7 @@ test("a PDF that reports no page count reads as none", () => {
     assert.equal(readPageCountFrom("pdfcpu: no such file\n"), 0);
     assert.equal(readPageCountFrom(""), 0);
 });
+
+test("a page count reads from Windows line endings too", () => {
+    assert.equal(readPageCountFrom("PDF version: 1.7\r\nPage count: 3\r\nPage size: A4\r\n"), 3);
+});

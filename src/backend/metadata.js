@@ -9,9 +9,11 @@ const LOADERS = {
 };
 const REQUIRED_FIELDS = ["width", "height", "bands", "vips-loader", "interpretation"];
 const OPTIONAL_FIELDS = ["orientation", "n-pages", "icc-profile-data"];
-const FIELD = /^(?<field>width|height|bands|vips-loader|n-pages|icc-profile-data|interpretation|orientation):[ \t]*(?<value>.*)$/u;
+// Lines are already split, so the value runs to the end of its line.
+const FIELD = /^(?<field>width|height|bands|vips-loader|n-pages|icc-profile-data|interpretation|orientation):[ \t]*(?<value>.*)/u;
 const PATH_SEPARATOR = ": ";
-const HEADER = /^(?<path>.+):[ \t]+\d+x\d+[ \t]/u;
+// `.+` starts at the line start whenever the line matches, so no anchor is needed.
+const HEADER = /(?<path>.+):[ \t]+\d+x\d+[ \t]/u;
 
 function normalized(text) { return String(text).replace(/\r\n?/gu, "\n"); }
 
@@ -54,15 +56,15 @@ function rawMetadata(fields) {
         icc: Object.hasOwn(fields, "icc-profile-data"), interpretation: interpretationFrom(fields.interpretation) };
 }
 
-/** Exact filename removal prevents embedded newlines in a filename becoming metadata. */
-function readMetadata(text, path = "") {
-    let body = normalized(text);
+/*
+ * Exact filename removal prevents embedded newlines in a filename becoming
+ * metadata: the header line loses the name, whose remainder ("WxH ...") is no
+ * field, and the filename field loses its whole value.
+ */
+function readMetadata(text, path) {
     const name = normalized(path);
-    if (name && body.startsWith(`${name}: `)) {
-        const end = body.indexOf("\n", name.length);
-        body = end < 0 ? "" : body.slice(end + 1);
-    }
-    if (name) { body = body.replace(`filename: ${name}\n`, ""); }
+    const header = normalized(text);
+    const body = (header.startsWith(`${name}: `) ? header.slice(name.length) : header).replace(`filename: ${name}\n`, "");
     const fields = {};
     for (const line of body.split("\n")) { addField(fields, line); }
     return { raw: rawMetadata(fields), optional: OPTIONAL_FIELDS.filter((field) => Object.hasOwn(fields, field)) };
@@ -71,7 +73,7 @@ function readMetadata(text, path = "") {
 /** Parse each header block once, in argv order. Ambiguity triggers per-file fallback. */
 function readMetadataBatch(text, paths) {
     const records = new Map(paths.map((path) => [path, {}]));
-    let current = "";
+    let current = null;
     let index = 0;
     for (const line of normalized(text).split("\n")) {
         const header = HEADER.exec(line);
@@ -79,7 +81,7 @@ function readMetadataBatch(text, paths) {
             current = header.groups.path;
             if (paths[index] !== current) { throw metadataError("metadataAmbiguousBlocks"); }
             index += 1;
-        } else if (current && line.startsWith(`${current}: `)) {
+        } else if (current !== null && line.startsWith(`${current}: `)) {
             addField(records.get(current), line.slice(current.length + PATH_SEPARATOR.length));
         }
     }

@@ -29,7 +29,8 @@ function buildPdfcpuInfoArgv(pdfcpuPath, outputPath) {
     return [pdfcpuPath, "info", "--conf", "disable", outputPath];
 }
 
-const PAGE_COUNT = /^\s*Page count:[ \t]*(?<value>[^\r\n]*)$/gmu;
+// The value stops before a line break of either kind, so Windows output reads too.
+const PAGE_COUNT = /^\s*Page count:[ \t]*(?<value>[^\r\n]*)/gmu;
 
 function readPageCountFrom(infoOutput) {
     const matches = [...String(infoOutput).matchAll(PAGE_COUNT)];

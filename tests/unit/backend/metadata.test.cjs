@@ -181,3 +181,26 @@ test("measured header diagnostics classify truncated fixtures on all native plat
     assert.equal(headerFailureCode("vipsheader: magickload: Magick: Resource limit exceeded for sample.TIFF."), "unexaminable");
     assert.equal(headerFailureCode("A file named not enough data.png could not be opened."), "unexaminable");
 });
+
+test("a filename that carries a newline and a field name never becomes metadata", () => {
+    const path = "/in/a\nwidth: 9";
+    const text = `${path}: 300x200 uchar, 3 bands, srgb, pngload\nwidth: 300\nheight: 200\nbands: 3\nvips-loader: pngload\nfilename: ${path}\ninterpretation: srgb\n`;
+    const { raw } = readMetadata(text, path);
+    assert.deepEqual([raw.width, raw.height, raw.loader], [300, 200, "pngload"]);
+    assert.deepEqual(readMetadata("width: 300\nheight: 200\nbands: 3\nvips-loader: pngload\n", "/elsewhere").raw.width, 300);
+    assert.equal(readMetadata("image-width: 9\nwidth: 300\n", "/x").raw.width, 300);
+});
+
+test("lines before the first header block belong to no image", () => {
+    const text = "null: width: 9\n/a.png: 3x2 uchar, 3 bands, srgb, pngload\n/a.png: width: 3\n/a.png: height: 2\n";
+    assert.deepEqual(readMetadataBatch(text, ["/a.png"]).map(({ raw }) => [raw.width, raw.height]), [[3, 2]]);
+});
+
+test("damage texts are matched exactly, at a line end or the end of the text", () => {
+    assert.equal(headerFailureCode("pngload: end of stream"), "damaged");
+    assert.equal(headerFailureCode("pngload: end of streams"), "unexaminable");
+    const warning = "(vipsheader:123): VIPS-WARNING **: 01:02:03.456: not enough data";
+    assert.equal(headerFailureCode(warning), "damaged");
+    assert.equal(headerFailureCode(`${warning}\nvipsheader: `), "damaged");
+    assert.equal(headerFailureCode(`${warning}s`), "unexaminable");
+});

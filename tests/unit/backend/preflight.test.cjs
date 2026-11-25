@@ -71,3 +71,18 @@ test("official pdfcpu version lines need no v prefix", () => {
     assert.equal(isPdfcpuUsable("version: 0.16.4\n commit: 0f5ac76d"), true);
     assert.equal(isPdfcpuUsable("version: 0.16.4-rc.1"), false);
 });
+
+test("the vipsheader probe image is a one-image PNG", () => {
+    const { VIPSHEADER_PROBE_IMAGE } = require("../../../src/backend/preflight.js");
+    const { countPng } = require("../../../src/core/png-count.js");
+    const { crc32 } = require("node:zlib");
+    const { Buffer } = require("node:buffer");
+    const bytes = Buffer.from([...VIPSHEADER_PROBE_IMAGE.matchAll(/\\0(?<byte>[0-7]{3})/gu)].map((match) => Number.parseInt(match.groups.byte, 8)));
+    assert.equal(countPng({ read: (position, size) => bytes.subarray(position, position + size), checksum: crc32 }, bytes.length), 1);
+});
+
+test("pdfcpu must be at least the minimum version, part by part", () => {
+    const output = (version) => `version: v${version}`;
+    for (const version of ["0.16.4", "0.16.10", "0.17.0", "1.0.0"]) { assert.equal(isPdfcpuUsable(output(version)), true, version); }
+    for (const version of ["0.16.3", "0.15.99", "0.9.9"]) { assert.equal(isPdfcpuUsable(output(version)), false, version); }
+});

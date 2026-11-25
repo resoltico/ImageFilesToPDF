@@ -50,10 +50,9 @@ function isPdfcpuUsable(probeOutput) {
     const actual = match.groups.version.split(".").map(Number);
     const minimum = MINIMUM_PDFCPU_VERSION.split(".").map(Number);
 
-    for (let index = 0; index < minimum.length; index += 1) {
-        if (actual[index] !== minimum[index]) {
-            return actual[index] > minimum[index];
-        }
+    for (const [index, part] of minimum.entries()) {
+        if (actual[index] > part) { return true; }
+        if (actual[index] < part) { return false; }
     }
 
     return true;

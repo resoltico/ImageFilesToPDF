@@ -17,7 +17,8 @@ function headerGroups(tool, paths, fits) {
             if (group.length > 0) { groups.push(group); group = []; }
             groups.push([path]);
         } else {
-            if (group.length > 0 && !within([...group, path])) { groups.push(group); group = []; }
+            // Each path fits alone (checked above), so an empty group never closes.
+            if (!within([...group, path])) { groups.push(group); group = []; }
             group.push(path);
         }
     }
