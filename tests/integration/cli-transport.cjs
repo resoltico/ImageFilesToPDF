@@ -46,7 +46,9 @@ function withBrokenPipe(name, use) {
 }
 
 const closed = fixture("closed-stdout");
-const closedResult = spawnSync("/bin/sh", ["-c", 'exec 1>&-; exec "$@"', "closed-stdout", process.execPath, ...closed.args],
+// Close descriptor 1, then replace this process with Node; no shell parses any path.
+const CLOSED_STDOUT_EXEC = "import os, sys\nos.close(1)\nos.execv(sys.argv[1], sys.argv[1:])";
+const closedResult = spawnSync("python3", ["-I", "-c", CLOSED_STDOUT_EXEC, process.execPath, ...closed.args],
     { encoding: "utf8", timeout: 30000, killSignal: "SIGKILL" });
 // Node 26 opens a writable standard descriptor when the caller passes it closed.
 verified(closedResult, closed);
