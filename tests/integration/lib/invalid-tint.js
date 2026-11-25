@@ -80,7 +80,6 @@ function checkInvalidTint(control, key, path) {
     requireNative(plain.target.isEqual(control) || plain.target.isDescendantOf(control), `${key}: sample does not hit the real native control`);
     requireNative(marked.stats.pixels.length === plain.stats.pixels.length, `${key}: captures do not cover the same rectangle`);
     nativeContent(marked.stats, plain.stats, key);
-    // eslint-disable-next-line no-console -- evidence from actual composed native controls
     console.log(JSON.stringify({ tint: key, marked: marked.stats.point, plain: plain.stats.point, markedRegion: marked.stats.region, plainRegion: plain.stats.region, frame: rect, nativeContentRetained: true, mouseTargetRetained: true }));
     requireNative(marked.stats.point - plain.stats.point > MINIMUM_TINT_DIFFERENCE, `${key}: invalid tint is hidden by the native control (${marked.stats.point}, ${plain.stats.point})`);
     requireNative(marked.stats.region - plain.stats.region > MINIMUM_TINT_DIFFERENCE, `${key}: invalid tint is not visible across the control region`);

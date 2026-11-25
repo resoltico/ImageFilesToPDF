@@ -41,7 +41,6 @@ test("a hidden image selected by hand is converted, folder or no folder", async 
 
     for (const selection of bothWays("/photos", "/photos/.evidence.jpg")) {
         assert.deepEqual(
-            // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
             (await collect(selection, tree)).images,
             ["/photos/.evidence.jpg", "/photos/a.jpg"],
             selection.join(" then ")
@@ -56,7 +55,6 @@ test("a file that cannot be converted still says so when its folder is selected 
     const tree = treeOf({ "/photos": ["a.jpg", "readme.txt"] });
 
     for (const selection of bothWays("/photos", "/photos/readme.txt")) {
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         const { images, rejected } = (await collect(selection, tree));
 
         assert.deepEqual(images, ["/photos/a.jpg"]);
@@ -75,7 +73,6 @@ test("a hidden folder selected by hand is walked", async () => {
 
     for (const selection of bothWays("/photos", "/photos/.old")) {
         assert.deepEqual(
-            // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
             (await collect(selection, tree, ["/photos", "/photos/.old"])).images,
             ["/photos/.old/b.jpg"],
             selection.join(" then ")
@@ -89,7 +86,6 @@ test("an image the walk already took is not converted twice", async () => {
     const tree = treeOf({ "/photos": ["a.jpg", "b.jpg"] });
 
     for (const selection of bothWays("/photos", "/photos/a.jpg")) {
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         const { images, rejected } = (await collect(selection, tree));
 
         assert.deepEqual(images, ["/photos/a.jpg", "/photos/b.jpg"]);

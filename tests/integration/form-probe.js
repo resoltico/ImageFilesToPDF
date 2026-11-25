@@ -59,7 +59,7 @@ function checkDetailWidths(view) {
     if (view.isKindOfClass($.NSScrollView)) {
         // Fixed scrollers appear during applet modal layout and reduce the clip width.
         view.scrollerStyle = 0;
-        // eslint-disable-next-line no-unused-expressions
+        // eslint-disable-next-line no-unused-expressions -- Native zero-argument methods are getter accesses in JXA.
         view.tile;
         const document = view.documentView;
         requireNative(Math.abs(document.frame.size.width - view.contentSize.width) < 1, "Details do not track the clip width; leading characters can be clipped.");
@@ -73,8 +73,7 @@ function checkDetailWidths(view) {
 
 function writePreview(alert, path) {
     const content = alert.window.contentView;
-    // Native zero-argument methods are getter accesses in JXA.
-    // eslint-disable-next-line no-unused-expressions
+    // eslint-disable-next-line no-unused-expressions -- Native zero-argument methods are getter accesses in JXA.
     content.layoutSubtreeIfNeeded;
     checkDetailWidths(content);
     const bitmap = content.bitmapImageRepForCachingDisplayInRect(content.bounds);
@@ -97,7 +96,6 @@ function snapshot(folder, scenario, appearance) {
     } catch (error) {
         try { writePreview(alert, path); }
         catch (previewError) {
-            // eslint-disable-next-line no-console -- preserve the original failure
             console.log(JSON.stringify({ tintPreviewFailure: String(previewError) }));
         }
         throw error;
@@ -105,7 +103,6 @@ function snapshot(folder, scenario, appearance) {
         // eslint-disable-next-line no-unused-expressions -- native zero-argument method
         alert.window.close;
     }
-    // eslint-disable-next-line no-console -- diagnostic output from native gate
     console.log(JSON.stringify({ scenario: scenario.name, appearance, height, path }));
 }
 
@@ -188,7 +185,6 @@ function checkModalScroll(appearance, initialize) {
         }
         if (state.failure) { throw state.failure.error; }
         requireNative(state.phase === 2, "The actual modal lifecycle was not exercised.");
-        // eslint-disable-next-line no-console -- native gate evidence
         console.log(JSON.stringify({ modalInitialization: initialize ? "visible-update" : "pre-modal-only", appearance, initialScroller: state.initial, laterUserScrollRetained: true }));
     } finally {
         // eslint-disable-next-line no-unused-expressions -- native zero-argument methods
@@ -202,7 +198,7 @@ function checkModalScroll(appearance, initialize) {
 
 function run(input) {
     requireNative(Boolean(appkitBridge(ObjC, $)), "Native UI frameworks are unavailable.");
-    // eslint-disable-next-line no-unused-expressions
+    // eslint-disable-next-line no-unused-expressions -- Native zero-argument methods are getter accesses in JXA.
     $.NSApplication.sharedApplication;
     const scenarios = scenariosFor(String(input[1]));
     for (const appearance of ["NSAppearanceNameAqua", "NSAppearanceNameDarkAqua"]) {

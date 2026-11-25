@@ -47,7 +47,6 @@ for (const [label, makeCause, code] of [
                 try { return (await publishPdf(job, staged, target)); }
                 catch (error) { failure = error;throw error; }
             } } });
-            // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
             const records = (await executeDocuments(sample.ports, sample.plans));
             assert.equal(records[0].state, "recovered");assert.equal(records[0].recovery, staged);assert.equal(records[0].fatal, true);
             assert.equal(records[0].issues[0].code, code);assert.equal(records[1].state, "not-started");

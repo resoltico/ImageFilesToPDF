@@ -30,7 +30,6 @@ async function settings(context, ask) {
     await review(context, ask);
     let event = { type: "settings-needed", context };
     for (;;) {
-        // eslint-disable-next-line no-await-in-loop -- The client corrects its answer before each resubmission.
         const answer = await ask(event);
         if (answer.type !== "settings") { throw new Error("Page settings are required."); }
         const result = validateSettings(answer.values);

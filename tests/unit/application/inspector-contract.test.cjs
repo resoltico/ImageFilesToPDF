@@ -13,7 +13,6 @@ test("captured inspection preserves original identity and authoritative oriented
     for (const [loader, format] of [["jpegload", "JPEG"], ["pngload", "PNG"], ["tiffload", "TIFF"], ["heifload", "HEIF"], ["webpload", "WebP"], ["pngload_buffer", "PNG"]]) {
         const host = createConversionFixture();
         Object.assign(host, { loader, width: 900, height: 600, orientation: 6 });
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         const result = (await inspectCaptured(makeJob(host), { path: "/owned", identity: "original", version: "observed", prefix: [0xff] }, "/user.png"));
         assert.equal(result.format, format);
         assert.deepEqual([result.width, result.height, result.identity, result.version], [600, 900, "original", "observed"]);
@@ -25,13 +24,11 @@ test("captured inspection preserves original identity and authoritative oriented
 test("unknown loaders and damaged metadata produce domain messages with the user's path", async () => {
     for (const loader of ["svgload", "pdfload", "rawload", "unknownload"]) {
         const host = createConversionFixture(); host.loader = loader;
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         await assert.rejects(() => inspectCaptured(makeJob(host), { path: "/owned" }, "/user.png"), (error) =>
             error.issues[0].source === "/user.png" && error.issues[0].code === "unsupported-content" && error.issues[0].diagnostic.loader === loader);
     }
     for (const facts of [{ width: 0 }, { height: 0 }, { bands: 0 }, { orientation: 0 }, { orientation: 9 }]) {
         const host = createConversionFixture(); Object.assign(host, facts);
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         await assert.rejects(() => inspectCaptured(makeJob(host), { path: "/owned" }, "/user.png"), (error) => error.issues[0].code === "damaged");
     }
 });
@@ -75,7 +72,6 @@ test("ordinary candidates are inspected in bounded batches before producing admi
 test("exact final page count is independently required before strict validation", async () => {
     for (const count of ["not found", "Page count: 2"]) {
         const host = createConversionFixture({ files: ["/stage.pdf"], faults: { run: ([, operation]) => operation === "info" ? count : undefined } });
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         await assert.rejects(() => validatePdf(makeJob(host), "/stage.pdf", 1), /page count could not be verified|2 pages where 1/u);
         assert.ok(!host.commands.some((command) => command.includes("validate")));
     }

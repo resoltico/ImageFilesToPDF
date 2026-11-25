@@ -80,8 +80,7 @@ const DECODER = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 function settingsBytes(path) {
     try {
         if (!fs.statSync(path).isFile()) { throw settingsFileError("settingsFileNotRegular", { path }); }
-        // O_NONBLOCK prevents a replaced FIFO from blocking before fstat.
-        // eslint-disable-next-line no-bitwise
+        // eslint-disable-next-line no-bitwise -- O_NONBLOCK prevents a replaced FIFO from blocking before fstat.
         const flags = fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK ?? 0);
         const file = fs.openSync(path, flags);
         try {

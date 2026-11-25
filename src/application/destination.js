@@ -47,7 +47,6 @@ async function claimAvailable(context, destination, created, checkpoint) {
     for (let attempt = 1; attempt < MAXIMUM_SUFFIX; attempt += 1) {
         checkpoint();
         context.paths.final = collisionPath(destination, attempt);
-        // eslint-disable-next-line no-await-in-loop -- Only a confirmed collision permits trying the next name.
         const outcome = await claim(context);
         if (outcome.state === "created") {
             if (outcome.claimed) { Object.assign(context, { claimed: outcome.claimed }); }

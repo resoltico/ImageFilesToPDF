@@ -12,7 +12,6 @@ test("a claimed PDF with an unverifiable name preserves the validated original w
         let claims = 0;
         job.publication.link = (from, to) => { claims += 1; return copied && claims === 1 ? { state: "cross-device" } : link(from, to); };
         job.publication.actualPath = () => { throw new OperationError("Canonical name unavailable."); };
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         await assert.rejects(() => publishPdf(job, staged, target), (error) => {
             assert.equal(error.recovery, staged);
             assert.equal(error.issues[0].code, "publication");
@@ -37,7 +36,6 @@ test("unverifiable Downloads names do not delete or duplicate their validated or
             return copied && from === staged ? { state: "cross-device" } : link(from, to);
         };
         job.publication.actualPath = () => { throw new OperationError("Canonical recovery name unavailable."); };
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         await assert.rejects(() => publishPdf(job, staged, target), (error) => error.recovery === staged);
         assert.ok(app.files.has(staged)); assert.equal(job.artifacts.get(staged).state, "validated");
         const claims = [...app.files.keys()].filter((path) => path === "/Downloads/result.pdf");
@@ -72,7 +70,6 @@ test("changed, missing or uninspectable originals cannot enter generic recovery 
             }
             return facts(path);
         };
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         await assert.rejects(() => publishPdf(job, staged, target), (error) => {
             assert.equal(error.recovery, null); assert.equal(error.issues[0].code, "fault");
             assert.deepEqual(error.issues[0].diagnostic.observed, observation ?? { error: "Original inspection denied." });
@@ -208,7 +205,6 @@ test("name-readback programming faults retain the original exactly once and stay
             };
             job.publication.actualPath = () => { lookups += 1; throw cause; };
             const sample = documentFixture(2, { mode: "separate", ports: { publish: async () => (await publishPdf(job, staged, target)) } });
-            // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
             const records = (await executeDocuments(sample.ports, sample.plans));
             assert.equal(records[0].state, "recovered"); assert.equal(records[0].recovery, staged); assert.equal(records[0].fatal, true);
             assert.equal(records[0].issues[0].code, "fault"); assert.equal(records[1].state, "not-started");

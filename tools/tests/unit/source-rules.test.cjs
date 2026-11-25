@@ -61,7 +61,7 @@ test("a literal control character is rejected, with its position", async () => {
 test("tabs and newlines are not treated as control characters", async () => {
     const { checkContent } = await loadRules();
 
-    assert.doesNotThrow(() => checkContent("a.js", "if (x) {\n\treturn 1;\n}\n"));
+    assert.doesNotThrow(() => checkContent("a.js", "function f(x) {\n\tif (x) {\n\t\treturn 1;\n\t}\n}\n"));
 });
 
 test("cohesive sources have no physical line cap", async () => {
@@ -108,4 +108,24 @@ test("the structural rules are applied to what was read", async () => {
         ),
         /names \/bin\/cp directly/u
     );
+});
+
+test("an ESLint directive must name its rules and give a reason", async () => {
+    const { directiveProblems } = await import("../../../tools/lint/source-rules.mjs");
+    const of = (...texts) => directiveProblems(texts.map((text) => ({ text })));
+    assert.deepEqual(of(" eslint-disable-next-line no-bitwise -- Flags are bitmasks."), []);
+    assert.deepEqual(of(" eslint-disable no-magic-numbers, no-bitwise -- Format constants."), []);
+    assert.deepEqual(of(" eslint-enable no-magic-numbers"), []);
+    assert.deepEqual(of(" ordinary comment about eslint-disable directives"), []);
+    assert.deepEqual(of(" eslint-disable-next-line no-bitwise"), ['eslint-disable-next-line no-bitwise gives no "-- reason"']);
+    assert.deepEqual(of(" eslint-disable-line no-console --"), ['eslint-disable-line no-console -- gives no "-- reason"']);
+    assert.deepEqual(of(" eslint-disable -- Everything, because."), ["eslint-disable names no rule"]);
+    assert.deepEqual(of(" eslint-disable"), ["eslint-disable names no rule"]);
+});
+
+test("a source file with a reasonless directive is refused", async () => {
+    const { checkContent } = await import("../../../tools/lint/source-rules.mjs");
+    assert.throws(() => checkContent("src/x.js", "// eslint-disable-next-line no-bitwise\nconst a = 1 | 2;\n"), /src\/x\.js: .*gives no "-- reason"/u);
+    assert.throws(() => checkContent("tools/x.mjs", "import a from \"a\";\n/* eslint-disable */\n"), /tools\/x\.mjs: eslint-disable names no rule/u);
+    assert.doesNotThrow(() => checkContent("README.md", "<!-- eslint-disable -->\n"));
 });

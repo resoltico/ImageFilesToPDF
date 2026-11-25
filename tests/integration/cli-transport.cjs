@@ -67,5 +67,4 @@ verified(proseResult, prose);
 assert.ok(proseResult.status !== 0 || proseResult.signal !== null, "the first transport refusal remains nonzero");
 const receipt = parseReceipt(proseResult.stdout);
 assert.equal(receipt.state, "complete"); assert.equal(receipt.documents[0].output, prose.output);
-// eslint-disable-next-line no-console
 console.log("macOS CLI transport passed: closed-descriptor normalization, prebroken output pipe, prebroken report pipe and published/source integrity");

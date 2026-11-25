@@ -88,12 +88,10 @@ async function walk(tree, folder, taken, outcome) {
     }
 
     for (const path of childrenOf(tree, folder, names)) {
-        // eslint-disable-next-line no-await-in-loop -- Walk the shared identity ledger in one order.
         const entry = await tree.inspect(path);
 
         if (!entry.hidden) {
             if (entry.kind === "directory") {
-                // eslint-disable-next-line no-await-in-loop -- Descendants settle before the next sibling.
                 await walk(tree, path, taken, outcome);
             }
             else { consider(path, entry, taken, outcome); }

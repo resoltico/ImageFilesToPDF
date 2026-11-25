@@ -110,7 +110,6 @@ async function collectImageFiles(app, inputItems, tree = null) {
     const roots = await selectedItems(tree, inputItems, outcome.rejected);
 
     for (const root of roots) {
-        // eslint-disable-next-line no-await-in-loop -- Explicit answers depend on the folder admission ledger.
         await admit(app, tree, root, outcome);
     }
 

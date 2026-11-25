@@ -29,7 +29,6 @@ test("captured facts that differ from admission refuse before rendering", async 
     for (const patch of [{ width: 601 }, { orientation: 6 }, { loader: "jpegload" }]) {
         const app = createConversionFixture({ files: ["/source.png"] });
         Object.assign(app, patch);
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         await assert.rejects(() => preparePage(makeJob(app), imageOf("/source.png"), 0), (error) => {
             assert.equal(error.issues[0].source, "/source.png");
             assert.match(error.issues[0].message, /changed after selection/u);

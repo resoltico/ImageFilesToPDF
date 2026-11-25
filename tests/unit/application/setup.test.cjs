@@ -34,7 +34,6 @@ test("setup probes every required tool with the real input and flags before pass
 test("missing setup tools are reported together with the selected platform hint", async () => {
     for (const [platform, section] of [["darwin", "macos"], ["linux", "linux"], ["win32", "windows"]]) {
         const { argv, opened, result } = fixture({ platform, locate: () => ({ file: null }) });
-        // eslint-disable-next-line no-await-in-loop -- Inspect each platform result independently.
         await assert.rejects(() => checkRequiredTools(result), (error) => {
             const outcome = failedRun(error);
             assert.equal(outcome.state, "setup-failed");
@@ -93,7 +92,6 @@ test("Stop is observed after a native setup probe settles", async () => {
 test("a platform without its own installation section points to the overview", async () => {
     for (const [platform, guide] of [["freebsd", "#installing-the-tools"], ["linux", "#linux"]]) {
         const { result } = fixture({ platform, locate: () => ({ file: null }) });
-        // eslint-disable-next-line no-await-in-loop -- Each platform is an independent setup run.
         const issues = await checkRequiredTools(result).then(() => assert.fail("setup must fail"), (error) => error.issues);
         assert.deepEqual(issues.map(({ code }) => code), ["tool-missing", "tool-missing", "tool-missing", "install-hint"]);
         assert.deepEqual(issues[3].params, { platform, packages: ["libvips", "pdfcpu"] });
@@ -112,7 +110,6 @@ test("setup requires status, native error and feature evidence independently", a
         const { result } = fixture({
             run: ([program]) => program.endsWith(`/${tool}`) ? failed : { status: 0, stdout: program.endsWith("pdfcpu") ? "version: v0.16.4" : "1" }
         });
-        // eslint-disable-next-line no-await-in-loop -- Inspect each fault before moving to the next.
         await assert.rejects(() => checkRequiredTools(result), ({ issues }) =>
             issues.length === 2 && issues[0].code === "tool-unusable" && issues[0].params.name === tool &&
             issues[1].code === "install-hint" && issues[1].params.packages[0] === (tool === "pdfcpu" ? "pdfcpu" : "libvips"));

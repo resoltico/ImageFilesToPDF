@@ -78,10 +78,8 @@ async function prepareGroup(ports, context, queue, group) {
             Object.assign(context, { stage: "preparation", source: source.path });
             if (outcome.status === "rejected") { throw outcome.reason; }
             ports.beginning(source, index, context.documentIndex);
-            // eslint-disable-next-line no-await-in-loop -- Only one encoded page can be outside the bounded queue.
             const page = await ports.prepare(source, index, slots[offset], outcome.value);
             record.pages += 1;
-            // eslint-disable-next-line no-await-in-loop -- Flush an oversized page before materializing another.
             await queue.add(page);
             ports.prepared();
         }
@@ -97,7 +95,6 @@ async function prepareGroup(ports, context, queue, group) {
 async function prepareDocument(ports, plan, context, queue) {
     for (let offset = 0; offset < plan.sources.length; offset += ports.parallelism) {
         const group = plan.sources.slice(offset, offset + ports.parallelism).map((source, index) => [offset + index, source]);
-        // eslint-disable-next-line no-await-in-loop -- A group of source work settles before the next starts.
         await prepareGroup(ports, context, queue, group);
     }
 }
@@ -199,7 +196,6 @@ async function executeDocuments(ports, plans, records = []) {
     let stopped = false;
     for (const [index, plan] of plans.entries()) {
         const record = stopped ? { state: "not-started", sources: plan.sources.map((source) => source.path), pages: 0, issues: [] }
-            // eslint-disable-next-line no-await-in-loop -- Publication and retention decisions remain in plan order.
             : await executeDocument(ports, plan, index);
         records.push(record);
         stopped ||= record.state === "canceled" || record.fatal || record.issues.some((issue) => issue.code === ISSUE.canceled);

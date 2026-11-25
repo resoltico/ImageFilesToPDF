@@ -112,7 +112,6 @@ test("an invocation without files falls back to Finder's selection", async () =>
         for (const input of [[[], PARAMETERS], {}, [[], { source: "Finder", ignoresInput: false, "temporary items path": "/tmp/shortcuts-items" }]]) {
             const { inputItems } = collectInvocation(app, input);
             assert.deepEqual(inputItems.map(String), ["/finder/chosen.png"], "the record is dropped before Finder fallback");
-            // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
             assert.deepEqual((await collectImageFiles(app, inputItems)).images.map((record) => record.path), ["/finder/chosen.png"]);
         }
     } finally {

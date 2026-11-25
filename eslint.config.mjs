@@ -15,7 +15,7 @@ import {
     commonjsGlobals,
     jxaGlobals
 } from "./tools/eslint/globals.mjs";
-import { deliberateExceptions, tunedRules } from "./tools/eslint/rules.mjs";
+import { areaExceptions, deliberateExceptions, tunedRules } from "./tools/eslint/rules.mjs";
 
 /*
  * src/ runs in JavaScriptCore under osascript, not in Node. Its syntax is
@@ -40,7 +40,11 @@ export default [
 
     js.configs.all,
 
-    { rules: { ...deliberateExceptions, ...tunedRules } },
+    {
+        // A directive that suppresses nothing is a stale exception.
+        linterOptions: { reportUnusedDisableDirectives: "error", reportUnusedInlineConfigs: "error" },
+        rules: { ...deliberateExceptions, ...tunedRules }
+    },
 
     {
         // Portable planning core: CommonJS for Node, isolated by esbuild for JXA.
@@ -77,13 +81,6 @@ export default [
             ecmaVersion: "latest",
             sourceType: "module",
             globals: nodeGlobals
-        },
-        rules: {
-            // The gate reports its progress on stdout.
-            "no-console": "off",
-            // Checks run in sequence on purpose: the first failure should stop
-            // the gate rather than racing every file at once.
-            "no-await-in-loop": "off"
         }
     },
 
@@ -93,12 +90,8 @@ export default [
             ecmaVersion: "latest",
             sourceType: "commonjs",
             globals: { ...commonjsGlobals, ...jxaGlobals, globalThis: "writable" }
-        },
-        rules: {
-            // Test fixtures are literal on purpose: naming 2480 as a constant
-            // derived from the same source as the code under test would make
-            // the assertion tautological.
-            "no-magic-numbers": "off"
         }
-    }
+    },
+
+    ...areaExceptions
 ];

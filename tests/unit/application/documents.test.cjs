@@ -119,7 +119,6 @@ test("source mappings, ordered page arguments and semantic failure stages are re
     assert.deepEqual(sample.events.find(([kind])=>kind==="import")[1],["/work/0.jpg","/work/1.jpg","/work/2.jpg"]);
     for(const stage of ["validate","publish"]) {
         const failed=fixture(1,{ports:{[stage]:()=>{throw new OperationError("refused");}}});
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         const [record]=(await executeDocuments(failed.ports,failed.plans));
         assert.equal(record.issues[0].stage,stage==="validate"?"validation":"publication");
     }
@@ -129,7 +128,6 @@ test("fault mixtures and recovered cancellation stop subsequent work without los
     for(const code of ["fault","canceled"]) {
         const error=new Error("failure");error.issues=[{code:"operation"},{code}];
         const sample=fixture(2,{mode:"separate",ports:{publish:()=>{throw error;}}});
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         const records=(await executeDocuments(sample.ports,sample.plans));
         assert.equal(records[0].state,"recovered");
         assert.equal(Boolean(records[0].fatal),code==="fault");
@@ -201,7 +199,6 @@ test("explicitly unavailable recovery never invents the registered artifact as a
     for (const code of ["fault", "publication"]) {
         const error = new IssueError("Original no longer verified.", { recovery: null, issues: [{ code, stage: "publication", message: "Original no longer verified." }] });
         const sample = fixture(2, { mode: "separate", ports: { publish: () => { throw error; } } });
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         const records = (await executeDocuments(sample.ports, sample.plans));
         assert.equal(records[0].state, "failed"); assert.equal(records[0].fatal, true);
         assert.equal(Object.hasOwn(records[0], "recovery"), false);
@@ -259,7 +256,6 @@ test("a capture close failure prevents publication and preserves the primary pre
                 close() { if (index === 0) { throw new OperationError("Close failed."); } }
             })
         } });
-        // eslint-disable-next-line no-await-in-loop -- Each source fault uses independent ownership.
         const [record] = await executeDocuments(sample.ports, sample.plans);
         assert.equal(record.state, "failed");
         assert.equal(record.fatal, true);

@@ -38,9 +38,7 @@ async function checkRequiredTools(ports) {
     const issues = [];
     for (const name of TOOL_NAMES) {
         ports.checkpoint();
-        // eslint-disable-next-line no-await-in-loop -- Capability probes run one at a time before any source is opened.
         const found = await ports.locate(name);
-        // eslint-disable-next-line no-await-in-loop -- Preserve probe and report order.
         const issue = await checkedTool(ports, name, found);
         if (issue) { issues.push(issue); }
         else { tools[name] = found.file; }

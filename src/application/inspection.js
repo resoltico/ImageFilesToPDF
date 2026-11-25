@@ -14,7 +14,6 @@ async function fileCandidates(ports, images, rejected) {
     for (const [index, source] of images.entries()) {
         if (index % ACCESS_CHECK_INTERVAL === 0) { ports.accessed(index, images.length); }
         try {
-            // eslint-disable-next-line no-await-in-loop -- Observe cancellation between independent source facts.
             const file = await ports.fileFacts(source);
             const issue = sourceFileIssue(file);
             if (issue) { rejected.push(sourceRefusal(source.path, issue)); }
@@ -34,7 +33,6 @@ async function inspectBatch(ports, batch, completed) {
         const results = [];
         for (const [index, entry] of batch.entries()) {
             ports.checked(completed + index);
-            // eslint-disable-next-line no-await-in-loop -- Observe Stop before inspecting each item.
             results.push(await ports.inspectOne(entry));
         }
         return results;
@@ -59,7 +57,6 @@ async function inspectSelection(ports, selection) {
     let completed = selection.images.length - candidates.length;
     ports.checked(completed);
     for (const batch of ports.batches(candidates)) {
-        // eslint-disable-next-line no-await-in-loop -- Complete and account for each batch in order.
         const facts = await inspectBatch(ports, batch, completed);
         if (facts.length !== batch.length) { throw new Error(message("inspectionIncomplete")); }
         batch.forEach((entry, index) => include(images, entry, facts[index], rejected));

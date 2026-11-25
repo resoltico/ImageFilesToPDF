@@ -1,8 +1,11 @@
 /*
- * Adjustments to `js.configs.all`.
+ * Adjustments to `js.configs.all`: the one register of lint exceptions.
  *
- * Every entry states why it does not apply here. Nothing is relaxed in bulk,
- * and the reconfigured rules stay errors rather than being switched off.
+ * Every entry states why it does not apply where it is switched off. There are
+ * three kinds and no others: rules off everywhere, rules off in a named area
+ * of the tree, and inline directives, which must name their rules and give a
+ * `-- reason` (tools/lint/source-rules.mjs) and fail when unused
+ * (eslint.config.mjs). Tuned rules stay errors.
  */
 
 const MAXIMUM_PARAMETERS = 4;
@@ -31,8 +34,31 @@ export const deliberateExceptions = {
     "capitalized-comments": "off",
     // `undefined` is compared against directly when distinguishing an absent
     // array element from a present falsy one.
-    "no-undefined": "off"
+    "no-undefined": "off",
+    // Sequential awaits are the design, not an accident: conversion steps,
+    // probes and publication run in order with a Stop checkpoint between
+    // them, and gates stop at the first failure. Parallel work is written
+    // explicitly with Promise.all and a bound.
+    "no-await-in-loop": "off"
 };
+
+/*
+ * Rules off in one area of the tree only.
+ */
+export const areaExceptions = [
+    {
+        // Gates and native suites are programs whose output is their report.
+        files: ["tools/**/*.mjs", "tests/integration/**/*.cjs", "tests/integration/**/*.js"],
+        rules: { "no-console": "off" }
+    },
+    {
+        // Test fixtures are literal on purpose: naming 2480 as a constant
+        // derived from the same source as the code under test would make the
+        // assertion tautological.
+        files: ["tests/**/*.cjs", "tests/**/*.js", "tools/tests/**/*.cjs"],
+        rules: { "no-magic-numbers": "off" }
+    }
+];
 
 /*
  * Rules kept as errors but tuned to this codebase.

@@ -314,7 +314,7 @@ function readControls(bridge, spec, controls) {
 
         if (row.kind !== "choice") {
 
-            // eslint-disable-next-line no-unused-expressions
+            // eslint-disable-next-line no-unused-expressions -- Native zero-argument methods are getter accesses in JXA.
             control.validateEditing;
         }
 

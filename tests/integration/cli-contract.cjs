@@ -134,7 +134,6 @@ async function registeredWorkspace(existing) {
         const workspace = workspaceOf(activeChild.pid, existing);
         if (workspace) { return workspace; }
         // Wait for this child's ownership registration before delivering any signal.
-        // eslint-disable-next-line no-await-in-loop
         await new Promise((resolve) => { setTimeout(resolve, 10); });
     }
     return assert.fail("actual child registered no workspace");
@@ -169,7 +168,6 @@ async function signals() {
     for (let index = 0; index < 40; index += 1) { fs.copyFileSync(at("photo.jpg"), path.join(input, `${index}.jpg`)); }
     for (const delivered of [["SIGINT"], ["SIGTERM"], ["SIGINT", "SIGTERM", "SIGINT"]]) {
         // Each owned child exercises the production artifact and normal receipt/exit transport.
-        // eslint-disable-next-line no-await-in-loop
         await signalRun(delivered, input);
     }
 }
@@ -295,10 +293,8 @@ async function run() {
     assert.equal(special.documents[0].state, "saved");
     await signals();
     assert.deepEqual(fs.readFileSync(at("photo.jpg")),original,"source bytes untouched");
-    // eslint-disable-next-line no-console
     console.log("macOS CLI integration passed: grammar/statuses, native reader, refusals, naming, embedding, placement and workspace ownership");
 }
-// eslint-disable-next-line no-console
 run().catch((error)=>{console.error(error);process.exitCode=1;}).finally(async()=>{
     if(activeChild&&activeChild.exitCode===null&&activeChild.signalCode===null) {
         const ended=childEnded(activeChild);activeChild.kill("SIGKILL");await ended;

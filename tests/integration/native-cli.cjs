@@ -83,7 +83,6 @@ async function verifyModes(folder, photo) {
             fs.mkdirSync(path.join(dir, base));
             const args = ["--settings", pathToFileURL(settingsFile).href, "--", path.basename(first), path.basename(second)];
             // Both exact artifacts race the same occupied name and the same first suffix.
-            // eslint-disable-next-line no-await-in-loop
             const pair = await Promise.all([cli(args, dir), cli(args, dir)]);
             const docs = pair.flatMap((stdout) => parseReceipt(stdout).documents);
             assert.equal(docs.length, mode === "combined" ? 2 : 4);
@@ -191,7 +190,6 @@ async function verifyExtensionCollisions(folder, photo) {
     const expected = [[same, ["inner.pdf", "inner 2.pdf"]], [mixed, ["a-png.pdf", "a-jpg.pdf", "a-png 2.pdf"]]];
     for (const [parent, names] of expected) {
         // Keep the conversions independent and check output paths in plan order.
-        // eslint-disable-next-line no-await-in-loop
         const reply = parseReceipt(await cli(["--settings", separate, "--", parent], folder));
         assert.deepEqual(reply.documents.map((document) => path.basename(document.output)), names);
         for (const document of reply.documents) { verifyPdf(document.output, 1); }
@@ -274,7 +272,6 @@ async function verifySecondVolume(folder, photo, secondVolume) {
         const intended = path.join(target.path, base);
         if (process.env.IFTP_CARD_VOLUME) { fs.writeFileSync(intended, "occupied", { flag: "wx" }); }
         // Sequentially exercise both modes against the same physical volume.
-        // eslint-disable-next-line no-await-in-loop
         const result = parseReceipt(await cli(["--settings", config(folder, mode), "--", source], folder));
         assert.equal(result.documents[0].state, "saved");
         verifyPdf(result.documents[0].output, 1);

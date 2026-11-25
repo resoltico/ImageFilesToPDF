@@ -22,11 +22,12 @@ export function parseScript(source, ecmaVersion, sourceType = "script") {
     return acorn.parse(source, { ...parseOptions(ecmaVersion), sourceType });
 }
 
-export function commentsIn(source, ecmaVersion) {
+export function commentsIn(source, ecmaVersion, sourceType = "script") {
     const comments = [];
 
     acorn.parse(source, {
         ...parseOptions(ecmaVersion),
+        sourceType,
         onComment: (block, text, start, end) => comments.push({ text, start, end })
     });
 

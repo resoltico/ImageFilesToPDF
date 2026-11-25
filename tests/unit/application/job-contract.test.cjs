@@ -116,9 +116,7 @@ test("name-planning faults release the owned workspace before any PDF bytes",asy
 test("actual PDF import, assembly, validation and publication clear image detail and new images restore their name", async () => {
     const phases = ["Creating PDF", "Assembling PDF", "Validating PDF", "Saving PDF"];
     for (const mode of ["combined", "separate"]) {
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         const { job, events } = (await jobFixture(mode));
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         assert.equal((await runJob(job, [imageOf("/a/1.png"), imageOf("/a/2.png")])).state, "complete");
         const documents = events.filter((event) => phases.includes(event[1]));
         assert.deepEqual(new Set(documents.map((event) => event[1])), new Set(phases));

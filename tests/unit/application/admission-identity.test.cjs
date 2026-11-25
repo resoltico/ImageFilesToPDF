@@ -41,7 +41,6 @@ test("two spellings of one file are one photograph", async () => {
         ["/Trip/a.png", "/Trip"],
         ["/Trip/A.png", "/Trip/a.png"]
     ]) {
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         const { images, rejected } = (await collectImageFiles(
             appWith(["/Trip"]),
             selection,
@@ -103,7 +102,6 @@ test("a folder inside a selected folder is not reported as empty", async () => {
         ["/Trip", "/Trip/Berlin"],
         ["/Trip/Berlin", "/Trip"]
     ]) {
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         const { images, rejected } = (await collectImageFiles(
             appWith(["/Trip", "/Trip/Berlin"]),
             selection,

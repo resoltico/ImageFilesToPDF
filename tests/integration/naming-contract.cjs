@@ -111,7 +111,6 @@ function pair(index,left,right,options={}) {
         publication=capability.supported?"saved":"recovered";
     }
     // Diagnostic output records the independently observed namespace oracle.
-    // eslint-disable-next-line no-console
     console.log(JSON.stringify({volume:label,left,right,alias:same,groups:actual,publication,outputs}));
 }
 

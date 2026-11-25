@@ -87,7 +87,6 @@ test("PNG count faults and damaged headers remain visible on the original source
     const selection = { images: [source], rejected: [] };
     for (const error of [new OperationError("Cannot count"), new OperationError("Bad PNG", { issues: [{ code: "damaged", message: "Bad PNG", diagnostic: { detail: "test" } }] })]) {
         const sources = { ...host.sources, pngCount() { throw error; } };
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         const result = (await inspectCandidates(host.operations, selection, { tools, sources, progress }));
         assert.equal(result.rejected[0].code, "damaged");
         assert.equal(result.rejected[0].path, source.path);
@@ -189,7 +188,6 @@ test("missing an individual native operation fails before reclamation or selecti
     const run = (ports) => execute(invocation, { interaction, capabilities: ports, operations: host.operations, checkTools: () => tools, reclaim() { reclaimed = true; return []; } });
     for (const field of ["facts", "readable", "capture", "prefix", "pngCount"]) {
         const incomplete = { ...capabilities, sources: { ...sources, [field]: undefined } };
-        // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         await assert.rejects(() => run(incomplete), /Required filesystem\/source capabilities/u);
     }
     await assert.rejects(() => run({ ...capabilities, destinationNames: {} }),

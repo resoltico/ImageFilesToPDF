@@ -35,8 +35,7 @@ function fileStem(filename) {
  */
 function sanitizeFilename(filename) {
     const safe = String(filename)
-        // Control characters are matched on purpose: they must not reach a filename.
-        // eslint-disable-next-line no-control-regex
+        // eslint-disable-next-line no-control-regex -- Control characters are matched on purpose: they must not reach a filename.
         .replace(/[\x00-\x1f\x7f/:]/gu, "_")
         .replace(/_+/gu, "_")
         .replace(/^\.+|\.+$/gu, "")

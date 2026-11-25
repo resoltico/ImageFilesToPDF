@@ -46,7 +46,6 @@ async function resolve(tree, items, rejected) {
         const { path, refusal } = item;
 
         if (path) {
-            // eslint-disable-next-line no-await-in-loop -- Preserve deduplication and refusal order.
             await remember(found, tree, path, rejected);
         } else if (refusal) {
             rejected.push(refusal);

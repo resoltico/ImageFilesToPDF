@@ -17,7 +17,7 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "lint": "node tools/lint.mjs",
-    "lint:js": "eslint .",
+    "lint:js": "eslint . --max-warnings 0",
     "test": "node --test \"tests/unit/**/*.test.cjs\" \"tools/tests/**/*.test.cjs\"",
     "test:coverage": "node tools/unit-gate.mjs coverage",
     "check-dist": "node tools/check-dist.mjs",

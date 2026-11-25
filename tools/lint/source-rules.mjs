@@ -2,9 +2,9 @@ import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { root } from "../repository.mjs";
+import { commentsIn } from "../javascript.mjs";
 
-// This rule exists to find literal control characters, so it must contain them.
-// eslint-disable-next-line no-control-regex
+// eslint-disable-next-line no-control-regex -- This rule exists to find literal control characters, so it must contain them.
 const CONTROL_CHARACTERS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u;
 
 const HEX_RADIX = 16;
@@ -89,10 +89,38 @@ function checkExecutables(relativePath, content) {
     }
 }
 
+/*
+ * An ESLint exception must say which rules it suspends and why, in ESLint's
+ * own `-- reason` form, so the reason travels with the directive and a bare
+ * or blanket suspension cannot pass review unnoticed. Unused directives are
+ * the other half: ESLint reports them as errors (eslint.config.mjs).
+ */
+const DIRECTIVE = /^\s*eslint-(?:disable|enable)(?:-next-line|-line)?(?:\s|$)/u;
+const DIRECTIVE_PARTS = /^\s*(?<kind>eslint-(?:disable|enable)(?:-next-line|-line)?)(?<rules>[^]*?)(?:\s--\s+(?<reason>\S[^]*))?$/u;
+
+export function directiveProblems(comments) {
+    return comments.filter(({ text }) => DIRECTIVE.test(text)).flatMap(({ text }) => {
+        const { kind, rules, reason } = DIRECTIVE_PARTS.exec(text).groups;
+        if (kind === "eslint-enable") { return []; }
+        if (!rules.trim()) { return [`${kind} names no rule`]; }
+        return reason ? [] : [`${kind} ${rules.trim()} gives no "-- reason"`];
+    });
+}
+
+function checkDisableDirectives(relativePath, content) {
+    if (!/\.(?:js|mjs|cjs)$/u.test(relativePath)) { return; }
+    const sourceType = relativePath.endsWith(".mjs") ? "module" : "script";
+    const problems = directiveProblems(commentsIn(content, "latest", sourceType));
+    if (problems.length > 0) {
+        throw new Error(`${relativePath}: ${problems.join("; ")}`);
+    }
+}
+
 export function checkContent(relativePath, content) {
     checkWhitespace(relativePath, content);
     checkControlCharacters(relativePath, content);
     checkExecutables(relativePath, content);
+    checkDisableDirectives(relativePath, content);
 }
 
 /*

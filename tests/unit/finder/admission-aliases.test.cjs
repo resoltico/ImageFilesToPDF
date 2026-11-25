@@ -41,7 +41,6 @@ test("a name this action cannot convert does not silence another that it can", a
         ["/a/image.backup", "/a/image.jpg", "/a/extra.jpg"],
         ["/a/image.jpg", "/a/image.backup", "/a/extra.jpg"]
     ]) {
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         const { images, rejected } = (await collect(selection, tree));
 
         assert.deepEqual(images, ["/a/extra.jpg", "/a/image.jpg"], selection.join(" then "));
@@ -55,7 +54,6 @@ test("one photograph under two names it can convert is converted once", async ()
     const tree = treeOf({}, {}, { "/a/A.jpg": ONE_FILE, "/a/a.jpg": ONE_FILE });
 
     for (const selection of [["/a/A.jpg", "/a/a.jpg"], ["/a/a.jpg", "/a/A.jpg"]]) {
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         const { images, rejected } = (await collect(selection, tree));
 
         assert.equal(images.length, 1, selection.join(" then "));

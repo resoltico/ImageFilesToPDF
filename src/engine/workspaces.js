@@ -174,7 +174,6 @@ async function workspaceStore(files, commands, windows) {
             const ports = { commands, inspect, release, windows };
             const diagnostics = [];
             for (const name of fs.readdirSync(root).filter(isWorkspaceName)) {
-                // eslint-disable-next-line no-await-in-loop -- Verify each owner before the next removal.
                 const item = await reclaimCandidate(`${root}/${name}`, ports, files);
                 if (item) { diagnostics.push(item); }
             }

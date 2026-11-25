@@ -80,21 +80,16 @@ test("Stop and EOF during consent or settings reject the pending answer and fini
     for (const scenario of ["review", "cancel-review", "settings", "invalid-settings", "EOF"]) {
         const review = scenario.includes("review");
         const pipe = connect(conversion({ ...context, rejected: review ? [refused] : [] }));
-        // eslint-disable-next-line no-await-in-loop -- Sessions use separate streams and no shared state.
         await pipe.next("hello");
         pipe.send(start);
-        // eslint-disable-next-line no-await-in-loop -- Stop is sent while this specific answer is pending.
         await pipe.next(review ? "review" : "settings-needed");
         if (scenario === "invalid-settings") {
             pipe.send({ type: "settings", values: {} });
-            // eslint-disable-next-line no-await-in-loop -- Let the engine request the corrected settings first.
             await pipe.next("settings-invalid");
         }
         if (scenario === "EOF") { pipe.eof(); }
         else { pipe.send({ type: scenario === "cancel-review" ? "cancel" : "stop" }); }
-        // eslint-disable-next-line no-await-in-loop -- Verify the full canceled receipt before opening another session.
         assert.equal((await pipe.next("outcome")).receipt.state, "canceled");
-        // eslint-disable-next-line no-await-in-loop -- Confirm input ended and the handler released the session.
         await pipe.close();
     }
 });

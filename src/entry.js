@@ -1,8 +1,7 @@
 "use strict";
 const { runQuickAction } = require("./finder/quick-action/main.js");
 
-// The public Shortcuts bridge supplies both arguments.
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line no-unused-vars -- The public Shortcuts bridge supplies both arguments.
 function run(input, parameters) { return runQuickAction(input); }
 
 module.exports = { run };

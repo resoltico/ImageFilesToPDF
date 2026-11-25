@@ -39,11 +39,9 @@ async function optionalField(app, tool, path, field) {
 async function scalarFacts(app, tool, path) {
     const fields = {};
     for (const field of REQUIRED_FIELDS) {
-        // eslint-disable-next-line no-await-in-loop -- Native inspection completes in field order.
         fields[field] = (await app.run(buildFieldArgv(tool, field, [path]), message("operationCheckingMetadata"))).trim();
     }
     for (const field of OPTIONAL_FIELDS) {
-        // eslint-disable-next-line no-await-in-loop -- Each optional fact can fail independently.
         const value = await optionalField(app, tool, path, field);
         if (value !== undefined) { fields[field] = value; }
     }
@@ -65,7 +63,6 @@ async function confirmedOne(app, tool, path, parsed) {
     if (!parsed) { return scalarFacts(app, tool, path); }
     let { raw } = parsed;
     for (const field of parsed.optional) {
-        // eslint-disable-next-line no-await-in-loop -- Complete this image's metadata before admitting it.
         raw = optionalValue(raw, field, await optionalField(app, tool, path, field));
     }
     return finishMetadata(raw);
@@ -89,7 +86,6 @@ async function confirmBatch(app, tool, paths, parsed) {
     for (const field of OPTIONAL_FIELDS) {
         const indices = parsed.flatMap((entry, index) => entry.optional.includes(field) ? [index] : []);
         if (indices.length > 0) {
-            // eslint-disable-next-line no-await-in-loop -- Scalar probes update distinct metadata fields in order.
             const text = await app.run(buildFieldArgv(tool, field, indices.map((index) => paths[index])), message("operationCheckingOptionalMetadata"));
             const values = scalarValues(text, indices.length);
             indices.forEach((index, position) => { raw[index] = optionalValue(raw[index], field, values[position]); });
@@ -105,7 +101,6 @@ async function inspectBatch(app, tools, sources, entries) {
     const confirmed = await confirmBatch(app, tools.vipsheader, paths, parsed);
     const facts = [];
     for (const [index, image] of confirmed.entries()) {
-        // eslint-disable-next-line no-await-in-loop -- Keep source observations and filesystem requests ordered.
         facts.push(await pngFacts(sources, entries[index].source.path, image));
     }
     return facts;

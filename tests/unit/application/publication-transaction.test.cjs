@@ -176,8 +176,7 @@ test("destination staging cleanup is observed without unmaking a saved output",a
 
 test("an unexpected null native fault preserves the validated PDF as a fatal diagnostic",async ()=>{
     const {job}=fixture();job.publication.link=()=>{
-        // Deliberate malformed exception to verify the fatal-outcome boundary.
-        // eslint-disable-next-line no-throw-literal
+        // eslint-disable-next-line no-throw-literal -- Deliberate malformed exception to verify the fatal-outcome boundary.
         throw null;
     };
     await assert.rejects(()=>publishPdf(job,staged,target),(error)=>error.issues[0].code==="fault"&&Boolean(error.recovery));
@@ -188,7 +187,6 @@ test("recovery cleanup and cancellation issues survive the publication outcome",
         const {job}=fixture({faults: { removeFile: (path) => path === staged ? fault : undefined }});
         const { link } = job.publication;
     job.publication.link=(from, to)=>to === target ? {state:"denied"} : link(from, to);
-        // eslint-disable-next-line no-await-in-loop -- Settle and inspect this fixture before the next case.
         await assert.rejects(()=>publishPdf(job,staged,target),(error)=>{
             assert.equal(error.issues[0].code,"publication");assert.equal(error.issues[1].code,fault instanceof UserCanceled?"canceled":"cleanup");
             assert.ok(error.recovery);return true;

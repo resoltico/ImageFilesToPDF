@@ -25,7 +25,6 @@ async function assemblePdf(job, staged) {
         const prefix = `${staged}.merge-${level}`;
         const groups = mergeGroups(job.tools.pdfcpu, `${prefix}-${parts.length}.pdf`, parts, job.operations);
         if (groups.length === 1) {
-            // eslint-disable-next-line no-await-in-loop -- Settle the final merge before the workspace is released.
             await mergeParts(job, staged, parts);
             job.parts.delete(staged);
             return;
@@ -35,7 +34,6 @@ async function assemblePdf(job, staged) {
         for (const [index, group] of groups.entries()) {
             const path = `${prefix}-${index}.pdf`;
             registerArtifact(job.artifacts, path);
-            // eslint-disable-next-line no-await-in-loop -- Merge and release each group before the next.
             await mergeParts(job, path, group);
             merged.push(path);
         }

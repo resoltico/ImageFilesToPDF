@@ -82,7 +82,6 @@ async function verifyChildren(pidFile, childrenFile) {
     const initialSurvivors = otherCommands().map((value) => path.basename(value));
     assert.ok(!initialSurvivors.some((value) => /(?:node|osascript)$/u.test(value)), JSON.stringify(initialSurvivors));
     assert.equal(spawnSync("/bin/ps", ["-p", String(enginePid)]).status, 1);
-    // eslint-disable-next-line no-await-in-loop -- Poll only the children of this fixture until they settle.
     for (let check = 0; check < 20 && otherCommands().length; check += 1) { await wait(100); }
     assert.deepEqual(otherCommands(), []);
     return otherCommands().length;
@@ -115,7 +114,6 @@ async function main() {
     const fixture = makeFixture(probe.path);
     await buildHarness(fixture.entry, bundle);
     for (const [mode, expected] of [["review", 0], ["progress", 0], ["review", 1], ["progress", 1]]) {
-        // eslint-disable-next-line no-await-in-loop -- Each scenario owns the same fixture paths until its children exit.
         await runScenario(fixture, mode, expected);
     }
 }

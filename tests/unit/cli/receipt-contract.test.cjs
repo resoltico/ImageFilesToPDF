@@ -18,7 +18,6 @@ test("CLI writes one receipt and plain summary and returns the contract status",
     ]) {
         const writes = [];
         // Each stream fixture belongs to one receipt.
-        // eslint-disable-next-line no-await-in-loop
         assert.equal(await reportHeadless(result, (...args) => writes.push(args)), code);
         assert.equal(writes.length, 2);
         assert.equal(writes[1][0], `${JSON.stringify(result)}\n`);
@@ -101,7 +100,6 @@ test("receipt transport attempts prose before one JSON, preserves stderr refusal
                 return selected !== "false";
             };
             // Exercise each transport outcome through one ordered report.
-            // eslint-disable-next-line no-await-in-loop
             assert.equal(await reportHeadless(result, write), delivery === "ok" && receipt === "ok" ? 0 : 1);
             assert.equal(calls[0].stderr, true); assert.match(calls[0].text, /^Created 1 PDF/u);
             assert.equal(calls[1].stderr, false); assert.equal(JSON.parse(calls[1].text).state, "complete");
