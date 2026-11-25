@@ -43,13 +43,22 @@ use the same validator in the native suites, separately from the source gate.
 Schema validity supplements pixel, file and ownership checks.
 
 The [pure module declaration](tools/pure-modules.mjs) supplies the coverage
-and mutation scopes. The gate requires 100% line, branch and function coverage
-and a mutation score of at least 96. The catalog tests check issue construction
-and explicit progress titles at the application boundary. Adapter checks
-exercise the production artifacts and native tools on each host. ESLint rules and deliberate
-exceptions are recorded in `tools/eslint/rules.mjs`. Dependency and toolchain pins
-live in package.json, package-lock.json, .node-version and mise.toml; clean restores
-use `npm ci --ignore-scripts` with the declared npm version.
+and mutation scopes and the one unit test set both gates run; repository tests
+run in `npm test` but do not count toward either. The gate requires 100% line,
+branch and function coverage and a mutation score of at least 96. The catalog
+tests check issue construction and explicit progress titles at the application
+boundary. Adapter checks exercise the production artifacts and native tools on
+each host.
+
+`tools/eslint/rules.mjs` is the one register of ESLint exceptions: rules off
+everywhere, rules off in a named area, and inline directives. Every inline
+directive names its rules and gives a `-- reason`; ESLint fails on unused
+directives and on any warning. Dependency overrides must still be excluded by
+some dependent's declared range and be documented in CONTRIBUTING.md. Workflow
+actions are pinned by commit and runner images by name. Dependency and
+toolchain pins live in package.json, package-lock.json, .node-version and
+mise.toml; clean restores use `npm ci --ignore-scripts` with the declared npm
+version.
 
 The required GitHub Actions checks on `main` are source quality, macOS
 integration, Linux native CLI, and the Windows artifact, cards, arguments and
