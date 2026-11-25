@@ -1,6 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { Buffer } = require("node:buffer");
 const { inspectCandidates, inspectCaptured } = require("../../../src/application/source-inspection.js");
 const { OperationError } = require("../../../src/core/errors.js");
 
@@ -29,6 +30,7 @@ function fixture(paths, options = {}) {
     const sources = {
         facts: (path) => ({ identity: path, version: "1", size: "30" }),
         readable: () => true,
+        prefix: options.prefix,
         pngCount(path) { counts.push(path); return options.pngCount ? options.pngCount() : 1; }
     };
     const selection = { images: paths.map((path) => ({ path })), rejected: [] };
@@ -108,4 +110,35 @@ test("header faults and content refusals retain their types, command and diagnos
     const fault = new TypeError("unexpected port failure");
     const broken = fixture([jpeg], { read() { throw fault; } });
     await assert.rejects(() => inspectCaptured({ operations: broken.operations, tools, sources: broken.sources }, { path: jpeg }, jpeg), (error) => error === fault);
+});
+
+test("unknown-format admission reads a bounded prefix tied to the same observed file", async () => {
+    const read = () => { throw new OperationError('VipsForeignLoad: "input" is not a known file format'); };
+    const inputs = ["/images/truncated.tif", "/images/text.png", "/images/changed.png"];
+    const checked = [];
+    const { inspect } = fixture(inputs, {
+        read,
+        prefix(file, facts) {
+            checked.push([file, facts.identity, facts.version]);
+            if (file === inputs[2]) { throw new OperationError("The source changed after selection."); }
+            return Buffer.from(file === inputs[0] ? "49492a00" : "74657874", "hex");
+        }
+    });
+    const result = await inspect();
+    assert.deepEqual(checked, inputs.map((file) => [file, file, "1"]));
+    assert.deepEqual(result.rejected.map(({ path, code }) => [path, code]), [
+        [inputs[0], "damaged"], [inputs[1], "not-an-image"], [inputs[2], "unexaminable"]
+    ]);
+    assert.deepEqual(result.images, []);
+});
+
+test("unknown-format capture inspection classifies the already captured bytes", async () => {
+    const fixtureWithBadHeader = fixture([jpeg], {
+        read() { throw new OperationError('VipsForeignLoad: "private" is not a known file format'); },
+        prefix() { assert.fail("Capture inspection opened another prefix handle."); }
+    });
+    const { operations, sources } = fixtureWithBadHeader;
+    const captured = { path: "/private", prefix: Buffer.from("ffd8ff", "hex") };
+    await assert.rejects(() => inspectCaptured({ operations, tools, sources }, captured, jpeg), (error) =>
+        error.issues[0].source === jpeg && error.issues[0].code === "damaged");
 });

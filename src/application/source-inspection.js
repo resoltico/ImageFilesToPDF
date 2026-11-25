@@ -3,6 +3,7 @@ const { message } = require("../core/messages.js");
 const { OperationError, isUserCanceled, diagnosticText, commandOf } = require("../core/errors.js");
 const { issuesOf, ISSUE } = require("../core/outcomes.js");
 const { sourceIssues } = require("../core/source-policy.js");
+const { unknownFormatCode } = require("../core/raster-signatures.js");
 const { REQUIRED_FIELDS, OPTIONAL_FIELDS, readMetadata, readMetadataBatch, rawMetadata, finishMetadata,
     optionalValue, scalarValues, fieldAbsent, headerFailureCode } = require("../backend/metadata.js");
 const { buildHeaderArgv, buildFieldArgv, headerGroups } = require("../backend/headers.js");
@@ -70,12 +71,17 @@ async function confirmedOne(app, tool, path, parsed) {
     return finishMetadata(raw);
 }
 
-async function readOne(app, tools, sources, path) {
+async function readOne(app, tools, sources, { path, prefix }) {
     try {
         const reportedPath = app.toolPath(path);
         const parsed = await parsedHeader(app, tools.vipsheader, reportedPath);
         return pngFacts(sources, path, await confirmedOne(app, tools.vipsheader, reportedPath, parsed));
-    } catch (error) { return failedInspection(error); }
+    } catch (error) {
+        const failure = failedInspection(error);
+        if (failure.problem !== "not-an-image") { return failure; }
+        try { return { ...failure, problem: unknownFormatCode(await prefix()) }; }
+        catch (unreadable) { return failedInspection(unreadable); }
+    }
 }
 
 async function confirmBatch(app, tool, paths, parsed) {
@@ -125,19 +131,21 @@ function inspectCandidates(app, selection, context) {
         fileFacts: async (entry) => ({ ...await sources.facts(entry.path), readable: await sources.readable(entry.path) }),
         batches: (candidates) => batchesFor(app, tools, candidates),
         inspect: (entries) => inspectBatch(app, tools, sources, entries),
-        inspectOne: (entry) => readOne(app, tools, sources, entry.source.path)
+        inspectOne: ({ source, file }) => readOne(app, tools, sources,
+            { path: source.path, prefix: () => sources.prefix(source.path, file) })
     }, selection);
 }
 
 /** The owned copy is always re-inspected, independently of admission. */
 async function inspectCaptured(job, owned, original) {
-    const facts = await readOne(job.operations, job.tools, job.sources, owned.path);
+    const { path, identity, version, prefix } = owned;
+    const facts = await readOne(job.operations, job.tools, job.sources, { path, prefix: () => prefix });
     const issues = sourceIssues(facts);
     if (issues.length > 0) {
         const issue = { ...issues[0], source: original };
         const error = new OperationError(message("fileIssue", { path: original, reason: issue.message }), { issues: [issue] });
         throw error;
     }
-    return { ...owned, ...facts };
+    return { path, identity, version, ...facts };
 }
 module.exports = { inspectCandidates, inspectCaptured };

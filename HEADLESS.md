@@ -3,29 +3,36 @@
 Download `Image-Files-to-PDF.cjs` and install Node.js 26.13.1 or later, libvips
 (`vips` and `vipsheader`), and stable pdfcpu 0.16.4 or later.
 
-## Install the tools
+## Installing the tools
 
 ### macOS
 
-```sh
-brew install node vips pdfcpu
-```
+- **Homebrew** supports macOS 15 and later on Apple Silicon. Run
+  `brew install node vips pdfcpu`.
+- **MacPorts** provides the tools with `sudo port install vips pdfcpu`.
+  Use the official Node.js installer while `nodejs26` is at 26.13.0, below
+  the 26.13.1 minimum.
+- **Upstream** provides a [Node.js installer](https://nodejs.org/en/blog/release/v26.13.1),
+  [libvips source and build instructions](https://www.libvips.org/install.html),
+  and [pdfcpu binaries](https://github.com/pdfcpu/pdfcpu/releases).
 
-The official macOS installer is also available for Node.js 26.13.1.
-[Node.js 26.13.1 downloads](https://nodejs.org/en/blog/release/v26.13.1)
+Put the executable directories on `PATH`. The macOS 13.5 Finder floor is
+derived from the [Node.js platform requirements](https://github.com/nodejs/node/blob/v26.13.1/BUILDING.md#platform-list).
+Finder execution on macOS 13.5–14 has not been tested.
 
 ### Linux
 
-Install Node.js 26.13.1 or later, libvips with the image codecs you need, and
-an official stable pdfcpu release for your architecture. Put the directories
-containing the executables on `PATH`.
+Use distribution packages or upstream releases for Node.js 26.13.1 or later,
+libvips with the codecs you need, and stable pdfcpu 0.16.4 or later for your
+architecture. Put the executable directories on `PATH`.
 
 ### Windows
 
-Install Node.js 26.13.1 or later. Extract the libvips **all** distribution and
-pdfcpu for your architecture or supported emulation. Put the directories
-containing the actual executables on `PATH`. The engine uses the built-in
-Windows PowerShell 5.1 helper for platform queries.
+Use upstream installers and binary distributions or a package manager of your
+choice. Use Node.js 26.13.1 or later, the libvips **all** distribution with
+the codecs you need, and stable pdfcpu 0.16.4 or later for your architecture
+or supported emulation. Put the executable directories on `PATH`. The
+engine uses the built-in Windows PowerShell 5.1 helper for platform queries.
 
 See [the platform matrix](QA.md#native-platform-matrix) for tested combinations.
 For Finder, follow [the shortcut installation instructions](INSTALL.txt).
@@ -197,7 +204,7 @@ keep the setting's display name.
 | --- | --- |
 | `request` | `usage`, `settings-file`, `timestamp` |
 | `settings` | `unknown`, `choice`, `integer`, `color`; `object` belongs to the core validator, not the CLI root check |
-| `setup` | `tool-missing`, `tool-unusable`, `override-invalid`, `install-hint`, `runtime-unsupported`, `runtime-unavailable`, `fault`, `canceled` |
+| `setup` | `tool-missing`, `tool-unusable`, `override-invalid`, `chosen-executable-invalid`, `install-hint`, `runtime-unsupported`, `runtime-unavailable`, `fault`, `canceled` |
 | `selection` | `folder`, `unsupported-format`, `not-a-file`, `not-a-path`, `remote-url`, `not-a-folder`, `package`, `link`, `special-file`, `unreadable`, `unexaminable`, `empty-folder`, and the run issue `no-images` |
 | `inspection` | `unreadable`, `unexaminable`, `empty`, `not-an-image`, `unsupported-content`, `multiple-images`, `damaged` |
 | `allocation`, `planning`, `capture`, `preparation`, `execution`, `validation`, `publication`, `recovery`, `cleanup`, `workspace`, `reporting` | `operation`, `fault`, `canceled`, `damaged`, `publication`, `recovery`, `cleanup` |
@@ -206,8 +213,10 @@ After tool issues, setup appends one `install-hint` for missing or unusable
 automatically discovered tools. Its `params.platform` identifies the platform
 and `params.packages` lists only the affected packages. An explicit override
 is reported with its `params.variable`, raw `params.value` and tool `params.name`.
-An override does not add an installation recommendation
-for that tool. Tool issue parameters contain only data.
+The installation hint names only automatically discovered tools. Its message
+points to the platform's installation guide. Tool issue parameters contain only
+data. Finder reports a remembered path that fails setup as
+`chosen-executable-invalid` with the executable `params.name` and raw `params.path`.
 
 A `runtime-unsupported` issue has `params.minimum` and `params.found` Node.js
 version strings. Finder uses `runtime-unavailable` with `params.minimum` and a

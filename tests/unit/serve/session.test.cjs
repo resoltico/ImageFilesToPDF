@@ -11,7 +11,7 @@ const { DEFAULT_SETTINGS } = require("../../../src/core/settings.js");
 const { VERSION } = require("../../../src/core/version.js");
 
 const refused = { path: "/fixture/vector.svg", name: "vector.svg", code: "unsupported-format", stage: "selection", reason: "Unsupported." };
-const start = { type: "start", inputItems: ["/fixture/photo.png"] };
+const start = { type: "start", inputItems: ["/fixture/photo.png"], toolPaths: { vips: "/chosen/vips" } };
 const settings = { type: "settings", values: DEFAULT_SETTINGS };
 const context = { count: 1, selectedFolders: 0, folders: ["/fixture/"], rejected: [] };
 const saved = { state: "saved", sources: start.inputItems, pages: 1, output: "/fixture/photo.pdf", issues: [] };
@@ -44,8 +44,9 @@ function connect(convertRun) {
 }
 
 function conversion(selection, process) {
-    return async (invocation, commands, { session }) => {
+    return async (invocation, commands, { session, toolPaths }) => {
         assert.deepEqual(invocation.inputItems, start.inputItems);
+        assert.deepEqual(toolPaths, { vips: "/chosen/vips" });
         try {
             const chosen = await session.settings(selection);
             assert.deepEqual(chosen, DEFAULT_SETTINGS);

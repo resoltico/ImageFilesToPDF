@@ -72,6 +72,10 @@ jobs:
         env:
           IFTP_HEVC_UNAVAILABLE: "1"
         run: node tests/integration/native-cli.cjs
+      - name: Verify dehydrated Cloud Files placeholders
+        if: matrix.check == 'artifact'
+        timeout-minutes: 5
+        run: ./tests/integration/windows-cloud-files.ps1
       - name: Verify the helper process budget, hidden entries, and long paths
         if: matrix.check == 'artifact' && !cancelled()
         run: ./tests/integration/windows-engine.ps1

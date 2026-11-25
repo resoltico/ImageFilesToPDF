@@ -2,6 +2,7 @@
 const { message } = require("./messages.js");
 const { supportsNode } = require("./version.js");
 const { RUN_OUTCOME } = require("./outcomes.js");
+const { TOOL_NAMES } = require("./executable-search.js");
 
 const text = (value) => typeof value === "string";
 const count = (value) => Number.isSafeInteger(value) && value >= 0;
@@ -51,7 +52,9 @@ const receipt = (value) => fields(value, {
 
 const MESSAGES = {
     client: {
-        start: { required: { inputItems: strings } }, continue: {}, cancel: {}, settings: { required: { values: record } }, stop: {}
+        start: { required: { inputItems: strings, toolPaths: (value) => fields(value, {
+            optional: Object.fromEntries(TOOL_NAMES.map((name) => [name, text]))
+        }) } }, continue: {}, cancel: {}, settings: { required: { values: record } }, stop: {}
     },
     engine: {
         hello: { required: { version: text, runtime: text } }, phase: { required: { phase: text } },

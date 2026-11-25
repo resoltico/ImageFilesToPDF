@@ -187,7 +187,7 @@ test("missing an individual native operation fails before reclamation or selecti
     const { tools } = makeJob(host);
     let reclaimed = false;
     const run = (ports) => execute(invocation, { interaction, capabilities: ports, operations: host.operations, checkTools: () => tools, reclaim() { reclaimed = true; return []; } });
-    for (const field of ["facts", "readable", "capture", "pngCount"]) {
+    for (const field of ["facts", "readable", "capture", "prefix", "pngCount"]) {
         const incomplete = { ...capabilities, sources: { ...sources, [field]: undefined } };
         // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
         await assert.rejects(() => run(incomplete), /Required filesystem\/source capabilities/u);

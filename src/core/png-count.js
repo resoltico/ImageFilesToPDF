@@ -2,8 +2,7 @@
 const { message } = require("./messages.js");
 const { OperationError } = require("./errors.js");
 
-// eslint-disable-next-line no-magic-numbers -- Fixed PNG signature bytes from the format.
-const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+const { PNG_SIGNATURE } = require("./raster-signatures.js");
 const MAX_CHUNK_LENGTH = 0x7fffffff;
 const MAX_CHUNKS = 131072;
 const CHUNK_HEADER = 8;
@@ -105,9 +104,10 @@ function observeChunk(reader, offset, chunk, state) {
 
 // Counts images using PNG §4.9 and §11.3.6. Native decoding checks pixel data.
 function countPng(reader, fileSize) {
-    requirePng(Number.isSafeInteger(fileSize) && fileSize >= SIGNATURE.length && readAt(reader, SIGNATURE.length, 0).every((byte, index) => byte === SIGNATURE[index]));
+    requirePng(Number.isSafeInteger(fileSize) && fileSize >= PNG_SIGNATURE.length &&
+        readAt(reader, PNG_SIGNATURE.length, 0).every((byte, index) => byte === PNG_SIGNATURE[index]));
     const state = { idat: false, endedIdat: false, imageData: false, declared: 0, frames: 0, sequence: 0, defaultFrame: false };
-    let offset = SIGNATURE.length;
+    let offset = PNG_SIGNATURE.length;
     for (let index = 0; index < MAX_CHUNKS; index += 1) {
         const chunk = readChunk(reader, offset, fileSize, index === 0);
         if (chunk.type === "IEND") {

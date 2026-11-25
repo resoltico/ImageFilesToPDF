@@ -45,12 +45,9 @@ async function verifySetup(folder, photo) {
     const [hint] = all.issues.slice(3);
     assert.equal(all.issues.length, 4);
     assert.equal(hint.code, "install-hint");
-    const vips = process.platform === "darwin" ? "vips" : "libvips";
-    assert.deepEqual(hint.params, { platform: process.platform, packages: [vips, "pdfcpu"] });
-    const wording = {
-        darwin: /brew install vips pdfcpu/u, linux: /Linux distribution/u, win32: /Windows.*PATH/u
-    };
-    assert.match(hint.message, wording[process.platform]);
+    assert.deepEqual(hint.params, { platform: process.platform, packages: ["libvips", "pdfcpu"] });
+    const section = { darwin: "macos", linux: "linux", win32: "windows" }[process.platform];
+    assert.equal(hint.message, `Install libvips and pdfcpu. See the installation guide (https://github.com/resoltico/ImageFilesToPDF#${section}).`);
     if (process.platform === "darwin") {
         const tools = fs.mkdtempSync(path.join(folder, "only-vips-"));
         for (const name of ["vips", "vipsheader"]) {
@@ -61,7 +58,7 @@ async function verifySetup(folder, photo) {
         assert.deepEqual(missing.issues.map(({ code, params }) => [code, params]), [
             ["tool-missing", { name: "pdfcpu" }], ["install-hint", { platform: "darwin", packages: ["pdfcpu"] }]
         ]);
-        assert.match(missing.issues[1].message, /brew install pdfcpu\./u);
+        assert.match(missing.issues[1].message, /Install pdfcpu\. See the installation guide .*#macos/u);
     }
     assert.equal(all.documents.length, 0);
     process.stdout.write(`Setup issue parameters and package guidance passed on ${process.platform}.\n`);
@@ -130,7 +127,7 @@ async function verifyDamage(folder) {
     const result = parseReceipt(await cli(["--settings", config(folder), "--", ...Object.keys(samples)], folder, 1));
     assert.deepEqual(result.documents, []);
     assert.deepEqual(Object.fromEntries(result.rejected.map(({ name, code }) => [name, code])), {
-        "cut.jpg": "damaged", "cut.png": "damaged", "cut.tif": windows ? "not-an-image" : "damaged",
+        "cut.jpg": "damaged", "cut.png": "damaged", "cut.tif": "damaged",
         "cut.webp": "damaged", "text.png": "not-an-image"
     });
     for (const [file, contents] of Object.entries(samples)) { assert.deepEqual(fs.readFileSync(file), contents); }

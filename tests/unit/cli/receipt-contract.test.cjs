@@ -12,7 +12,7 @@ const document = { state: "saved", sources: ["/ok.png"], pages: 1, output: "/sav
 test("CLI writes one receipt and plain summary and returns the contract status", async () => {
     for (const [result, code] of [
         [runOutcome([document]), 0], [runOutcome([document], [{ path: "/bad.gif", reason: "unsupported" }]), 1],
-        [{ ...runOutcome(), state: "invalid-request" }, 2], [runOutcome([], [], [{ stage: "setup", message: "brew install vips pdfcpu" }]), 3],
+        [{ ...runOutcome(), state: "invalid-request" }, 2], [runOutcome([], [], [{ stage: "setup", message: "Install libvips and pdfcpu." }]), 3],
         [{ ...runOutcome(), state: "canceled" }, 1],
         [runOutcome([], [], [{ code: "operation", stage: "setup", message: "Unavailable." }, { code: "canceled", stage: "setup", message: "User canceled." }]), 1]
     ]) {

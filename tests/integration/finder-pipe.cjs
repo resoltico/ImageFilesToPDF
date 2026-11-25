@@ -5,7 +5,7 @@ const path = require("node:path");
 const os = require("node:os");
 const { execFileSync, spawnSync } = require("node:child_process");
 const { setTimeout: wait } = require("node:timers/promises");
-const root = path.resolve(__dirname, "../../..");
+const root = path.resolve(__dirname, "../..");
 const { build } = require("esbuild");
 function makeFixture(folder) {
     const home = path.join(folder, "home");
@@ -35,7 +35,7 @@ async function buildHarness(entry, bundle) {
             const { collectInvocation } = require("./src/finder/quick-action/input.js");
             const { DEFAULT_SETTINGS } = require("./src/core/settings.js");
             const bundle = ${JSON.stringify(bundle)};
-            function run([mode, node, home, image, refused, pidFile, childrenFile, marker, running, expected]) {
+            function run([mode, node, home, image, refused, pidFile, childrenFile, marker, running, expected, vips]) {
                 ObjC.import("Foundation");
                 ObjC.bindFunction("kill", ["int", ["int", "int"]]);
                 ObjC.bindFunction("signal", ["long", ["int", "long"]]);
@@ -62,7 +62,7 @@ async function buildHarness(entry, bundle) {
                     application: () => app, openProgress: () => progress, collect: collectInvocation,
                     review() { if (mode === "review") killEngine(); },
                     settings() { return DEFAULT_SETTINGS; },
-                    runEngine(items, hooks) { return engineSession(bundle, items, hooks, { paths: [node], home }); },
+                    runEngine(items, hooks) { return engineSession(bundle, items, hooks, { chosen: { node, vips }, home }); },
                     result(app, outcome) { receipt = outcome; }
                 });
                 const restored = $.signal(13, original);
@@ -90,9 +90,9 @@ async function verifyChildren(pidFile, childrenFile) {
 
 async function runScenario(fixture, mode, expected) {
     const { entry, node, home, image, refused, pidFile, childrenFile, marker, running, vips, realVips } = fixture;
-    const result = spawnSync("/usr/bin/osascript", ["-l", "JavaScript", entry, mode, node, home, image, refused, pidFile, childrenFile, marker, running, String(expected)], {
+    const result = spawnSync("/usr/bin/osascript", ["-l", "JavaScript", entry, mode, node, home, image, refused, pidFile, childrenFile, marker, running, String(expected), vips], {
         encoding: "utf8", timeout: 30000,
-        env: { ...process.env, HOME: home, IFTP_PID_FILE: pidFile, IFTP_ACTUAL_NODE: process.execPath, IMAGE_FILES_TO_PDF_VIPS: vips, IFTP_VIPS: realVips, IFTP_RUNNING: running }
+        env: { ...process.env, HOME: home, IFTP_PID_FILE: pidFile, IFTP_ACTUAL_NODE: process.execPath, IFTP_VIPS: realVips, IFTP_RUNNING: running }
     });
     assert.ok(fs.existsSync(marker), `kill was not reached for ${mode}: ${JSON.stringify(result)}`);
     fs.unlinkSync(marker);
@@ -109,7 +109,7 @@ async function runScenario(fixture, mode, expected) {
 }
 
 async function main() {
-    const { embeddedEngineIn } = await import("../../embedded-engine.mjs");
+    const { embeddedEngineIn } = await import("../../tools/embedded-engine.mjs");
     const bundle = embeddedEngineIn(fs.readFileSync(path.join(root, "dist/Image-Files-to-PDF.jxa"), "utf8"), 2022);
     using probe = fs.mkdtempDisposableSync(path.join(os.tmpdir(), "iftp-finder-pipe-"));
     const fixture = makeFixture(probe.path);

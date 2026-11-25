@@ -6,17 +6,65 @@ $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 public static class ImageFilesToPDFNative {
+    private const uint ReadAttributes = 0x80, ShareAll = 7, OpenExisting = 3, OpenReparsePoint = 0x00200000;
+    private const uint DirectoryAttribute = 0x10, ReparsePointAttribute = 0x400;
+    private const int FileAttributeTagInfo = 9;
+    private const uint Placeholder = 1, Partial = 0x10, InvalidState = UInt32.MaxValue;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct AttributeTag {
+        public uint Attributes;
+        public uint ReparseTag;
+    }
+
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool SetConsoleCtrlHandler(IntPtr handler, bool add);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
     private static extern bool MoveFileExW(string from, string to, uint flags);
 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
+    private static extern SafeFileHandle CreateFileW(string file, uint access, uint share, IntPtr security,
+        uint disposition, uint flags, IntPtr template);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
+    private static extern uint GetFileAttributesW(string path);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetFileInformationByHandleEx(SafeFileHandle file, int kind, out AttributeTag tag, uint size);
+
+    [DllImport("cldapi.dll", ExactSpelling = true)]
+    private static extern uint CfGetPlaceholderStateFromAttributeTag(uint attributes, uint tag);
+
+    [DllImport("cldapi.dll", ExactSpelling = true)]
+    private static extern int CfHydratePlaceholder(SafeFileHandle file, long offset, long length, uint flags, IntPtr overlapped);
+
     public static void MoveExclusive(string from, string to) {
         // With no flags the move cannot overwrite or fall back to a copy.
         if (!MoveFileExW(from, to, 0)) {
             throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        }
+    }
+
+    public static bool HydrateCloudFile(string path) {
+        uint attributes = GetFileAttributesW(path);
+        if (attributes == UInt32.MaxValue) { throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error()); }
+        // Ordinary files can be on filesystems without reparse-tag support.
+        if ((attributes & (DirectoryAttribute | ReparsePointAttribute)) != ReparsePointAttribute) { return false; }
+        using (var file = CreateFileW(path, ReadAttributes, ShareAll, IntPtr.Zero, OpenExisting, OpenReparsePoint, IntPtr.Zero)) {
+            if (file.IsInvalid) { throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error()); }
+            AttributeTag tag;
+            if (!GetFileInformationByHandleEx(file, FileAttributeTagInfo, out tag, (uint)Marshal.SizeOf(typeof(AttributeTag)))) {
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            }
+            if ((tag.Attributes & (DirectoryAttribute | ReparsePointAttribute)) != ReparsePointAttribute) { return false; }
+            uint state = CfGetPlaceholderStateFromAttributeTag(tag.Attributes, tag.ReparseTag);
+            if (state == InvalidState || (state & (Placeholder | Partial)) != (Placeholder | Partial)) { return false; }
+            // A synchronous request through EOF settles hydration before the engine records admission facts.
+            Marshal.ThrowExceptionForHR(CfHydratePlaceholder(file, 0, -1, 0, IntPtr.Zero));
+            return true;
         }
     }
 }
@@ -91,6 +139,7 @@ function Answer($request) {
         'downloads' { return Read-Downloads }
         'privateDirectory' { return Set-Or-VerifyPrivateDirectory $request.path $request.created }
         'startTime' { return Read-StartTime $request.pid }
+        'hydrateCloudFile' { return [ImageFilesToPDFNative]::HydrateCloudFile($request.path) }
         'move' { [ImageFilesToPDFNative]::MoveExclusive($request.from, $request.to); return $true }
         default { throw 'Unknown helper request.' }
     }

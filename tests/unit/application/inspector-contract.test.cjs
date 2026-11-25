@@ -14,9 +14,10 @@ test("captured inspection preserves original identity and authoritative oriented
         const host = createConversionFixture();
         Object.assign(host, { loader, width: 900, height: 600, orientation: 6 });
         // eslint-disable-next-line no-await-in-loop -- Complete and inspect this fixture before the next case.
-        const result = (await inspectCaptured(makeJob(host), { path: "/owned", identity: "original", version: "observed" }, "/user.png"));
+        const result = (await inspectCaptured(makeJob(host), { path: "/owned", identity: "original", version: "observed", prefix: [0xff] }, "/user.png"));
         assert.equal(result.format, format);
         assert.deepEqual([result.width, result.height, result.identity, result.version], [600, 900, "original", "observed"]);
+        assert.equal(Object.hasOwn(result, "prefix"), false);
         assert.ok(host.commands.some((command) => command.slice(1).join(" ") === "-f orientation /owned"));
     }
 });

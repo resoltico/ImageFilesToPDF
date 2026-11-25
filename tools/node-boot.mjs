@@ -3,12 +3,14 @@ import outcomes from "../src/core/outcomes.js";
 import report from "../src/core/run-report.js";
 import runtime from "../src/core/version.js";
 import status from "../src/cli/exit-code.js";
+import installation from "../src/core/installation-guide.js";
 
 const { issueMessage, messageTemplate, renderTemplate } = errors;
 const { runOutcome } = outcomes;
 const { reportText } = report;
 const { MINIMUM_NODE_VERSION, supportsNode } = runtime;
 const { exitCode } = status;
+const { INSTALL_GUIDES, INSTALL_OVERVIEW } = installation;
 
 export function guardedBundle(source) {
     const issue = issueMessage("runtime-unsupported", "setup", "runtimeUnsupported", { minimum: MINIMUM_NODE_VERSION });
@@ -23,7 +25,8 @@ if (!supportsNode(process.versions.node)) {
     const outcome = ${JSON.stringify(outcome)};
     const issue = outcome.issues[0];
     issue.params.found = process.versions.node;
-    issue.message = renderTemplate(${JSON.stringify(messageTemplate("runtimeUnsupported"))}, issue.params);
+    const guide = ${JSON.stringify(INSTALL_GUIDES)}[process.platform] ?? ${JSON.stringify(INSTALL_OVERVIEW)};
+    issue.message = renderTemplate(${JSON.stringify(messageTemplate("runtimeUnsupported"))}, { ...issue.params, guide });
     process.exitCode = ${exitCode(outcome)};
     try { writeSync(2, ${JSON.stringify(`${reportText(outcome)}\n`)}.replace("{message}", () => issue.message)); } catch { process.exitCode = 1; }
     try { writeSync(1, JSON.stringify(outcome) + "\\n"); } catch { process.exitCode = 1; }

@@ -2,6 +2,7 @@
 const { inspectModule } = require("../../../tests/unit/ports/inspect-module.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { runInNewContext } = require("node:vm");
 const { RUN_OUTCOME, runOutcome } = require("../../../src/core/outcomes.js");
 const { completionMessage } = inspectModule(require.resolve("../../../src/finder/quick-action/completion.js"), ["completionMessage"]);
 const { exitCode } = require("../../../src/cli/exit-code.js");
@@ -43,5 +44,26 @@ test("the installation hint is a separate setup issue in the exchange and Finder
     const text = completionMessage(receipt);
     assert.match(text, /^Setup failed\./u);
     assert.match(text, /pdfcpu could not be found\./u);
-    assert.match(text, /brew install pdfcpu\./u);
+    assert.match(text, /Install pdfcpu\. See the installation guide .*#macos/u);
+});
+
+test("the CLI runtime guard includes the platform guide and preserves data-only receipt parameters", async () => {
+    const { guardedBundle } = await import("../../node-boot.mjs");
+    const candidate = guardedBundle("throw new Error('The unsupported runtime reached the bundle.');");
+    for (const [platform, section] of [["darwin", "macos"], ["linux", "linux"], ["win32", "windows"]]) {
+        const output = {};
+        const process = { platform, versions: { node: "25.9.0" } };
+        const requireStub = (moduleName) => {
+            assert.equal(moduleName, "node:fs");
+            return { writeSync(stream, record) { output[stream] = record; } };
+        };
+        runInNewContext(candidate, { process, require: requireStub });
+        assert.equal(process.exitCode, 3);
+        const receipt = JSON.parse(output[1]);
+        assertReceipt(receipt);
+        assert.deepEqual(receipt.issues[0].params, { minimum: "26.13.1", found: "25.9.0" });
+        const wording = `Node.js 26.13.1 or later is required. Found Node.js 25.9.0. See the installation guide (https://github.com/resoltico/ImageFilesToPDF#${section}).`;
+        assert.equal(receipt.issues[0].message, wording);
+        assert.ok(output[2].includes(wording));
+    }
 });

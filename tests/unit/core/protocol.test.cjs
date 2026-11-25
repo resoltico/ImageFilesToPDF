@@ -10,7 +10,7 @@ const context = { count: 1, selectedFolders: 0, folders: ["/photos"], rejected: 
 const issue = { code: "tool-missing", stage: "setup", params: {}, message: "A required tool is missing.", diagnostic: { stack: "private", detail: true } };
 const receipt = { state: "setup-failed", documents: [], rejected: [], issues: [issue], diagnostics: [] };
 const client = [
-    { type: "start", inputItems: ["/photos/one.png"] },
+    { type: "start", inputItems: ["/photos/one.png"], toolPaths: { vips: "/my tools/vips", pdfcpu: "/bin/pdfcpu" } },
     { type: "continue" }, { type: "cancel" }, { type: "settings", values: settings }, { type: "stop" }
 ];
 const engine = [
@@ -37,7 +37,10 @@ test("each declared message is accepted only from its sender", () => {
 });
 
 test("required and optional wire values are separately validated", () => {
-    for (const value of [{ type: "start" }, { type: "start", inputItems: {} }, { type: "start", inputItems: [true] },
+    for (const value of [{ type: "start" }, { type: "start", inputItems: [] },
+        { type: "start", inputItems: {}, toolPaths: {} }, { type: "start", inputItems: [true], toolPaths: {} },
+        { type: "start", inputItems: [], toolPaths: { node: "/bin/node" } },
+        { type: "start", inputItems: [], toolPaths: { vipsheader: 2 } },
         { type: "settings", values: null }, { type: "settings", values: [] }, { type: "settings", values: 6 }]) {
         assert.throws(() => validateMessage("client", value), /message fields are invalid/u);
     }
@@ -56,7 +59,7 @@ test("required and optional wire values are separately validated", () => {
 
 
 test("UTF-8 JSON lines preserve input text and omit receipt stack fields at every depth", () => {
-    const selection = { type: "start", inputItems: ["A é.png", "a\nb.png", "🧪.png"] };
+    const selection = { type: "start", inputItems: ["A é.png", "a\nb.png", "🧪.png"], toolPaths: {} };
     const encoded = encodeMessage("client", selection);
     assert.ok(encoded.endsWith("\n"));
     assert.equal(encoded.split("\n").length, 2);

@@ -11,21 +11,47 @@ Source and releases: https://github.com/resoltico/ImageFilesToPDF
 ## Requirements
 
 - macOS 13.5 or later with Shortcuts and Node.js 26.13.1 or later.
-- `vips` (which includes `vipsheader`) and stable `pdfcpu` 0.16.4 or later,
-  installed with Homebrew:
+- libvips with `vips` and `vipsheader`, and stable pdfcpu 0.16.4 or later.
 
-```sh
-brew install node vips pdfcpu
-```
+The Finder floor comes from the [Node.js platform requirements](https://github.com/nodejs/node/blob/v26.13.1/BUILDING.md#platform-list).
+Finder execution on macOS 13.5–14 has not been tested.
+The action is a single JavaScript for Automation (JXA) file with the embedded
+conversion engine. Setup checks all three backend commands before inspecting images.
 
-If an installed Node.js or pdfcpu is below the required version, run `brew update`
-and then `brew upgrade node pdfcpu`. The Quick Action is a single JavaScript for
-Automation (JXA) file with the embedded conversion engine. Setup checks all three backend commands before
-inspecting images; missing or unusable tools are reported as setup problems.
+## Installing the tools
 
-If Homebrew cannot supply Node.js for your macOS version, use the official
-macOS installer. Finder can use its `/usr/local/bin/node` executable.
-[Node.js 26.13.1 downloads](https://nodejs.org/en/blog/release/v26.13.1)
+### macOS
+
+- **Homebrew** supports macOS 15 and later on Apple Silicon. Run
+  `brew install node vips pdfcpu`. [Homebrew macOS requirements](https://docs.brew.sh/Installation.html#macos-requirements)
+- **MacPorts** provides the tools with `sudo port install vips pdfcpu`.
+  Its `nodejs26` port is at 26.13.0 as of 2026-11-24. Use the official Node.js
+  installer until that port meets the 26.13.1 minimum. [MacPorts nodejs26](https://ports.macports.org/port/nodejs26/)
+- **Upstream** provides a [Node.js macOS installer](https://nodejs.org/en/blog/release/v26.13.1),
+  [libvips source and build instructions](https://www.libvips.org/install.html),
+  and [pdfcpu release binaries](https://github.com/pdfcpu/pdfcpu/releases).
+  Put the executables in a searched directory or select them with **Choose…**.
+
+Finder reads absolute directories from `/etc/paths`, then from the individual
+`/etc/paths.d` files in name order, with numeric prefixes ordered numerically
+when both names have one. It ignores empty and relative entries, including
+paths starting with `~`. It appends `/opt/homebrew/bin`, `/usr/local/bin` and
+`/opt/local/bin` and keeps the first occurrence of each directory. Setup offers
+**Choose…** for each missing or unusable executable. Finder remembers the
+chosen path and checks it first on every run. If the check fails, Finder reports
+the path and offers **Choose…** again.
+
+### Linux
+
+For the CLI, install Node.js, libvips and pdfcpu from distribution packages or
+upstream releases that meet the requirements. Put their executable directories
+on `PATH`. See [Linux CLI setup](HEADLESS.md#linux).
+
+### Windows
+
+For the CLI, use upstream installers and binary distributions or a package
+manager of your choice. Put the executable directories on `PATH`.
+See [Windows CLI setup](HEADLESS.md#windows).
 
 ## Install in Shortcuts
 
@@ -60,9 +86,9 @@ installing and removing the action.
    technical diagnostics when available, and **Back** returns to the summary.
    A plain Stop does not offer empty Details.
 
-Confirmed settings are remembered for the next run in the preferences domain
-`com.resoltico.ImageFilesToPDF`, shared by every installed copy of the action. To
-reset them:
+Confirmed settings and chosen executable locations are remembered for the next
+run in the preferences domain `com.resoltico.ImageFilesToPDF`, shared by every
+installed copy of the action. Reset both with the following command.
 
 ```sh
 defaults delete com.resoltico.ImageFilesToPDF

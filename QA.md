@@ -6,7 +6,9 @@ The Finder action requires macOS 13.5 or later and Node.js 26.13.1 or later.
 The JXA client has an ES2022 syntax ceiling and a Safari 15.4 target. Its
 built-in check applies to the client code. The embedded engine runs in Node.
 The [Node.js platform requirements](https://github.com/nodejs/node/blob/v26.13.1/BUILDING.md#platform-list)
-set the macOS floor. The CLI also requires Node.js 26.13.1 or later.
+set the macOS floor. Finder execution on macOS 13.5–14 remains unverified. The
+MacPorts installation route remains unverified on a host with MacPorts. The CLI
+also requires Node.js 26.13.1 or later.
 
 Unit tests establish portable rules, application sequencing and adapter calls.
 Native suites establish behavior for the actual generated artifact and host used.
@@ -26,8 +28,9 @@ npm run test:integration:macos
 `quality` checks syntax, executable registry, import boundaries, toolchain and
 metadata consistency, document links and settings tables, ShellCheck/actionlint
 when available, ESLint, unit/repository tests, coverage, mutation and distribution
-bytes. The product-test import gate rejects adapter copies outside the allowed
-source and fixture paths. The export gate checks the importing module and
+bytes. The test import gate checks both `tests/` and `tools/tests/` and rejects
+imports of adapter copies, including unlisted modules in the tooling tree.
+Native harnesses may import the declared artifact reader. The export gate checks the importing module and
 binding, including declared build and native probe entry points. It never rebuilds first: stale committed output must fail. Use
 `npm run build` to regenerate intentionally. Inspect discovered tests and all skips.
 
@@ -47,6 +50,10 @@ exercise the production artifacts and native tools on each host. ESLint rules an
 exceptions are recorded in `tools/eslint/rules.mjs`. Dependency and toolchain pins
 live in package.json, package-lock.json, .node-version and mise.toml; clean restores
 use `npm ci --ignore-scripts` with the declared npm version.
+
+The required GitHub Actions checks on `main` are source quality, macOS
+integration, Linux native CLI, and the Windows artifact, cards, arguments and
+console jobs.
 
 ## Native platform matrix
 
@@ -78,10 +85,13 @@ the Python standard library.
 The same 16-byte PNG prefix produces a VIPS `not enough data` warning on
 macOS and Windows (libvips 8.18.7), and `pngload: end of stream` on Debian
 (libvips 8.16.1). The truncated TIFF reports a TIFF directory read error on
-macOS and Debian. Windows reports `is not a known file format` for those TIFF
-bytes, the same diagnostic as text supplied as PNG. Windows classifies both
-as `not-an-image`. The native fixture asserts this measured behavior and verifies
-that the source bytes remain unchanged.
+macOS and Debian. Windows can report `is not a known file format` for the same
+TIFF bytes. For that diagnostic the engine distinguishes damaged PNG, JPEG,
+TIFF and WebP by a complete format signature in the first 12 bytes. Admission
+reads that prefix through an identity- and version-checked read-only handle.
+Preparation uses the bytes collected while making the private copy. The native
+fixture requires `damaged` for all four truncated formats and `not-an-image`
+for plain text named as PNG. It also checks the original bytes.
 
 ## Required native checks
 
@@ -101,8 +111,8 @@ relative to `tests/integration/`.
 | `cli.sh` | CLI grammar/statuses, settings reader, refusal corpus, unusable header overrides, German caller locale, names, JPEG streams, placement, actual INT/TERM/repeats, HEIC/excluded-loader/FIFO refusals and closed/broken stream integrity |
 | `hdr.sh` | Synthetic Ultra HDR in both modes, SDR JPEG streams, ICC conversion, orientations 6/8, damage and unmapped-loader diagnostics |
 | `naming.sh` | Case and normalization namespaces, folder aliases, hard links, raw stored-basename bytes, long-name/collision budgets and occupied-name protection on local, APFS, APFSX, HFS+, HFSX, FAT32 and exFAT volumes |
-| `tools/tests/native/finder-engine.cjs` | macOS osascript client through the embedded engine, package parity, private cache reuse and tampering, runtime discovery |
-| `tools/tests/native/finder-pipe.cjs` | Engine SIGKILL during review and progress, exit and stderr diagnostics, restored SIGPIPE state, helper exit |
+| `finder-engine.cjs` | macOS osascript client through the embedded engine, package parity, private cache reuse and tampering, executable discovery and persistence, and scripted stepwise settings after an unusable form |
+| `finder-pipe.cjs` | Engine SIGKILL during review and progress, exit and stderr diagnostics, restored SIGPIPE state, helper exit |
 | `native-cli.cjs` | Native CLI format, strict PDF, collision race, source integrity and receipt checks |
 | `posix-process.py` | Native Stop, crash, writer guard, helper exit, source replacement and argv batching |
 
@@ -190,7 +200,15 @@ the native move changes the stored file ID, so the engine checks that an open
 handle to the staging file identifies the entry at the destination. The card
 suite exercises an occupied name and a same-byte replacement.
 
-OneDrive Files On-Demand placeholders on Windows remain unverified.
+The Windows artifact job creates dehydrated PNG and JPEG placeholders through
+the Cloud Files API and hydrates them through a local test provider. It checks
+the initial and final on-disk data sizes, fetch callbacks, source hashes and
+the saved two-page PDF. On the Windows 11 ARM runner, both fixtures hydrated
+on their first fetch, retained their placeholder state and kept their source
+bytes. Windows hydrates confirmed Cloud Files placeholders
+before taking the admission snapshot because hydration can change NTFS change
+time. Capture still checks the admitted identity, version and image metadata.
+OneDrive remains unverified.
 
 ## Preparation measurements
 
@@ -213,24 +231,33 @@ The workspace writer guard remains until every in-flight command settles.
 ## Setup and runtime refusals
 
 Native CLI tests restrict executable discovery and assert setup receipt shape
-and package wording on each platform. On macOS, the CLI must also name only
+and platform-specific installation guide references. On macOS, the CLI must also name only
 pdfcpu when the two libvips tools are present. Node.js 24.21.0, 25.9.0 and 26.1.0
 are refusal probes. The CLI must give exit 3, the detected version and a
-schema-valid receipt. Finder checks missing executables, executables that
-return no version, and old runtimes when their paths are supplied through
-`IFTP_REJECTED_NODE`.
+schema-valid receipt. Finder checks both discovery adapters against registered
+and conventional directories, remembered paths, failed capability probes, and
+reselection. The Finder probe checks old runtimes when their paths are supplied
+through `IFTP_REJECTED_NODE`.
 
 ## Live Shortcuts acceptance
 
-The current SIGPIPE change still needs the owner’s live A11 check in
-ShortcutsMacHelper. In an isolated test Shortcut containing the entire
-candidate artifact, kill its `node --serve` engine with `kill -9` while the
-selection review is visible, then continue. Repeat while conversion progress
-is visible, then press Stop. Confirm a session-failure report with engine
-status 9 and confirm the run’s Node and osascript helpers exit. Verify the
-host’s SIGPIPE disposition is restored. The automated osascript probe covers
-both scenarios with default and ignored initial dispositions. Live A11 is
-pending, so the candidate is not release-ready.
+On macOS 27.2.1 arm64, the live test verified the imported script byte for byte
+and drove the real ShortcutsMacHelper dialogs. It killed the `node --serve`
+engine while the settings review was open and clicked Create after the engine
+ended. It killed the engine during the Checking images progress phase and pressed
+Stop after the engine ended. Both cases reported engine status 9 and kept the
+host responsive. The engine and its osascript child exited, and neither case
+left a new workspace or PDF.
+
+The progress case delays header inspection before a workspace writer starts.
+The native crash suite separately verifies that a workspace remains guarded
+when a writer can still be active. The osascript pipe probe checks restoration
+of the host's default and ignored SIGPIPE dispositions.
+
+In the same live host, the setup dialog opened the standard file chooser for
+an invalid remembered Node path. The selected executable was stored and used
+for both version verification and engine launch in later runs. The test
+restored the settings and executable preferences it changed.
 
 On macOS 27.2.1, the live Shortcut launches Node and osascript under
 ShortcutsMacHelper. The live checks exercise Finder selection, settings

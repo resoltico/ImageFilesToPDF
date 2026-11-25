@@ -40,6 +40,7 @@ function windowsNative(commands) {
         entries: (directory) => value("entries", { directory: path.win32.normalize(directory) }),
         downloads: () => value("downloads"),
         startTime: (pid) => value("startTime", { pid }),
+        hydrateCloudFile: (file) => value("hydrateCloudFile", { path: path.win32.toNamespacedPath(file) }),
         privateDirectory: (file, created) => value("privateDirectory", { path: path.win32.normalize(file), created }),
         move: (from, to) => ask("move", { from: path.win32.toNamespacedPath(from), to: path.win32.toNamespacedPath(to) }),
         close() { return native?.close(); }

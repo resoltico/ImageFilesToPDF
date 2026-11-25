@@ -7,6 +7,7 @@ const { env, platform } = require("node:process");
 const { checkRequiredTools } = require("../application/setup.js");
 const { VIPSHEADER_PROBE_IMAGE } = require("../backend/preflight.js");
 const { WINDOWS, localPath, standardize, toolPath } = require("./paths.js");
+const { SYSTEM_PATHS, SYSTEM_FRAGMENTS, searchDirectories } = require("../core/executable-search.js");
 
 function executableFile(value) {
     try {
@@ -23,9 +24,26 @@ function inheritedSearch() {
     return (search ?? "").split(path.delimiter);
 }
 
-function locate(name, directories) {
+function finderSearch() {
+    function read(file) {
+        try { return fs.lstatSync(file).isFile() ? fs.readFileSync(file, "utf8") : ""; }
+        catch { return ""; }
+    }
+    let names = [];
+    try { names = fs.readdirSync(SYSTEM_FRAGMENTS); } catch {
+        // The fragment directory is optional.
+    }
+    const fragments = Object.fromEntries(names.map((name) => [name, read(path.join(SYSTEM_FRAGMENTS, name))]));
+    return searchDirectories({ systemPaths: { defaults: read(SYSTEM_PATHS), fragments } });
+}
+
+function locate(name, directories, toolPaths) {
+    if (toolPaths && Object.hasOwn(toolPaths, name)) {
+        const chosen = toolPaths[name];
+        return { file: executableFile(chosen), override: { path: chosen } };
+    }
     const variable = `IMAGE_FILES_TO_PDF_${name.toUpperCase()}`;
-    if (Object.hasOwn(env, variable)) {
+    if (!toolPaths && Object.hasOwn(env, variable)) {
         const value = env[variable];
         return { file: executableFile(value), override: { variable, value } };
     }
@@ -48,7 +66,8 @@ async function withSample(inspect) {
     } finally { directory.remove(); }
 }
 
-function checkTools(commands, directories = inheritedSearch()) {
-    return checkRequiredTools({ platform, checkpoint: commands.checkpoint, locate: (name) => locate(name, directories), run: commands.request, withSample });
+function checkTools(commands, toolPaths) {
+    const directories = toolPaths ? finderSearch() : inheritedSearch();
+    return checkRequiredTools({ platform, checkpoint: commands.checkpoint, locate: (name) => locate(name, directories, toolPaths), run: commands.request, withSample });
 }
 module.exports = { checkTools };

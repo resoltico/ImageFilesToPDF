@@ -50,9 +50,8 @@ function checkWhitespace(relativePath, content) {
  * directly rather than only through a file on disk.
  */
 /*
- * Every binary the action runs is named in src/finder/node-executables.js and
- * nowhere else, so the external surface of the artifact is a file you can
- * read rather than a fact to reassemble from five modules.
+ * Fixed system executable paths belong in the engine's executable registry.
+ * Node and conversion tools are discovered at run time.
  *
  * A rule about where code lives, checked where the code is written. The
  * property it protects used to be approximated by grepping the built
@@ -60,7 +59,7 @@ function checkWhitespace(relativePath, content) {
  * is a byte-for-byte render of src/, so nothing can be true of one and not
  * the other.
  */
-const EXECUTABLES_MODULE = "src/finder/node-executables.js";
+const EXECUTABLES_MODULE = "src/engine/executables.js";
 
 const ABSOLUTE_EXECUTABLE =
     /"(?<path>\/(?:s?bin|usr\/s?bin|usr\/local\/bin|opt\/(?:homebrew|local)\/bin)\/[\w.-]+)"/gu;
@@ -75,7 +74,7 @@ export function executablePathsIn(content) {
 function checkExecutables(relativePath, content) {
     // The rule is about what the shipped action runs. A test naming a path as
     // a fixture is asserting against it, not invoking it.
-    if (!relativePath.startsWith("src/") || [EXECUTABLES_MODULE, "src/engine/executables.js"].includes(relativePath)) {
+    if (!relativePath.startsWith("src/") || relativePath === EXECUTABLES_MODULE) {
         return;
     }
 

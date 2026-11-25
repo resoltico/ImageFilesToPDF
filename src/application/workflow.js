@@ -17,7 +17,7 @@ async function prepare(input, options) {
     const capabilities = typeof options.capabilities === "function" ? await options.capabilities() : options.capabilities;
     const { tree, sources, publication, storage, destinationNames } = capabilities;
     if (!tree || !sources || !publication || !storage || !destinationNames || typeof destinationNames.groups !== "function" ||
-        ["facts", "readable", "capture", "pngCount"].some((method) => typeof sources[method] !== "function")) {
+        ["facts", "readable", "capture", "prefix", "pngCount"].some((method) => typeof sources[method] !== "function")) {
         throw new OperationError(message("filesystemCapabilitiesUnavailable"));
     }
     progress.diagnostics.push(...await options.reclaim(storage));

@@ -10,6 +10,7 @@ const { captureIssue, changedSourceIssue } = require("../core/source-policy.js")
 const { ordinaryWindowsPath } = require("./path-syntax.js");
 const { WINDOWS, standardize } = require("./paths.js");
 const { countPng } = require("../core/png-count.js");
+const { SIGNATURE_BYTES } = require("../core/raster-signatures.js");
 const { crc32 } = require("node:zlib");
 
 const BIGINT = { bigint: true };
@@ -81,9 +82,11 @@ function changedSource(file) {
 function copyHandle(fd, out, size) {
     if (!Number.isSafeInteger(size)) { throw new OperationError(message("sourceSizeUnrepresentable")); }
     const data = Buffer.allocUnsafe(BLOCK_SIZE);
+    const prefix = Buffer.alloc(Math.min(SIGNATURE_BYTES, size));
     for (let position = 0; position < size;) {
         const read = fs.readSync(fd, data, 0, Math.min(data.length, size - position), position);
         if (!read) { throw new OperationError(message("sourceEndedDuringCapture")); }
+        if (position < prefix.length) { data.copy(prefix, position, 0, Math.min(read, prefix.length - position)); }
         for (let offset = 0; offset < read;) {
             const written = fs.writeSync(out, data, offset, read - offset);
             if (!written) { throw new OperationError(message("privateCopyUnwritable")); }
@@ -92,6 +95,7 @@ function copyHandle(fd, out, size) {
         position += read;
     }
     if (fs.fstatSync(out, BIGINT).size !== BigInt(size)) { throw new OperationError(message("privateCopySizeUnverified")); }
+    return prefix;
 }
 
 function storedNames(directory) {
@@ -118,13 +122,23 @@ function readPng(fd, size) {
     }, size);
 }
 
+function readPrefix(fd, size) {
+    const bytes = Buffer.alloc(Math.min(SIGNATURE_BYTES, Number(size)));
+    for (let offset = 0; offset < bytes.length;) {
+        const read = fs.readSync(fd, bytes, offset, bytes.length - offset, offset);
+        if (read === 0) { throw new OperationError(message("sourceAttributesUnavailable")); }
+        offset += read;
+    }
+    return bytes;
+}
+
 function listedMacKind(record, kind) {
     if (typeof record?.package !== "boolean" || typeof record?.alias !== "boolean") { return "unexaminable"; }
     if (record.alias) { return "link"; }
     return record.package ? "package" : kind;
 }
 
-function sourceOperations(checkedSource) {
+function sourceOperations(checkedSource, hydrateCloudFile) {
     async function facts(file) {
         try {
             const found = await checkedSource(file);
@@ -150,13 +164,23 @@ function sourceOperations(checkedSource) {
         } finally { fs.closeSync(fd); }
     }
 
+    async function admissionFacts(file) {
+        const before = await facts(file);
+        if (!hydrateCloudFile || !await hydrateCloudFile(file)) { return before; }
+        const after = await facts(file);
+        if (before.identity !== after.identity || before.size !== after.size) { throw changedSource(file); }
+        return after;
+    }
+
     async function capture(file, destination) {
         try {
             return await withSource(file, (fd, opened) => {
                 const out = fs.openSync(destination, "wx", PRIVATE_FILE_MODE);
-                try { copyHandle(fd, out, Number(opened.size)); }
+                try {
+                    const capturedPrefix = copyHandle(fd, out, Number(opened.size));
+                    return { path: destination, identity: opened.identity, version: opened.version, prefix: capturedPrefix };
+                }
                 finally { fs.closeSync(out); }
-                return { path: destination, identity: opened.identity, version: opened.version };
             });
         } catch (error) {
             if (error.issues || isUserCanceled(error)) { throw error; }
@@ -165,7 +189,19 @@ function sourceOperations(checkedSource) {
         }
     }
 
-    return { facts, capture, readable, pngCount: (file) => withSource(file, (fd, opened) => readPng(fd, Number(opened.size))) };
+    async function prefix(file, expected) {
+        try {
+            return await withSource(file, (fd, opened) => {
+                if (!sameFile(expected, opened)) { throw changedSource(file); }
+                return readPrefix(fd, opened.size);
+            });
+        } catch (error) {
+            if (error instanceof OperationError || isUserCanceled(error)) { throw error; }
+            throw new OperationError(message("sourceAttributesUnavailable"), { cause: error });
+        }
+    }
+
+    return { facts: admissionFacts, capture, readable, prefix, pngCount: (file) => withSource(file, (fd, opened) => readPng(fd, Number(opened.size))) };
 }
 
 function localFilesystem(windows, mac) {
@@ -230,7 +266,7 @@ function localFilesystem(windows, mac) {
     return {
         checked, directoryIdentity,
         tree: { inspect, entries, standardize },
-        sources: sourceOperations(checkedSource)
+        sources: sourceOperations(checkedSource, windows?.hydrateCloudFile)
     };
 }
 

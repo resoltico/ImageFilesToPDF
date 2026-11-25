@@ -67,14 +67,14 @@ function configure(commands) {
     };
 }
 
-async function convert(invocation, commands, { session, directories } = {}) {
+async function convert(invocation, commands, { session, toolPaths } = {}) {
     const progress = createProgress(session ? [session.sink] : [], commands.stopped);
     let configured = null;
     const outcome = await (async () => {
         try {
             configured = configure(commands);
             return await execute(invocation, {
-                ...configured, checkTools: () => checkTools(commands, directories), reclaim: (storage) => storage.reclaim(), now: () => new Date(),
+                ...configured, checkTools: () => checkTools(commands, toolPaths), reclaim: (storage) => storage.reclaim(), now: () => new Date(),
                 interaction: { progress, collect: (input) => input, settings: session?.settings ?? (() => invocation.settings),
                     noImages: noImagesOutcome, present: (result) => result }
             });
