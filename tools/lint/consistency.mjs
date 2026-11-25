@@ -139,10 +139,24 @@ export async function checkRepositoryUrl(read = readFromDisk) {
     ]);
 }
 
+/*
+ * npm installs the CLI under the package name, and the CLI prints that command
+ * in its usage text. The publish manifest derives its bin entry from the name.
+ */
+export async function checkCommandName(read = readFromDisk) {
+    const packageJson = JSON.parse(await read("package.json"));
+
+    return assertAll("command names", [
+        ["package.json name", packageJson.name],
+        extract(await read("src/cli/grammar.js"), /const COMMAND = "(?<value>[^"]+)"/u, "src/cli/grammar.js")
+    ]);
+}
+
 export async function checkConsistency(read = readFromDisk) {
     const version = await checkVersion(read);
     const node = await checkNodeVersion(read);
     const url = await checkRepositoryUrl(read);
+    const command = await checkCommandName(read);
 
-    return `version ${version}, node ${node}, ${url}`;
+    return `version ${version}, node ${node}, ${url}, command ${command}`;
 }

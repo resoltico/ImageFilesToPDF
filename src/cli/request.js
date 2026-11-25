@@ -7,7 +7,7 @@ const { issueMessage, issueMessages } = require("../core/messages.js");
 const fs = require("node:fs");
 const { TextDecoder } = require("node:util");
 const { localPath } = require("../engine/paths.js");
-const { parseArgs, RUN_LINE } = require("./grammar.js");
+const { COMMAND, parseArgs, RUN_LINE } = require("./grammar.js");
 
 const JSON_INDENT = 2;
 
@@ -26,8 +26,8 @@ function settingsHelp() {
 }
 
 function usage() {
-    return `${APP_NAME} ${VERSION}\n\nUsage:\n  node Image-Files-to-PDF.cjs --help\n` +
-        "  node Image-Files-to-PDF.cjs --version\n" +
+    return `${APP_NAME} ${VERSION}\n\nUsage:\n  ${COMMAND} --help\n` +
+        `  ${COMMAND} --version\n` +
         `  ${RUN_LINE}\n\nSettings (all ${Object.keys(SETTINGS_SCHEMA).length} required):\n` +
         `${settingsHelp()}\n\nExample settings JSON (all required fields):\n${JSON.stringify(DEFAULT_SETTINGS, null, JSON_INDENT)}\n\nOptional run option:\n  timestamp — ${TIMESTAMP_FORM} in local time; default now\n\nPaths may be absolute or relative to the working directory. Settings accept a local file URL or path and must be UTF-8 JSON without a BOM.\n`;
 }

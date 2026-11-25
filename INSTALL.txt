@@ -54,23 +54,27 @@ manager. On both platforms put the executable directories on PATH.
 Verify a download
 =================
 
-The release workflow attests both scripts, the checksum manifest, installation
-instructions and license. With GitHub CLI installed, from the download folder:
+The release workflow attests every release file. With GitHub CLI installed,
+from the download folder:
 
     gh attestation verify Image-Files-to-PDF.jxa --repo resoltico/ImageFilesToPDF
-    gh attestation verify Image-Files-to-PDF.cjs --repo resoltico/ImageFilesToPDF
-    shasum --check SHA256SUMS
+    shasum --check --ignore-missing SHA256SUMS
 
 Install the CLI
 ===============
 
-Keep Image-Files-to-PDF.cjs as a file and install Node.js 26.13.1 or later, libvips
-and stable pdfcpu 0.16.4 or later. Put vips, vipsheader and pdfcpu on PATH.
-On Windows use their executable distributions and PowerShell 7.4 or later for
-UTF-8 stdout redirection. See HEADLESS.md in the repository for settings and
+Install Node.js 26.13.1 or later, libvips and stable pdfcpu 0.16.4 or later,
+and put vips, vipsheader and pdfcpu on PATH. Then install the command with npm,
+which comes with Node.js:
+
+    npm install -g image-files-to-pdf
+
+Update with "npm install -g image-files-to-pdf@latest" and remove with
+"npm uninstall -g image-files-to-pdf". On Windows use PowerShell 7.4 or later
+for UTF-8 stdout redirection. See HEADLESS.md in the repository for settings and
 platform prerequisites.
 
-    node Image-Files-to-PDF.cjs --settings settings.json -- "photo 1.jpg" folder
+    image-files-to-pdf --settings settings.json -- "photo 1.jpg" folder
 
 Install the Quick Action
 ========================

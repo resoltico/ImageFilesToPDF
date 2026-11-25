@@ -1,6 +1,8 @@
 "use strict";
 
-const RUN_LINE = "node Image-Files-to-PDF.cjs --settings <settings.json> [--] <path…>";
+// The npm command name; tools/lint/consistency.mjs asserts it equals the package name.
+const COMMAND = "image-files-to-pdf";
+const RUN_LINE = `${COMMAND} --settings <settings.json> [--] <path…>`;
 const HELP = new Set(["-h", "--help"]);
 
 function optionError(option) { return `Unknown option: ${option}.`; }
@@ -28,4 +30,4 @@ function parseArgs(args) {
     return { kind: "run", file, inputItems };
 }
 
-module.exports = { parseArgs, RUN_LINE };
+module.exports = { COMMAND, parseArgs, RUN_LINE };

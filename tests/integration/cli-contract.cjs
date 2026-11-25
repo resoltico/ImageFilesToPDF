@@ -175,7 +175,7 @@ async function signals() {
 }
 
 function grammar() {
-    const runLine="Usage: node Image-Files-to-PDF.cjs --settings <settings.json> [--] <path…>\nRun with --help to see the settings.";
+    const runLine="Usage: image-files-to-pdf --settings <settings.json> [--] <path…>\nRun with --help to see the settings.";
     for(const [args,problem] of [[[],"No arguments were given."],[["--settings"],"--settings needs a settings file."],
         [["--settings",config],"At least one source path is required."],[["--bogus"],"Unknown option: --bogus."],
         [["--help","extra"],"--help takes no other arguments."],[["--settings","","--",config],"An argument is empty."]]) {

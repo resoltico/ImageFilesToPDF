@@ -165,12 +165,23 @@ what could not be verified. [SECURITY.md](SECURITY.md) describes the file-safety
 
 ## Command line
 
-Download the standalone CJS bundle to run the same engine from macOS, Linux or
-Windows PowerShell. Install Node.js 26.13.1 or later, libvips and stable
-pdfcpu 0.16.4 or later.
+The `image-files-to-pdf` command runs the same engine on macOS, Linux and
+Windows, and on other platforms that Node.js supports where libvips and pdfcpu
+are installed. Install Node.js 26.13.1 or later, libvips and stable pdfcpu
+0.16.4 or later as described in [Installing the tools](#installing-the-tools),
+then install the command with npm, which comes with Node.js:
 
 ```sh
-node Image-Files-to-PDF.cjs --settings settings.json photo.jpg folder
+npm install -g image-files-to-pdf
+```
+
+Update with `npm install -g image-files-to-pdf@latest` and remove with
+`npm uninstall -g image-files-to-pdf`. If npm reports a permission error for a
+global install, follow npm's guide to
+[resolving EACCES permissions errors](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally).
+
+```sh
+image-files-to-pdf --settings settings.json photo.jpg folder
 ```
 
 See [HEADLESS.md](HEADLESS.md) for platform setup, settings and receipts.
@@ -182,8 +193,7 @@ download folder, with GitHub CLI installed:
 
 ```sh
 gh attestation verify Image-Files-to-PDF.jxa --repo resoltico/ImageFilesToPDF
-gh attestation verify Image-Files-to-PDF.cjs --repo resoltico/ImageFilesToPDF
-shasum --check SHA256SUMS
+shasum --check --ignore-missing SHA256SUMS
 ```
 
 The checksum verifies the downloaded file, not a copy pasted into Shortcuts. The

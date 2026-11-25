@@ -60,8 +60,10 @@ console jobs.
 | Target | Native tools and filesystem | Required checks |
 | --- | --- | --- |
 | macOS arm64 | macOS 26 CI and current macOS, local APFS, Homebrew libvips and pdfcpu | Committed Node bundle, APFS variants, a second volume, Apple-only HFS+/FAT/exFAT and JXA native probes, live Shortcuts |
-| Linux arm64 | Debian 13 Docker image, libvips 8.16.1 with HEIF plugins, pdfcpu 0.16.4 | Committed Node bundle on overlay and a distinct tmpfs device, terminal and crash lifecycle |
-| Windows arm64 | Windows 11 ARM runner, NTFS, PowerShell 7, libvips 8.18.7 ARM64 all, pdfcpu 0.16.4 x64 under emulation | Node 26.13.1, PowerShell argv and encoding, console Ctrl+C, NTFS ownership and publication, cross-volume NTFS, FAT32 and exFAT publication |
+| Linux arm64 | Debian 13 Docker image, libvips 8.16.1 with HEIF plugins, pdfcpu 0.16.4 | Committed Node bundle on overlay and a distinct tmpfs device, terminal and crash lifecycle, npm route with the image's npm |
+| Linux x86-64 | The same Debian 13 image on an x86-64 runner, pdfcpu 0.16.4 x86-64 | The same checks as Linux arm64 |
+| Windows arm64 | Windows 11 ARM runner, NTFS, PowerShell 7, libvips 8.18.7 ARM64 all, pdfcpu 0.16.4 x64 under emulation | Node 26.13.1, PowerShell argv and encoding, console Ctrl+C, NTFS ownership and publication, cross-volume NTFS, FAT32 and exFAT publication, npm route and launchers |
+| Windows x86-64 | Windows Server 2025 runner, NTFS, libvips 8.18.7 x64 all, qpdf 12.4.2 x64, pdfcpu 0.16.4 x64 | Native CLI suite, npm route and launchers |
 
 The pinned Windows variant lacks HEVC. Its negative HEIC case must keep the
 source intact and publish no PDF. The Linux variant lacks the Ultra HDR loader.
@@ -115,6 +117,7 @@ relative to `tests/integration/`.
 | `finder-pipe.cjs` | Engine SIGKILL during review and progress, exit and stderr diagnostics, restored SIGPIPE state, helper exit |
 | `native-cli.cjs` | Native CLI format, strict PDF, collision race, source integrity and receipt checks |
 | `posix-process.py` | Native Stop, crash, writer guard, helper exit, source replacement and argv batching |
+| `npm-route.cjs` | The packed npm tarball installed into a private prefix: the command's `--version` and help, a conversion, a missing-tool refusal and uninstall |
 
 ExifTool edits only synthetic HDR fixture metadata; the action does not use it.
 
@@ -238,6 +241,31 @@ schema-valid receipt. Finder checks both discovery adapters against registered
 and conventional directories, remembered paths, failed capability probes, and
 reselection. The Finder probe checks old runtimes when their paths are supplied
 through `IFTP_REJECTED_NODE`.
+
+## npm distribution
+
+`tools/npm-package.mjs` derives the public manifest from `package.json` and
+packs the committed CLI artifact, README and LICENSE. Two packs of the same
+commit gave the same SHA-256, and the packed CLI is byte-identical to `dist/`.
+The native workflow packs one tarball and installs those bytes on every
+runner: macOS arm64, Linux arm64 and x86-64 with the npm that the Node image
+ships (11.20.0), and Windows arm64 and x86-64.
+
+On both Windows architectures, Windows PowerShell 5.1 refused npm's `.ps1`
+launcher under the `Restricted` execution policy and ran it under `RemoteSigned`
+and `Bypass`. The `.cmd` launcher ran the command, a conversion and a
+missing-tool refusal. A console Ctrl+C through the `.cmd` launcher stopped the
+run at its checkpoint with a canceled receipt and exit 1 from Node, and
+`cmd.exe` exited with status 1 within 3 seconds, without a batch-job prompt.
+The check still ends `cmd.exe` if it waits, because it holds the redirected
+receipt open.
+
+The release workflow attests and attaches the tarball and lists it in
+`SHA256SUMS`. Its npm job stages the tarball with `npm stage publish` through
+trusted publishing when the repository variable `NPM_TRUSTED_PUBLISHING` is
+`enabled`. That path is unverified until the first staged release; staging
+from a tarball argument and npm's rendering of the README's relative links are
+first observed then.
 
 ## Live Shortcuts acceptance
 

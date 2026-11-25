@@ -24,7 +24,7 @@ const read = (relative) => Promise.resolve(FILES[relative]);
 
 test("the banner is quoted from the repository, not retyped", async () => {
     const { readMetadata, renderBanner } = await load();
-    const banner = renderBanner(await readMetadata(read, "12.3"));
+    const banner = renderBanner(await readMetadata(read, "12.3"), "Requires the tools.");
 
     assert.match(banner, /Image Files to PDF 9\.9\.9/u);
     assert.match(banner, /https:\/\/github\.com\/someone\/Project/u);
@@ -33,14 +33,14 @@ test("the banner is quoted from the repository, not retyped", async () => {
     assert.match(banner, /GNU Affero General Public License, version 3 only/u);
     assert.match(banner, /https:\/\/www\.gnu\.org\/licenses\/agpl-3\.0\.html/u);
     assert.match(banner, /Corresponding Source: https:\/\/github\.com\/someone\/Project\/tree\/v9\.9\.9/u);
-    assert.match(banner, /Requires macOS 12\.3 or later/u);
+    assert.match(banner, /^ \* Requires the tools\.$/mu);
 });
 
 test("the banner is a comment, and the only one before the code", async () => {
     // The stripper keeps the first comment and nothing else before the code,
     // so a banner that is not one comment would lose part of itself.
     const { readMetadata, renderBanner } = await load();
-    const banner = renderBanner(await readMetadata(read, "12.3"));
+    const banner = renderBanner(await readMetadata(read, "12.3"), "Requires the tools.");
 
     assert.match(banner, /^\/\*/u);
     assert.match(banner, /\*\/$/u);
@@ -50,7 +50,7 @@ test("the banner is a comment, and the only one before the code", async () => {
 test("it says the comments were stripped and where they went", async () => {
     // Otherwise the file looks like a codebase with no explanations in it.
     const { readMetadata, renderBanner } = await load();
-    const banner = renderBanner(await readMetadata(read, "12.3"));
+    const banner = renderBanner(await readMetadata(read, "12.3"), "Requires the tools.");
 
     assert.match(banner, /Comments are stripped on build/u);
     assert.match(banner, /Generated file\. Edit the sources and rebuild/u);

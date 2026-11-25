@@ -89,7 +89,7 @@ test("the repository's declared facts agree with each other", async () => {
 
     assert.match(
         await checkConsistency(),
-        /^version \d+\.\d+\.\d+, node \d+\.\d+\.\d+, https:\/\/\S+$/u
+        /^version \d+\.\d+\.\d+, node \d+\.\d+\.\d+, https:\/\/\S+, command [a-z][a-z0-9-]*$/u
     );
 });
 

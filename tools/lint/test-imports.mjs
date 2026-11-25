@@ -42,6 +42,7 @@ const REPOSITORY_TEST_INPUTS = new Set([
     "tools/lint/toolchain.mjs",
     "tools/lint/workflow-rules.mjs",
     "tools/node-boot.mjs",
+    "tools/npm-package.mjs",
     "tools/pure-modules.mjs",
     "tools/release.mjs",
     "tools/scoped-bundle.mjs",
