@@ -4,7 +4,7 @@ const { OperationError } = require("./errors.js");
 const { issueMessage, issueMessages } = require("./messages.js");
 const { FINDER_EXECUTABLES } = require("./executable-search.js");
 const { RUN_OUTCOME } = require("./outcomes.js");
-const { INSTALL_GUIDES } = require("./installation-guide.js");
+const { INSTALL_GUIDES, INSTALL_OVERVIEW } = require("./installation-guide.js");
 
 const MINIMUM_PDFCPU_VERSION = "0.16.4";
 
@@ -32,11 +32,15 @@ function setupToolProblem(code, name, override) {
     return setupIssue(code, name === "pdfcpu" ? "pdfcpuUnusable" : "toolUnusable", { name, ...version });
 }
 
+/** Platforms without their own section use the overview of every installation route. */
+function installGuide(platform) {
+    return Object.hasOwn(INSTALL_GUIDES, platform) ? INSTALL_GUIDES[platform] : INSTALL_OVERVIEW;
+}
+
 function installHint(automatic, platform) {
-    if (!Object.hasOwn(INSTALL_GUIDES, platform)) { throw new Error("Unknown setup platform."); }
     const packages = [...new Set(automatic.map(({ params }) => params.name === "pdfcpu" ? "pdfcpu" : "libvips"))];
     const params = { platform, packages };
-    return setupIssue("install-hint", "toolInstall", params, { packages: formatList(packages), guide: INSTALL_GUIDES[platform] });
+    return setupIssue("install-hint", "toolInstall", params, { packages: formatList(packages), guide: installGuide(platform) });
 }
 
 function setupFailure(problems, platform) {

@@ -77,7 +77,7 @@ test("checkConsistency summarizes every fact it agreed", async () => {
 
     assert.equal(
         await checkConsistency(fakeRepo()),
-        "version 1.2.3, node 26.8.1, https://github.com/someone/Project"
+        "version 1.2.3, node 26.8.1, https://github.com/someone/Project, command project-cli"
     );
 });
 
@@ -121,4 +121,18 @@ test("a file the gate depends on going missing is explained, not thrown raw", as
 
     assert.equal(typeof text, "string");
     assert.match(text, /IMAGE FILES TO PDF/u);
+});
+
+test("the CLI command must be the npm package name", async () => {
+    const { checkCommandName } = await loadConsistency();
+
+    assert.equal(await checkCommandName(fakeRepo()), "project-cli");
+    await assert.rejects(
+        () => checkCommandName(fakeRepo({ "src/cli/grammar.js": 'const COMMAND = "other-cli";\n' })),
+        /command names disagree between files/u
+    );
+    await assert.rejects(
+        () => checkCommandName(fakeRepo({ "src/cli/grammar.js": "const RUN = 1;\n" })),
+        /could not find the declared value in src\/cli\/grammar\.js/u
+    );
 });

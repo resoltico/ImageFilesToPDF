@@ -10,6 +10,7 @@
 function fakeRepo(overrides = {}) {
     const files = {
         "package.json": JSON.stringify({
+            name: "project-cli",
             version: "1.2.3",
             engines: { node: ">=26.8.1" },
             homepage: "https://github.com/someone/Project",
@@ -26,6 +27,7 @@ function fakeRepo(overrides = {}) {
         ".node-version": "26.8.1\n",
         "mise.toml": '[tools]\nnode = "26.8.1"\n',
         "README.md": "Source: https://github.com/someone/Project\n",
+        "src/cli/grammar.js": 'const COMMAND = "project-cli";\n',
         ...overrides
     };
 

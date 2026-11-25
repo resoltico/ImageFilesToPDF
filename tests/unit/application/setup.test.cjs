@@ -90,9 +90,15 @@ test("Stop is observed after a native setup probe settles", async () => {
 });
 
 
-test("an unsupported platform cannot supply a guessed installation hint", async () => {
-    const { result } = fixture({ platform: "unknown", locate: () => ({ file: null }) });
-    await assert.rejects(() => checkRequiredTools(result), /Unknown setup platform/u);
+test("a platform without its own installation section points to the overview", async () => {
+    for (const [platform, guide] of [["freebsd", "#installing-the-tools"], ["linux", "#linux"]]) {
+        const { result } = fixture({ platform, locate: () => ({ file: null }) });
+        // eslint-disable-next-line no-await-in-loop -- Each platform is an independent setup run.
+        const issues = await checkRequiredTools(result).then(() => assert.fail("setup must fail"), (error) => error.issues);
+        assert.deepEqual(issues.map(({ code }) => code), ["tool-missing", "tool-missing", "tool-missing", "install-hint"]);
+        assert.deepEqual(issues[3].params, { platform, packages: ["libvips", "pdfcpu"] });
+        assert.ok(issues[3].message.endsWith(`ImageFilesToPDF${guide}).`), issues[3].message);
+    }
 });
 
 test("setup requires status, native error and feature evidence independently", async () => {
