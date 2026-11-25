@@ -1,14 +1,15 @@
 import { build } from "esbuild";
 import path from "node:path";
+import { FINDER_JAVASCRIPTCORE } from "./finder-floor.mjs";
 
-// Keep the Finder client compatible with Safari 15.4 JavaScriptCore.
+// Compile the Finder client for the JavaScriptCore of the macOS floor.
 // Built-in availability is checked separately; this target supplies no polyfills.
 export const BUNDLE_OPTIONS = {
     bundle: true,
     platform: "neutral",
     format: "iife",
     globalName: "ImageFilesToPDF",
-    target: "safari15.4",
+    target: FINDER_JAVASCRIPTCORE,
     minifyWhitespace: true,
     minifyIdentifiers: false,
     legalComments: "none",

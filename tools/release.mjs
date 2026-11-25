@@ -12,7 +12,8 @@ import { guardedBundle } from "./node-boot.mjs";
 const HASH_PREFIX_LENGTH = 12;
 const ENGINE_DEFINE = "globalThis.iftpEmbeddedEngine";
 
-export const MINIMUM_MACOS = "13.5";
+export { MINIMUM_MACOS } from "./finder-floor.mjs";
+import { MINIMUM_MACOS } from "./finder-floor.mjs";
 export const ECMASCRIPT_TARGET = 2022;
 export const artifactName = "Image-Files-to-PDF.jxa";
 export const nodeArtifactName = "Image-Files-to-PDF.cjs";

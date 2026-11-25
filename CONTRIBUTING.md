@@ -136,7 +136,8 @@ between thumbnail and flatten: one source decode and one final PNG encode.
 JPEG re-encoding uses the quality setting; pass-through JPEGs keep their bytes.
 
 `tools/scoped-bundle.mjs` uses the pinned esbuild to build both distributions.
-JXA is a Safari 15.4 IIFE that exports `run(input, parameters)` and embeds the
+JXA is an IIFE for the Safari 16.6 JavaScriptCore of the macOS 13.5 floor
+(`tools/finder-floor.mjs`). It exports `run(input, parameters)` and embeds the
 engine as text. Both entry points require Node.js 26.13.1 or later. The CLI
 preamble checks the runtime before parsing the Node bundle, whose external
 imports are limited to Node built-ins. The two artifacts

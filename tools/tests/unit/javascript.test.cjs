@@ -14,5 +14,5 @@ test("artifact parser enforces classic-script syntax and preserves explicit comm
 
 test("bundler configuration preserves the adopted standalone runtime and readable names",async()=>{
     const {BUNDLE_OPTIONS}=await import("../../../tools/scoped-bundle.mjs");
-    assert.deepEqual(BUNDLE_OPTIONS,{bundle:true,platform:"neutral",format:"iife",globalName:"ImageFilesToPDF",target:"safari15.4",minifyWhitespace:true,minifyIdentifiers:false,legalComments:"none",write:false,metafile:true});
+    assert.deepEqual(BUNDLE_OPTIONS,{bundle:true,platform:"neutral",format:"iife",globalName:"ImageFilesToPDF",target:"safari16.6",minifyWhitespace:true,minifyIdentifiers:false,legalComments:"none",write:false,metafile:true});
 });

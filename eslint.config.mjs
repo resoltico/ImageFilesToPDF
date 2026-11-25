@@ -18,12 +18,10 @@ import {
 import { areaExceptions, deliberateExceptions, tunedRules } from "./tools/eslint/rules.mjs";
 
 /*
- * src/ runs in JavaScriptCore under osascript, not in Node. Its syntax is
- * pinned to what macOS 12.3's engine (Safari 15.4) supports; tools and tests
- * run on Node 26 and are not constrained.
- *
- * No ECMAScript year maps exactly onto a Safari release, so this is the coarse
- * half of the check. tools/lint/language-target.mjs is the precise half.
+ * The Finder client runs in JavaScriptCore under osascript, not in Node. Its
+ * syntax is held to ES2022, which the JavaScriptCore of the macOS floor
+ * (Safari 16.6, tools/finder-floor.mjs) supports in full; tools and tests run
+ * on Node 26. tools/lint/language-target.mjs checks the built-ins.
  */
 const JXA_ECMA_VERSION = 2022;
 

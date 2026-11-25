@@ -8,28 +8,26 @@ import { ECMASCRIPT_TARGET, MINIMUM_MACOS, renderRelease } from "../release.mjs"
  * so nothing in a parser will flag it. It fails at runtime, on the user's Mac,
  * with a TypeError.
  *
- * The Finder client uses a Safari 15.4 compatibility target. The separate
- * Node runtime determines the minimum supported macOS version. Each entry names the first
- * JavaScriptCore release that has it.
+ * The Finder client is compiled for the JavaScriptCore of the macOS floor
+ * (tools/finder-floor.mjs). Each entry names the first JavaScriptCore release
+ * that has a built-in the floor lacks.
  *
- * No ECMAScript year maps exactly onto a Safari release: ES2022 as a whole is
- * not in 15.4, even though its built-ins are. That is why static blocks appear
- * here despite `ecmaVersion: 2022` accepting them.
- *
- * Known gap: regular-expression *flags* are not inspected, so the ES2022 `d`
- * flag would not be caught here. Nothing in src/ uses it, and ESLint requires
- * every regex to carry `u`, which makes an accidental `d` unlikely.
+ * Known gap: regular-expression *flags* are not inspected, so the ES2024 `v`
+ * flag would not be caught here. ESLint requires every regex to carry `u`,
+ * which makes an accidental `v` unlikely.
  */
 export const LATE_FEATURES = [
-    ["static {", "Safari 16.4 / macOS 13.3", "a plain assignment after the class"],
-    [".toSorted(", "Safari 16 / macOS 13", ".slice().sort()"],
-    [".toReversed(", "Safari 16 / macOS 13", ".slice().reverse()"],
-    [".toSpliced(", "Safari 16 / macOS 13", ".slice() then splice"],
-    [".with(", "Safari 16 / macOS 13", "a copy then assignment"],
-    ["Array.fromAsync(", "Safari 16.4 / macOS 13.3", "an explicit loop"],
     ["Object.groupBy(", "Safari 17.4 / macOS 14.4", "a plain reduce"],
     ["Map.groupBy(", "Safari 17.4 / macOS 14.4", "a plain reduce"],
     ["Promise.withResolvers(", "Safari 17.4 / macOS 14.4", "an explicit executor"],
+    [".union(", "Safari 17 / macOS 14", "an explicit Set loop"],
+    [".intersection(", "Safari 17 / macOS 14", "an explicit Set loop"],
+    [".difference(", "Safari 17 / macOS 14", "an explicit Set loop"],
+    [".symmetricDifference(", "Safari 17 / macOS 14", "an explicit Set loop"],
+    [".isSubsetOf(", "Safari 17 / macOS 14", "an explicit Set loop"],
+    [".isSupersetOf(", "Safari 17 / macOS 14", "an explicit Set loop"],
+    [".isDisjointFrom(", "Safari 17 / macOS 14", "an explicit Set loop"],
+    ["Promise.try(", "Safari 18.2 / macOS 15.2", "a new Promise around the call"],
     ["RegExp.escape(", "Safari 18.2 / macOS 15.2", "a manual escape"],
     ["structuredClone(", "a Web API absent from osascript", "an explicit copy"]
 ];

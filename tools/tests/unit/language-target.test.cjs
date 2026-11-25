@@ -26,22 +26,20 @@ test("each rejected feature is on its own line", async () => {
     const { checkFeatures } = await loadTarget();
 
     assert.throws(
-        () => checkFeatures("a.toSorted();\nObject.groupBy(b, c);"),
-        /toSorted\( requires [^\n]+\n {2}Object\.groupBy\(/u
+        () => checkFeatures("a.union(c);\nObject.groupBy(b, c);"),
+        /Object\.groupBy\( requires [^\n]+\n {2}\.union\(/u
     );
 });
 
 test("built-ins newer than the floor are rejected", async () => {
     const { checkFeatures } = await loadTarget();
     const late = [
-        ".toSorted(",
-        ".toReversed(",
-        ".toSpliced(",
-        ".with(",
         "Object.groupBy(",
         "Map.groupBy(",
-        "Array.fromAsync(",
         "Promise.withResolvers(",
+        ".union(",
+        ".isDisjointFrom(",
+        "Promise.try(",
         "RegExp.escape(",
         "structuredClone("
     ];
@@ -55,23 +53,20 @@ test("built-ins newer than the floor are rejected", async () => {
     }
 });
 
-test("ES2022 syntax that postdates the floor is rejected", async () => {
-    // static initialization blocks are accepted by ecmaVersion 2022 but did
-    // not reach JavaScriptCore until Safari 16.4, so the denylist carries them.
+test("what the floor's JavaScriptCore has is accepted", async () => {
+    // Safari 16 and 16.4 added these; macOS 13.5 ships Safari 16.6.
     const { checkFeatures } = await loadTarget();
-
-    assert.throws(
-        () => checkFeatures("class A { static { this.x = 1; } }"),
-        /JavaScriptCore target/u
-    );
+    for (const source of ["a.toSorted();", "a.with(0, 1);", "Array.fromAsync(b);", "class A { static { this.x = 1; } }"]) {
+        assert.doesNotThrow(() => checkFeatures(source), source);
+    }
 });
 
 test("the rejection names the version and the alternative", async () => {
     const { checkFeatures } = await loadTarget();
 
-    assert.throws(() => checkFeatures("a.toSorted()"), (error) => {
-        assert.match(error.message, /Safari 16/u);
-        assert.match(error.message, /\.slice\(\)\.sort\(\)/u);
+    assert.throws(() => checkFeatures("Object.groupBy(a, b)"), (error) => {
+        assert.match(error.message, /Safari 17\.4 \/ macOS 14\.4/u);
+        assert.match(error.message, /a plain reduce/u);
 
         return true;
     });
@@ -125,7 +120,7 @@ test("the artifact is what is checked, not the sources it came from", async () =
         "ES2022, macOS 13.5+"
     );
     await assert.rejects(
-        () => checkLanguageTarget(() => Promise.resolve("a.toSorted();\n")),
+        () => checkLanguageTarget(() => Promise.resolve("Object.groupBy(a, b);\n")),
         /JavaScriptCore target/u
     );
 });

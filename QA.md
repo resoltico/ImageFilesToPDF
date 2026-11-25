@@ -3,8 +3,8 @@
 ## Scope and limits
 
 The Finder action requires macOS 13.5 or later and Node.js 26.13.1 or later.
-The JXA client has an ES2022 syntax ceiling and a Safari 15.4 target. Its
-built-in check applies to the client code. The embedded engine runs in Node.
+The JXA client has an ES2022 syntax ceiling and targets Safari 16.6, the
+JavaScriptCore that macOS 13.5 ships. Its built-in check applies to the client code. The embedded engine runs in Node.
 The [Node.js platform requirements](https://github.com/nodejs/node/blob/v26.13.1/BUILDING.md#platform-list)
 set the macOS floor. Finder execution on macOS 13.5–14 remains unverified. The
 MacPorts installation route remains unverified on a host with MacPorts. The CLI
