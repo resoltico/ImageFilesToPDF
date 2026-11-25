@@ -45,7 +45,9 @@ Schema validity supplements pixel, file and ownership checks.
 The [pure module declaration](tools/pure-modules.mjs) supplies the coverage
 and mutation scopes and the one unit test set both gates run; repository tests
 run in `npm test` but do not count toward either. The gate requires 100% line,
-branch and function coverage and a mutation score of at least 96. The catalog
+branch and function coverage and a mutation score of 100: every mutant is
+killed, and an equivalent mutant is removed by simplifying the code that admits
+it. The catalog
 tests check issue construction and explicit progress titles at the application
 boundary.
 

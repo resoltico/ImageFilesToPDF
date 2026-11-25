@@ -25,3 +25,11 @@ test("Windows tool paths keep the normalized path behind the native prefix", () 
     assert.equal(windowsOutputName("myCON.jpg"), "myCON.jpg");
     assert.equal(windowsOutputName("photo.jpg"), "photo.jpg");
 });
+
+test("only a drive letter at the very start makes a drive path", () => {
+    const { ordinaryWindowsPath } = require("../../../src/engine/path-syntax.js");
+    assert.equal(ordinaryWindowsPath("C:photo.png"), false);
+    assert.equal(ordinaryWindowsPath("C:\\photo.png"), true);
+    assert.equal(ordinaryWindowsPath("1:photo.png"), false);
+    assert.equal(ordinaryWindowsPath("photos\\x.png"), true);
+});

@@ -68,3 +68,8 @@ test("a helper reply that is not JSON is refused in the catalog's words", () => 
     const { message } = require("../../../src/core/messages.js");
     assert.throws(() => readHelperReply("not json"), (error) => error.message === message("platformHelperReplyNotJson"));
 });
+
+test("a null helper reply is refused in the catalog's words", () => {
+    const { message } = require("../../../src/core/messages.js");
+    assert.throws(() => windowsReply(null), (error) => error.message === message("windowsHelperInvalidReply"));
+});

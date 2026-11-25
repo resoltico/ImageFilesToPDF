@@ -16,8 +16,8 @@ function readHelperReply(line) {
 }
 
 function windowsReply(value) {
-    const object = value !== null && typeof value === "object" && !Array.isArray(value);
-    if (!object || typeof value.ok !== "boolean") { throw new Error(message("windowsHelperInvalidReply")); }
+    // Anything but a plain object with a boolean ok -- null, a scalar, an array -- is refused here.
+    if (Array.isArray(value) || typeof value?.ok !== "boolean") { throw new Error(message("windowsHelperInvalidReply")); }
     if (value.ok ? !Object.hasOwn(value, "value") : !Number.isInteger(value.code) || typeof value.diagnostic !== "string") {
         throw new Error(message("windowsHelperInvalidReply"));
     }

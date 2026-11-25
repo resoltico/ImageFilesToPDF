@@ -11,7 +11,8 @@ function linuxDownload(text, home) {
     const match = XDG_DOWNLOAD.exec(text);
     if (!match) { return null; }
     const raw = match.groups.value;
-    const expanded = raw === "$HOME" || raw.startsWith("$HOME/") ? home + raw.slice("$HOME".length) : raw;
+    // A bare $HOME is the home folder itself, which is refused below either way.
+    const expanded = raw.startsWith("$HOME/") ? home + raw.slice("$HOME".length) : raw;
     const decoded = expanded.replace(/\\(?<character>["\\$\x60])/gu, (escaped, character) => character);
     if (!path.posix.isAbsolute(decoded)) { return null; }
     const resolved = path.posix.resolve(decoded);

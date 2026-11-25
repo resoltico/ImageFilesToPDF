@@ -123,7 +123,7 @@ production layer they import (`core`, `backend`, `application`, then `engine`, `
 layer values may serve as fixtures. A repository test enforces placement for
 `require()`, `require.resolve()` and dynamic `import()`. Mutation testing runs unit files. All
 production sources and applicable build rules must remain discoverable by their
-gates. Coverage is 100% and mutation is at least 96 for the
+gates. Coverage and mutation are both 100% for the
 [pure module declaration](tools/pure-modules.mjs). I/O adapters require the
 native suites. Keep behavioral expectations independent of implementation calculations.
 

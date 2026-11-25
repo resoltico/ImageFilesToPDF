@@ -1,4 +1,5 @@
 "use strict";
+const { setImmediate } = require("node:timers");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { dialogue } = require("../../../src/serve/dialogue.js");
@@ -61,4 +62,18 @@ test("cancel, invalid consent and a mismatched settings answer all stop the inte
     const wrong = interactions(() => undefined, () => ({ type: "start" }));
     await assert.rejects(() => wrong.settings(review), /selection review answer/u);
     await assert.rejects(() => wrong.settings({ ...review, rejected: [] }), /settings are required/u);
+});
+
+test("a stop that rejects an unawaited question leaves no unhandled rejection", async () => {
+    const unhandled = [];
+    const listener = (reason) => unhandled.push(reason);
+    process.on("unhandledRejection", listener);
+    try {
+        const exchange = dialogue({ checkpoint: () => undefined, requestStop: () => undefined });
+        exchange.expect("review");
+        exchange.stop();
+        await new Promise((resolve) => { setImmediate(resolve); });
+        await new Promise((resolve) => { setImmediate(resolve); });
+    } finally { process.off("unhandledRejection", listener); }
+    assert.deepEqual(unhandled, []);
 });

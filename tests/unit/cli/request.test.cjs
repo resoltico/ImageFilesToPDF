@@ -79,3 +79,9 @@ test("supplied timestamp is optional only by absence",()=>{
     }
     assert.equal(configurationValues({...DEFAULT_SETTINGS,timestamp:"20240229_010203"}).timestamp,"20240229_010203");
 });
+
+test("help and usage errors name the npm command", () => {
+    assert.match(usage(), /^ {2}image-files-to-pdf --help$/mu);
+    assert.match(usage(), /^ {2}image-files-to-pdf --settings <settings\.json> \[--\] <path…>$/mu);
+    assert.throws(() => cliCommand([]), (error) => error.message.includes("Usage: image-files-to-pdf --settings <settings.json> [--] <path…>"));
+});

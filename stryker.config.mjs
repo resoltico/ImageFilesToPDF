@@ -24,7 +24,9 @@ export default {
      * judges unchanged, and a stale reuse would let a survivor pass unseen.
      */
     incremental: false,
-    thresholds: { high: 99, low: 97, break: 96 },
+    // Every mutant must be killed. An equivalent mutant is removed by simplifying
+    // the code that admits it, not tolerated by a threshold.
+    thresholds: { high: 100, low: 100, break: 100 },
     tempDirName: ".stryker-tmp",
     timeoutMS: 20000,
     tap: {
