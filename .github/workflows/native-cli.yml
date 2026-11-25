@@ -2,10 +2,6 @@ name: Native CLI
 
 on:
   workflow_call:
-    inputs:
-      windows-only:
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -36,7 +32,6 @@ jobs:
   linux:
     # The arm64 entry keeps the name "linux", which branch protection requires.
     name: ${{ matrix.name }}
-    if: ${{ !inputs.windows-only }}
     needs: package
     strategy:
       fail-fast: false

@@ -90,3 +90,11 @@ test("a workflow is read as text, from where workflows live", async () => {
     assert.match(calls[0][0], /\.github\/workflows\/quality\.yml$/u);
     assert.equal(calls[0][1], "utf8");
 });
+
+test("a floating runner label is refused and a named one passes", async () => {
+    const { assertRunnersPinned, floatingRunners } = await import("../../../tools/lint/workflow-rules.mjs");
+    const text = "jobs:\n  a:\n    runs-on: ubuntu-latest\n  b:\n    runs-on: ubuntu-24.04\n  c:\n    runs-on: windows-latest\n  d:\n    runs-on: macos-26\n";
+    assert.deepEqual(floatingRunners(text), ["runs-on: ubuntu-latest", "runs-on: windows-latest"]);
+    assert.throws(() => assertRunnersPinned("w.yml", text), /w\.yml: runner images must be named, not floating: runs-on: ubuntu-latest, runs-on: windows-latest/u);
+    assert.doesNotThrow(() => assertRunnersPinned("w.yml", "    runs-on: macos-26\n"));
+});

@@ -59,6 +59,24 @@ export function assertPinned(file, text) {
     }
 }
 
+/*
+ * Runner images are pinned by name. A `-latest` label moves to a new operating
+ * system on GitHub's schedule, so the same commit can verify on one image and
+ * release from another.
+ */
+const FLOATING_RUNNER = /^\s*runs-on:\s*\S*-latest\b/gmu;
+
+export function floatingRunners(text) {
+    return [...String(text).matchAll(FLOATING_RUNNER)].map((match) => match[0].trim());
+}
+
+export function assertRunnersPinned(file, text) {
+    const floating = floatingRunners(text);
+    if (floating.length > 0) {
+        throw new Error(`${file}: runner images must be named, not floating: ${floating.join(", ")}`);
+    }
+}
+
 async function workflowFiles() {
     return selectWorkflows(await readdir(path.join(root, WORKFLOW_ROOT)));
 }
@@ -109,7 +127,9 @@ export async function checkWorkflows(options = {}) {
     const read = options.read ?? readWorkflow;
 
     await Promise.all(found.map(async (file) => {
-        assertPinned(file, await read(file));
+        const text = await read(file);
+        assertPinned(file, text);
+        assertRunnersPinned(file, text);
     }));
 
     if (!available) {
