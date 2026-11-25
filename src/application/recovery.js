@@ -49,7 +49,8 @@ async function downloadsRecovery(job, paths) {
         requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: null });
         const facts = paths.original;
         const target = recoveryDestination(job.storage.downloads, paths.intended, paths.staged);
-        if (target.kind === "workspace") { return { state: "retained", path: target.path, issues: [] }; }
+        // Only a "recovered" result is read; a retained one carries its path and issues.
+        if (target.kind === "workspace") { return { path: target.path, issues: [] }; }
         const destination = target.path;
         context = { job, paths: { staged: paths.staged, final: destination, original: paths.original }, facts, from: paths.staged, claimed: facts, area: null, diagnostic: null };
         return await claimAvailable(context, destination, confirmedDownloads, () => undefined);
@@ -58,7 +59,7 @@ async function downloadsRecovery(job, paths) {
         requireOriginal(job.publication, { staged: paths.staged, expected: paths.original, cause: error, candidate: context?.area ? { folder: context.area.directory } : null });
         const cleanup = context?.area ? job.operations.closeStaging(context.area) : [];
         const [issue] = failureIssues(error);
-        return { state: "retained", path: paths.staged, issues: [{ code: issue.code === ISSUE.operation ? ISSUE.recovery : issue.code, stage: "recovery", params: {},
+        return { path: paths.staged, issues: [{ code: issue.code === ISSUE.operation ? ISSUE.recovery : issue.code, stage: "recovery", params: {},
             message: message("downloadsRecoveryFailed"), diagnostic: { message: diagnosticText(error), path: context?.paths.final, detail: context?.diagnostic } }, ...cleanup] };
     }
 }

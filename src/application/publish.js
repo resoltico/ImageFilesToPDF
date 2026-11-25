@@ -11,7 +11,8 @@ const { claimAvailable } = require("./destination.js");
 function confirmed(context) {
     const { job, paths, claimed, area } = context;
     const issueStart = job.cleanupIssues.length;
-    const outcome = { state: "unconfirmed", original: context.facts, claimedIdentity: claimed.identity, claimedSize: claimed.size, staging: area };
+    // confirm() marks the outcome confirmed once the destination is verified.
+    const outcome = { original: context.facts, claimedIdentity: claimed.identity, claimedSize: claimed.size, staging: area };
     try {
         // No checkpoint between confirmation and recording the confirmed destination.
         confirm(job, paths, outcome);
@@ -56,7 +57,7 @@ async function failedPublication(context, error) {
 
 function originalFacts(publication, staged) {
     try { return publication.facts(staged); }
-    catch (error) { return requireOriginal(publication, { staged, expected: { identity: "", size: -1 }, cause: error }); }
+    catch (error) { return requireOriginal(publication, { staged, expected: null, cause: error }); }
 }
 
 /** Exact native claims retry positively classified collisions using the same validated PDF. */

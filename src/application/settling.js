@@ -5,7 +5,7 @@ const { actualPublicationPath, requireOriginal, unconfirmedClaim } = require("./
 const { isPublished } = require("../core/artifacts.js");
 const { releaseOwnedArtifact } = require("./workspace.js");
 const { IssueError } = require("../core/errors.js");
-const { ISSUE, issuesOf } = require("../core/outcomes.js");
+const { ISSUE, issuesOf, failureIssues } = require("../core/outcomes.js");
 const { clearAway } = require("./recovery.js");
 const { removeOwned } = require("./owned-cleanup.js");
 
@@ -42,7 +42,7 @@ function settled(job, paths, outcome) {
             candidate: { path: paths.final, identity: outcome.claimedIdentity, size: outcome.claimedSize } });
     } catch (error) {
         const wording = message("publicationOriginalRetained");
-        throw new IssueError(wording, { cause: error, issues: issuesOf(error, "cleanup").map((issue) => ({ ...issue, stage: "cleanup", params: {}, message: wording })) });
+        throw new IssueError(wording, { cause: error, issues: failureIssues(error).map((issue) => ({ ...issue, stage: "cleanup", params: {}, message: wording })) });
     }
     releaseOwnedArtifact(job, paths.staged);
     job.cleanupIssues.push(...clearAway(job.operations, outcome));

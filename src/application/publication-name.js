@@ -11,7 +11,8 @@ function originalObservation(publication, staged) {
 
 function requireOriginal(publication, { staged, expected, cause, candidate = null }) {
     const observed = originalObservation(publication, staged);
-    if (expected.identity && expected.size > 0 && observed.identity === expected.identity && observed.size === expected.size) { return; }
+    // An original that could not be measured (expected null) is never confirmed.
+    if (expected?.identity && expected.size > 0 && observed.identity === expected.identity && observed.size === expected.size) { return; }
     const wording = message("publicationOriginalUnknown");
     throw new IssueError(wording, { cause, recovery: null, issues: [{ code: "fault", stage: "publication", params: {}, message: wording,
         diagnostic: { path: staged, expected, observed, ...(candidate ? { candidate } : {}) } }] });
