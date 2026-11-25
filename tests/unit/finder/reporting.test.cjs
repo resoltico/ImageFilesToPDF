@@ -22,3 +22,10 @@ const { describeNoImages } = require("../../../src/core/run-report.js");
     assert.equal(app.dialogs[1].message.split("Nothing to convert.").length,2);
     assert.match(app.dialogs[1].message,/notes\.txt: unsupported/u);
 });
+
+test("the no-images report is dismissed with OK", () => {
+    const { reportNoImages } = require("../../../src/finder/quick-action/reporting.js");
+    const buttons = [];
+    reportNoImages({ displayDialog(text, options) { buttons.push(options.buttons); return { buttonReturned: "OK" }; } }, []);
+    assert.deepEqual(buttons.at(-1), ["OK"]);
+});

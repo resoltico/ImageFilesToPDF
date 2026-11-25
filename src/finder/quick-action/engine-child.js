@@ -26,7 +26,6 @@ function watchPipe(ns, handle) {
                 // eslint-disable-next-line no-unused-expressions -- Rearm the one-shot native notification.
                 handle.waitForDataInBackgroundAndNotify;
             }
-            if (Number(data.length) === 0) { return ""; }
             const value = ns.NSString.alloc.initWithDataEncoding(data, ns.NSUTF8StringEncoding);
             if (!value || value.isNil()) {
                 if (ended) { throw new OperationError(message("engineInvalidUtf8")); }

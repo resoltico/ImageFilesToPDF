@@ -98,3 +98,46 @@ test("Details omits empty values and keeps meaningful zero and false values", ()
     assert.match(detail, /attempt: 0/u); assert.match(detail, /retriable: false/u); assert.match(detail, /nested: value: useful/u);
     assert.doesNotMatch(detail, /command:|empty:|spacing:|private stack/u);
 });
+
+test("Show in Finder selects the outputs in a Finder window", () => {
+    const { inspectModule } = require("../ports/inspect-module.cjs");
+    const { revealOutputs } = inspectModule(require.resolve("../../../src/finder/quick-action/completion.js"), ["revealOutputs"]);
+    const host = { ObjC: globalThis.ObjC, $: globalThis.$ };
+    const selected = [];
+    const imported = [];
+    const bridge = Object.assign((value) => ({ urls: value }), {
+        NSURL: { fileURLWithPath: (path) => `file://${path}` },
+        NSWorkspace: { sharedWorkspace: { activateFileViewerSelectingURLs: (urls) => selected.push(urls) } }
+    });
+    Object.assign(globalThis, { ObjC: { import: (name) => imported.push(name) }, $: bridge });
+    try { revealOutputs(["/a.pdf", "/b.pdf"]); }
+    finally { Object.assign(globalThis, host); }
+    assert.deepEqual(imported, ["AppKit"]);
+    assert.deepEqual(selected, [{ urls: ["file:///a.pdf", "file:///b.pdf"] }]);
+});
+
+test("technical details keep what explains a fault, drop stacks and blanks, and keep a stop only when it says something", () => {
+    const { inspectModule } = require("../ports/inspect-module.cjs");
+    const { technicalDetails } = inspectModule(require.resolve("../../../src/finder/quick-action/completion.js"), ["technicalDetails"]);
+    const observed = { code: "observer-fault", stage: "observer", message: "panel", diagnostic: { message: "draw failed" } };
+    const result = { issues: [], rejected: [], documents: [{ ...saved, issues: [] }, { ...saved, issues: [], diagnostics: [observed] }], diagnostics: [] };
+    result.diagnostics.push(
+        { code: "canceled", stage: "run" },
+        { code: "canceled", stage: "run", note: "   " },
+        { code: "canceled", note: "kept" },
+        { code: "bare", stage: "run" },
+        { code: "observer-fault", message: "a\rb\r\nc", stack: "at x", blank: " " }
+    );
+    assert.equal(technicalDetails(result), "code: canceled\nnote: kept\ncode: bare\nstage: run\ncode: observer-fault\nmessage: a\nb\nc\n" +
+        "code: observer-fault\nstage: observer\nmessage: draw failed");
+});
+
+test("the technical details are headed as such in the native alert", () => {
+    const { createFakeObjC } = require("../ports/fake-objc.cjs");
+    const bridge = createFakeObjC({ responses: [1001, 1000, 1000] });
+    const host = { ObjC: globalThis.ObjC, $: globalThis.$ };
+    Object.assign(globalThis, { ObjC: bridge.objc, $: bridge.ns });
+    try { showCompletion({}, runOutcome([failed]), () => undefined); }
+    finally { Object.assign(globalThis, host); }
+    assert.equal(bridge.state.alerts[1].informativeText, "Technical details (selectable and copyable)");
+});

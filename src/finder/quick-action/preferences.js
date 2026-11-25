@@ -10,12 +10,14 @@ function encode(settings) {
     return JSON.stringify(settings);
 }
 
+// Settings that cannot be read back are no settings: the form opens on its defaults.
 function rememberedAnswers(text) {
-    try {
-        return answersFromSettings(normalizeSettings(JSON.parse(String(text))));
-    } catch {
-        return undefined;
+    let settings = null;
+    try { settings = normalizeSettings(JSON.parse(String(text))); }
+    catch {
+        // Nothing usable was remembered.
     }
+    return settings ? answersFromSettings(settings) : undefined;
 }
 
 function present(value) {
@@ -61,9 +63,7 @@ const FORGETFUL = Object.freeze({
     recall() {
         return "";
     },
-    remember() {
-        return undefined;
-    }
+    remember: () => undefined
 });
 
 function createMemory(objc, ns, domain = DOMAIN) {

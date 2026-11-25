@@ -42,12 +42,16 @@ record notes and nested stack omission. Actual CLI, naming and recovery receipts
 use the same validator in the native suites, separately from the source gate.
 Schema validity supplements pixel, file and ownership checks.
 
-The [pure module declaration](tools/pure-modules.mjs) supplies the coverage
-and mutation scopes and the one unit test set both gates run; repository tests
-run in `npm test` but do not count toward either. The gate requires 100% line,
-branch and function coverage and a mutation score of 100: every mutant is
-killed, and an equivalent mutant is removed by simplifying the code that admits
-it. The catalog
+The [pure module declaration](tools/pure-modules.mjs) supplies the unit scope,
+the pure modules plus the Finder action and its Shortcuts entry, and the one
+unit test set the coverage and mutation gates run; repository tests run in
+`npm test` but do not count toward either. The Finder code runs only inside
+JavaScript for Automation, so it is measured through the fakes in
+`tests/unit/ports`. The gate requires 100% line, branch and function coverage
+of every file in the scope, judged by [the coverage rule](tools/coverage.mjs)
+on Node's lcov record so a file no test loads fails it, and a mutation score
+of 100: every mutant is killed, and an equivalent mutant is removed by
+simplifying the code that admits it. The catalog
 tests check issue construction and explicit progress titles at the application
 boundary.
 

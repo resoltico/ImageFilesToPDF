@@ -24,6 +24,7 @@ const REPOSITORY_TEST_INPUTS = new Set([
     "package.json",
     "package-lock.json",
     "tools/banner.mjs",
+    "tools/coverage.mjs",
     "tools/dependency-rules.mjs",
     "tools/javascript.mjs",
     "tools/lint/boundaries.mjs",

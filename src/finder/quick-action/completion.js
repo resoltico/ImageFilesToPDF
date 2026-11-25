@@ -14,18 +14,21 @@ function revealOutputs(paths) {
 }
 
 function diagnosticLines(value, label = "") {
-    if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) { return []; }
+    // Values arrive through JSON, so an absent value is null, never undefined.
+    if (value === null || (typeof value === "string" && value.trim() === "")) { return []; }
     if (typeof value !== "object") { return [`${label}${String(value).replace(/\r\n?/gu, "\n")}`]; }
     return Object.entries(value).filter(([key]) => key !== "stack").flatMap(([key, entry]) => diagnosticLines(entry, `${label}${key}: `));
 }
 
 function hasDiagnostic(entry) {
-    return entry?.code !== "canceled" || Object.entries(entry).some(([key, value]) =>
+    return entry.code !== "canceled" || Object.entries(entry).some(([key, value]) =>
         !["code", "stage", "stack"].includes(key) && diagnosticLines(value).length > 0);
 }
 
 function technicalDetails(result) {
-    const issues = [...result.issues, ...result.rejected, ...result.documents.flatMap((document) => [...document.issues, ...(document.diagnostics ?? [])])];
+    // A document's diagnostics, when it has any, are issues like its others.
+    const documentIssues = result.documents.flatMap((document) => [document.issues, document.diagnostics]).filter(Boolean).flat();
+    const issues = [...result.issues, ...result.rejected, ...documentIssues];
     return [...result.diagnostics, ...issues.flatMap((issue) => issue.diagnostic ? [{ code: issue.code, stage: issue.stage, ...issue.diagnostic }] : [])]
         .filter(hasDiagnostic).flatMap((entry) => diagnosticLines(entry)).join("\n");
 }

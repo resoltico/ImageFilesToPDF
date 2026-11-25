@@ -59,7 +59,7 @@ const PAGE_LAYOUT_NOTE = "Each image gets its own page, centered without " +
  * PDFs follow their sources: into the folder that was selected when an image
  * was found inside one, beside the image when it was selected itself.
  */
-function destinationSummary({ folders = [] } = {}, mode = "both") {
+function destinationSummary({ folders = [] }, mode) {
     if (folders.length === 0) {
         return "";
     }
@@ -68,15 +68,11 @@ function destinationSummary({ folders = [] } = {}, mode = "both") {
         return `Save to: ${folders[0]}`;
     }
 
-    const separate = "Separate PDFs save in each folder you selected, or " +
+    return "Separate PDFs save in each folder you selected, or " +
         `beside each image you selected: ${plural(folders.length, "folder")}.`;
-
-    return mode === PDF_MODE.separate
-        ? separate
-        : `One PDF saves to: ${folders[0]}\n${separate}`;
 }
 
-function formSummary({ count = 0, folders = [] } = {}, mode = PDF_MODE.combined) {
+function formSummary({ count = 0, folders = [] }, mode) {
     if (count === 0) { return "Choose the PDF settings."; }
     let destination = "the source folder";
     if (folders.length > 1 && mode === PDF_MODE.separate) { destination = plural(folders.length, "folder"); }

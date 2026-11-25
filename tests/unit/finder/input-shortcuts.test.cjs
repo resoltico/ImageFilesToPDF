@@ -118,3 +118,7 @@ test("an invocation without files falls back to Finder's selection", async () =>
         globalThis.Application = previous;
     }
 });
+
+test("a path that only reads like a record is still an item, and so is nothing at all", () => {
+    assert.deepEqual(collectInvocation(null, ["[object Object]", null]).inputItems, ["[object Object]", null]);
+});

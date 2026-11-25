@@ -106,8 +106,7 @@ function chooseSettings(app, context, injected = {}) {
     const { openMemory = defaultMemory, bridge, present, problems } = injected;
     const memory = openMemory();
     const opening = { context, problems, answers: rememberedAnswers(memory.recall()) };
-    const settings = bridge || present
-        ? collectSettings(app, opening, bridge, present) : collectSettings(app, opening);
+    const settings = collectSettings(app, opening, bridge, present);
 
     // Confirmed and valid, and before any image is touched: a preference is
     // not made wrong by a photograph that fails to convert later.

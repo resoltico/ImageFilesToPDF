@@ -123,9 +123,10 @@ production layer they import (`core`, `backend`, `application`, then `engine`, `
 layer values may serve as fixtures. A repository test enforces placement for
 `require()`, `require.resolve()` and dynamic `import()`. Mutation testing runs unit files. All
 production sources and applicable build rules must remain discoverable by their
-gates. Coverage and mutation are both 100% for the
-[pure module declaration](tools/pure-modules.mjs). I/O adapters require the
-native suites. Keep behavioral expectations independent of implementation calculations.
+gates. Coverage and mutation are both 100% for the unit scope in the
+[pure module declaration](tools/pure-modules.mjs): the pure modules and the
+Finder action, which is tested through the fakes in `tests/unit/ports`. The
+engine, command line and serve adapters require the native suites. Keep behavioral expectations independent of implementation calculations.
 
 ESLint uses `js.configs.all`; exceptions and tuned rules are justified in
 `tools/eslint/rules.mjs`. Group modules by responsibility and lifetime, respecting

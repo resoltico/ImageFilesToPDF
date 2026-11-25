@@ -5,16 +5,16 @@ const { OperationError } = require("../../core/errors.js");
 const ENGINE_FILENAME = /^engine-.+\.cjs$/u;
 const PRIVATE_MODE = 0o700;
 
-function ownedType(ns, manager, path) {
+// Whether the item at path is of this type and belongs to the user running the action.
+function ownedItem(ns, manager, path, type) {
     const facts = manager.attributesOfItemAtPathError(path, ns());
-    if (!facts || facts.isNil()) { return ""; }
+    if (!facts || facts.isNil()) { return false; }
     const owner = Number(facts.objectForKey(ns.NSFileOwnerAccountID).unsignedIntValue);
-    if (owner !== Number(ns.getuid())) { return ""; }
-    return String(ObjC.unwrap(facts.objectForKey(ns.NSFileType)));
+    return owner === Number(ns.getuid()) && ObjC.unwrap(facts.objectForKey(ns.NSFileType)) === type;
 }
 
 function sameBytes(ns, manager, file, expected) {
-    if (ownedType(ns, manager, file) !== "NSFileTypeRegular") { return false; }
+    if (!ownedItem(ns, manager, file, "NSFileTypeRegular")) { return false; }
     const data = ns.NSData.dataWithContentsOfFile(file);
     return Boolean(data && !data.isNil() && data.isEqualToData(expected));
 }
@@ -23,21 +23,20 @@ function cacheFolder(ns, manager, home) {
     const folder = `${home}/Library/Application Support/Image Files to PDF/Engine`;
     manager.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(folder, true,
         ns({ NSFilePosixPermissions: PRIVATE_MODE }), ns());
-    if (ownedType(ns, manager, folder) !== "NSFileTypeDirectory") { throw new OperationError(message("engineCacheUnavailable")); }
+    if (!ownedItem(ns, manager, folder, "NSFileTypeDirectory")) { throw new OperationError(message("engineCacheUnavailable")); }
     return folder;
 }
 
 function replaceBundle(ns, manager, file, expected) {
     const temp = `${file}.${String(ObjC.unwrap(ns.NSUUID.UUID.UUIDString))}.tmp`;
-    if (!expected.writeToFileOptionsError(temp, ns.NSDataWritingWithoutOverwriting, ns())) {
-        throw new OperationError(message("engineCacheWriteFailed"));
-    }
+    // A write that failed leaves no file of ours with these bytes, which the check refuses.
+    expected.writeToFileOptionsError(temp, ns.NSDataWritingWithoutOverwriting, ns());
     try {
         if (!sameBytes(ns, manager, temp, expected) || Number(ns.rename(temp, file)) !== 0) {
             throw new OperationError(message("engineCacheWriteFailed"));
         }
     } finally {
-        if (ownedType(ns, manager, temp) === "NSFileTypeRegular") { manager.removeItemAtPathError(temp, ns()); }
+        if (ownedItem(ns, manager, temp, "NSFileTypeRegular")) { manager.removeItemAtPathError(temp, ns()); }
     }
 }
 
@@ -46,7 +45,7 @@ function cleanOldEngines(ns, manager, folder, keep) {
     if (!listing || listing.isNil()) { return; }
     for (const name of ObjC.deepUnwrap(listing)) {
         const path = `${folder}/${name}`;
-        if (name !== keep && ENGINE_FILENAME.test(name) && ownedType(ns, manager, path) === "NSFileTypeRegular") {
+        if (name !== keep && ENGINE_FILENAME.test(name) && ownedItem(ns, manager, path, "NSFileTypeRegular")) {
             manager.removeItemAtPathError(path, ns());
         }
     }

@@ -26,8 +26,8 @@ function inheritedSearch() {
 
 function finderSearch() {
     function read(file) {
-        try { return fs.lstatSync(file).isFile() ? fs.readFileSync(file, "utf8") : ""; }
-        catch { return ""; }
+        try { return fs.lstatSync(file).isFile() ? fs.readFileSync(file, "utf8") : null; }
+        catch { return null; }
     }
     let names = [];
     try { names = fs.readdirSync(SYSTEM_FRAGMENTS); } catch {

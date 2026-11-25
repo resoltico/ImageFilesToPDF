@@ -18,8 +18,7 @@ const CONTEXT = {
 test("selection problems are reviewed separately before any conversion", () => {
     const app = createFakeApp();
 
-    reviewSelection(app, {});
-    reviewSelection(app, { rejected: [] });
+    reviewSelection(app, { count: 1, rejected: [] });
     assert.deepEqual(app.dialogs, []);
     reviewSelection(app, CONTEXT);
     assert.equal(app.dialogs[0].message,
@@ -84,4 +83,28 @@ test("each refusal names the item, its reason and the folder it is in", () => {
 test("a refusal at the root is in the root folder", () => {
     const { refusalLines } = inspectModule(require.resolve("../../../src/finder/quick-action/settings-review.js"), ["refusalLines"]);
     assert.equal(refusalLines({ path: "/a.png", reason: "Gone." }), "a.png: Gone.\nin /");
+});
+
+test("a refused folder named with trailing slashes is named by its last part", () => {
+    const app = createFakeApp();
+    reviewSelection(app, { count: 1, rejected: [{ path: "/a/locked//", name: "locked", reason: "unreadable folder" }] });
+    assert.match(app.dialogs[0].message, /^locked: unreadable folder\nin \/a\/$/mu);
+});
+
+test("the confirmation counts what it can, and leaves out what it does not know", () => {
+    const app = createFakeApp();
+    confirmSettings(app, SETTINGS, { count: 0, folders: [], rejected: [] });
+    const text = app.dialogs[0].message;
+    assert.match(text, /^Create the PDF files\?$/mu);
+    assert.doesNotMatch(text, /\n\n|\n$/u, "no empty line where the destination is unknown");
+});
+
+test("the native confirmation names its step", () => {
+    const { createFakeObjC } = require("../ports/fake-objc.cjs");
+    const bridge = createFakeObjC({ responses: [1000] });
+    const host = { ObjC: globalThis.ObjC, $: globalThis.$ };
+    Object.assign(globalThis, { ObjC: bridge.objc, $: bridge.ns });
+    try { confirmSettings({}, SETTINGS, CONTEXT); }
+    finally { Object.assign(globalThis, host); }
+    assert.equal(bridge.state.alerts[0].informativeText, "Review the settings before creating PDFs.");
 });

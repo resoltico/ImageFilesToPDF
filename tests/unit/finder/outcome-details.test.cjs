@@ -210,3 +210,27 @@ test("completion labels outputs, failures, recoveries and original refusals with
     for (const expected of ["Stopped.", "Saved to:", "saved.pdf", "/bad.png: damaged", "/Downloads/kept.pdf", "Not started: 1", "/a/same.gif", "/b/same.gif"]) { assert.ok(text.includes(expected), expected); }
     assert.doesNotMatch(text, /private stack|unattempted|diagnostic/u);
 });
+
+test("a window that cannot say whether it is visible ends the modal once, and is not asked again", () => {
+    const bridge = createFakeObjC();
+    const failure = new Error("visibility unavailable");
+    let reads = 0;
+    bridge.state.duringModal = (alert) => {
+        const [token] = bridge.state.observers;
+        Object.defineProperty(alert.window, "visible", { get() { reads += 1; throw failure; } });
+        token.callback();
+        token.callback();
+    };
+    assert.throws(() => showDetails({}, { title: "Details", detail: "text", buttons: ["OK"] }, bridge), (error) => error === failure);
+    assert.equal(reads, 1);
+    assert.equal(bridge.state.aborted, 1);
+    assert.deepEqual(bridge.state.blocks, [["void", ["id"]]]);
+});
+
+test("the details text says what it is to assistive technology", () => {
+    const bridge = createFakeObjC();
+    bridge.state.duringModal = (alert) => {
+        assert.equal(alert.accessoryView.documentView.accessibilityLabel, "Full details (selectable and scrollable)");
+    };
+    showDetails({}, { title: "Details", detail: "text", buttons: ["OK"] }, bridge);
+});

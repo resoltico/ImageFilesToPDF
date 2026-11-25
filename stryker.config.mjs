@@ -1,5 +1,5 @@
 /*
- * Mutation testing of the declared pure modules (tools/pure-modules.mjs), run
+ * Mutation testing of the unit scope (tools/pure-modules.mjs), run
  * by tools/unit-gate.mjs, which passes the modules to mutate.
  */
 import { unitTestFiles } from "./tools/pure-modules.mjs";

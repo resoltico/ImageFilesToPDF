@@ -126,3 +126,19 @@ test("a number outside the range is refused, not accepted", () => {
         "both out-of-range answers must be refused"
     );
 });
+
+test("only the PDF files choice explains the selection, each part on its own line", () => {
+    const { inspectModule } = require("../ports/inspect-module.cjs");
+    const { defaultAnswers } = require("../../../src/finder/quick-action/settings-model.js");
+    const { dialogSetting } = inspectModule(require.resolve("../../../src/finder/quick-action/dialogs.js"), ["dialogSetting"]);
+    const app = createFakeApp();
+    const context = { count: 2, selectedFolders: 0, folders: ["/a/"], rejected: [] };
+    dialogSetting(app, "mode", defaultAnswers(), context);
+    dialogSetting(app, "paperSize", defaultAnswers(), context);
+    const [mode, paper] = app.listPrompts.map(({ settings }) => settings.withPrompt);
+    const lines = mode.split("\n");
+    assert.equal(lines.length, 3);
+    assert.equal(lines[2], CONTROLS.mode.prompt);
+    assert.match(lines[1], /^For this selection: /u);
+    assert.equal(paper, CONTROLS.paperSize.prompt);
+});

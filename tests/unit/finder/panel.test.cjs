@@ -157,3 +157,16 @@ test("Stop is a momentary action with retained feedback and a cooperative stop l
     now.at = APPEARANCE_DELAY;
     assert.throws(() => sink.report(1, "Preparing", "x.png"), { name: "UserCanceled" });
 });
+
+test("Stop is labelled, wired to its action, and its class is registered once per process", () => {
+    const { ns, objc, state } = createFakeObjC();
+    const first = build(ns, objc);
+    build(ns, objc);
+    assert.equal(first.stop.title, "Stop");
+    assert.equal(first.stop.action, ns.NSSelectorFromString("requestStop:"));
+    assert.equal(state.registrations.length, 1);
+    const [registered] = state.registrations;
+    assert.match(registered.name, /^ImageFilesToPDF/u, "class names are process-wide, so they carry the app's prefix");
+    assert.equal(registered.superclass, "NSViewController");
+    assert.deepEqual(registered.methods["requestStop:"].types, ["void", ["id"]]);
+});

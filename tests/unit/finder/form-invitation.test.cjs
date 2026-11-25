@@ -19,3 +19,15 @@ test("validation does not replace the output preview", () => {
     assert.match(spec.fullDetail, /^JPEG quality is invalid\n\n1 image → 1 PDF with 1 page/u);
     for (const note of Object.values(spec.summaryDetails)) { assert.match(note, /^JPEG quality is invalid\n\n1 image → /u, "switching mode keeps the problems"); }
 });
+
+test("number prompts give their range, and their unit only when they have one", () => {
+    const { CONTROLS } = require("../../../src/finder/quick-action/settings-model.js");
+    assert.match(CONTROLS.quality.prompt, /^JPEG quality \(\d+–\d+\):$/u);
+    assert.match(CONTROLS.resolutionLimit.prompt, /^Maximum resolution \(\d+–\d+ ppi\):$/u);
+    assert.deepEqual(CONTROLS.quality.choices, []);
+});
+
+test("a combined PDF with no known folder lists no save location", () => {
+    assert.equal(invitation({ count: 1 }, "combined"), "1 image → 1 PDF with 1 page, saved in the source folder");
+    assert.equal(invitation({ count: 1 }, "separate"), "1 image → 1 single-page PDF, saved in the source folder");
+});

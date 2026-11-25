@@ -65,7 +65,7 @@ function installClasses(ns, state, application) {
         } } },
         NSMakePoint: (left, top) => ({ left, top }),
         NSTextView: { alloc: { initWithFrame(rect) {
-            const field = { ...makeField(rect), textContainer: {} };
+            const field = Object.assign(makeField(rect), { textContainer: {} });
             field.scrollRangeToVisible = (range) => { field.scrolledRange = range; };
             return field;
         } } },
@@ -106,6 +106,7 @@ function installClasses(ns, state, application) {
 
 function createFakeObjC(settings = {}) {
     const state = {
+        registrations: [], blocks: [],
         responses: [...(settings.responses ?? [])],
         alerts: [],
         watchdogs: [],
@@ -145,7 +146,10 @@ function createFakeObjC(settings = {}) {
     const classes = new Map();
     const ns = boxed;
     ns.NSClassFromString = (name) => classes.get(name) ?? {isNil:()=>true};
+    // Objective-C classes are process-wide: a name can be registered once.
     const registerSubclass = (definition) => {
+        if (classes.has(definition.name)) { throw new Error(`Class ${definition.name} is already registered`); }
+        state.registrations.push(definition);
         const instance = (base) => {
             for (const [selector, method] of Object.entries(definition.methods)) {
                 const implementation = typeof method === "function" ? method : method.implementation;
@@ -162,7 +166,7 @@ function createFakeObjC(settings = {}) {
 
     installClasses(ns, state, application);
 
-    return { ns, objc: { unwrap: (value) => value, import: () => true, block: (types, callback) => callback, registerSubclass }, state };
+    return { ns, objc: { unwrap: (value) => value, import: () => true, block(types, callback) { state.blocks.push(types); return callback; }, registerSubclass }, state };
 }
 
 module.exports = { createFakeObjC };

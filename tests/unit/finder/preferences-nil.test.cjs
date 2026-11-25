@@ -147,3 +147,16 @@ test("a write that will not stick does not fail the run", () => {
 
     assert.doesNotThrow(() => createMemory(objc, ns).remember("{}"));
 });
+
+test("a missing value or a missing suite is no memory, and not a fault", () => {
+    const ns = Object.assign((value) => ({ js: value }), { NSUserDefaults: { alloc: { initWithSuiteName: () => ({ stringForKey: () => null }) } } });
+    const objc = { import: () => undefined, unwrap: (value) => value?.js };
+    const memory = createMemory(objc, ns, "test.domain");
+    assert.equal(memory.recall(), "");
+    assert.deepEqual(memory.diagnostics, []);
+    const none = Object.assign((value) => ({ js: value }), { NSUserDefaults: { alloc: { initWithSuiteName: () => null } } });
+    const absent = createMemory(objc, none, "test.domain");
+    assert.equal(absent.state, "unavailable");
+    assert.deepEqual(absent.diagnostics, []);
+    assert.equal(absent.remember("x"), undefined);
+});

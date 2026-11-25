@@ -24,6 +24,13 @@ test("native tint is an above-control sibling with preserved geometry and no inp
     assert.equal(fill.hitTest({ left: 135, top: 42 }).isNil(), true); assert.equal(fill.isOpaque, false); assert.equal(fill.acceptsFirstResponder, false);
     assert.equal(fill.accessibilityElement, false); assert.equal(control.stringValue, "1018");
     assert.deepEqual(control.layer.sublayers, []); assert.equal(control.wantsLayer, undefined, "the control's AppKit backing is not modified");
+    assert.equal(fill.transparent, false, "a transparent box draws nothing"); assert.equal(fill.wantsLayer, true);
+});
+
+test("the fill's class carries the app's prefix, since class names are process-wide", () => {
+    const { ns, objc, state, control } = fixture();
+    markInvalid(ns, control, objc);
+    assert.match(state.registrations[0].name, /^ImageFilesToPDF./u);
 });
 
 test("one native class serves all fields and a registration fault remains a fault", () => {

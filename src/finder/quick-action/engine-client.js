@@ -113,13 +113,15 @@ function complete(child, messages, request, state) {
     return event.receipt;
 }
 
-function engineSession(bundle, items, hooks, { directories = finderDirectories(), chosen = {}, home } = {}) {
-    const executable = findNode(directories, chosen.node, startChild);
+// launch and materialize are the native child and engine file; tests pass stand-ins.
+function engineSession(bundle, items, hooks, { directories = finderDirectories(), chosen = {}, home, launch = startChild, materialize = materializeEngine } = {}) {
+    const executable = findNode(directories, chosen.node, launch);
     const toolPaths = Object.fromEntries(TOOL_NAMES.filter((name) => Object.hasOwn(chosen, name)).map((name) => [name, chosen[name]]));
     const request = { type: "start", inputItems: items, toolPaths };
-    const file = materializeEngine(bundle, home ?? String(ObjC.unwrap($.NSHomeDirectory())));
-    const child = startChild(executable, [file, "--serve"]);
-    const session = { reviewed: false, requestedSettings: false, stopping: false };
+    const file = materialize(bundle, home ?? String(ObjC.unwrap($.NSHomeDirectory())));
+    const child = launch(executable, [file, "--serve"]);
+    // reviewed, requestedSettings and stopping: each unset until it happens.
+    const session = {};
     const messages = wire(child, () => {
         if (!session.stopping && hooks.stopped()) {
             session.stopping = true;

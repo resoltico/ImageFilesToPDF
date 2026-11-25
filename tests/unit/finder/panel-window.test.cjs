@@ -123,3 +123,18 @@ test("a box is resized by its frame and shown by its flag", () => {
     setHidden(box, false);
     assert.equal(box.hidden, false);
 });
+
+test("a waiting event is delivered before painting, and none waiting is fine", () => {
+    const { ns } = createFakeObjC();
+    const app = ns.NSApplication.sharedApplication;
+    const sent = [];
+    app.sendEvent = (event) => sent.push(event);
+    const event = { isNil: () => false };
+    const dequeued = [];
+    for (const waiting of [event, { isNil: () => true }, null]) {
+        app.nextEventMatchingMaskUntilDateInModeDequeue = (...args) => { dequeued.push(args.at(-1)); return waiting; };
+        paint(ns, panelOf(ns));
+    }
+    assert.deepEqual(sent, [event]);
+    assert.deepEqual(dequeued, [true, true, true], "an event taken and not dequeued would be taken again");
+});

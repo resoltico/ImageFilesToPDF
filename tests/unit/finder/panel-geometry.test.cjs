@@ -76,3 +76,14 @@ test("a total nobody knows yet is not a full bar", () => {
 test("a count past the total does not run off the end of the track", () => {
     assert.equal(fillRect(9, 4).width, TRACK_RECT.width);
 });
+
+test("Stop sits in the bottom-right corner, with the same gap beside the bar as above it", () => {
+    const { build } = require("../../../src/finder/quick-action/panel.js");
+    const { createFakeObjC } = require("../ports/fake-objc.cjs");
+    const { ns, objc } = createFakeObjC();
+    const { rect } = build(ns, objc).stop;
+    assert.equal(rect.left + rect.width, PANEL_RECT.width - TRACK_RECT.left, "padded from the right as the bar is from the left");
+    const beside = rect.left - (TRACK_RECT.left + TRACK_RECT.width);
+    assert.ok(beside > 0, "the bar stops short of Stop");
+    assert.equal(DETAIL_RECT.bottom - top(rect), beside, "the details sit as far above the footer");
+});

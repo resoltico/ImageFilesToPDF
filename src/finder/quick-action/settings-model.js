@@ -47,9 +47,9 @@ const [COLOR_ROW] = rowsFor("color");
 const COLOR_HINT = COLOR_ROW.control.hint;
 const NUMBER_ROWS = rowsFor("integer");
 
+// Every answer is text, as a form holds it; only the numbers are not already.
 function answersFromSettings(settings) {
-    return Object.fromEntries(SETTINGS_FIELDS.map((field) => [field,
-        SETTINGS_SCHEMA[field].kind === "integer" ? String(settings[field]) : settings[field]]));
+    return Object.fromEntries(SETTINGS_FIELDS.map((field) => [field, String(settings[field])]));
 }
 
 function defaultAnswers() {

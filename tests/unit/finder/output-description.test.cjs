@@ -47,9 +47,8 @@ test("page and file cardinalities are separate, including one image", () => {
 });
 
 test("save guidance follows the actual destination rules for each mode", () => {
-    assert.equal(destinationSummary(), "");
-    assert.equal(destinationSummary({}), "");
-    for (const mode of ["combined", "separate", "both"]) {
+    assert.equal(destinationSummary({}, "combined"), "");
+    for (const mode of ["combined", "separate"]) {
         assert.equal(destinationSummary({ folders: ["/a/"] }, mode), "Save to: /a/");
     }
     const context = { folders: ["/a/", "/b/"] };
@@ -58,5 +57,12 @@ test("save guidance follows the actual destination rules for each mode", () => {
 
     assert.equal(destinationSummary(context, "combined"), "Save to: /a/");
     assert.equal(destinationSummary(context, "separate"), separate);
-    assert.equal(destinationSummary(context), `One PDF saves to: /a/\n${separate}`);
+});
+
+test("the form names where the PDFs go, by folder name, or the source folder when none is known", () => {
+    const { formSummary } = require("../../../src/finder/quick-action/output-description.js");
+    assert.equal(formSummary({ count: 2 }, "combined"), "2 images → 1 PDF with 2 pages, saved in the source folder");
+    assert.equal(formSummary({ count: 1, folders: ["/Pictures/One"] }, "separate"), "1 image → 1 single-page PDF, saved in One/");
+    assert.equal(formSummary({ count: 1, folders: ["/"] }, "combined"), "1 image → 1 PDF with 1 page, saved in /");
+    assert.equal(formSummary({ count: 2, folders: ["/a/One", "/b/Two"] }, "separate"), "2 images → 2 single-page PDFs, saved in 2 folders");
 });

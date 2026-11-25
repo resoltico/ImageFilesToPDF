@@ -3,9 +3,9 @@ const { normalizeInvocationInput } = require("../invocation-syntax.js");
 
 function finderSelection() { return Application("Finder").selection(); }
 
+// Shortcuts passes JXA Paths, path strings, and one plain record of parameters.
 function isParametersRecord(item) {
-    try { return item !== null && typeof item === "object" && String(item) === "[object Object]"; }
-    catch { return false; }
+    return typeof item === "object" && String(item) === "[object Object]";
 }
 
 function collectInvocation(app, input) {

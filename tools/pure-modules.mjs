@@ -34,6 +34,16 @@ export const FAST_CHECK_SETTINGS = "./tests/unit/fast-check-seed.cjs";
 
 export const purePatterns = [...PURE_LAYERS.map((layer) => `src/${layer}/**/*.js`), ...DECLARED_FILES];
 
+/*
+ * What the unit coverage and mutation gates measure: the pure modules, and the
+ * Finder action with its Shortcuts entry point. The Finder code runs only inside
+ * JavaScript for Automation, so unit tests are the one place it can be measured,
+ * through the fakes in tests/unit/ports. The engine, the command line and serve
+ * are exercised by the native suites instead.
+ */
+const FINDER_PATTERNS = ["src/finder/**/*.js", "src/entry.js"];
+export const unitScope = [...purePatterns.filter((pattern) => !pattern.startsWith("src/finder/")), ...FINDER_PATTERNS];
+
 function ambient(value) {
     if (!value || typeof value !== "object") { return false; }
     if (value.type === "Identifier" && HOST_GLOBALS.has(value.name)) { return true; }

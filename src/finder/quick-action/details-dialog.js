@@ -85,36 +85,40 @@ function runDetailsModal(bridge, alert, scrolls) {
     const { window } = alert;
     const center = ns.NSNotificationCenter.defaultCenter;
     // Keep the native block alive through modal return, including after its
-    // one-shot registration has been removed.
-    const lifetime = { token: null, callback: null, phase: "registering", busy: false, attempted: false, failure: null };
+    // one-shot registration has been removed. Its flags (modal, busy,
+    // attempted) are unset until they happen.
+    const lifetime = {};
     lifetime.callback = objc.block(["void", ["id"]], () => {
         // JXA native getters can pump another window-update notification.
         // Every guard here must stay pure JavaScript until busy is set.
-        if (lifetime.phase !== "modal" || lifetime.busy || lifetime.attempted) { return; }
+        if (!lifetime.modal || lifetime.busy || lifetime.attempted) { return; }
         lifetime.busy = true;
         try {
             if (!window.visible) { return; }
             lifetime.attempted = true;
-            if (lifetime.token) { center.removeObserver(lifetime.token); lifetime.token = null; }
+            center.removeObserver(lifetime.token);
             layoutDetails(ns, alert, scrolls);
         } catch (error) {
             lifetime.attempted = true;
-            lifetime.failure = { error };
+            lifetime.failure = error;
             try {
                 // eslint-disable-next-line no-unused-expressions -- native zero-argument method
                 ns.NSApplication.sharedApplication.abortModal;
-            } catch (abortFailure) { lifetime.failure.abortFailure = abortFailure; }
+            } catch {
+                // Nothing more can end the modal from here; the layout fault is reported when it returns.
+            }
         } finally { lifetime.busy = false; }
     });
+    // Removing an observer twice is harmless, so teardown does not ask whether the update already did.
+    lifetime.token = center.addObserverForNameObjectQueueUsingBlock(ns.NSWindowDidUpdateNotification, window, ns(), lifetime.callback);
     try {
-        lifetime.token = center.addObserverForNameObjectQueueUsingBlock(ns.NSWindowDidUpdateNotification, window, ns(), lifetime.callback);
-        lifetime.phase = "modal";
+        lifetime.modal = true;
         const response = Number(alert.runModal);
-        if (lifetime.failure) { throw lifetime.failure.error; }
+        if (lifetime.failure) { throw lifetime.failure; }
         return response;
     } finally {
-        lifetime.phase = "closed";
-        if (lifetime.token) { center.removeObserver(lifetime.token); }
+        lifetime.modal = false;
+        center.removeObserver(lifetime.token);
         lifetime.callback = null;
     }
 }

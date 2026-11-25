@@ -12,11 +12,10 @@ const { engineBundle } = require("./engine-source.js");
 const { executableChoices } = require("../../core/setup.js");
 const { chooseExecutable, executableMemory } = require("./executable-choice.js");
 
+// A Finder item says where it is through url(); a path, or anything else, is its text.
 function rawItem(item) {
-    if (typeof item === "string") { return item; }
-    try { if (typeof item?.url === "function") { return String(item.url()); } }
+    try { return String(item.url()); }
     catch { return String(item); }
-    return String(item);
 }
 
 function application() {
@@ -28,7 +27,7 @@ function application() {
 function progressObserver(open = openPanel) {
     let panel = null;
     let available = true;
-    const state = { done: 0, total: null, phase: "", nextPhase: "", detail: "", stopped: false, diagnostics: [] };
+    const state = { done: 0, total: null, phase: "", nextPhase: "", stopped: false, diagnostics: [] };
     function record(error) {
         const translated = hostError(error);
         if (isUserCanceled(translated)) { state.stopped = true; }
@@ -42,8 +41,9 @@ function progressObserver(open = openPanel) {
     return {
         diagnostics: state.diagnostics,
         progress(event) {
+            // The engine client passes only phase and progress events.
             if (event.type === "phase") { state.nextPhase = event.phase; }
-            else if (event.type === "progress") {
+            else {
                 state.phase = state.nextPhase;
                 state.done = event.done;
                 state.detail = event.current ?? "";
@@ -61,13 +61,11 @@ function progressObserver(open = openPanel) {
     };
 }
 
+// A run that throws, such as one that found no Node, is a receipt like any other,
+// so a missing tool it names can still be chosen.
 function runReceipt(run, chosen) {
     try { return run(chosen); }
-    catch (caught) {
-        const error = hostError(caught);
-        if (isUserCanceled(error)) { throw error; }
-        return failedRun(error, caught?.outcome);
-    }
+    catch (caught) { return failedRun(hostError(caught), caught?.outcome); }
 }
 
 function withExecutableChoices(ports, app, progress, run) {
@@ -94,7 +92,7 @@ function withExecutableChoices(ports, app, progress, run) {
     }
 }
 
-function clientOutcome(ports, app, input, progress) {
+function settledOutcome(ports, app, input, progress) {
     try {
         const items = ports.collect(app, input).inputItems.map(rawItem);
         let lastContext = null;
@@ -111,7 +109,12 @@ function clientOutcome(ports, app, input, progress) {
     } catch (caught) {
         const error = hostError(caught);
         return isUserCanceled(error) ? null : failedRun(error, caught?.outcome);
-    } finally { progress.close(); }
+    }
+}
+
+function clientOutcome(ports, app, input, progress) {
+    try { return settledOutcome(ports, app, input, progress); }
+    finally { progress.close(); }
 }
 
 const finder = {

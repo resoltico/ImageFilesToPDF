@@ -19,6 +19,8 @@ test("Finder paths follow system file order, then unique conventional directorie
         "/opt/homebrew/bin", "/opt/local/bin"
     ]);
     assert.deepEqual(searchDirectories({ systemPaths: { defaults: "", fragments: {} }, conventional: ["/custom"] }), ["/custom"]);
+    // A path file that could not be read is null, and contributes nothing.
+    assert.deepEqual(searchDirectories({ systemPaths: { defaults: null, fragments: { gone: null, kept: "/kept" } }, conventional: [] }), ["/kept"]);
     const tied = [["4-b", "/b"], ["04-b", "/duplicate-name-rank"], ["4-a", "/a"]];
     for (const entries of [tied, [...tied].reverse()]) {
         assert.deepEqual(searchDirectories({

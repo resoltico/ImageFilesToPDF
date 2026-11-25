@@ -22,9 +22,10 @@ function pathFileOrder(left, right) {
     return compareText(left, right);
 }
 
+// A path file's text, or null when it is missing, not a regular file, or unreadable.
 function searchDirectories({ systemPaths, conventional = CONVENTIONAL_DIRECTORIES }) {
     const { defaults, fragments } = systemPaths;
-    const files = [defaults, ...Object.keys(fragments).sort(pathFileOrder).map((name) => fragments[name])];
+    const files = [defaults, ...Object.keys(fragments).sort(pathFileOrder).map((name) => fragments[name])].filter((file) => file !== null);
     const listed = files.flatMap((file) => file.split("\n").map((line) => line.trim())).filter(absoluteMacPath);
     return [...new Set([...listed, ...conventional])];
 }

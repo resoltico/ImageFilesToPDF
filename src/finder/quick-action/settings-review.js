@@ -1,6 +1,5 @@
 "use strict";
 
-const { summarizeRun } = require("../../core/run-summary.js");
 const { APP_NAME } = require("../../core/version.js");
 const { plural } = require("../../core/formatting.js");
 const { UserCanceled } = require("../../core/errors.js");
@@ -48,7 +47,7 @@ function refusalLines(entry) {
 }
 
 function reviewSelection(app, context) {
-    const { refusals: rejected } = summarizeRun({ state: "incomplete", documents: [], rejected: context.rejected ?? [], issues: [] });
+    const { rejected } = context;
 
     if (rejected.length > 0) {
         confirmAction(app, [
