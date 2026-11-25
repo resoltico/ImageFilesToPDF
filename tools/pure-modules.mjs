@@ -19,6 +19,13 @@ const DECLARED_FILES = [
 const VALUE_MODULES = new Set(["node:buffer", "node:path"]);
 const HOST_GLOBALS = new Set(["process", "globalThis", "fetch", "setTimeout", "setInterval", "setImmediate", "Application", "ObjC", "$"]);
 
+/*
+ * The unit test set both gates measure with. Coverage and mutation must run the
+ * same tests: code reached only by repository tests would count as covered in
+ * one gate and as uncovered mutants in the other.
+ */
+export const unitTestFiles = ["tests/unit/**/*.test.cjs", "tools/tests/unit/**/*.test.cjs"];
+
 export const purePatterns = [...PURE_LAYERS.map((layer) => `src/${layer}/**/*.js`), ...DECLARED_FILES];
 
 function ambient(value) {

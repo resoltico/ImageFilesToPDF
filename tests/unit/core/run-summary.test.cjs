@@ -55,3 +55,8 @@ test("one saved PDF with an issue makes the run some-saved, not all-saved", () =
     const run = runOutcome([saved("/out/a.pdf"), { ...saved("/out/b.pdf"), issues: [issue] }]);
     assert.equal(summarizeRun(run).kind, "some-saved");
 });
+
+test("an outcome state outside the declared kinds is refused, not summarized", () => {
+    const outcome = { ...runOutcome([saved()], []), state: "unheard-of" };
+    assert.throws(() => summarizeRun(outcome), /^Error: Unknown run outcome: unheard-of$/u);
+});

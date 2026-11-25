@@ -72,6 +72,7 @@ export async function lintableFiles() {
         ...await sourceFiles(),
         ...await walk("tools"),
         ...await walk("tests"),
-        "eslint.config.mjs"
+        "eslint.config.mjs",
+        "stryker.config.mjs"
     ];
 }

@@ -53,7 +53,7 @@ function recoveryReason(cause) {
     return reason ? reason.replace(/\s+/gu, " ").trim() : message("destinationUnused");
 }
 
-function summaryText(summary, includeHeadline = true, renderPath = canonicalPath) {
+function summaryText(summary, includeHeadline, renderPath) {
     // An invalid request converted nothing, so it states its problems without counts or a conversion heading.
     if (summary.kind === "invalid" || summary.kind === "setup") {
         return [includeHeadline ? headline(summary) : "", ...summary.problems.map((entry) => entry.message)].filter(Boolean).join("\n\n");

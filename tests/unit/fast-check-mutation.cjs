@@ -13,7 +13,7 @@
  * times, and a mutant that one seed kills and another does not would make the
  * score a matter of luck. So under it the seed is fixed and the count is kept
  * small: the same inputs against every mutant, at a cost multiplied by all of
- * them. Stryker's tap runner loads this with `-r`; see stryker.config.json.
+ * them. Stryker's tap runner loads this with `-r`; see stryker.config.mjs.
  */
 
 const fc = require("fast-check");

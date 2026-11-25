@@ -74,7 +74,7 @@ export default [
     },
     {
         // Build and QA tooling: ESM on Node.
-        files: ["tools/**/*.mjs", "eslint.config.mjs"],
+        files: ["tools/**/*.mjs", "eslint.config.mjs", "stryker.config.mjs"],
         languageOptions: {
             ecmaVersion: "latest",
             sourceType: "module",
