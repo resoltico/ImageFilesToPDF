@@ -255,9 +255,10 @@ On both Windows architectures, Windows PowerShell 5.1 refused npm's `.ps1`
 launcher under the `Restricted` execution policy and ran it under `RemoteSigned`
 and `Bypass`. The `.cmd` launcher ran the command, a conversion and a
 missing-tool refusal. A console Ctrl+C through the `.cmd` launcher stopped the
-run at its checkpoint with a canceled receipt and exit 1 from Node; `cmd.exe`
-then waits at its batch-job prompt, holding the redirected output open until it
-ends.
+run at its checkpoint with a canceled receipt and exit 1 from Node, and
+`cmd.exe` exited with status 1 within 3 seconds, without a batch-job prompt.
+The check still ends `cmd.exe` if it waits, because it holds the redirected
+receipt open.
 
 The release workflow attests and attaches the tarball and lists it in
 `SHA256SUMS`. Its npm job stages the tarball with `npm stage publish` through

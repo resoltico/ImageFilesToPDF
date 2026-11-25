@@ -51,8 +51,8 @@ engine uses the built-in Windows PowerShell 5.1 helper for platform queries.
 npm installs a PowerShell and a Command Prompt launcher for the command.
 Windows PowerShell's default `Restricted` execution policy refuses the
 PowerShell launcher, as it refuses npm's own; PowerShell 7 and the
-`RemoteSigned` policy run it. In Command Prompt, Ctrl+C stops the conversion
-safely, and Command Prompt then asks whether to terminate the batch job.
+`RemoteSigned` policy run it. Through the Command Prompt launcher, Ctrl+C stops
+the conversion safely and the command exits with status 1.
 
 See [the platform matrix](QA.md#native-platform-matrix) for tested combinations.
 For Finder, follow [the shortcut installation instructions](INSTALL.txt).
