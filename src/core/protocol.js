@@ -78,8 +78,13 @@ function encodeMessage(sender, event) {
     return `${JSON.stringify(declared, (key, value) => key === "stack" ? undefined : value)}\n`;
 }
 
+function parsedLine(line) {
+    try { return JSON.parse(line); }
+    catch { throw new Error(message("engineMessageNotJson")); }
+}
+
 function decodeMessage(sender, line) {
-    return validateMessage(sender, JSON.parse(line));
+    return validateMessage(sender, parsedLine(line));
 }
 
 function requireHello(event, version) {

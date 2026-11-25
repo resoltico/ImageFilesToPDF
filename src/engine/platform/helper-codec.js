@@ -11,7 +11,8 @@ function encodeHelperRequest(request, ascii = false) {
 }
 
 function readHelperReply(line) {
-    return JSON.parse(line);
+    try { return JSON.parse(line); }
+    catch { throw new Error(message("platformHelperReplyNotJson")); }
 }
 
 function windowsReply(value) {

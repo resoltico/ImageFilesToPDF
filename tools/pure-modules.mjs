@@ -26,6 +26,12 @@ const HOST_GLOBALS = new Set(["process", "globalThis", "fetch", "setTimeout", "s
  */
 export const unitTestFiles = ["tests/unit/**/*.test.cjs", "tools/tests/unit/**/*.test.cjs"];
 
+// Property tests, which the fuzz gate runs with many more cases.
+export const propertyTestFiles = ["tests/unit/**/*-properties.test.cjs"];
+
+// Loaded into every unit test process: fast-check's seed and case count.
+export const FAST_CHECK_SETTINGS = "./tests/unit/fast-check-seed.cjs";
+
 export const purePatterns = [...PURE_LAYERS.map((layer) => `src/${layer}/**/*.js`), ...DECLARED_FILES];
 
 function ambient(value) {

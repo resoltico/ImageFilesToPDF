@@ -68,7 +68,7 @@ test("UTF-8 JSON lines preserve input text and omit receipt stack fields at ever
     const decoded = decodeMessage("engine", encodeMessage("engine", event));
     assert.deepEqual(decoded.receipt.issues[0].diagnostic, { detail: true });
     assert.equal(event.receipt.issues[0].diagnostic.stack, "private");
-    assert.throws(() => decodeMessage("client", "{"), SyntaxError);
+    assert.throws(() => decodeMessage("client", "{"), /^Error: The engine message is not valid JSON\.$/u);
 });
 
 test("the client refuses a mismatched engine version or runtime before starting", () => {
@@ -95,4 +95,12 @@ test("outcomes and review contexts reject malformed nested records", () => {
     ]) { assert.throws(() => validateMessage("engine", asOutcome([record])), /message fields are invalid/u); }
     assert.throws(() => validateMessage("engine", { type: "review", context: { ...context, rejected: [{ ...refused, reason: false }] } }), /message fields are invalid/u);
     assert.throws(() => validateMessage("engine", { type: "settings-invalid", issues: [{}] }), /message fields are invalid/u);
+});
+
+test("a line that is not JSON is refused in the catalog's words", () => {
+    // Found by the fuzz gate: JSON.parse's own SyntaxError used to escape.
+    const { message } = require("../../../src/core/messages.js");
+    for (const line of ["{\"type\":", "", "not json"]) {
+        assert.throws(() => decodeMessage("engine", line), (error) => error.message === message("engineMessageNotJson"));
+    }
 });

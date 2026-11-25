@@ -47,7 +47,18 @@ and mutation scopes and the one unit test set both gates run; repository tests
 run in `npm test` but do not count toward either. The gate requires 100% line,
 branch and function coverage and a mutation score of at least 96. The catalog
 tests check issue construction and explicit progress titles at the application
-boundary. Adapter checks exercise the production artifacts and native tools on
+boundary.
+
+The fuzz gate (`npm run test:fuzz`) runs the property tests at 2,000 cases each.
+They cover every parser that reads another process's or the user's input: the
+serve protocol, the platform helper's replies, settings values, `/etc/paths`
+files, file signatures, `vipsheader` output, timestamps, colours and Windows
+path syntax. Any input must yield the declared result or a catalog refusal.
+Every test process takes one seed, from `IFTP_FC_SEED` or the commit, which the
+unit gates print; mutation campaigns use their own fixed seed. A counterexample
+becomes an explicit case before its fix. A malformed protocol or helper line
+is refused in the catalog's words; the gate fails if JavaScript's own
+`SyntaxError` escapes either decoder. Adapter checks exercise the production artifacts and native tools on
 each host.
 
 `tools/eslint/rules.mjs` is the one register of ESLint exceptions: rules off

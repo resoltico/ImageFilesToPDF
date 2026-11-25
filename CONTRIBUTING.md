@@ -24,6 +24,7 @@ when the upstream range excludes affected versions.
 | --- | --- |
 | `npm run build` | Regenerate JXA and checksum manifest |
 | `npm run quality` | Full source/test/mutation/freshness gate without rebuilding |
+| `npm run test:fuzz` | Property tests of trust-boundary parsers at 2,000 cases each; `IFTP_FC_SEED` reproduces a run |
 | `npm run test:integration:macos` | Real macOS/backend/filesystem/renderer suites |
 | `npm run release` | Local build followed by the full quality gate; does not publish |
 

@@ -50,7 +50,7 @@ test("native helper codecs preserve Unicode and enforce Windows reply fields", (
         { ok: false, code: "1", diagnostic: "failed" }, { ok: false, code: 1 }]) {
         assert.throws(() => windowsReply(bad), /invalid response/u);
     }
-    assert.throws(() => readHelperReply("{"), SyntaxError);
+    assert.throws(() => readHelperReply("{"), /^Error: The platform helper returned a response that is not valid JSON\.$/u);
 });
 
 test("native helper launch declarations use pinned absolute macOS executables and UTF-8 Windows pipes", () => {
@@ -61,4 +61,10 @@ test("native helper launch declarations use pinned absolute macOS executables an
     const script = Buffer.from(args.at(-1), "base64").toString("utf16le");
     for (const token of ["UTF8Encoding", "OpenStandardInput", "OpenStandardOutput", "SetConsoleCtrlHandler",
         "'volume'", "'entries'", "'downloads'", "'privateDirectory'", "'startTime'", "'move'"]) { assert.ok(script.includes(token), token); }
+});
+
+test("a helper reply that is not JSON is refused in the catalog's words", () => {
+    // Found by the fuzz gate: JSON.parse's own SyntaxError used to escape.
+    const { message } = require("../../../src/core/messages.js");
+    assert.throws(() => readHelperReply("not json"), (error) => error.message === message("platformHelperReplyNotJson"));
 });
