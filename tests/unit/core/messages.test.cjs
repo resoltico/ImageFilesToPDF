@@ -22,3 +22,10 @@ test("every catalog form supplies visible wording and replaces its declared plac
 test("parameter values are inserted literally without cascading substitution", () => {
     assert.equal(message("fileIssue", { path: "{reason}", reason: "$&" }), "{reason}: $&");
 });
+
+test("the publication failure names where the PDF went", () => {
+    const { publicationFailureDetails } = require("../../../src/core/messages.js");
+    const text = publicationFailureDetails(["Permission denied."], "/Users/u/Downloads/photo.pdf");
+    assert.ok(text.endsWith(message("publicationWhereabouts", { path: "/Users/u/Downloads/photo.pdf" })), text);
+    assert.match(text, /\/Users\/u\/Downloads\/photo\.pdf/u);
+});

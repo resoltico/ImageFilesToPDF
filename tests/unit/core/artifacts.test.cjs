@@ -34,3 +34,9 @@ test("publication confirmation requires the exact nonempty native identity and s
     assert.equal(isPublished({ identity: "1:3", size: 100 }, expected), false);
     assert.equal(isPublished({ identity: "1:2", size: 99 }, expected), false);
 });
+
+test("recovery goes to Downloads under the intended name, or stays in the workspace", () => {
+    const { recoveryDestination } = require("../../../src/core/artifacts.js");
+    assert.deepEqual(recoveryDestination("/Users/u/Downloads/", "/out/photo.pdf", "/ws/staged-0.pdf"), { kind: "downloads", path: "/Users/u/Downloads/photo.pdf" });
+    assert.deepEqual(recoveryDestination(null, "/out/photo.pdf", "/ws/staged-0.pdf"), { kind: "workspace", path: "/ws/staged-0.pdf" });
+});

@@ -7,9 +7,8 @@
 function positiveIntegerFrom(text) {
     const value = Number(text);
 
-    return /^\d+$/u.test(String(text).trim()) && Number.isSafeInteger(value) && value > 0
-        ? value
-        : 0;
+    // Zero is not positive, and it is also what an unreadable value becomes.
+    return /^\d+$/u.test(String(text).trim()) && Number.isSafeInteger(value) ? value : 0;
 }
 
 function zeroPad(value, width) {

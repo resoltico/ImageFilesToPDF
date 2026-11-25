@@ -190,3 +190,12 @@ test("an excessive declared frame count is refused before the next chunk", () =>
     assert.deepEqual(excess.reads.at(-1), [prefix.length + 8, 12]);
     assert.deepEqual(boundary.reads.at(-1), [prefix.length + max.length + still.length + 8, 4]);
 });
+
+test("a later frame control needs the earlier frame's own data, not the default image's", () => {
+    // The default image is not a frame here, so IDAT data cannot complete frame 0.
+    assert.throws(() => images(head, declare(2), still, control(), control({ sequence: 1 }), frame(2), end), /image count could not be verified/u);
+});
+
+test("with a default frame, every later frame still needs its own data", () => {
+    assert.throws(() => images(head, declare(2), control(), still, control({ sequence: 1 }), end), /image count could not be verified/u);
+});

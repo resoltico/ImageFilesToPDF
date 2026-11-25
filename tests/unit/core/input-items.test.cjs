@@ -35,3 +35,8 @@ test("drive paths and drive file URLs depend on explicit Windows syntax", () => 
     assert.deepEqual(classifyInput("file:///Photos/C:/a.png", true), { kind: "not-a-path" });
     assert.deepEqual(classifyInput("file:///C:/Photos/a%5cb.png", true), { kind: "not-a-path" });
 });
+
+test("a file URL must start the item, not appear later in it", () => {
+    assert.deepEqual(classifyInput("file:a/file:///tmp/x.png"), { kind: "not-a-path" });
+    assert.deepEqual(classifyInput("file:///tmp/x.png"), { kind: "file-url", path: "/tmp/x.png" });
+});

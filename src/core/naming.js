@@ -21,8 +21,8 @@ function outputNameForCombined(timestamp) {
 
 function boundedStem(stem, suffix) {
     const budget = FILENAME_BUDGET_BYTES - utf8Length(suffix) - COLLISION_RESERVE_BYTES;
-    const kept = truncateToBytes(stem, Math.max(budget, 0));
-    return kept === stem ? stem : sanitizeFilename(kept);
+    // Sanitizing a stem that was already sanitized and kept whole changes nothing.
+    return sanitizeFilename(truncateToBytes(stem, Math.max(budget, 0)));
 }
 
 function sourceExtension(name) {

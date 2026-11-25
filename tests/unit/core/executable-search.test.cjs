@@ -34,3 +34,14 @@ test("a remembered macOS location must be absolute and free of NUL", () => {
         assert.equal(absoluteMacPath(value), false);
     }
 });
+
+test("the system path files are macOS's own, and only a leading number orders them", () => {
+    const { SYSTEM_PATHS, SYSTEM_FRAGMENTS } = require("../../../src/core/executable-search.js");
+    assert.deepEqual([SYSTEM_PATHS, SYSTEM_FRAGMENTS], ["/etc/paths", "/etc/paths.d"]);
+    const order = (names) => searchDirectories({ systemPaths: { defaults: "", fragments: Object.fromEntries(names.map((name) => [name, `/${name}`])) }, conventional: [] });
+    assert.deepEqual(order(["b2", "a10"]), ["/a10", "/b2"]);
+    assert.deepEqual(order(["x-10", "x-9"]), ["/x-10", "/x-9"]);
+    // A number later in a name is not a prefix: "x1" sorts by text after "5y".
+    assert.deepEqual(order(["x1", "5y"]), ["/5y", "/x1"]);
+    assert.deepEqual(order(["5y", "x1"]), ["/5y", "/x1"]);
+});

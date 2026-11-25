@@ -143,3 +143,30 @@ test("a name with nothing in it stands in as empty, not as a word", () => {
     assert.ok(naturalCompare("", "a.png") < 0, "and before a letter");
     assert.ok(naturalCompare("1.png", "") > 0);
 });
+
+test("each comparison reports all three outcomes exactly", () => {
+    // Equal leading parts must continue to the next part, in both directions.
+    assert.equal(naturalCompare("a1", "a2"), -1);
+    assert.equal(naturalCompare("a2", "a1"), 1);
+    assert.equal(naturalCompare("x9", "x10"), -1);
+    assert.equal(naturalCompare("x10", "x9"), 1);
+    assert.equal(naturalCompare("x12", "x13"), -1);
+    assert.equal(naturalCompare("x13", "x12"), 1);
+    assert.equal(naturalCompare("x007", "x7"), 1);
+    assert.equal(naturalCompare("x7", "x007"), -1);
+    assert.equal(naturalCompare("x07", "x07"), 0);
+});
+
+test("text runs compare as text, even when one is shorter", () => {
+    assert.equal(naturalCompare("ab", "b"), -1);
+    assert.equal(naturalCompare("b", "ab"), 1);
+    // A digit run against a text run compares as text: "1" sorts before "a".
+    assert.equal(naturalCompare("x10", "xa"), -1);
+    assert.equal(naturalCompare("xa", "x10"), 1);
+});
+
+test("an empty name sorts before any other", () => {
+    assert.equal(naturalCompare("", "a"), -1);
+    assert.equal(naturalCompare("a", ""), 1);
+    assert.equal(naturalCompare("", "1"), -1);
+});

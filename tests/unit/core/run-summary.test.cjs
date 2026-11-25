@@ -60,3 +60,8 @@ test("an outcome state outside the declared kinds is refused, not summarized", (
     const outcome = { ...runOutcome([saved()], []), state: "unheard-of" };
     assert.throws(() => summarizeRun(outcome), /^Error: Unknown run outcome: unheard-of$/u);
 });
+
+test("a run with no documents and other issues saved nothing", () => {
+    const outcome = runOutcome([], [], [{ code: "fault", stage: "execution", params: {}, message: "Broken." }]);
+    assert.equal(summarizeRun(outcome).kind, "none-saved");
+});

@@ -3,7 +3,7 @@ const { RUN_OUTCOME } = require("./outcomes.js");
 const { dirname, basename } = require("./paths.js");
 
 const FIXED_SUMMARIES = new Map([
-    [RUN_OUTCOME.complete, "all-saved"],
+    [RUN_OUTCOME.complete, null],
     [RUN_OUTCOME.incomplete, null],
     [RUN_OUTCOME.canceled, "stopped"],
     [RUN_OUTCOME.invalidRequest, "invalid"],
@@ -16,7 +16,8 @@ function summaryKind(outcome, counts) {
     if (kind) { return kind; }
     if (counts["not-started"] > 0) { return "stopped"; }
     if (outcome.documents.length === 0 && outcome.issues.every((issue) => issue.code === "no-images")) { return "nothing-to-convert"; }
-    if (counts.saved === outcome.documents.length && counts.saved > 0 && outcome.issues.length === 0 &&
+    // A run with no documents and no issues was settled above as nothing to convert.
+    if (counts.saved === outcome.documents.length && outcome.issues.length === 0 &&
         outcome.documents.every((document) => document.issues.length === 0)) { return "all-saved"; }
     return counts.saved > 0 ? "some-saved" : "none-saved";
 }

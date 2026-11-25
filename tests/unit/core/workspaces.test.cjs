@@ -13,3 +13,8 @@ test("owner records require a positive exact PID and readable process-start text
     assert.equal(validWorkspaceOwner(owner), true);
     for (const record of [null, {}, { ...owner, pid: 0 }, { ...owner, pid: -1 }, { ...owner, pid: 1.5 }, { ...owner, pid: "123" }, { ...owner, started: "" }, { ...owner, started: "  " }, { ...owner, started: 123 }]) { assert.equal(validWorkspaceOwner(record), false); }
 });
+
+test("a workspace name is the prefix and exactly six letters or digits", () => {
+    assert.equal(isWorkspaceName("run-ab12CD"), true);
+    for (const name of ["run-_ab12CD", "run-xab12CD", "run-ab12C", "run-ab12C_", "xrun-ab12CD"]) { assert.equal(isWorkspaceName(name), false, name); }
+});

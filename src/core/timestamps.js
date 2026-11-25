@@ -4,7 +4,8 @@ const { zeroPad } = require("./numbers.js");
 const TIMESTAMP_FIELD_WIDTH = 2;
 const YEAR_WIDTH = 4;
 const TIMESTAMP_FORM = "YYYYMMDD_HHMMSS";
-const TIMESTAMP_PATTERN = /^(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})_(?<hour>\d{2})(?<minute>\d{2})(?<second>\d{2})$/u;
+// Unanchored: the round trip through makeTimestamp below accepts only the whole form.
+const TIMESTAMP_PATTERN = /(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})_(?<hour>\d{2})(?<minute>\d{2})(?<second>\d{2})/u;
 
 function makeTimestamp(date) {
     const pad = (value) => zeroPad(value, TIMESTAMP_FIELD_WIDTH);

@@ -21,7 +21,8 @@ function supportsNode(version) {
     if (!match) { return false; }
     const actual = [match.groups.major, match.groups.minor, match.groups.patch].map(Number);
     for (const [index, minimum] of MINIMUM_NODE_VERSION.split(".").map(Number).entries()) {
-        if (actual[index] !== minimum) { return actual[index] > minimum; }
+        if (actual[index] > minimum) { return true; }
+        if (actual[index] < minimum) { return false; }
     }
     return true;
 }

@@ -104,3 +104,13 @@ test("a line that is not JSON is refused in the catalog's words", () => {
         assert.throws(() => decodeMessage("engine", line), (error) => error.message === message("engineMessageNotJson"));
     }
 });
+
+test("every list entry, every document state and the output rule are checked", () => {
+    assert.throws(() => decodeMessage("client", JSON.stringify({ type: "start", inputItems: ["/a.png", 5], toolPaths: {} })), /fields are invalid/u);
+    const outcome = (documents) => JSON.stringify({ type: "outcome", receipt: { state: "incomplete", documents, rejected: [], issues: [], diagnostics: [] } });
+    const document = (state, extra = {}) => ({ state, sources: ["/a.png"], pages: 1, issues: [], ...extra });
+    for (const state of ["failed", "canceled", "not-started"]) { assert.equal(decodeMessage("engine", outcome([document(state)])).type, "outcome"); }
+    assert.equal(decodeMessage("engine", outcome([document("saved", { output: "/a.pdf" })])).type, "outcome");
+    assert.throws(() => decodeMessage("engine", outcome([document("saved")])), /fields are invalid/u);
+    assert.throws(() => decodeMessage("engine", outcome([document("failed", { output: "/a.pdf" })])), /fields are invalid/u);
+});

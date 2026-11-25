@@ -8,17 +8,15 @@
  */
 
 function basename(path) {
+    // Without a separator, lastIndexOf is -1 and the slice is the whole name.
     const normalized = String(path).replace(/\/+$/u, "");
-    const index = normalized.lastIndexOf("/");
-
-    return index >= 0 ? normalized.slice(index + 1) : normalized;
+    return normalized.slice(normalized.lastIndexOf("/") + 1);
 }
 
 function dirname(path) {
+    // Without a separator, lastIndexOf is -1 and the slice is empty.
     const text = String(path);
-    const index = text.lastIndexOf("/");
-
-    return index >= 0 ? text.slice(0, index + 1) : "";
+    return text.slice(0, text.lastIndexOf("/") + 1);
 }
 
 function fileStem(filename) {

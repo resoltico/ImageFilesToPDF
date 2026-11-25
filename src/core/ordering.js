@@ -8,12 +8,18 @@ const EQUAL = 0;
 const LEFT_FIRST = -1;
 const RIGHT_FIRST = 1;
 
+// A name splits into runs of digits and runs of anything else.
+const PART = /(?<digits>\d+)|\D+/gu;
+
 function naturalParts(value) {
-    return String(value).toLowerCase().match(/\d+|\D+/gu) || [""];
+    return [...String(value).toLowerCase().matchAll(PART)]
+        .map((match) => ({ text: match[0], numeric: match.groups.digits !== undefined }));
 }
 
-function isNumeric(part) {
-    return /^\d+$/u.test(part);
+function compareText(left, right) {
+    if (left < right) { return LEFT_FIRST; }
+    if (left > right) { return RIGHT_FIRST; }
+    return EQUAL;
 }
 
 /*
@@ -28,48 +34,25 @@ function isNumeric(part) {
  *
  * Leading zeros are not part of the value, so they come off first: what is
  * left is longer when it is larger, and among equal lengths the larger is the
- * one that reads later.
+ * one that reads later. Equal values with different zero padding put the
+ * narrower one first.
  */
 const LEADING_ZEROS = /^0+(?=\d)/u;
 
 function compareNumeric(leftPart, rightPart) {
     const left = leftPart.replace(LEADING_ZEROS, "");
     const right = rightPart.replace(LEADING_ZEROS, "");
-
-    if (left.length !== right.length) {
-        return left.length - right.length;
-    }
-
-    if (left !== right) {
-        return left < right ? LEFT_FIRST : RIGHT_FIRST;
-    }
-
-    // Equal value, different zero padding: the narrower one sorts first.
-    return leftPart.length - rightPart.length;
+    return compareText(left.length, right.length) || compareText(left, right) ||
+        compareText(leftPart.length, rightPart.length);
 }
 
-/*
- * Compares one segment pair. Returns EQUAL when the caller should move on to
- * the next segment.
- */
+// A missing part is a name that ended first, and a shorter name sorts first.
 function comparePart(leftPart, rightPart) {
-    if (leftPart === undefined) {
-        return LEFT_FIRST;
-    }
-
-    if (rightPart === undefined) {
-        return RIGHT_FIRST;
-    }
-
-    if (leftPart === rightPart) {
-        return EQUAL;
-    }
-
-    if (isNumeric(leftPart) && isNumeric(rightPart)) {
-        return compareNumeric(leftPart, rightPart);
-    }
-
-    return leftPart < rightPart ? LEFT_FIRST : RIGHT_FIRST;
+    if (leftPart === undefined) { return LEFT_FIRST; }
+    if (rightPart === undefined) { return RIGHT_FIRST; }
+    return leftPart.numeric && rightPart.numeric
+        ? compareNumeric(leftPart.text, rightPart.text)
+        : compareText(leftPart.text, rightPart.text);
 }
 
 function naturalCompare(left, right) {

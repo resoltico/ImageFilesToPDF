@@ -28,3 +28,8 @@ test("operation errors are named and carry only the fields they were given", () 
     assert.equal(error.name, "OperationError");
     assert.deepEqual(["issues", "recovery", "command", "outcome"].filter((field) => Object.hasOwn(error, field)), ["issues"]);
 });
+
+test("an issue error keeps the params it was given", () => {
+    assert.deepEqual(new IssueError("x", { params: { name: "vips" } }).params, { name: "vips" });
+    assert.equal(Object.hasOwn(new IssueError("x"), "params"), false);
+});

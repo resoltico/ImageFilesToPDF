@@ -30,10 +30,10 @@ function settingValueIssue(field, value, naming) {
         catch { return { field, ...issueMessage("color", "settings", "settingsColor", { subject }) }; }
     }
     if (rule.kind === "choice") {
-        return typeof value === "string" && rule.choices.some((choice) => choice.value === value) ? null
+        return rule.choices.some((choice) => choice.value === value) ? null
             : { field, ...issueMessage("choice", "settings", "settingsChoice", { subject, choices: rule.choices.map((choice) => choice.value).join(", ") }) };
     }
-    return typeof value === "number" && Number.isInteger(value) && value >= rule.minimum && value <= rule.maximum ? null
+    return Number.isInteger(value) && value >= rule.minimum && value <= rule.maximum ? null
         : { field, ...issueMessage("integer", "settings", "settingsInteger", { subject, minimum: rule.minimum, maximum: rule.maximum }) };
 }
 
@@ -43,8 +43,8 @@ function settingType(value) {
 }
 
 function settingIssue(field, value, naming) {
+    // A valid value has the expected type, so it returns the absent issue below.
     const issue = settingValueIssue(field, value, naming);
-    if (!issue) { return null; }
     if (value === undefined) { return { ...issue, ...(naming === "keys" ? issueMessage(issue.code, "settings", "settingsMissing", { subject: `\`${field}\`` }) : {}), diagnostic: { missing: true } }; }
     const expectedType = SETTINGS_SCHEMA[field].kind === "integer" ? "number" : "string";
     const actualType = settingType(value);

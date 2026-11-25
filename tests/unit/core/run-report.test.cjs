@@ -122,3 +122,9 @@ test("multiple failed documents and workspace notes retain separate copyable pat
     assert.equal(reportText(runOutcome(failed, [], [], diagnostics)),
         "Finished with issues.\nNo PDF was created.\n\n2 failed.\n\nCould not convert:\n/first.jpg: This image is damaged.\n/second.png: This image is damaged.\n\nTemporary work:\nRetained work.\n/tmp/run-A12345\n\nReclaimed work.\n/tmp/run-B12345");
 });
+
+test("a run with nothing to count reports no counts line", () => {
+    const { issueMessage } = require("../../../src/core/messages.js");
+    const text = reportText(runOutcome([], [], [issueMessage("no-images", "selection", "noImagesAdmitted")]), true, (path) => path);
+    assert.equal(text, "Nothing to convert.");
+});

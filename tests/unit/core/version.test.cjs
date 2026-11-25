@@ -27,3 +27,15 @@ test("runtime discovery presents each examined executable and leaves absent vers
     assert.deepEqual(missing.params, { minimum: "26.13.1", found: [] });
     assert.match(missing.message, /^Node\.js 26\.13\.1 or later is required\. See the installation guide .*#macos/u);
 });
+
+test("only a whole version string at or above the floor is supported", () => {
+    const { supportsNode } = require("../../../src/core/version.js");
+    for (const version of ["26.13.1", "v26.13.1", "26.13.10", "26.14.0", "27.0.0"]) { assert.equal(supportsNode(version), true, version); }
+    for (const version of ["26.13.0", "26.12.9", "25.99.99", "x26.13.1", "26.13.1x", "26.13", ""]) { assert.equal(supportsNode(version), false, version); }
+});
+
+test("the runtime refusal is a setup issue with data params", () => {
+    const { runtimeUnavailableIssue } = require("../../../src/core/version.js");
+    const issue = runtimeUnavailableIssue([]);
+    assert.deepEqual([issue.code, issue.stage, issue.params], ["runtime-unavailable", "setup", { minimum: "26.13.1", found: [] }]);
+});

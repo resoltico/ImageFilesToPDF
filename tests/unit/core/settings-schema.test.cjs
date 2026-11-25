@@ -20,3 +20,18 @@ test("setting issues preserve GUI wording and carry authoritative missing/type f
     assert.deepEqual(settingIssue("background", {}).diagnostic, { expectedType: "string", actualType: "object" });
     assert.equal(settingIssue("quality", 101).diagnostic, undefined, "wrong ranges are not wrong types");
 });
+
+test("missing and mistyped settings are worded for their audience and staged as settings", () => {
+    const { validateSettings } = require("../../../src/core/settings.js");
+    const byField = (issues) => Object.fromEntries(issues.map((issue) => [issue.field, issue]));
+    const form = byField(validateSettings({}).issues);
+    const keys = byField(validateSettings({}, "keys").issues);
+    assert.equal(form.mode.message, "PDF files must be one of: combined, separate.");
+    assert.equal(keys.mode.message, "`mode` is missing.");
+    assert.deepEqual(form.mode.diagnostic, { missing: true });
+    const typed = byField(validateSettings({ mode: 5, paperSize: "A4", orientation: "Portrait", resolutionLimit: "300", quality: 82, background: "#FFFFFF" }, "keys").issues);
+    assert.equal(typed.resolutionLimit.message, "`resolutionLimit` must be a JSON number, not a string.");
+    assert.deepEqual(typed.resolutionLimit.diagnostic, { expectedType: "number", actualType: "string" });
+    for (const issue of [...Object.values(form), ...Object.values(keys), ...Object.values(typed)]) { assert.equal(issue.stage, "settings"); }
+    assert.deepEqual(validateSettings({ mode: "combined", paperSize: "A4", orientation: "Portrait", resolutionLimit: 300, quality: 82, background: "#ffffff" }).issues, []);
+});

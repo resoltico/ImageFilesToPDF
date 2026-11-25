@@ -50,13 +50,16 @@ function setupFailure(problems, platform) {
     return new OperationError(issueMessages(issues), { issues });
 }
 
+const TOOL_CHOICE_CODES = new Set(["chosen-executable-invalid", "tool-missing", "tool-unusable"]);
+
+function offeredExecutable({ code, params }) {
+    if (code === "runtime-unavailable") { return "node"; }
+    return TOOL_CHOICE_CODES.has(code) ? params.name : null;
+}
+
 function executableChoices({ state, issues }) {
     if (state !== RUN_OUTCOME.setupFailed) { return []; }
-    const offered = new Set(issues.flatMap(({ code, params }) => {
-        if (code === "runtime-unavailable") { return ["node"]; }
-        if (["chosen-executable-invalid", "tool-missing", "tool-unusable"].includes(code)) { return [params.name]; }
-        return [];
-    }));
+    const offered = new Set(issues.map(offeredExecutable));
     return FINDER_EXECUTABLES.filter((name) => offered.has(name));
 }
 
