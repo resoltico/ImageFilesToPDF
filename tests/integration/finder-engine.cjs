@@ -229,6 +229,16 @@ async function verifySystemDiscovery(folder, fixture) {
     verifyConversion(invoke(prefixProbe, fixture, { node: null }));
 }
 
+function preferenceFile(domain) {
+    return path.join(os.homedir(), "Library", "Preferences", `${domain}.plist`);
+}
+
+// `defaults delete` empties the domain but leaves its plist; remove the file after cfprefsd has written it.
+function removePreferenceDomain(domain) {
+    execFileSync("/usr/bin/defaults", ["delete", domain]);
+    fs.rmSync(preferenceFile(domain), { force: true });
+}
+
 async function verifyChosenDiscovery(folder, fixture) {
     const chosen = path.join(folder, "chosen-discovery");
     const choices = installFixtures(path.join(chosen, "chosen tools"));
@@ -252,8 +262,9 @@ async function verifyChosenDiscovery(folder, fixture) {
         assert.equal(retry.offers[0].issues[0].code, "chosen-executable-invalid");
         assertReceipt({ state: "setup-failed", documents: [], rejected: [], diagnostics: [], issues: retry.offers[0].issues });
     } finally {
-        execFileSync("/usr/bin/defaults", ["delete", domain]);
+        removePreferenceDomain(domain);
     }
+    assert.equal(fs.existsSync(preferenceFile(domain)), false, "the disposable preference domain leaves no file");
 }
 
 function verifySettingsFallback(probe, fixture) {
