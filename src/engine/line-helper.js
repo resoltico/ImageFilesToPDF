@@ -25,8 +25,7 @@ function helperSession(file, args, { detached, ascii = false }) {
         if (stderr.length > OUTPUT_LIMIT) { terminate(); }
     });
 
-    async function exchange(request) {
-        const deadline = setTimeout(terminate, REQUEST_LIMIT_MS);
+    async function answer(request) {
         try {
             child.stdin.write(`${encodeHelperRequest(request, ascii)}\n`);
             const { value, done } = await lines.next();
@@ -36,7 +35,13 @@ function helperSession(file, args, { detached, ascii = false }) {
             terminate();
             await closed.catch(() => undefined);
             throw error;
-        } finally { clearTimeout(deadline); }
+        }
+    }
+
+    async function exchange(request) {
+        const deadline = setTimeout(terminate, REQUEST_LIMIT_MS);
+        try { return await answer(request); }
+        finally { clearTimeout(deadline); }
     }
 
     let tail = Promise.resolve();
