@@ -134,14 +134,9 @@ test("a published PDF must be the file expected, under one name only", (context)
     const expected = publication.facts(`${base}/out.pdf`);
     assert.equal(publication.actualPath(`${base}/out.pdf`, expected), `${base}/out.pdf`);
     assert.throws(() => publication.actualPath(`${base}/out.pdf`, { ...expected, size: 99 }), isMessage("publishedPdfIdentityUnverified"));
-    if (process.platform === "linux") {
-        // One file under two stored spellings of the same name, asked for by a third.
-        const canonical = "ệ.pdf";
-        fs.writeFileSync(`${base}/${canonical}`, "pdf");
-        fs.linkSync(`${base}/${canonical}`, `${base}/${canonical.normalize("NFC")}`);
-        const facts = publication.facts(`${base}/${canonical}`);
-        assert.throws(() => publication.actualPath(`${base}/ệ.pdf`, facts), isMessage("publishedPdfNameAmbiguous"));
-    }
+    // A name the folder listing leaves out cannot be confirmed as the one published.
+    fs.writeFileSync(`${base}/\uFFFD.pdf`, "pdf");
+    assert.throws(() => publication.actualPath(`${base}/\uFFFD.pdf`, publication.facts(`${base}/\uFFFD.pdf`)), isMessage("publishedPdfNameAmbiguous"));
 });
 
 test("a staging area that cannot be identified, or is lost, is reported for cleanup", (context) => {

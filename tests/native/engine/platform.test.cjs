@@ -65,8 +65,11 @@ test("a pathname given with a trailing slash keeps it, and the root stays the ro
     assert.equal(resolvedSource("/").path, "/");
 });
 
-test("a Windows pathname that is reserved, or not on a drive, is refused", { skip: !WINDOWS }, () => {
+test("a Windows pathname that is reserved, or not on a drive, is refused", { skip: !WINDOWS }, (context) => {
     assert.equal(resolvedSource("C:\\folder\\con").refusal.code, "not-a-path");
+    // A relative name resolved inside a network folder is not on a local drive.
+    context.mock.method(process, "cwd", () => "\\\\server\\share\\folder");
+    assert.equal(resolvedSource("photo.png").refusal.code, "not-a-path");
     assert.ok(resolvedSource("C:\\folder\\").path.endsWith("/"));
 });
 
@@ -104,9 +107,11 @@ test("on Linux, a configuration that is not a folder is no Downloads, and one th
 });
 
 test("on Windows, the workspace needs a drive-absolute LOCALAPPDATA", { skip: !WINDOWS }, async (context) => {
-    environment(context, { LOCALAPPDATA: "relative" });
-    await assert.rejects(locations({ checked: () => ({ kind: "directory" }) }, { downloads: () => Promise.resolve(null) }),
-        (error) => error.message === message("workspaceLocalAppDataUnavailable"));
+    for (const value of ["relative", undefined]) {
+        environment(context, { LOCALAPPDATA: value });
+        await assert.rejects(locations({ checked: () => ({ kind: "directory" }) }, { downloads: () => Promise.resolve(null) }),
+            (error) => error.message === message("workspaceLocalAppDataUnavailable"), String(value));
+    }
 });
 
 test("on Windows, the helper needs the system folder, and a fact it cannot give is refused", { skip: !WINDOWS }, async (context) => {
