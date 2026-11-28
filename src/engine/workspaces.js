@@ -185,8 +185,8 @@ async function workspaceStore(files, commands, windows) {
             const guard = `${current.directory}/${IN_FLIGHT}`;
             if (writers === 0) { writeNew(guard, "Native command settlement has not been acknowledged.\n"); }
             writers += 1;
-            try { return await request(argv); }
-            catch (error) { unsettled = true; throw error; }
+            const settled = Promise.resolve().then(() => request(argv)).catch((error) => { unsettled = true; throw error; });
+            try { return await settled; }
             finally {
                 writers -= 1;
                 // Keep the guard across a crash or uncertain native settlement.

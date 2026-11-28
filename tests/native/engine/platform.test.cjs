@@ -70,7 +70,13 @@ test("a Windows pathname that is reserved, or not on a drive, is refused", { ski
     assert.ok(resolvedSource("C:\\folder\\").path.endsWith("/"));
 });
 
-test("Downloads that cannot be found is no Downloads, and anything else that fails is a fault", async () => {
+test("Downloads that cannot be found is no Downloads, and anything else that fails is a fault", async (context) => {
+    if (process.platform === "linux") {
+        // A Downloads folder Linux names, so there is one to look at.
+        const configured = folder(context);
+        fs.writeFileSync(path.join(configured, "user-dirs.dirs"), `XDG_DOWNLOAD_DIR="${configured}"\n`);
+        environment(context, { XDG_CONFIG_HOME: configured });
+    }
     const checked = (code) => ({ checked() { throw Object.assign(new Error(code), { code }); } });
     const helper = (downloads) => (WINDOWS ? { downloads: () => Promise.resolve(downloads) } : undefined);
     if (WINDOWS) {
@@ -113,7 +119,7 @@ test("on Windows, the helper needs the system folder, and a fact it cannot give 
     await assert.rejects(native.entries(path.join(folder(context), "missing")),
         (error) => error.message === message("windowsPlatformFactUnavailable", { type: "entries" }));
     await native.close();
-    await assert.rejects(native.downloads(), /ended before answering/u);
+    await assert.rejects(native.downloads(), "a helper that has ended answers nothing");
     // A helper that fails once Stop was asked is the stop, not a fault.
     const stopping = windowsNative({ stopped: () => true });
     await stopping.entries(folder(context));

@@ -33,7 +33,7 @@ function windowsClaim(windows, directoryIdentity, facts, remember) {
         const fd = fs.openSync(from, "r");
         const held = () => heldFacts(fd);
         let handedOff = false;
-        try {
+        async function attempt() {
             if (!same(held(), original) || !same(facts(from), original)) { return { state: "unknown" }; }
             const reported = await windows.move(from, to);
             if (sourceParent !== directoryIdentity(source) || targetParent !== directoryIdentity(target)) {
@@ -50,7 +50,8 @@ function windowsClaim(windows, directoryIdentity, facts, remember) {
                 }
             }
             return { state: "unknown", diagnostic: reported };
-        } catch (error) { return { state: "unknown", diagnostic: { message: error.message } }; }
+        }
+        try { return await attempt().catch((error) => ({ state: "unknown", diagnostic: { message: error.message } })); }
         finally { if (!handedOff) { fs.closeSync(fd); } }
     };
 }

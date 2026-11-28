@@ -17,6 +17,19 @@ const { createInterface } = require("node:readline");
 const { DEFAULT_SETTINGS } = require("../../../src/core/settings.js");
 
 const ENGINE = path.resolve(__dirname, "../../../src/serve/entry.js");
+
+/*
+ * A Finder request names the tools it chose, or else the engine searches where
+ * the Finder does, which is macOS's own path files. Elsewhere the tests name
+ * the tools found on PATH.
+ */
+function toolPaths() {
+    if (process.platform === "darwin") { return {}; }
+    const suffix = process.platform === "win32" ? ".exe" : "";
+    const search = Object.entries(process.env).find(([key]) => key.toUpperCase() === "PATH")[1].split(path.delimiter);
+    return Object.fromEntries(["vips", "vipsheader", "pdfcpu"].map((name) =>
+        [name, search.map((directory) => path.join(directory, `${name}${suffix}`)).find((file) => fs.existsSync(file))]));
+}
 const PRELOAD = path.resolve(__dirname, "../faults/preload.cjs");
 
 function workArea(context) {
@@ -55,7 +68,7 @@ function session(args, opening, answer = () => []) {
 
 test("a conversation asks for settings and ends with the receipt of a saved PDF", async (context) => {
     const { folder, image } = workArea(context);
-    const result = await session(["--serve"], [{ type: "start", inputItems: [image], toolPaths: {} }], (event) => {
+    const result = await session(["--serve"], [{ type: "start", inputItems: [image], toolPaths: toolPaths() }], (event) => {
         if (event.type === "settings-needed") { return [{ type: "settings", values: { ...DEFAULT_SETTINGS, quality: 500 } }]; }
         if (event.type === "settings-invalid") { return [{ type: "settings", values: DEFAULT_SETTINGS }]; }
         return event.type === "outcome" ? null : [];
@@ -81,7 +94,7 @@ test("a client that leaves before starting gets a canceled receipt", async () =>
 
 test("Stop during the run ends it with what was done", async (context) => {
     const { image } = workArea(context);
-    const result = await session(["--serve"], [{ type: "start", inputItems: [image], toolPaths: {} }], (event) => {
+    const result = await session(["--serve"], [{ type: "start", inputItems: [image], toolPaths: toolPaths() }], (event) => {
         if (event.type === "settings-needed") { return [{ type: "stop" }]; }
         return event.type === "outcome" ? null : [];
     });
@@ -102,7 +115,7 @@ test("a request that is not a start, or not UTF-8, is refused on standard error"
 
 test("a message out of turn during the run is reported in the receipt", async (context) => {
     const { image } = workArea(context);
-    const result = await session(["--serve"], [{ type: "start", inputItems: [image], toolPaths: {} }], (event) => {
+    const result = await session(["--serve"], [{ type: "start", inputItems: [image], toolPaths: toolPaths() }], (event) => {
         if (event.type === "settings-needed") { return [{ type: "start", inputItems: [], toolPaths: {} }]; }
         return event.type === "outcome" ? null : [];
     });
@@ -133,7 +146,7 @@ test("an engine whose client stops reading mid-run, or before the receipt, ends 
             // had time to find that nobody reads the question it asks.
             if (at === "hello") { setTimeout(() => child.stdin.end(), 2000); } else { child.stdin.end(); }
         });
-        child.stdin.write(`${JSON.stringify({ type: "start", inputItems: [image], toolPaths: {} })}\n`);
+        child.stdin.write(`${JSON.stringify({ type: "start", inputItems: [image], toolPaths: toolPaths() })}\n`);
         assert.equal(await new Promise((resolve) => { child.on("close", resolve); }), 1, at);
     }
 });

@@ -162,9 +162,16 @@ test("the macOS helper's word on packages and aliases is taken, and a muddled an
     assert.deepEqual((await remembered.tree.entries(base)).sort(), ["Thing.app", "a.png", "alias"]);
     assert.equal((await remembered.tree.inspect(`${base}/Thing.app`)).kind, "package");
     assert.equal((await remembered.tree.inspect(`${base}/alias`)).kind, "link");
-    const odd = listing((paths) => paths.map(() => ({ package: 1, alias: 0 })));
-    await odd.tree.entries(base);
-    assert.equal((await odd.tree.inspect(`${base}/a.png`)).kind, "unexaminable");
+    // The folder's own check is answered plainly; only what is said about its children is odd.
+    const childrenOnly = (record) => listing((paths) => paths.map((entry) => (path.dirname(entry) === base ? record : { package: false, alias: false })));
+    for (const record of [{ package: 1, alias: false }, { package: false, alias: "no" }, null]) {
+        const odd = childrenOnly(record);
+        await odd.tree.entries(base);
+        assert.equal((await odd.tree.inspect(`${base}/a.png`)).kind, "unexaminable", JSON.stringify(record));
+    }
+    let asked = 0;
+    const notList = listing((paths) => { asked += 1; return asked === 1 ? paths.map(() => ({ package: false, alias: false })) : {}; });
+    assert.equal(await notList.tree.entries(base), null, "an answer that is not a list lists nothing");
     assert.equal(await listing(() => []).tree.entries(base), null, "an incomplete answer lists nothing");
     fs.mkdirSync(`${base}/empty`);
     assert.deepEqual(await localFilesystem(null, plain).tree.entries(`${base}/empty`), [], "an empty folder asks nothing more");

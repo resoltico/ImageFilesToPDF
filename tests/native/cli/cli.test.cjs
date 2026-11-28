@@ -15,6 +15,8 @@ const { message } = require("../../../src/core/messages.js");
 
 const CLI = path.resolve(__dirname, "../../../src/cli/entry.js");
 const PRELOAD = path.resolve(__dirname, "../faults/preload.cjs");
+// The command line names paths with forward slashes on every platform.
+const shown = (file) => file.replaceAll("\\", "/");
 
 function run(args, { fault, closeOutput = false } = {}) {
     const child = spawn(process.execPath, [...(fault ? ["--require", PRELOAD] : []), CLI, ...args], {
@@ -51,22 +53,22 @@ test("a settings file is refused for each way it can be wrong", async (context) 
         const { file } = settingsFile(context, content);
         const issue = await refusal(["--settings", file, "--", "a.png"]);
         assert.equal(issue.code, "settings-file");
-        assert.equal(issue.message, message(id, { path: file }), content);
+        assert.equal(issue.message, message(id, { path: shown(file) }), content);
     }
     const { file: missing } = settingsFile(context);
-    assert.equal((await refusal(["--settings", missing, "--", "a.png"])).message, message("settingsFileMissing", { path: missing }));
+    assert.equal((await refusal(["--settings", missing, "--", "a.png"])).message, message("settingsFileMissing", { path: shown(missing) }));
 });
 
 test("a settings file that cannot be read is called unreadable", { skip: process.platform === "win32" || process.getuid?.() === 0 }, async (context) => {
     const { file } = settingsFile(context, "{}");
     fs.chmodSync(file, 0o000);
-    assert.equal((await refusal(["--settings", file, "--", "a.png"])).message, message("settingsFileUnreadable", { path: file }));
+    assert.equal((await refusal(["--settings", file, "--", "a.png"])).message, message("settingsFileUnreadable", { path: shown(file) }));
 });
 
 test("a settings file replaced between its check and its opening is refused", async (context) => {
     const { file } = settingsFile(context, "{}");
     const issue = await refusal(["--settings", file, "--", "a.png"], { fault: "settings-replaced" });
-    assert.equal(issue.message, message("settingsFileNotRegular", { path: file }));
+    assert.equal(issue.message, message("settingsFileNotRegular", { path: shown(file) }));
 });
 
 test("a fault before the command starts still ends with a failure status", async () => {
