@@ -44,6 +44,14 @@ export const purePatterns = [...PURE_LAYERS.map((layer) => `src/${layer}/**/*.js
 const FINDER_PATTERNS = ["src/finder/**/*.js", "src/entry.js"];
 export const unitScope = [...purePatterns.filter((pattern) => !pattern.startsWith("src/finder/")), ...FINDER_PATTERNS];
 
+/*
+ * What the native coverage gate measures: the engine, command line and serve
+ * modules that touch the operating system, recorded while the native suites
+ * run on macOS, Linux and Windows. Their pure modules are in the unit scope.
+ */
+export const nativeScope = [...PORT_LAYERS].map((layer) => `src/${layer}/**/*.js`);
+export const nativeExcluded = DECLARED_FILES;
+
 function ambient(value) {
     if (!value || typeof value !== "object") { return false; }
     if (value.type === "Identifier" && HOST_GLOBALS.has(value.name)) { return true; }

@@ -24,6 +24,10 @@ node "$ROOT/tests/integration/finder-engine.cjs"
 node "$ROOT/tests/integration/finder-pipe.cjs"
 node "$ROOT/tests/integration/native-cli.cjs"
 python3 "$ROOT/tests/integration/posix-process.py"
-mkdir "$owned/npm"
-node "$ROOT/tests/integration/npm-route.cjs" "$(node "$ROOT/tools/npm-package.mjs" "$owned/npm")"
+# A coverage run puts the source in the artifact's place; the npm route installs
+# the packed artifact, so it runs only when the artifact is the real one.
+if [ -z "${NODE_V8_COVERAGE:-}" ]; then
+    mkdir "$owned/npm"
+    node "$ROOT/tests/integration/npm-route.cjs" "$(node "$ROOT/tools/npm-package.mjs" "$owned/npm")"
+fi
 passed=1

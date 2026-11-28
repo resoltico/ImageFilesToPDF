@@ -4,7 +4,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { FAST_CHECK_SETTINGS, unitScope, propertyTestFiles, unitTestFiles } from "./pure-modules.mjs";
-import { coverageGaps, parseLcov } from "./coverage.mjs";
+import { lcovGaps } from "./coverage.mjs";
 
 const FUZZ_RUNS = 2000;
 
@@ -37,7 +37,7 @@ process.exitCode = result.status ?? 1;
 
 // The tests passing is not enough: every file in scope must be wholly covered.
 const gaps = gate === "coverage" && process.exitCode === 0
-    ? coverageGaps(parseLcov(fs.readFileSync(record, "utf8"), process.cwd()), fs.globSync(unitScope))
+    ? lcovGaps(fs.readFileSync(record, "utf8"), process.cwd(), fs.globSync(unitScope))
     : [];
 fs.rmSync(path.dirname(record), { recursive: true });
 if (gaps.length > 0) {

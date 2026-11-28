@@ -1,7 +1,14 @@
 name: Native CLI
 
+# Called twice: once to verify the committed artifact, and once with coverage,
+# where the same suites run the source behind the artifact's path and each job
+# keeps a record of what ran for the native coverage gate (tools/native-coverage.mjs).
 on:
   workflow_call:
+    inputs:
+      coverage:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -54,13 +61,22 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check-dist
       - run: docker build -t iftp-native - < tests/integration/linux-native.Dockerfile
+      - name: Run the source and record coverage
+        if: inputs.coverage
+        run: |
+          node tools/native-coverage.mjs source
+          mkdir -m 777 "$RUNNER_TEMP/v8"
+          echo "NODE_V8_COVERAGE=$RUNNER_TEMP/v8" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: npm-package
           path: npm-package
+      # The checkout is mounted at its own path so recorded coverage names its files.
       - name: Verify the committed CLI on Linux
         run: |
-          docker run --rm -v "$PWD:/repo:ro" -v /tmp -w /repo iftp-native sh -ec '
+          coverage=()
+          if [ -n "${NODE_V8_COVERAGE:-}" ]; then coverage=(-e NODE_V8_COVERAGE -v "$NODE_V8_COVERAGE:$NODE_V8_COVERAGE"); fi
+          docker run --rm -v "$PWD:$PWD:ro" -v /tmp -w "$PWD" "${coverage[@]}" iftp-native sh -ec '
             uname -m
             df -T /tmp /dev/shm
             node --version
@@ -69,21 +85,32 @@ jobs:
             IFTP_SECOND_VOLUME=/dev/shm node tests/integration/native-cli.cjs
             python3 tests/integration/posix-process.py
           '
-          docker run --rm --user node -v "$PWD:/repo:ro" -w /repo iftp-native \
+          docker run --rm --user node -v "$PWD:$PWD:ro" -w "$PWD" "${coverage[@]}" iftp-native \
             python3 tests/integration/linux-recovery.py
       - name: Install and run the npm package with the image's own npm
+        if: ${{ !inputs.coverage }}
         run: |
           docker run --rm -v "$PWD:/repo:ro" -w /repo iftp-native sh -ec '
             npm --version
             node tests/integration/npm-route.cjs npm-package/image-files-to-pdf-*.tgz
           '
+      - name: Keep the coverage record
+        if: inputs.coverage
+        run: node tools/native-coverage.mjs record "$NODE_V8_COVERAGE" coverage.json
+      - if: inputs.coverage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-coverage-${{ matrix.name }}
+          path: coverage.json
+          if-no-files-found: error
 
   windows:
     needs: package
     strategy:
       fail-fast: false
       matrix:
-        check: [artifact, console, arguments, cards, npm]
+        # The npm check installs the packed artifact, which coverage does not measure.
+        check: ${{ fromJSON(inputs.coverage && '["artifact", "console", "arguments", "cards"]' || '["artifact", "console", "arguments", "cards", "npm"]') }}
     runs-on: windows-11-arm
     timeout-minutes: 40
     steps:
@@ -97,6 +124,12 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check-dist
       - run: ./tests/integration/windows-tools.ps1
+      - name: Run the source and record coverage
+        if: inputs.coverage
+        run: |
+          node tools/native-coverage.mjs source
+          $directory = New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP 'v8')
+          "NODE_V8_COVERAGE=$($directory.FullName)" >> $env:GITHUB_ENV
       - name: Verify Windows, NTFS, tools and PowerShell transport
         run: |
           Get-ComputerInfo -Property WindowsProductName,WindowsVersion,OsBuildNumber,OsArchitecture
@@ -159,10 +192,20 @@ jobs:
           npm install --global --prefix $prefix (Get-Item npm-package/image-files-to-pdf-*.tgz).FullName
           if ($LASTEXITCODE -ne 0) { throw 'npm install failed.' }
           ./tests/integration/windows-console.ps1 -Scenario Shim -Command (Join-Path $prefix 'image-files-to-pdf.cmd')
+      - name: Keep the coverage record
+        if: inputs.coverage
+        run: node tools/native-coverage.mjs record $env:NODE_V8_COVERAGE coverage.json
+      - if: inputs.coverage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-coverage-windows-${{ matrix.check }}
+          path: coverage.json
+          if-no-files-found: error
 
   # x86-64 is where most Windows users are; a smoke run of the npm route and
   # the native CLI suite on the x64 builds of the same tools.
   windows-x64:
+    if: ${{ !inputs.coverage }}
     needs: package
     runs-on: windows-2025
     timeout-minutes: 40
