@@ -67,24 +67,31 @@ function configure(commands) {
     };
 }
 
-async function convert(invocation, commands, { session, toolPaths } = {}) {
-    const progress = createProgress(session ? [session.sink] : [], commands.stopped);
-    let configured = null;
-    const outcome = await (async () => {
-        try {
-            configured = configure(commands);
-            return await execute(invocation, {
-                ...configured, checkTools: () => checkTools(commands, toolPaths), reclaim: (storage) => storage.reclaim(), now: () => new Date(),
-                interaction: { progress, collect: (input) => input, settings: session?.settings ?? (() => invocation.settings),
-                    noImages: noImagesOutcome, present: (result) => result }
-            });
-        } catch (error) {
-            const result = failedRun(error, error.outcome);
-            if (!error.outcome) { result.diagnostics.push(...progress.diagnostics); }
-            return result;
-        } finally { progress.close(); }
-    })();
-    try { await configured?.close(); }
+async function attempt({ invocation, commands, progress, configured }, { session, toolPaths }) {
+    try {
+        return await execute(invocation, {
+            ...configured(), checkTools: () => checkTools(commands, toolPaths), reclaim: (storage) => storage.reclaim(), now: () => new Date(),
+            interaction: { progress, collect: (input) => input, settings: session?.settings ?? (() => invocation.settings),
+                noImages: noImagesOutcome, present: (result) => result }
+        });
+    } catch (error) {
+        const result = failedRun(error, error.outcome);
+        if (!error.outcome) { result.diagnostics.push(...progress.diagnostics); }
+        return result;
+    }
+}
+
+async function closing(progress, run) {
+    try { return await run(); }
+    finally { progress.close(); }
+}
+
+async function convert(invocation, commands, options = {}) {
+    const progress = createProgress(options.session ? [options.session.sink] : [], commands.stopped);
+    let ports = null;
+    const configured = () => { ports = configure(commands); return ports; };
+    const outcome = await closing(progress, () => attempt({ invocation, commands, progress, configured }, options));
+    try { await ports?.close(); }
     catch (error) { return failedRun(error, outcome); }
     return outcome;
 }
