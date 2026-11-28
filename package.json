@@ -26,6 +26,7 @@
     "test:integration:macos": "bash tests/integration/macos-suite.sh",
     "test:mutation": "node tools/unit-gate.mjs mutation",
     "test:fuzz": "node tools/unit-gate.mjs fuzz",
+    "test:native": "node --test \"tests/native/**/*.test.cjs\"",
     "test:unit": "node --require ./tests/unit/fast-check-seed.cjs --test \"tests/unit/**/*.test.cjs\" \"tools/tests/unit/**/*.test.cjs\""
   },
   "devDependencies": {

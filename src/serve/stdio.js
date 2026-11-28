@@ -32,6 +32,8 @@ function utf8Lines(input) {
     });
     input.pipe(decoded);
     const reader = createInterface({ input: decoded, crlfDelay: Infinity });
+    let broken = false;
+    decoded.on("error", () => { broken = true; });
     return {
         messages: reader[Symbol.asyncIterator](),
         close() {
@@ -39,6 +41,9 @@ function utf8Lines(input) {
             input.unpipe(decoded);
             input.pause();
             decoded.destroy();
+            // Input that broke the session is not read again, and is let go so the
+            // engine can exit while the client still holds its end open.
+            if (broken) { input.destroy(); }
         }
     };
 }

@@ -44,9 +44,7 @@ async function runConversion({ inputItems, toolPaths }, read, send, convertRun) 
     }
 }
 
-async function serve({ input = stdin, output = stdout, errors = stderr, convertRun = convert } = {}) {
-    const send = lineWriter(output);
-    const read = utf8Lines(input);
+async function exchange(send, read, errors, convertRun) {
     const { messages } = read;
     try {
         if (!await send({ type: "hello", version: VERSION, runtime: versions.node })) { return 1; }
@@ -63,9 +61,13 @@ async function serve({ input = stdin, output = stdout, errors = stderr, convertR
     } catch (error) {
         errors.write(`${error.message}\n`);
         return 1;
-    } finally {
-        read.close();
     }
+}
+
+async function serve({ input = stdin, output = stdout, errors = stderr, convertRun = convert } = {}) {
+    const read = utf8Lines(input);
+    try { return await exchange(lineWriter(output), read, errors, convertRun); }
+    finally { read.close(); }
 }
 
 module.exports = { serve };

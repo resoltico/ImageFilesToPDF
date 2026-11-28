@@ -84,6 +84,7 @@ jobs:
             pdfcpu version
             IFTP_SECOND_VOLUME=/dev/shm node tests/integration/native-cli.cjs
             python3 tests/integration/posix-process.py
+            node --test "tests/native/**/*.test.cjs"
           '
           docker run --rm --user node -v "$PWD:$PWD:ro" -w "$PWD" "${coverage[@]}" iftp-native \
             python3 tests/integration/linux-recovery.py
@@ -147,6 +148,9 @@ jobs:
         env:
           IFTP_HEVC_UNAVAILABLE: "1"
         run: node tests/integration/native-cli.cjs
+      - name: Verify the engine adapters on Windows
+        if: matrix.check == 'artifact' && !cancelled()
+        run: node --test "tests/native/**/*.test.cjs"
       - name: Verify dehydrated Cloud Files placeholders
         if: matrix.check == 'artifact'
         timeout-minutes: 5

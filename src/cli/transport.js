@@ -11,9 +11,9 @@ const displayPath = platform === "win32" ? nativeWindowsPath : (path) => path;
 function write(stream, text) {
     return new Promise((resolve) => {
         // Node emits stream errors after the callback. Keep the listener for the invocation.
+        // A write reports its failure there; given a Buffer, it does not throw.
         stream.on("error", () => resolve(false));
-        try { stream.write(Buffer.from(text, "utf8"), (error) => resolve(!error)); }
-        catch { resolve(false); }
+        stream.write(Buffer.from(text, "utf8"), (error) => resolve(!error));
     });
 }
 
