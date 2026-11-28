@@ -15,13 +15,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  qualify:
-    name: Qualify the tagged source
-    runs-on: macos-26
-    timeout-minutes: 40
+  # The same gate and runner as the Quality workflow's source-quality job. It
+  # runs apart from the macOS suite so neither shares the other's time limit.
+  quality:
+    name: Check the tagged source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     env:
-      HOMEBREW_NO_AUTO_UPDATE: "1"
-      HOMEBREW_NO_INSTALL_CLEANUP: "1"
       RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,10 +32,6 @@ jobs:
           node-version-file: .node-version
           # No package cache in release jobs: the attested artifact is built from a clean install.
           package-manager-cache: false
-      # Runner images may contain stale Homebrew metadata.
-      - run: brew update
-      - run: brew install vips pdfcpu qpdf poppler libtiff exiftool shellcheck actionlint
-      - run: node tools/check-pdfcpu.mjs
       - run: npm install --global "$(node --print 'require("./package.json").packageManager')"
       - run: npm ci --ignore-scripts
       # The tag is a claim about which version is shipping, and it is the one
@@ -44,6 +40,28 @@ jobs:
       # Verifies the committed artifact against src/ rather than rebuilding
       # it, so a stale dist/ fails here instead of shipping.
       - run: npm run quality
+
+  qualify:
+    name: Qualify the tagged source on macOS
+    runs-on: macos-26
+    timeout-minutes: 40
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      # Runner images may contain stale Homebrew metadata.
+      - run: brew update
+      - run: brew install vips pdfcpu qpdf poppler libtiff exiftool shellcheck actionlint
+      - run: node tools/check-pdfcpu.mjs
+      - run: npm install --global "$(node --print 'require("./package.json").packageManager')"
+      - run: npm ci --ignore-scripts
       - name: Verify the Finder client and CLI on macOS
         run: npm run test:integration:macos
 
@@ -52,7 +70,7 @@ jobs:
 
   build:
     name: Build the artifact on CI
-    needs: [qualify, native-cli]
+    needs: [quality, qualify, native-cli]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:

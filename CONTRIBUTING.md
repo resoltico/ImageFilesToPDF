@@ -190,8 +190,8 @@ license.
 
 Release publication requires separate authorization. An authorized `v<version>`
 tag must match the repository's version declarations and dated release notes.
-Pushing it triggers `.github/workflows/release.yml`, which requires macOS and
-native CLI qualification, verifies both committed artifacts, rebuilds and
+Pushing it triggers `.github/workflows/release.yml`, which requires the quality gate,
+macOS and native CLI qualification, verifies both committed artifacts, rebuilds and
 compares bytes, then attests both bundles, the manifest, `INSTALL.txt` and `LICENSE`.
 The publish job rechecks checksums, attestations and tag identity. Its release
 helpers remain dependency-free and it does not restore an npm cache.
