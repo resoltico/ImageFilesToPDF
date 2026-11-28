@@ -1,6 +1,6 @@
 "use strict";
 const { stdin, stdout, stderr, versions } = require("node:process");
-const { VERSION } = require("../core/version.js");
+const { VERSION } = require("../core/product.js");
 const { decodeMessage } = require("../core/protocol.js");
 const { UserCanceled } = require("../core/errors.js");
 const { failedRun, runOutcome } = require("../core/outcomes.js");

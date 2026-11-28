@@ -2,20 +2,9 @@
 const { formatList } = require("./formatting.js");
 const { issueMessage, message } = require("./messages.js");
 const { INSTALL_GUIDES } = require("./installation-guide.js");
+const { MINIMUM_NODE_VERSION } = require("./product.js");
 
-/*
- * The released version, shown to the user on completion.
- *
- * A pasted Shortcut cannot be checked against dist/SHA256SUMS, so this is the
- * only way to tell which build is actually installed. It is declared here
- * rather than injected by the bundler so that src/ stays the source of truth;
- * tools/lint/consistency.mjs asserts it agrees with package.json.
- */
-const APP_NAME = "Image Files to PDF";
-const VERSION = "4.0.0";
-
-const MINIMUM_NODE_VERSION = "26.13.1";
-
+// Whether a Node.js version string is at least the product's floor.
 function supportsNode(version) {
     const match = /^v?(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$/u.exec(version);
     if (!match) { return false; }
@@ -35,4 +24,4 @@ function runtimeUnavailableIssue(found) {
     return { ...issueMessage("runtime-unavailable", "setup", id, { ...params, list, guide: INSTALL_GUIDES.darwin }), params };
 }
 
-module.exports = { APP_NAME, VERSION, MINIMUM_NODE_VERSION, supportsNode, runtimeUnavailableIssue };
+module.exports = { supportsNode, runtimeUnavailableIssue };

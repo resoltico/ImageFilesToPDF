@@ -1,7 +1,7 @@
 "use strict";
 const { SETTINGS_SCHEMA, SETTINGS_FIELDS, PDF_MODE, validateSettings, settingIssue } = require("../../core/settings.js");
 const { normalizeColor } = require("../../core/color.js");
-const { APP_NAME } = require("../../core/version.js");
+const { APP_NAME } = require("../../core/product.js");
 const { formSummary } = require("./output-description.js");
 
 function controlFor(field) {

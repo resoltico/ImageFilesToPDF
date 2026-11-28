@@ -11,6 +11,9 @@ const LAYERS = {
     entry: ["finder"]
 };
 const NATIVE_LAYERS = new Set(["engine", "cli", "serve", "finder"]);
+// The product's identity is read from the manifest that owns it, by one module.
+export const MANIFEST = "package.json";
+const MANIFEST_READER = "src/core/product.js";
 
 function layerOf(file) {
     if (file === "src/entry.js") { return "entry"; }
@@ -33,7 +36,9 @@ function finderInterface(file) {
 
 export function checkDependency(file, target) {
     const layer = sourceLayer(file);
-    if (target.startsWith("src/")) {
+    if (target === MANIFEST) {
+        if (file !== MANIFEST_READER) { throw new Error(`${file}: only ${MANIFEST_READER} reads ${MANIFEST}`); }
+    } else if (target.startsWith("src/")) {
         if (layer === "finder" && finderInterface(target) && finderInterface(file) !== finderInterface(target)) {
             throw new Error(`${file}: forbidden Finder interface dependency ${target}`);
         }

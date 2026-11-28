@@ -2,7 +2,7 @@
 
 const { hostError } = require("../cancellation.js");
 const { UserCanceled, errorMessage } = require("../../core/errors.js");
-const { APP_NAME } = require("../../core/version.js");
+const { APP_NAME } = require("../../core/product.js");
 const { labelsOf, valueOfLabel, labelOfValue } = require("./settings-model.js");
 const { readNumber } = require("./settings-model.js");
 

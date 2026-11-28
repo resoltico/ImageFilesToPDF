@@ -1,5 +1,5 @@
 "use strict";
-const { APP_NAME } = require("../../core/version.js");
+const { APP_NAME } = require("../../core/product.js");
 const { noImagesHeadline, describeNoImages } = require("../../core/run-report.js");
 const { showCompletion } = require("./completion.js");
 const { showDetails } = require("./details-dialog.js");

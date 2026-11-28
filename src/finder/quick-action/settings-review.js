@@ -1,6 +1,6 @@
 "use strict";
 
-const { APP_NAME } = require("../../core/version.js");
+const { APP_NAME } = require("../../core/product.js");
 const { plural } = require("../../core/formatting.js");
 const { UserCanceled } = require("../../core/errors.js");
 const { CREATE_BUTTON, CANCEL_BUTTON } = require("./settings-model.js");

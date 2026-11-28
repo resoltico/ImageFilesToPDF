@@ -1,6 +1,6 @@
 "use strict";
 
-const README = "https://github.com/resoltico/ImageFilesToPDF";
+const { PROJECT_URL: README } = require("./product.js");
 const INSTALL_OVERVIEW = `${README}#installing-the-tools`;
 const INSTALL_GUIDES = Object.freeze({
     darwin: `${README}#macos`,

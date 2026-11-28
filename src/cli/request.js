@@ -1,5 +1,5 @@
 "use strict";
-const { APP_NAME, VERSION } = require("../core/version.js");
+const { APP_NAME, VERSION } = require("../core/product.js");
 const { SETTINGS_SCHEMA, DEFAULT_SETTINGS, validateSettings } = require("../core/settings.js");
 const { readTimestamp, TIMESTAMP_FORM } = require("../core/timestamps.js");
 const { OperationError } = require("../core/errors.js");

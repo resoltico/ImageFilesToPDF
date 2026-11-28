@@ -8,7 +8,7 @@ const { setImmediate } = require("node:timers/promises");
 const { serve } = require("../../../src/serve/serve.js");
 const { runOutcome, failedRun } = require("../../../src/core/outcomes.js");
 const { DEFAULT_SETTINGS } = require("../../../src/core/settings.js");
-const { VERSION } = require("../../../src/core/version.js");
+const { VERSION } = require("../../../src/core/product.js");
 
 const refused = { path: "/fixture/vector.svg", name: "vector.svg", code: "unsupported-format", stage: "selection", reason: "Unsupported." };
 const start = { type: "start", inputItems: ["/fixture/photo.png"], toolPaths: { vips: "/chosen/vips" } };

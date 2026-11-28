@@ -3,7 +3,7 @@
 const { normalizeSettings } = require("../../core/settings.js");
 const { answersFromSettings } = require("./settings-model.js");
 
-const DOMAIN = "com.resoltico.ImageFilesToPDF";
+const { PREFERENCES_DOMAIN: DOMAIN } = require("../../core/data-locations.js");
 const KEY = "lastSettings.v1";
 
 function encode(settings) {

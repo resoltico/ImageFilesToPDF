@@ -1,4 +1,5 @@
 import { build } from "esbuild";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { FINDER_JAVASCRIPTCORE } from "./finder-floor.mjs";
 
@@ -17,6 +18,26 @@ export const BUNDLE_OPTIONS = {
     metafile: true
 };
 
+/*
+ * src/core/product.js reads the product's identity from package.json. A bundle
+ * carries only those fields, so a development change to the manifest, such as a
+ * dependency bump, does not change what ships.
+ */
+function manifestProjection(base) {
+    const manifest = path.join(base, "package.json");
+    return {
+        name: "product-manifest",
+        setup(bundler) {
+            // eslint-disable-next-line require-unicode-regexp -- esbuild filters are Go regular expressions, which take no u flag.
+            bundler.onLoad({ filter: /package\.json$/ }, async (args) => {
+                if (path.resolve(args.path) !== manifest) { return undefined; }
+                const { name, version, homepage, engines } = JSON.parse(await readFile(manifest, "utf8"));
+                return { contents: JSON.stringify({ name, version, homepage, engines: { node: engines.node } }), loader: "json" };
+            });
+        }
+    };
+}
+
 function compiledGraph(result, base) {
     const normalize = (file) => file.startsWith("<") || file.startsWith("node:") ? file
         : path.relative(base, path.resolve(base, file)).split(path.sep).join("/");
@@ -33,6 +54,7 @@ export async function scopedBundle(entry, base, define = {}) {
         ...BUNDLE_OPTIONS,
         absWorkingDir: base,
         define,
+        plugins: [manifestProjection(base)],
         entryPoints: [entry]
     });
     const outputs = Object.values(result.metafile.outputs);
@@ -54,6 +76,7 @@ export async function nodeBundle(entry, base, minimumNode) {
         globalName: undefined,
         target: `node${minimumNode}`,
         absWorkingDir: base,
+        plugins: [manifestProjection(base)],
         entryPoints: [entry]
     });
     for (const output of Object.values(result.metafile.outputs)) {

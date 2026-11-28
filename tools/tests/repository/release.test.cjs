@@ -26,7 +26,7 @@ test("artifact is standalone, scoped, licensed, deterministic, and current", asy
     assert.equal(await readFile(nodeArtifactPath, "utf8"), artifacts[nodeArtifactName]);
     assert.match(artifacts[nodeArtifactName], /^#!\/usr\/bin\/env node\n/u);
     assert.match(artifacts[nodeArtifactName], /Requires Node\.js 26\.13\.1 or later/u);
-    const { MINIMUM_NODE_VERSION } = require("../../../src/core/version.js");
+    const { MINIMUM_NODE_VERSION } = require("../../../src/core/product.js");
     assert.equal(require("../../../package.json").engines.node, `>=${MINIMUM_NODE_VERSION}`);
     assert.equal(await readFile(artifactPath, "utf8"), release);
     assert.equal(await readFile(manifestPath, "utf8"), renderManifest(artifacts));

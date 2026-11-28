@@ -1,6 +1,7 @@
 "use strict";
 const { message } = require("../../core/messages.js");
 const { OperationError } = require("../../core/errors.js");
+const { DATA_FOLDER } = require("../../core/data-locations.js");
 
 const ENGINE_FILENAME = /^engine-.+\.cjs$/u;
 const PRIVATE_MODE = 0o700;
@@ -20,7 +21,7 @@ function sameBytes(ns, manager, file, expected) {
 }
 
 function cacheFolder(ns, manager, home) {
-    const folder = `${home}/Library/Application Support/Image Files to PDF/Engine`;
+    const folder = `${home}/Library/Application Support/${DATA_FOLDER}/Engine`;
     manager.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(folder, true,
         ns({ NSFilePosixPermissions: PRIVATE_MODE }), ns());
     if (!ownedItem(ns, manager, folder, "NSFileTypeDirectory")) { throw new OperationError(message("engineCacheUnavailable")); }

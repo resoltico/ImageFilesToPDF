@@ -3,10 +3,10 @@ import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { renderBanner, readMetadata } from "./banner.mjs";
-import { checkCompiledDependencies } from "./dependency-rules.mjs";
+import { checkCompiledDependencies, MANIFEST } from "./dependency-rules.mjs";
 import { scopedBundle, nodeBundle } from "./scoped-bundle.mjs";
 import { root } from "./repository.mjs";
-import runtime from "../src/core/version.js";
+import product from "../src/core/product.js";
 import { guardedBundle } from "./node-boot.mjs";
 
 const HASH_PREFIX_LENGTH = 12;
@@ -39,23 +39,23 @@ export function assertSourceDiscovery(files, inputs) {
 export async function renderArtifacts() {
     const [meta, node, engine] = await Promise.all([
         readMetadata((relative) => readFile(path.join(root, relative), "utf8"), MINIMUM_MACOS),
-        nodeBundle("src/cli/entry.js", root, runtime.MINIMUM_NODE_VERSION),
-        nodeBundle("src/serve/entry.js", root, runtime.MINIMUM_NODE_VERSION)
+        nodeBundle("src/cli/entry.js", root, product.MINIMUM_NODE_VERSION),
+        nodeBundle("src/serve/entry.js", root, product.MINIMUM_NODE_VERSION)
     ]);
     const engineBundle = { filename: `engine-${meta.version}-${createHash("sha256").update(engine.source).digest("hex").slice(0, HASH_PREFIX_LENGTH)}.cjs`, source: engine.source };
     const jxa = await scopedBundle("src/entry.js", root, { [ENGINE_DEFINE]: JSON.stringify(engineBundle) });
     checkCompiledDependencies(jxa.edges, `<define:${ENGINE_DEFINE}>`);
     checkCompiledDependencies([...node.edges, ...engine.edges]);
     assertSourceDiscovery(await sourceFiles(), [...jxa.inputs, ...node.inputs, ...engine.inputs]);
-    if (jxa.inputs.some((file) => !file.startsWith("src/core/") && !file.startsWith("src/finder/") && file !== "src/entry.js" && file !== `<define:${ENGINE_DEFINE}>`) ||
+    if (jxa.inputs.some((file) => !file.startsWith("src/core/") && !file.startsWith("src/finder/") && file !== "src/entry.js" && file !== MANIFEST && file !== `<define:${ENGINE_DEFINE}>`) ||
         [...node.inputs, ...engine.inputs].some((file) => file.startsWith("src/finder/") || file === "src/entry.js") ||
         node.inputs.some((file) => file.startsWith("src/serve/")) || engine.inputs.includes("src/cli/entry.js")) {
         throw new Error("an artifact includes the other runtime's adapter");
     }
-    const finderRuntime = `Requires macOS ${meta.minimumMacos} or later, Node.js ${runtime.MINIMUM_NODE_VERSION} or later, libvips and pdfcpu. See README.md for installation.`;
+    const finderRuntime = `Requires macOS ${meta.minimumMacos} or later, Node.js ${product.MINIMUM_NODE_VERSION} or later, libvips and pdfcpu. See README.md for installation.`;
     return {
         [artifactName]: `${renderBanner(meta, finderRuntime)}\n\n${jxa.source}`,
-        [nodeArtifactName]: `#!/usr/bin/env node\n${renderBanner(meta, `Requires Node.js ${runtime.MINIMUM_NODE_VERSION} or later, libvips and pdfcpu. See HEADLESS.md for setup.`)}\n\n${guardedBundle(node.source)}`
+        [nodeArtifactName]: `#!/usr/bin/env node\n${renderBanner(meta, `Requires Node.js ${product.MINIMUM_NODE_VERSION} or later, libvips and pdfcpu. See HEADLESS.md for setup.`)}\n\n${guardedBundle(node.source)}`
     };
 }
 

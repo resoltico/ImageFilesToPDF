@@ -13,7 +13,7 @@ const { chooseRequired, askUntil, promptInteger } = require("./prompts.js");
  * are any. Remembering must not stop working because AppKit did.
  */
 
-const { APP_NAME } = require("../../core/version.js");
+const { APP_NAME } = require("../../core/product.js");
 const { CONTROLS, BACKGROUND, labelsOf, valueOfLabel } = require("./settings-model.js");
 const { defaultAnswers } = require("./settings-model.js");
 const { selectionSummary, outputAlternatives } = require("./output-description.js");

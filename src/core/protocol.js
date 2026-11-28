@@ -1,6 +1,6 @@
 "use strict";
 const { message } = require("./messages.js");
-const { supportsNode } = require("./version.js");
+const { supportsNode } = require("./runtime.js");
 const { RUN_OUTCOME } = require("./outcomes.js");
 const { TOOL_NAMES } = require("./executable-search.js");
 

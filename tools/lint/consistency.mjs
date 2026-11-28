@@ -62,15 +62,25 @@ export async function checkVersion(read = readFromDisk) {
             await read("CHANGELOG.md"),
             /^## \[(?<value>\d+\.\d+\.\d+)\]/mu,
             "CHANGELOG.md (newest entry)"
-        ),
-        extract(
-            await read("src/core/version.js"),
-            /const VERSION = "(?<value>\d+\.\d+\.\d+)"/u,
-            "src/core/version.js"
         )
     ]);
 }
 
+// The Node floor as package.json declares it: exactly ">=x.y.z", which src/core/product.js reads.
+function nodeFloor(packageJson) {
+    const match = /^>=(?<value>\d+\.\d+\.\d+)$/u.exec(packageJson.engines?.node ?? "");
+    if (!match) { throw new Error(`package.json engines.node must be ">=x.y.z", not ${JSON.stringify(packageJson.engines?.node)}`); }
+    return match.groups.value;
+}
+
+const LINUX_IMAGE = "tests/integration/linux-native.Dockerfile";
+const WINDOWS_TOOLS = "tests/integration/windows-tools.ps1";
+
+/*
+ * CI tests on the floors it promises: the Node it runs, everywhere, is the
+ * oldest Node the product supports, so the floor is exercised rather than
+ * assumed. Raising one means raising the other.
+ */
 export async function checkNodeVersion(read = readFromDisk) {
     const packageJson = JSON.parse(await read("package.json"));
 
@@ -81,15 +91,85 @@ export async function checkNodeVersion(read = readFromDisk) {
             /node = "(?<value>[\d.]+)"/u,
             "mise.toml"
         ),
-        ["package.json engines", packageJson.engines.node.replace(/^>=/u, "")]
+        extract(await read(LINUX_IMAGE), /^FROM node:(?<value>[\d.]+)-/mu, LINUX_IMAGE),
+        ["package.json engines", nodeFloor(packageJson)]
     ]);
+}
+
+// The npm contributors use: packageManager pins it, and engines holds installs to it.
+export async function checkNpmVersion(read = readFromDisk) {
+    const packageJson = JSON.parse(await read("package.json"));
+    return assertAll("npm versions", [
+        ["package.json packageManager", String(packageJson.packageManager).replace(/^npm@/u, "")],
+        ["package.json engines.npm", String(packageJson.engines?.npm).replace(/^>=/u, "")]
+    ]);
+}
+
+function allMatches(text, pattern, where) {
+    const found = [...text.matchAll(pattern)].map((match) => [where, match.groups.value]);
+    if (found.length === 0) { throw new Error(`could not find the declared value in ${where}`); }
+    return found;
+}
+
+// Linux and Windows CI install exactly the oldest pdfcpu the product accepts; macOS CI takes Homebrew's.
+export async function checkPdfcpuVersion(read = readFromDisk) {
+    const download = /pdfcpu\/releases\/download\/v(?<value>[\d.]+)\//gu;
+    return assertAll("pdfcpu versions", [
+        extract(await read("src/core/setup.js"), /const MINIMUM_PDFCPU_VERSION = "(?<value>[\d.]+)"/u, "src/core/setup.js"),
+        ...allMatches(await read(LINUX_IMAGE), download, LINUX_IMAGE),
+        ...allMatches(await read(WINDOWS_TOOLS), download, WINDOWS_TOOLS)
+    ]);
+}
+
+/*
+ * The documents a person follows state the floors in prose, and a stale floor
+ * there is the one they act on. Each claim must equal its owner. A pattern
+ * that matches nothing fails too, so rewording a document cannot quietly turn
+ * the check off. Measurements, such as the host a QA result came from, are not
+ * claims, and the patterns do not match them.
+ */
+const FLOOR_DOCUMENTS = ["README.md", "INSTALL.txt", "HEADLESS.md", "QA.md", "CONTRIBUTING.md"];
+
+function unreleased(changelog) {
+    const start = changelog.indexOf("## [Unreleased]");
+    const end = changelog.indexOf("\n## [", start + 1);
+    return start === -1 ? "" : changelog.slice(start, end === -1 ? changelog.length : end);
+}
+
+export async function checkStatedFloors(read = readFromDisk) {
+    const packageJson = JSON.parse(await read("package.json"));
+    const floor = await read("tools/finder-floor.mjs");
+    const owners = {
+        "Node.js": nodeFloor(packageJson),
+        pdfcpu: extract(await read("src/core/setup.js"), /const MINIMUM_PDFCPU_VERSION = "(?<value>[\d.]+)"/u, "src/core/setup.js")[1],
+        macOS: extract(floor, /MINIMUM_MACOS = "(?<value>[\d.]+)"/u, "tools/finder-floor.mjs")[1],
+        Safari: extract(floor, /FINDER_JAVASCRIPTCORE = "safari(?<value>[\d.]+)"/u, "tools/finder-floor.mjs")[1]
+    };
+    const claims = {
+        "Node.js": [/Node\.js (?<value>\d+\.\d+\.\d+)(?: or (?:later|newer)|\+)/gu, /the (?<value>\d+\.\d+\.\d+) minimum/gu,
+            /nodejs\/node\/blob\/v(?<value>\d+\.\d+\.\d+)\//gu, /nodejs\.org\/en\/blog\/release\/v(?<value>\d+\.\d+\.\d+)/gu],
+        pdfcpu: [/pdfcpu (?<value>\d+\.\d+\.\d+)(?: or (?:later|newer)|\+)/gu],
+        // Two-part macOS versions are floors; hosts are named in full, as macOS 27.2.1.
+        macOS: [/macOS (?<value>\d+\.\d+)(?![.\d])/gu],
+        Safari: [/Safari (?<value>\d+\.\d+)/gu]
+    };
+    const texts = [...await Promise.all(FLOOR_DOCUMENTS.map(async (file) => [file, await read(file)])),
+        ["CHANGELOG.md (Unreleased)", unreleased(await read("CHANGELOG.md"))]];
+    for (const [subject, patterns] of Object.entries(claims)) {
+        for (const pattern of patterns) {
+            const found = texts.flatMap(([file, text]) => [...text.matchAll(pattern)].map((match) => [file, match.groups.value]));
+            if (found.length === 0) { throw new Error(`no document states the ${subject} floor as ${pattern}`); }
+            assertAll(`${subject} floors`, [[`the ${subject} floor's owner`, owners[subject]], ...found]);
+        }
+    }
+    return owners;
 }
 
 /*
  * A release tag must name the version the repository already agrees on.
  *
  * Reuses checkVersion rather than reading package.json again, so tagging
- * cannot succeed while the six files that state the version disagree — the
+ * cannot succeed while the files that state the version disagree — the
  * tag is checked against the agreed value, not against one opinion of it.
  */
 export async function checkReleaseTag(tag, read = readFromDisk) {
@@ -140,23 +220,29 @@ export async function checkRepositoryUrl(read = readFromDisk) {
 }
 
 /*
- * npm installs the CLI under the package name, and the CLI prints that command
- * in its usage text. The publish manifest derives its bin entry from the name.
+ * Where the product keeps data, as src/core/data-locations.js names it, and
+ * as the documents tell people to find or remove it.
  */
-export async function checkCommandName(read = readFromDisk) {
-    const packageJson = JSON.parse(await read("package.json"));
-
-    return assertAll("command names", [
-        ["package.json name", packageJson.name],
-        extract(await read("src/cli/grammar.js"), /const COMMAND = "(?<value>[^"]+)"/u, "src/cli/grammar.js")
-    ]);
+export async function checkDataLocations(read = readFromDisk) {
+    const owner = await read("src/core/data-locations.js");
+    const declared = (name) => extract(owner, new RegExp(`const ${name} = "(?<value>[^"]+)"`, "u"), "src/core/data-locations.js");
+    const stated = async (file, pattern) => allMatches(await read(file), pattern, file);
+    const domain = /(?:defaults delete |preferences domain `)(?<value>[\w.]+)/gu;
+    return [
+        assertAll("preferences domains", [declared("PREFERENCES_DOMAIN"), ...await stated("README.md", domain), ...await stated("INSTALL.txt", domain)]),
+        assertAll("data folders", [declared("DATA_FOLDER"), ...await stated("QA.md", /(?:Application Support\/|%LOCALAPPDATA%\\)(?<value>[^/\\`]+)[/\\]Workspaces/gu)]),
+        assertAll("state folders", [declared("STATE_FOLDER"), ...await stated("QA.md", /state\}\/(?<value>[^/`]+)\/workspaces/gu)])
+    ];
 }
 
 export async function checkConsistency(read = readFromDisk) {
     const version = await checkVersion(read);
     const node = await checkNodeVersion(read);
     const url = await checkRepositoryUrl(read);
-    const command = await checkCommandName(read);
+    const npm = await checkNpmVersion(read);
+    const pdfcpu = await checkPdfcpuVersion(read);
+    const floors = await checkStatedFloors(read);
+    await checkDataLocations(read);
 
-    return `version ${version}, node ${node}, ${url}, command ${command}`;
+    return `version ${version}, node ${node}, npm ${npm}, pdfcpu ${pdfcpu}, macOS ${floors.macOS}+, ${url}`;
 }

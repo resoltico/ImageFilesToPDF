@@ -1,14 +1,16 @@
 import errors from "../src/core/messages.js";
 import outcomes from "../src/core/outcomes.js";
 import report from "../src/core/run-report.js";
-import runtime from "../src/core/version.js";
+import product from "../src/core/product.js";
+import runtime from "../src/core/runtime.js";
 import status from "../src/cli/exit-code.js";
 import installation from "../src/core/installation-guide.js";
 
 const { issueMessage, messageTemplate, renderTemplate } = errors;
 const { runOutcome } = outcomes;
 const { reportText } = report;
-const { MINIMUM_NODE_VERSION, supportsNode } = runtime;
+const { MINIMUM_NODE_VERSION } = product;
+const { supportsNode } = runtime;
 const { exitCode } = status;
 const { INSTALL_GUIDES, INSTALL_OVERVIEW } = installation;
 

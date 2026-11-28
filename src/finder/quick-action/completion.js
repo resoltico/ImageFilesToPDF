@@ -1,5 +1,5 @@
 "use strict";
-const { APP_NAME, VERSION } = require("../../core/version.js");
+const { APP_NAME, VERSION } = require("../../core/product.js");
 const { summarizeRun } = require("../../core/run-summary.js");
 const { headline, reportText } = require("../../core/run-report.js");
 

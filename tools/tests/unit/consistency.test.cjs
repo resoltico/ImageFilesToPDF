@@ -77,7 +77,7 @@ test("checkConsistency summarizes every fact it agreed", async () => {
 
     assert.equal(
         await checkConsistency(fakeRepo()),
-        "version 1.2.3, node 26.8.1, https://github.com/someone/Project, command project-cli"
+        "version 1.2.3, node 26.8.1, npm 12.2.2, pdfcpu 0.16.4, macOS 13.5+, https://github.com/someone/Project"
     );
 });
 
@@ -123,16 +123,54 @@ test("a file the gate depends on going missing is explained, not thrown raw", as
     assert.match(text, /IMAGE FILES TO PDF/u);
 });
 
-test("the CLI command must be the npm package name", async () => {
-    const { checkCommandName } = await loadConsistency();
+test("the Node floor must be stated exactly as >=x.y.z, which the product reads", async () => {
+    const { checkNodeVersion } = await loadConsistency();
+    for (const node of ["^26.8.1", ">=26.8", ">= 26.8.1"]) {
+        await assert.rejects(() => checkNodeVersion(fakeRepo({ "package.json": JSON.stringify({ version: "1.2.3", engines: { node } }) })),
+            /engines\.node must be ">=x\.y\.z"/u, node);
+    }
+});
 
-    assert.equal(await checkCommandName(fakeRepo()), "project-cli");
-    await assert.rejects(
-        () => checkCommandName(fakeRepo({ "src/cli/grammar.js": 'const COMMAND = "other-cli";\n' })),
-        /command names disagree between files/u
-    );
-    await assert.rejects(
-        () => checkCommandName(fakeRepo({ "src/cli/grammar.js": "const RUN = 1;\n" })),
-        /could not find the declared value in src\/cli\/grammar\.js/u
-    );
+test("the npm pin and the npm engine must agree", async () => {
+    const { checkNpmVersion } = await loadConsistency();
+    assert.equal(await checkNpmVersion(fakeRepo()), "12.2.2");
+    await assert.rejects(() => checkNpmVersion(fakeRepo({ "package.json": JSON.stringify({ engines: { node: ">=26.8.1", npm: ">=11.0.0" }, packageManager: "npm@12.2.2" }) })),
+        /npm versions disagree/u);
+});
+
+test("CI installs exactly the oldest pdfcpu accepted, on Linux and Windows", async () => {
+    const { checkPdfcpuVersion } = await loadConsistency();
+    assert.equal(await checkPdfcpuVersion(fakeRepo()), "0.16.4");
+    await assert.rejects(() => checkPdfcpuVersion(fakeRepo({ "tests/integration/windows-tools.ps1": "https://github.com/pdfcpu/pdfcpu/releases/download/v0.17.0/x.zip\n" })),
+        /pdfcpu versions disagree[\s\S]*windows-tools\.ps1: 0\.17\.0/u);
+    await assert.rejects(() => checkPdfcpuVersion(fakeRepo({ "tests/integration/windows-tools.ps1": "no download here\n" })),
+        /could not find the declared value in tests\/integration\/windows-tools\.ps1/u);
+});
+
+test("a floor a document states must be its owner's, and a measurement is not a claim", async () => {
+    const { checkStatedFloors } = await loadConsistency();
+    assert.deepEqual(await checkStatedFloors(fakeRepo()), { "Node.js": "26.8.1", pdfcpu: "0.16.4", macOS: "13.5", Safari: "16.6" });
+    const stale = (text) => fakeRepo({ "HEADLESS.md": text });
+    for (const [text, subject] of [["Node.js 24.0.0 or later", "Node.js"], ["Node.js 24.0.0+", "Node.js"], ["pdfcpu 0.15.0 or newer", "pdfcpu"],
+        ["macOS 12.0 or later", "macOS"], ["Safari 15.4", "Safari"], ["below the 24.0.0 minimum", "Node.js"]]) {
+        await assert.rejects(() => checkStatedFloors(stale(text)), new RegExp(`${subject.replace(".", "\\.")} floors disagree[\\s\\S]*HEADLESS\\.md`, "u"), text);
+    }
+    const changelog = "# Changelog\n\n## [Unreleased]\n\n- Requires Node.js 24.0.0+.\n\n## [1.2.3] - 2026-01-01\n\n- Required Node.js 20.0.0+.\n";
+    await assert.rejects(() => checkStatedFloors(fakeRepo({ "CHANGELOG.md": changelog })), /CHANGELOG\.md \(Unreleased\): 24\.0\.0/u);
+    const released = "# Changelog\n\n## [1.2.3] - 2026-01-01\n\n- Required Node.js 20.0.0+.\n";
+    await assert.doesNotReject(() => checkStatedFloors(fakeRepo({ "CHANGELOG.md": released })), "history keeps the floors it had");
+});
+
+test("a kind of floor claim no document makes any more fails, so rewording cannot turn the check off", async () => {
+    const { checkStatedFloors } = await loadConsistency();
+    await assert.rejects(() => checkStatedFloors(fakeRepo({ "README.md": "Source: https://github.com/someone/Project\n" })), /no document states the/u);
+});
+
+test("the documents name the data locations the product uses", async () => {
+    const { checkDataLocations } = await loadConsistency();
+    assert.deepEqual(await checkDataLocations(fakeRepo()), ["com.someone.Project", "Project", "project"]);
+    const owner = 'const DATA_FOLDER = "Renamed";\nconst STATE_FOLDER = "project";\nconst PREFERENCES_DOMAIN = "com.someone.Project";\n';
+    await assert.rejects(() => checkDataLocations(fakeRepo({ "src/core/data-locations.js": owner })), /data folders disagree[\s\S]*QA\.md: Project/u);
+    await assert.rejects(() => checkDataLocations(fakeRepo({ "INSTALL.txt": "IMAGE FILES TO PDF 1.2.3\n    defaults delete com.other.App\n" })),
+        /preferences domains disagree/u);
 });

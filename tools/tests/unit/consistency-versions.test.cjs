@@ -28,8 +28,7 @@ test("a version component with more than one digit is read whole", async () => {
             packages: { "": { version: "10.20.30" } }
         }),
         "INSTALL.txt": "IMAGE FILES TO PDF 10.20.30 - SHORTCUTS INSTALLATION",
-        "CHANGELOG.md": "# Changelog\n\n## [10.20.30] - 2026-01-01\n",
-        "src/core/version.js": 'const VERSION = "10.20.30";\n'
+        "CHANGELOG.md": "# Changelog\n\n## [10.20.30] - 2026-01-01\n"
     };
 
     assert.equal(await checkVersion(fakeRepo(wide)), "10.20.30");

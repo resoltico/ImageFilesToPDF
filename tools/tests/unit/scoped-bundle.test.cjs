@@ -82,3 +82,14 @@ test("backend remains pure and supports the portable application", async () => {
     assert.throws(() => checkBoundary("src/finder/a.js", 'require("../backend/commands.js");'), /forbidden dependency/u);
     assert.doesNotThrow(() => checkBoundary("src/core/a.js", '// Path manipulation\nconst text = "ObjC";'));
 });
+
+test("a bundle reads the product's identity from package.json, and carries nothing else of it", async () => {
+    const { nodeBundle } = await import("../../../tools/scoped-bundle.mjs");
+    const root = path.resolve(__dirname, "../../..");
+    const product = require("../../../src/core/product.js");
+    const { source } = await nodeBundle("src/core/product.js", root, product.MINIMUM_NODE_VERSION);
+    const context = { module: { exports: {} }, require };
+    vm.runInNewContext(source, context);
+    assert.deepEqual({ ...context.module.exports }, { ...product }, "every field the module reads reaches the bundle");
+    assert.doesNotMatch(source, /devDependencies|scripts|packageManager/u, "the development manifest does not ship");
+});

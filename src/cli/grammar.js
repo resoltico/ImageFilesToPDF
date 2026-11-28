@@ -1,7 +1,7 @@
 "use strict";
 
 // The npm command name; tools/lint/consistency.mjs asserts it equals the package name.
-const COMMAND = "image-files-to-pdf";
+const { COMMAND } = require("../core/product.js");
 const RUN_LINE = `${COMMAND} --settings <settings.json> [--] <path…>`;
 const HELP = new Set(["-h", "--help"]);
 

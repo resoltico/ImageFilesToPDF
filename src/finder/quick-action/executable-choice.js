@@ -1,7 +1,7 @@
 "use strict";
 
 const { message } = require("../../core/messages.js");
-const { APP_NAME } = require("../../core/version.js");
+const { APP_NAME } = require("../../core/product.js");
 const { absoluteMacPath, FINDER_EXECUTABLES } = require("../../core/executable-search.js");
 const { reportText } = require("../../core/run-report.js");
 const { showDetails } = require("./details-dialog.js");

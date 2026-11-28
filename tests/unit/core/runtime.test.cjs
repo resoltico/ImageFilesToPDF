@@ -2,23 +2,15 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { VERSION } = require("../../../src/core/version.js");
-
-test("the version is a plain semantic version", () => {
-    // It is shown to the user and compared against package.json by the gate,
-    // so it must be exactly the version and nothing else.
-    assert.match(VERSION, /^\d+\.\d+\.\d+$/u);
-});
-
 
 test("the runtime floor checks the complete stable release tuple", () => {
-    const { supportsNode } = require("../../../src/core/version.js");
+    const { supportsNode } = require("../../../src/core/runtime.js");
     for (const version of ["26.13.1", "v26.13.1", "26.13.2", "26.14.0", "27.0.0"]) { assert.equal(supportsNode(version), true); }
     for (const version of ["20.0.0", "25.15.1", "26.0.0", "26.12.999", "26.13.0", "26.0", "26.13.1-pre", "invalid"]) { assert.equal(supportsNode(version), false); }
 });
 
 test("runtime discovery presents each examined executable and leaves absent versions absent", () => {
-    const { runtimeUnavailableIssue } = require("../../../src/core/version.js");
+    const { runtimeUnavailableIssue } = require("../../../src/core/runtime.js");
     const found = [{ path: "/one/node", version: "24.21.0" }, { path: "/two/node" }];
     const checked = runtimeUnavailableIssue(found);
     assert.deepEqual(checked.params, { minimum: "26.13.1", found });
@@ -29,13 +21,13 @@ test("runtime discovery presents each examined executable and leaves absent vers
 });
 
 test("only a whole version string at or above the floor is supported", () => {
-    const { supportsNode } = require("../../../src/core/version.js");
+    const { supportsNode } = require("../../../src/core/runtime.js");
     for (const version of ["26.13.1", "v26.13.1", "26.13.10", "26.14.0", "27.0.0"]) { assert.equal(supportsNode(version), true, version); }
     for (const version of ["26.13.0", "26.12.9", "25.99.99", "x26.13.1", "26.13.1x", "26.13", ""]) { assert.equal(supportsNode(version), false, version); }
 });
 
 test("the runtime refusal is a setup issue with data params", () => {
-    const { runtimeUnavailableIssue } = require("../../../src/core/version.js");
+    const { runtimeUnavailableIssue } = require("../../../src/core/runtime.js");
     const issue = runtimeUnavailableIssue([]);
     assert.deepEqual([issue.code, issue.stage, issue.params], ["runtime-unavailable", "setup", { minimum: "26.13.1", found: [] }]);
 });

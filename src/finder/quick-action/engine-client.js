@@ -1,5 +1,6 @@
 "use strict";
-const { VERSION, supportsNode, runtimeUnavailableIssue } = require("../../core/version.js");
+const { VERSION } = require("../../core/product.js");
+const { supportsNode, runtimeUnavailableIssue } = require("../../core/runtime.js");
 const { OperationError, isUserCanceled } = require("../../core/errors.js");
 const { message } = require("../../core/messages.js");
 const { encodeMessage, decodeMessage, requireHello } = require("../../core/protocol.js");

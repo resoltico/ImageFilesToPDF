@@ -9,7 +9,7 @@ const {
     formSpec
 } = require("../../../src/finder/quick-action/settings-model.js");
 const { BACKGROUND, PAPER_SIZE } = require("../../../src/finder/quick-action/settings-model.js");
-const { APP_NAME } = require("../../../src/core/version.js");
+const { APP_NAME } = require("../../../src/core/product.js");
 
 function rowFor(key, spec = formSpec()) {
     const row = spec.rows.find((candidate) => candidate.key === key);

@@ -7,16 +7,17 @@ const { message } = require("../core/messages.js");
 const { standardize } = require("./paths.js");
 const { absoluteOr } = require("./platform/linux-paths.js");
 const { linuxDownloads } = require("./platform/linux.js");
+const { DATA_FOLDER, STATE_FOLDER } = require("../core/data-locations.js");
 
 const { isDriveAbsolute } = require("./path-syntax.js");
 function workspaceRoot(home) {
     if (platform === "win32") {
         if (!isDriveAbsolute(env.LOCALAPPDATA ?? "")) { throw new OperationError(message("workspaceLocalAppDataUnavailable")); }
-        return standardize(path.join(env.LOCALAPPDATA, "Image Files to PDF", "Workspaces"));
+        return standardize(path.join(env.LOCALAPPDATA, DATA_FOLDER, "Workspaces"));
     }
-    if (platform === "darwin") { return standardize(path.join(home, "Library", "Application Support", "Image Files to PDF", "Workspaces")); }
+    if (platform === "darwin") { return standardize(path.join(home, "Library", "Application Support", DATA_FOLDER, "Workspaces")); }
     const base = absoluteOr(env.XDG_STATE_HOME, path.join(home, ".local", "state"));
-    return standardize(path.join(base, "image-files-to-pdf", "workspaces"));
+    return standardize(path.join(base, STATE_FOLDER, "workspaces"));
 }
 
 function posixDownloads(home) {

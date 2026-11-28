@@ -17,7 +17,8 @@ test("the Node pin is read whole as well", async () => {
             engines: { node: ">=26.11.100" }
         }),
         ".node-version": "26.11.100\n",
-        "mise.toml": '[tools]\nnode = "26.11.100"\n'
+        "mise.toml": '[tools]\nnode = "26.11.100"\n',
+        "tests/integration/linux-native.Dockerfile": "FROM node:26.11.100-trixie-slim AS base\n"
     };
 
     assert.equal(await checkNodeVersion(fakeRepo(wide)), "26.11.100");
@@ -47,11 +48,6 @@ const DISAGREEMENTS = [
         "package-lock.json",
         JSON.stringify({ version: "1.2.3", packages: { "": { version: "9.9.9" } } }),
         "package-lock.json (root package): 9.9.9"
-    ],
-    [
-        "src/core/version.js",
-        'const VERSION = "9.9.9";\n',
-        "src/core/version.js: 9.9.9"
     ],
     [
         "package.json",
@@ -101,6 +97,7 @@ test("a Node pin disagreement names the file that disagrees", async () => {
     const disagreements = [
         [".node-version", "26.9.9\n", ".node-version: 26.9.9"],
         ["mise.toml", '[tools]\nnode = "26.9.9"\n', "mise.toml: 26.9.9"],
+        ["tests/integration/linux-native.Dockerfile", "FROM node:26.9.9-trixie-slim\n", "tests/integration/linux-native.Dockerfile: 26.9.9"],
         [
             "package.json",
             JSON.stringify({ version: "1.2.3", engines: { node: ">=26.9.9" } }),

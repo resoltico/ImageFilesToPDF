@@ -157,10 +157,20 @@ Tests use owned fixtures, temporary workspaces and test-only tool overrides.
 See the native test commands and required environments in [QA.md](QA.md).
 
 Qualify build/toolchain changes with independent clean Linux/macOS restores and
-compare bytes. The Node pin is mirrored in `.node-version`, `mise.toml` and
-`package.json` engines and checked for agreement. CI installs the declared npm
-pin. CI exercises the CLI runtime floor separately from the development pin.
-Native CI pins Linux and Windows conversion tools. Homebrew remains a compatibility probe.
+compare bytes.
+
+`package.json` owns the product's name, version, project address and Node
+floor (`engines.node`, written `>=x.y.z`). `src/core/product.js` reads them
+from it, and a bundle carries only those fields, so a development change to the
+manifest does not change what ships. Where the data lives is a separate fact,
+owned by `src/core/data-locations.js`.
+
+CI tests on the floors it promises. `.node-version`, `mise.toml` and the Linux
+test image run the Node floor itself, and Linux and Windows CI install exactly
+the oldest pdfcpu accepted (`MINIMUM_PDFCPU_VERSION`); raising a floor raises
+them with it. `packageManager` pins npm and `engines.npm` holds installs to it.
+`tools/lint/consistency.mjs` holds these, and every floor the documents state,
+to their owners. Homebrew on macOS CI stays unpinned, as a compatibility probe.
 
 ## Documentation and releases
 
