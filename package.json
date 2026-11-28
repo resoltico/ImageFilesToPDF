@@ -1,6 +1,6 @@
 {
   "name": "image-files-to-pdf",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "private": true,
   "description": "Image conversion to PDF through a Node CLI and macOS Finder Quick Action",
   "license": "AGPL-3.0-only",
