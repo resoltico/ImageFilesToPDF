@@ -73,7 +73,8 @@ test("names compared in a folder are grouped, and a probe tampered with is refus
             const text = readFileSync(file, ...rest);
             if (String(file).includes("ImageFilesToPDF-names")) {
                 fs.mkdirSync(`${path.dirname(file)}.spare`, { recursive: true });
-                if (tamper === "marker") { fs.rmSync(file); fs.writeFileSync(file, text); }
+                // Made before the original goes, so the filesystem cannot hand back its inode.
+                if (tamper === "marker") { fs.writeFileSync(`${file}.new`, text); fs.renameSync(`${file}.new`, file); }
                 else { fs.renameSync(path.dirname(file), `${path.dirname(file)}.gone`); fs.mkdirSync(path.dirname(file)); }
             }
             return text;
@@ -134,11 +135,12 @@ test("a published PDF must be the file expected, under one name only", (context)
     assert.equal(publication.actualPath(`${base}/out.pdf`, expected), `${base}/out.pdf`);
     assert.throws(() => publication.actualPath(`${base}/out.pdf`, { ...expected, size: 99 }), isMessage("publishedPdfIdentityUnverified"));
     if (process.platform === "linux") {
-        const decomposed = "é.pdf";
-        fs.writeFileSync(`${base}/${decomposed}`, "pdf");
-        fs.linkSync(`${base}/${decomposed}`, `${base}/é.pdf`);
-        const facts = publication.facts(`${base}/${decomposed}`);
-        assert.throws(() => publication.actualPath(`${base}/éx.pdf`.replace("x", ""), facts), isMessage("publishedPdfNameAmbiguous"));
+        // One file under two stored spellings of the same name, asked for by a third.
+        const canonical = "ệ.pdf";
+        fs.writeFileSync(`${base}/${canonical}`, "pdf");
+        fs.linkSync(`${base}/${canonical}`, `${base}/${canonical.normalize("NFC")}`);
+        const facts = publication.facts(`${base}/${canonical}`);
+        assert.throws(() => publication.actualPath(`${base}/ệ.pdf`, facts), isMessage("publishedPdfNameAmbiguous"));
     }
 });
 
@@ -156,7 +158,8 @@ test("a staging area that cannot be identified, or is lost, is reported for clea
     fs.rmdirSync(area.directory);
     const lost = staging.stagingArea(`${base}/out.pdf`);
     staging.openStaging(lost);
-    fs.rmdirSync(lost.directory);
+    // Moved aside, not removed, so the new folder cannot be given the old one's inode.
+    fs.renameSync(lost.directory, `${lost.directory}.old`);
     fs.mkdirSync(lost.directory);
     assert.equal(staging.closeStaging(lost)[0].diagnostic.message, message("stagingDirectoryOwnershipLost"));
     fs.rmdirSync(lost.directory);

@@ -67,6 +67,19 @@ is refused in the catalog's words; the gate fails if JavaScript's own
 `SyntaxError` escapes either decoder. Adapter checks exercise the production artifacts and native tools on
 each host.
 
+The native coverage gate holds the engine, command line and serve to 100%
+line, branch and function coverage. A second pass of the native workflows
+runs the same suites on macOS, Linux arm64 and x64, and Windows with the source
+behind the CLI artifact's path and `NODE_V8_COVERAGE` set; each job keeps a
+record, and the `native-coverage-gate` job merges them. Records merge as the
+stretches of source that ran, not as counts, because V8 omits a block whose
+count equals its parent's. A line ran if any of its code did; a branch or
+function ran if the place it begins did; a file in scope that no process
+loaded fails the gate. The suites behind it are in `tests/native/`: serve and
+the CLI as real processes, and the engine's adapters on the real filesystem
+and processes, with a mock only for a fault the platform cannot produce on
+cue and stand-ins for the macOS and Windows helpers' answers.
+
 `tools/eslint/rules.mjs` is the one register of ESLint exceptions: rules off
 everywhere, rules off in a named area, and inline directives. Every inline
 directive names its rules and gives a `-- reason`; ESLint fails on unused
@@ -143,7 +156,8 @@ relative to `tests/integration/`.
 | `finder-pipe.cjs` | Engine SIGKILL during review and progress, exit and stderr diagnostics, restored SIGPIPE state, helper exit |
 | `native-cli.cjs` | Native CLI format, strict PDF, collision race, source integrity and receipt checks |
 | `posix-process.py` | Native Stop, crash, writer guard, helper exit, source replacement and argv batching |
-| `npm-route.cjs` | The packed npm tarball installed into a private prefix: the command's `--version` and help, a conversion, a missing-tool refusal and uninstall |
+| `tests/native/` | Serve and the CLI as real processes, and the engine's adapters on the real filesystem with injected faults; also run on Linux and Windows |
+| `npm-route.cjs` | The packed npm tarball installed into a private prefix: the command's `--version` and help, a conversion, a missing-tool refusal and uninstall; not run in the coverage pass, which has no packed artifact |
 
 ExifTool edits only synthetic HDR fixture metadata; the action does not use it.
 

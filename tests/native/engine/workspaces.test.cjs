@@ -16,6 +16,7 @@ const { inspectModule } = require("../../unit/ports/inspect-module.cjs");
 const { workspaceStore } = require("../../../src/engine/workspaces.js");
 const { localFilesystem } = require("../../../src/engine/filesystem.js");
 const { commandSession } = require("../../../src/engine/processes.js");
+const { windowsNative } = require("../../../src/engine/platform/win32.js");
 const { UserCanceled } = require("../../../src/core/errors.js");
 const { message } = require("../../../src/core/messages.js");
 
@@ -37,7 +38,15 @@ function home(context) {
     return made;
 }
 
-function store(context, { files = localFilesystem(null, null), commands = commandSession(), windows = null } = {}) {
+// The platform's own helper, as production uses it: on Windows the store cannot work without one.
+function nativeHelper(context, commands) {
+    if (POSIX) { return null; }
+    const helper = windowsNative(commands);
+    context.after(() => helper.close());
+    return helper;
+}
+
+function store(context, { files = localFilesystem(null, null), commands = commandSession(), windows = nativeHelper(context, commands) } = {}) {
     context.after(() => commands.close?.());
     return workspaceStore(files, commands, windows);
 }
@@ -169,8 +178,9 @@ test("a parent made by someone else at the same moment is taken as made, unless 
 test("a process's start is read from the system, and a process that is gone or hidden says so", async (context) => {
     const commands = commandSession();
     context.after(() => commands.close());
-    assert.ok(await processStart(process.pid, commands, null));
-    assert.equal(await processStart(endedPid(), commands, null), null);
+    const native = nativeHelper(context, commands);
+    assert.ok(await processStart(process.pid, commands, native));
+    assert.equal(await processStart(endedPid(), commands, native), null);
     if (UNPRIVILEGED) { assert.equal(await processStart(1, commands, null), undefined, "a process this user may not signal"); }
     const failing = { request: () => Promise.resolve({ status: 1, stdout: "" }) };
     if (process.platform === "darwin") { assert.equal(await processStart(process.pid, failing, null), undefined); }

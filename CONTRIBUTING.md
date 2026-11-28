@@ -126,7 +126,13 @@ production sources and applicable build rules must remain discoverable by their
 gates. Coverage and mutation are both 100% for the unit scope in the
 [pure module declaration](tools/pure-modules.mjs): the pure modules and the
 Finder action, which is tested through the fakes in `tests/unit/ports`. The
-engine, command line and serve adapters require the native suites. Keep behavioral expectations independent of implementation calculations.
+engine, command line and serve adapters are held to 100% line, branch and
+function coverage by the native coverage gate (`tools/native-coverage.mjs`).
+Their tests in `tests/native/` (`npm run test:native`) run the real processes
+and filesystem on each platform; a mock may inject only a fault the platform
+cannot produce on cue, such as a race or a device error, and the macOS and
+Windows helpers may be stand-ins where a test is about what they answer. Keep
+behavioral expectations independent of implementation calculations.
 
 ESLint uses `js.configs.all`; exceptions and tuned rules are justified in
 `tools/eslint/rules.mjs`. Group modules by responsibility and lifetime, respecting
